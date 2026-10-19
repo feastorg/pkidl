@@ -5,7 +5,7 @@ That is only true if symbol and footprint nicknames resolve the same way on ever
 machine — so we read the library tables committed to KiCad-Master-Lib and never
 touch the developer's global KiCad configuration.
 
-See `_planning/00-prereqs.md` (risk R1) for why this exists.
+See `_planning/01-kidl-spike.md` (risk R1) for why this exists.
 """
 
 from __future__ import annotations

@@ -47,5 +47,5 @@ genuinely manufacturable — *not* that the layout resembles the hand-drawn orig
 
 ## Where the thinking lives
 
-- `../_planning/00-prereqs.md` — the plan, and what's done
+- `../_planning/01-kidl-spike.md` — the plan, and what's done
 - `../_working/` — the analysis and evidence behind it

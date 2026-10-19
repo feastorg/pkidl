@@ -4,7 +4,7 @@
 set dotenv-load := true
 
 # KiCad-Master-Lib checkout. Every symbol/footprint nickname resolves through this
-# — see _planning/00-prereqs.md (R1). Override in .env if yours lives elsewhere.
+# — see _planning/01-kidl-spike.md (R1). Override in .env if yours lives elsewhere.
 export KICAD_MASTER_LIB := env_var_or_default("KICAD_MASTER_LIB", justfile_directory() / "../KiCad-Master-Lib")
 
 # KiCad ships as a flatpak locally and as a plain binary in CI/containers.

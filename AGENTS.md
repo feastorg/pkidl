@@ -12,7 +12,7 @@ The end state: **KiCad files are build artifacts, not source.** Python is commit
 `.kicad_sch` / `.kicad_pcb` are generated in CI or on demand.
 
 Planning lives in `../_planning/`; evidence and analysis in `../_working/`. Read
-`../_planning/00-prereqs.md` first.
+`../_planning/01-kidl-spike.md` first.
 
 ## Stack
 

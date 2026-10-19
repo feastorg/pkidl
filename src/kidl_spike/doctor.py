@@ -14,7 +14,7 @@ from collections.abc import Iterator
 
 from kidl_spike import libs
 
-# KiCad 10 is the target. See _planning/00-prereqs.md (P4).
+# KiCad 10 is the target. See _planning/01-kidl-spike.md (P4).
 WANT_KICAD_MAJOR = 10
 
 
