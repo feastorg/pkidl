@@ -1,7 +1,7 @@
 [project]
 name = "kidl-spike"
 version = "0.1.0"
-description = "Generate BREAD KiCad boards from Python (skidl + pkidl)"
+description = "Generate BREAD KiCad boards from Python: SKiDL (electrical) now, pkidl (physical) to follow"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "GPL-3.0-or-later"

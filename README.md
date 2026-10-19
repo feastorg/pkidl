@@ -31,6 +31,10 @@ entries proves nothing; resolving a part proves the toolchain works.
   `$KICAD_MASTER_LIB` (defaults to `../KiCad-Master-Lib`)
 - A sibling `../skidl` checkout — SKiDL is pinned to a local clone, not taken from PyPI
 
+`pkidl` (the physical layer) is **not a dependency yet** — SKiDL (the electrical
+layer) is wired in first. It lives in the sibling `../pkidl` checkout and is its
+own early-stage library; this spike will depend on it once it has content.
+
 ## Generating a board
 
 ```sh
