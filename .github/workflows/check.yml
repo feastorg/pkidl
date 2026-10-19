@@ -1,0 +1,141 @@
+# Calls the `just` recipes so CI and local share one gate definition.
+#
+# Path-aware: docs-only changes skip the heavy check/test jobs via
+# dorny/paths-filter, while the always-running `ok` aggregator still reports a
+# green required status — so a docs PR merges without running the full matrix.
+#
+# Branch protection: require ONLY the `ok` context (not `check`/`test`). Skipped
+# jobs don't block; only failures and cancellations do.
+#
+# See https://github.com/CameronBrooks11/dev-toolbox/blob/main/docs/just-conventions.md
+
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # SKiDL is pinned to an exact commit. Upstream has no KiCad 10 backend and we
+  # expect to carry patches; an unpinned library silently changing the netlist we
+  # generate is exactly the failure this project exists to eliminate.
+  SKIDL_REF: e19d9a6a68f6370bd841cc946c97c9a05ee21567
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+
+  check:
+    name: Check
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: kidl-spike
+
+      # uv resolves skidl from ../skidl (see [tool.uv.sources]), so it must exist
+      # even for a lint/typecheck run.
+      - name: Checkout skidl
+        uses: actions/checkout@v4
+        with:
+          repository: devbisme/skidl
+          ref: ${{ env.SKIDL_REF }}
+          path: skidl
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup
+        working-directory: kidl-spike
+        run: just setup
+
+      - name: Check (fmt + lint + typecheck)
+        working-directory: kidl-spike
+        run: just check
+
+  test:
+    name: Test
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: kidl-spike
+
+      # SKiDL is consumed from a local checkout (uv.sources), not PyPI: upstream
+      # has no KiCad 10 backend and we expect to carry patches.
+      - name: Checkout skidl
+        uses: actions/checkout@v4
+        with:
+          repository: devbisme/skidl
+          ref: ${{ env.SKIDL_REF }}
+          path: skidl
+
+      # Library resolution must come from committed tables, never a global KiCad
+      # config -- that was risk R1. 3D models are excluded: nothing in ERC, DRC,
+      # netlist or schematic generation reads one, and they are ~206MB of ~269MB.
+      - name: Checkout KiCad-Master-Lib (no 3D models)
+        run: |
+          git clone --filter=blob:none --sparse --depth 1 \
+            https://github.com/feastorg/KiCad-Master-Lib.git KiCad-Master-Lib
+          git -C KiCad-Master-Lib sparse-checkout set --no-cone '/*' \
+            '!*.step' '!*.STEP' '!*.stp' '!*.STP' '!*.wrl' '!*.WRL'
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup
+        working-directory: kidl-spike
+        run: just setup
+
+      - name: Test
+        working-directory: kidl-spike
+        env:
+          KICAD_MASTER_LIB: ${{ github.workspace }}/KiCad-Master-Lib
+        run: just test
+
+  # ─── Unified gate ─────────────────────────────────────────────────────
+  # The ONLY job required by branch protection. Add every job to `needs:`.
+  ok:
+    name: ok
+    if: always()
+    needs: [changes, check, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any upstream job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: Pass
+        run: echo 'All checks passed or were skipped'
