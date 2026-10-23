@@ -109,6 +109,10 @@ Both will silently fail to render. Same class of bug as R1 — worth sweeping.
 
 - [x] Fix Loaf_x004 footprints → now KiCad 10 (`20260206`) and **fully resolving**
 - [ ] Migrate `Slice_DCMT` + `Slice_RLHT` to KiCad 10 (both still on `20241229` = v9)
+      — *2026-10-23: both root sheets, RLHT's relay/MAX31855K sheets and DCMT's
+      motor-driver sheet read `20260306` (KiCad 10); other DCMT files and the boards were not
+      checked. `Slice_RLHT`'s `thermistor.kicad_sch` is still KiCad 8, but no sheet references
+      it: an orphan file.*
 - [ ] Re-point their stale nicknames using the map below
 
 ### Nickname migration map — exactly 7 refs left
@@ -260,7 +264,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 | --- | --- | --- |
 | 1 ✅ | Loaf_x004 — electrical | skidl → netlist-equivalent `.kicad_sch`, passes KiCad 10 ERC |
 | 2 ✅ | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
-| 3 | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances), `HV Relay` netclass, the 70×100 Slice form-factor contract |
+| 3 | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances, as SKiDL subcircuits), `HV Relay` netclass, the 70×100 Slice form-factor contract |
 | 4 | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
 | 5 | Generalize | Drive boards from `slice.yaml`/`loaf.yaml`; gitignore KiCad; regenerate in CI; show a *new* Slice variant falling out near-free |
 
@@ -326,9 +330,24 @@ parity with the same 52 silk warnings, and the board stays byte-stable. F-015 is
 
 ### Open questions to resolve before their phase
 
-- **Design Blocks vs skidl subcircuits** — decide before Phase 3. KiCad 10
-  `.kicad_blocks` is a native schematic-reuse mechanism that overlaps with `@subcircuit`,
-  and `KiCad-Master-Lib` already uses it. Consume, ignore, or generate?
+- ~~**Design Blocks vs skidl subcircuits**~~ — **decided 2026-10-23: SKiDL subcircuits.**
+  Design blocks are not an input for now; publishing blocks from subcircuits is revisited in
+  Phase 5. Evidence, from experiments on Slice_RLHT:
+  - RLHT's reused sheets are relay ×2 and MAX31855K ×2. KiCad-Master-Lib has no relay block,
+    and its one MAX31855 block is a different circuit (3V3, two caps vs RLHT's 5V with
+    ferrites, a 10n cap and pull-ups). Consuming blocks would mean drawing new ones in KiCad
+    first.
+  - Two parametric `@subcircuit`s, each instantiated twice, are topology-equivalent to the
+    original's four sheet instances (20 parts, 29 nets), checked through KiCad's netlist
+    export of the generated schematic.
+  - Consuming a block works through a `kicad-cli` netlist export plus a small loader (block
+    ports carry markup like `~{CS}`; no-connects survive the export), but makes generation
+    depend on KiCad.
+  - SKiDL 2.3.0 draws the hierarchy cosmetically (F-018), so a generated sheet is not a
+    reusable block as-is.
+- **Phase 3's hierarchy criterion — decided 2026-10-23: source and netlist level.** One
+  subcircuit, two instances in Python, verified in the netlist. The generated schematic's
+  cosmetic hierarchy (F-018) is accepted because the schematic is a build artifact.
 - **Does `slice.yaml` become the compiler's input, or stay a hand-maintained sidecar?**
   Shapes the pkidl API. Decide before Phase 5.
 - **Where does pkidl live long-term?** Recommend: develop inside `kidl-spike`, extract to

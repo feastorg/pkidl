@@ -10,6 +10,8 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 
 | ID | Finding | Blast radius | Status |
 | --- | --- | --- | --- |
+| [F-018](#f-018) | SKiDL draws hierarchy cosmetically: a file per instance, global labels, no sheet pins | upstream | OPEN (accepted) |
+| [F-017](#f-017) | `netlist_to_skidl` corrupts what it converts: shorts colliding nets, renames fields | upstream | OPEN |
 | [F-016](#f-016) | Generated schematic placement is not byte-stable (netlist and board are) | spike | OPEN |
 | [F-015](#f-015) | SKiDL 2.2.3 emits power-symbol instances with no `lib_symbols` definition | upstream | FIXED (SKiDL 2.3.0) |
 | [F-014](#f-014) | ~~SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries~~ — RETRACTED for installed KiCad (packed single files); true of the source repo, which CI now packs | spike | CLOSED |
@@ -26,6 +28,45 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 | [F-003](#f-003) | SKiDL bug: `empty_footprint_handler` silently ignored | upstream | OPEN |
 | [F-002](#f-002) | First-party parts filed under third-party library nicknames | fleet | FIXED |
 | [F-001](#f-001) | Library resolution lived only in a global KiCad config | fleet | FIXED |
+
+---
+
+## F-018 — SKiDL draws hierarchy cosmetically
+
+On SKiDL 2.3.0 (kicad10 backend), `generate_schematic(auto_stub=True)` for two
+`@subcircuit`s instantiated twice each (RLHT's relay and MAX31855K) writes one sheet file
+per instance (`exp_relay1.kicad_sch`, `exp_relay2.kicad_sch`, ...). The root's four sheet
+symbols carry **0 sheet pins**, and each sub-sheet connects through 6 **global** labels named
+after the root nets (`IN1`, `SW1`, ...), with 0 hierarchical labels. The original
+`relay.kicad_sch` is one file shared by two instances, connected by 6 hierarchical labels.
+Without `auto_stub`, routing fails (`GlobalRoutingFailure` on `TC_CLK`) and no schematic is
+written.
+
+The netlist is right: KiCad's export of the generated hierarchy is topology-equivalent to
+the original's four sheet instances (20 parts, 29 nets). Consequence: a generated sub-sheet
+cannot be published as a reusable design block without rewriting its port labels.
+
+**Status:** OPEN, accepted for phase 3 (hierarchy is proven at source and netlist level).
+
+---
+
+## F-017 — `netlist_to_skidl` corrupts what it converts
+
+SKiDL 2.3.0's `netlist_to_skidl`, run on KiCad's export of Slice_RLHT, produces runnable
+code that differs from the netlist it came from:
+
+- **Colliding net names short nets together.** `Net-(U2-T+)` and `Net-(U2-T-)` both become
+  the identifier `Net__U2_T__`; the second assignment wins, so running the generated
+  `MAX31855K` puts `C5.1 C5.2 FB1.1 FB2.1 U2.2 U2.3` on one net — the thermocouple inputs
+  shorted, and the filter capacitor shorted across itself.
+- **Field names are rewritten.** Every `Datasheet` field comes out as `TC_DATAsheet`.
+- **Reuse is lost.** Each sheet *instance* becomes its own function (`Relay`, `Relay1`), not
+  one subcircuit called twice.
+
+Usable as a starting point only behind a netlist-equivalence check. Not checked against
+upstream's issue tracker; nothing filed.
+
+**Status:** OPEN.
 
 ---
 
