@@ -151,8 +151,10 @@ routed .kicad_pcb ← ImportSpecctraSES ← .ses
 ```
 
 This delivers "full autoroute leveraging existing OSS" **without writing a router**.
-Freerouting is the incumbent (active, v2.2.4 May 2026), but the router choice is subject
-to the research pass — this only proves the *loop* is mechanically possible.
+Freerouting is the chosen router (v2.5.0, JVM jar; P5 research pass, `04-router-research.md`).
+This section only proves the *loop* is mechanically possible. **Reproducibility is gated by
+the byte-stability of the DSN we export, not the router** (Freerouting #1016): pkidl must
+emit canonical, byte-stable DSN — stable UUIDs / deterministic placement order.
 
 ### 3.7 The surrounding ecosystem
 
@@ -221,7 +223,7 @@ Not a general PCB tool — a **board-family compiler** for the recurring BREAD s
 | R2 | **skidl schematic place & route is the weak spot.** `PlacementFailure`/`RoutingFailure` are routine; `place.py`/`route.py` carry several `HACK:`/`FIXME:` comments. Generated schematics may be ugly or fail outright. | Medium | Fidelity bar is netlist+DRC, not schematic beauty. Use `flatness`, `auto_stub`, and the labels-only fallback. Schematic aesthetics are explicitly **not** a success criterion. |
 | R3 | **DCMT's 17 zones with hierarchical-path net names.** | Medium | Deferred — DCMT is board 3. Loaf (1 zone) proves the pipeline first. |
 | R4 | Loaf is KiCad 8 format, has no manifest, no CI, no KiBot — it sits outside the `bread-infra` tooling despite being the first target. | Low | User is migrating all boards to KiCad 10 by EOW. Author a `loaf.yaml` against `bread-infra/spec/loaf/`. |
-| R5 | Router choice unresolved. | Medium | Dedicated research pass (see §6, Phase 0). The loop is proven possible (§3.6); only the router is open. |
+| R5 | ~~Router choice unresolved.~~ **Resolved.** | Low | P5 research pass chose Freerouting 2.5.0 (`04-router-research.md`). Residual: reproducibility needs byte-stable DSN from pkidl (§3.6), not the router. |
 
 ### Known upstream bugs found (worth reporting)
 

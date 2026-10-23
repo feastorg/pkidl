@@ -31,7 +31,7 @@ This is the "why skidl + pkidl and not something else" record. Read
 | **KiUtils** | Python dataclass model over native KiCad sch/pcb/footprint/symbol files | Plausible substrate for pkidl. Not chosen: last release 2024. **We use `simp_sexp` instead** — it is already a SKiDL dependency, so it adds nothing new. |
 | **kicad-skip** | Python manipulation of KiCad S-expression files | More exploratory/ergonomic than KiUtils, but its own docs admit PCB support is the weaker half. Reference, not foundation. |
 | **KiCad native formats + IPC API** | Documented sch/board formats; protobuf control of a *running* KiCad | **The native format is our integration boundary.** The IPC API explicitly drives a running KiCad instance — wrong shape for a headless compiler. Not used as the compiler interface. |
-| **Freerouting** | DSN/SES autorouting via GUI, CLI, or API | **Presumed route backend.** Active (v2.2.4, May 2026). Subject to the Phase 0 router research pass. Its output is imported and verified, never treated as source of truth. |
+| **Freerouting** | DSN/SES autorouting via GUI, CLI, or API | **Chosen route backend** (v2.5.0, JVM jar) — P5 research pass, `04-router-research.md`. Its output is imported and verified, never treated as source of truth. |
 | **KiBot / KiKit** | Fab & doc automation; panelization | Belong at the downstream build layer regardless of authoring choice. **Already in use** by `bread-infra` CI. Keep. |
 | **JITX** | Commercial: requirements, layout generation, routing solvers, verification | Useful as prior art and as the commercial ceiling of the idea. Proprietary dependence conflicts with an open, reproducible thesis platform. |
 
@@ -111,9 +111,10 @@ and a general EDA compiler are explicitly *not* the contribution.
 
 ## Still open
 
-- **Router choice.** Freerouting is the incumbent, not the decision. Phase 0 research pass
-  scores candidates against the proven DSN/SES loop (`_working/00-context-and-architecture.md` §3.6):
-  headless operation, licence, 2-layer quality, determinism, CI viability.
+- ~~**Router choice.**~~ **Resolved** by the P5 research pass (`04-router-research.md`):
+  Freerouting 2.5.0 (JVM jar), with `fastroute` and `CoppeRoute` as contribute-and-watch
+  alternatives. The pass also found that reproducibility is gated by byte-stable DSN *input*,
+  not the router — a requirement now on pkidl.
 - **KiCad 10 Design Blocks.** A *native* schematic-reuse mechanism that overlaps with
   skidl `@subcircuit`, already used by `KiCad-Master-Lib`. Consume, ignore, or generate?
   Decide before Phase 3.

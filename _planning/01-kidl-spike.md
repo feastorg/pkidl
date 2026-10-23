@@ -18,7 +18,7 @@ Last updated: 2026-07-12
 | P2 | Boards: KiCad 10 migration + re-point nicknames | Cam | ✅ **Done** — all three on KiCad 10 (`20260206`) |
 | P3 | Re-run library audit; confirm zero dead nicknames | Claude | ✅ **GREEN** |
 | P4 | Pin the KiCad version (flatpak local, container digest CI) | — | Not started |
-| P5 | Router research pass | — | Not started |
+| P5 | Router research pass | Claude | ✅ **Done** — Freerouting 2.5.0 (JVM jar). See `_working/04-router-research.md` |
 | P6 | Scaffold `kidl-spike` to dev-toolbox standards | Claude | ✅ **Done** (`f9871ce`) |
 | P7 | **Fix the DRC parity gate across BREAD** (see below) | — | **New — not started** |
 
@@ -156,16 +156,23 @@ deliberately **not** building a drift-detection workflow.
 
 ---
 
-## P5 — Router research pass
+## P5 — Router research pass ✅
 
-- [ ] Score candidates against the proven DSN/SES loop
+- [x] Score candidates against the proven DSN/SES loop
 
 The loop is already verified as mechanically possible (`pcbnew.ExportSpecctraDSN` /
-`ImportSpecctraSES` — see `_working/00-context-and-architecture.md` §3.6). **The router
-choice is what's open, not the loop.**
+`ImportSpecctraSES` — see `_working/00-context-and-architecture.md` §3.6).
 
-Score on: headless operation, licence, 2-layer quality, determinism, CI viability.
-Freerouting is the incumbent, not the decision.
+**Decided: Freerouting 2.5.0 (JVM jar), version-pinned in CI.** It is the only candidate
+that clears a long-term-reliability bar (mature, active, regression-gated, GPL-3.0,
+deterministic single-threaded). `fastroute` (Rust, `--parity` = byte-identical to
+Freerouting, zero-cost swap) and `CoppeRoute` (strongest determinism design, best KiCad fit)
+are contribute-and-watch alternatives. Full scorecard, field sweep and evidence in
+`_working/04-router-research.md`.
+
+**Key finding beyond the router:** reproducibility is gated by the byte-stability of the DSN
+*input*, not the router (Freerouting #1016). **pkidl must emit canonical, byte-stable DSN** —
+a requirement on our generator that de-risks every router choice.
 
 ---
 
