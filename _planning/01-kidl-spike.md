@@ -143,11 +143,17 @@ Slice_RLHT
 
 ---
 
-## P4 — Pin the KiCad version
+## P4 — Pin the KiCad version ✅ (local pin + policy)
 
-- [ ] Pin flatpak KiCad version locally
-- [ ] Pin container digest in CI
-- [ ] Document that a KiCad upgrade is a **reviewed event**
+- [x] Pin flatpak KiCad version locally — `doctor.py` `WANT_KICAD = "10.0.6"` is the single
+      source of truth; `just doctor` fails on any other version. AGENTS.md / README.md point
+      at it rather than restating the number.
+- [~] Pin container digest in CI — **belongs to `bread-infra` (F-008), not here.**
+      kidl-spike's own CI runs no KiCad container, so there is nothing to pin in this repo
+      yet; when KiCad enters this CI (for gen/verify/DRC) its image must be digest-pinned.
+      Handed to the fleet track; ask before touching bread-infra.
+- [x] Document that a KiCad upgrade is a **reviewed event** — stated at the pin in
+      `doctor.py` and in AGENTS.md / README.md.
 
 The only drift control worth building. Stock KiCad libraries (~25 of them, carrying the
 overwhelming majority of parts) are the sole real upstream, and they *do* change across

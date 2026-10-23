@@ -14,8 +14,12 @@ from collections.abc import Iterator
 
 from kidl_spike import libs
 
-# KiCad 10 is the target. See _planning/01-kidl-spike.md (P4).
-WANT_KICAD_MAJOR = 10
+# KiCad is pinned to an exact version. Stock symbol libraries change across KiCad
+# releases, and this project exists to eliminate exactly that silent drift, so a
+# KiCad upgrade is a REVIEWED EVENT: bump this pin deliberately, in its own commit.
+# This constant is the single source of truth for the pinned version.
+# See _planning/01-kidl-spike.md (P4).
+WANT_KICAD = "10.0.6"
 
 
 def _kicad_cli() -> list[str]:
@@ -48,9 +52,15 @@ def checks() -> Iterator[tuple[bool, str]]:
         out = subprocess.run(
             [*_kicad_cli(), "version"], capture_output=True, text=True, timeout=60, check=True
         ).stdout.strip()
-        major = int(out.split(".")[0])
-        yield _check("kicad-cli", major == WANT_KICAD_MAJOR, f"{out} (want {WANT_KICAD_MAJOR}.x)")
-    except (OSError, subprocess.SubprocessError, ValueError) as e:
+        ver = out.split()[0] if out else out
+        yield _check(
+            "kicad-cli",
+            ver == WANT_KICAD,
+            out
+            if ver == WANT_KICAD
+            else f"{out} (pinned {WANT_KICAD}; a bump is a reviewed event)",
+        )
+    except (OSError, subprocess.SubprocessError) as e:
         yield _check("kicad-cli", False, f"not runnable: {e}")
 
     try:
