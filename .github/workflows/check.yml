@@ -22,9 +22,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # SKiDL is pinned to an exact commit. Upstream has no KiCad 10 backend and we
-  # expect to carry patches; an unpinned library silently changing the netlist we
-  # generate is exactly the failure this project exists to eliminate.
+  # SKiDL is pinned to an exact commit. The pinned commit has no KiCad 10 backend
+  # (upstream master has since added one; the bump is deferred) and we expect to
+  # carry patches; an unpinned library silently changing the netlist we generate
+  # is exactly the failure this project exists to eliminate.
   SKIDL_REF: e19d9a6a68f6370bd841cc946c97c9a05ee21567
 
 jobs:
@@ -89,8 +90,8 @@ jobs:
         with:
           path: kidl-spike
 
-      # SKiDL is consumed from a local checkout (uv.sources), not PyPI: upstream
-      # has no KiCad 10 backend and we expect to carry patches.
+      # SKiDL is consumed from a local checkout (uv.sources), not PyPI: the pinned
+      # commit has no KiCad 10 backend and we expect to carry patches.
       - name: Checkout skidl
         uses: actions/checkout@v4
         with:
@@ -108,6 +109,31 @@ jobs:
           git -C KiCad-Master-Lib sparse-checkout set --no-cone '/*' \
             '!*.step' '!*.STEP' '!*.stp' '!*.STP' '!*.wrl' '!*.WRL'
 
+      # Stock KiCad symbols, at the exact version doctor.py pins (the single
+      # source of truth), so board tests that resolve stock parts run here
+      # instead of skipping. Only the libraries the boards and tests use: the
+      # whole library is ~220MB.
+      #
+      # The source repo stores each library as a sharded .kicad_symdir, which
+      # the pinned SKiDL cannot read. KiCad's install packs them into single
+      # .kicad_sym files with the tag's own tools/kicad_lib_pack.py; we run the
+      # same step. Its output for these three libraries is byte-identical to the
+      # installed 10.0.6 flatpak's.
+      - name: Pack stock KiCad symbols (pinned version)
+        run: |
+          ver=$(sed -n 's/^WANT_KICAD = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_KICAD not found in doctor.py"; exit 1; }
+          git clone --filter=blob:none --sparse --depth 1 --branch "$ver" \
+            https://gitlab.com/kicad/libraries/kicad-symbols.git kicad-symbols-src
+          git -C kicad-symbols-src sparse-checkout set --no-cone /tools/ \
+            /Connector.kicad_symdir/ /Device.kicad_symdir/ /power.kicad_symdir/
+          python3 kicad-symbols-src/tools/kicad_lib_pack.py -v -o kicad-symbols \
+            -i kicad-symbols-src/Connector.kicad_symdir \
+               kicad-symbols-src/Device.kicad_symdir \
+               kicad-symbols-src/power.kicad_symdir
+          ls kicad-symbols/Connector.kicad_sym kicad-symbols/Device.kicad_sym \
+             kicad-symbols/power.kicad_sym
+
       - name: Install just
         uses: extractions/setup-just@v2
 
@@ -123,6 +149,7 @@ jobs:
         working-directory: kidl-spike
         env:
           KICAD_MASTER_LIB: ${{ github.workspace }}/KiCad-Master-Lib
+          KICAD_STOCK_SYMBOL_DIR: ${{ github.workspace }}/kicad-symbols
         run: just test
 
   # ─── Unified gate ─────────────────────────────────────────────────────

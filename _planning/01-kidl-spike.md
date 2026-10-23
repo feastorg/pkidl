@@ -6,7 +6,7 @@ Status is maintained here; this doc progresses.
 Analysis and evidence behind these decisions live in `_working/` — this doc is the
 to-do list, not the reasoning.
 
-Last updated: 2026-07-12
+Last updated: 2026-10-23
 
 ---
 
@@ -17,7 +17,7 @@ Last updated: 2026-07-12
 | P1 | KiCad-Master-Lib: lib tables, vendoring, drift tracking | Claude | ✅ **Done** — [PR #1](https://github.com/feastorg/KiCad-Master-Lib/pull/1) merged (`89cd0b1`) |
 | P2 | Boards: KiCad 10 migration + re-point nicknames | Cam | ✅ **Done** — all three on KiCad 10 (`20260206`) |
 | P3 | Re-run library audit; confirm zero dead nicknames | Claude | ✅ **GREEN** |
-| P4 | Pin the KiCad version (flatpak local, container digest CI) | — | Not started |
+| P4 | Pin the KiCad version (flatpak local, container digest CI) | Claude | ✅ **Done** locally ([PR #7](https://github.com/feastorg/kidl-spike/pull/7)); container digest is fleet (F-008) |
 | P5 | Router research pass | Claude | ✅ **Done** — Freerouting 2.5.0 (JVM jar). See `_working/04-router-research.md` |
 | P6 | Scaffold `kidl-spike` to dev-toolbox standards | Claude | ✅ **Done** (`f9871ce`) |
 | P7 | **Fix the DRC parity gate across BREAD** (see below) | — | **New — not started** |
@@ -151,6 +151,8 @@ Slice_RLHT
 - [~] Pin container digest in CI — **belongs to `bread-infra` (F-008), not here.**
       kidl-spike's own CI runs no KiCad container, so there is nothing to pin in this repo
       yet; when KiCad enters this CI (for gen/verify/DRC) its image must be digest-pinned.
+      CI does pack the stock symbol libraries it needs from `kicad-symbols` at the tag read
+      from `WANT_KICAD` (see F-014).
       Handed to the fleet track; ask before touching bread-infra.
 - [x] Document that a KiCad upgrade is a **reviewed event** — stated at the pin in
       `doctor.py` and in AGENTS.md / README.md.
@@ -256,7 +258,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 
 | Phase | Board | Proves |
 | --- | --- | --- |
-| 1 | Loaf_x004 — electrical | skidl → netlist-equivalent `.kicad_sch`, passes KiCad 10 ERC |
+| 1 ✅ | Loaf_x004 — electrical | skidl → netlist-equivalent `.kicad_sch`, passes KiCad 10 ERC |
 | 2 | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
 | 3 | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances), `HV Relay` netclass, the 70×100 Slice form-factor contract |
 | 4 | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
@@ -265,6 +267,30 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 **Success criterion (all phases):** generated netlist matches the original's,
 `kicad-cli pcb drc` passes, layout is genuinely manufacturable. Layout need **not**
 resemble the original.
+
+### Phase 1 — done
+
+`src/kidl_spike/boards/loaf.py` (`just gen loaf`). Against `Loaf_x004@ebf47df`, with KiCad
+10.0.6 as the oracle:
+
+- **Netlist:** all 7 nets match. `tests/test_loaf.py` checks the generated circuit against
+  KiCad's export of the original (`tests/fixtures/loaf_x004_nets.json`) and runs in CI.
+- **ERC:** 0 errors. The generator adds a `PWR_FLAG` on `+12V` and `GND`; the original has
+  none and fails ERC with two `power_pin_not_driven` errors. The remaining warnings are all
+  `lib_symbol_issues` / `footprint_link_issues`, which come from running ERC on a bare
+  `.kicad_sch` with no project lib-table. They go away when generation emits a `.kicad_pro`
+  with explicit severities (P7 design input).
+- **ERC "passes" means errors-only for now.** `just erc` uses `--exit-code-violations`, which
+  counts warnings, so it exits 5 until the `.kicad_pro` lands.
+- Carried: F-015 (worked around in `libs.configure_skidl`), F-016 (schematic placement not
+  byte-stable; the netlist is).
+
+### Deferred: SKiDL pin bump
+
+The pin (`e19d9a6a`, 2026-04-21) is 105 commits behind upstream master, which has since
+added a `kicad10` backend and fixed F-015 properly (#308–#311). Bump it as its own reviewed
+PR, with `tests/test_loaf.py` as the gate, then drop the F-015 workaround if it is no longer
+needed and re-check F-016.
 
 ### Open questions to resolve before their phase
 

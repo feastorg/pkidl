@@ -62,8 +62,9 @@ def test_configure_skidl_resolves_stock_part(monkeypatch, tmp_path):
 
     SKiDL reads single-file `.kicad_sym` libraries, which is exactly what KiCad
     10 ships stock symbols as (see retracted finding F-014). So this is exercised
-    wherever a stock symbol library is on disk (e.g. a local flatpak install) and
-    skipped where none is installed at all (e.g. CI, which provisions no KiCad).
+    wherever a stock symbol library is on disk (a local flatpak install, or the
+    stock symbols CI packs at the pinned version) and skipped only where none is
+    present.
     The master library, resolved in the test above, is the reproducibility
     boundary.
     """

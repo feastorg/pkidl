@@ -157,6 +157,12 @@ def configure_skidl(tool=None, workdir: Path | None = None) -> None:
     sym_paths = [str(p) for p in symbol_search_paths(root)]
     if stock_sym:
         sym_paths.append(str(stock_sym))
+        # SKiDL's schematic writer finds the stock `power.kicad_sym` only via
+        # KICAD<ver>_SYMBOL_DIR (or a few hardcoded Linux paths). On a flatpak
+        # install it finds neither, then emits power-symbol instances with no
+        # lib_symbols definition — leaving +12V/GND nets fragmented. Point it at
+        # the stock symbols we already resolved so power nets come out whole.
+        os.environ.setdefault(f"KICAD{tool[len('kicad') :]}_SYMBOL_DIR", str(stock_sym))
 
     for path in sym_paths:
         if path not in skidl.lib_search_paths[tool]:

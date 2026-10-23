@@ -10,7 +10,9 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 
 | ID | Finding | Blast radius | Status |
 | --- | --- | --- | --- |
-| [F-014](#f-014) | ~~SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries~~ — RETRACTED, misdiagnosis | spike | CLOSED |
+| [F-016](#f-016) | Generated schematic placement is not byte-stable at the pinned SKiDL (netlist is) | spike | OPEN |
+| [F-015](#f-015) | Pinned SKiDL emits power-symbol instances with no `lib_symbols` definition | upstream | WORKED AROUND |
+| [F-014](#f-014) | ~~SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries~~ — RETRACTED for installed KiCad (packed single files); true of the source repo, which CI now packs | spike | CLOSED |
 | [F-013](#f-013) | 38 of 40 `slice.yaml` manifests are never schema-validated | fleet | OPEN |
 | [F-012](#f-012) | **No PR gate anywhere — ERC/DRC only run *after* merge** | **fleet** | **OPEN** |
 | [F-011](#f-011) | **Fleet library rot: 39/42 boards have unresolvable parts; 60 exist nowhere** | **fleet** | **OPEN** |
@@ -24,6 +26,69 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 | [F-003](#f-003) | SKiDL bug: `empty_footprint_handler` silently ignored | upstream | OPEN |
 | [F-002](#f-002) | First-party parts filed under third-party library nicknames | fleet | FIXED |
 | [F-001](#f-001) | Library resolution lived only in a global KiCad config | fleet | FIXED |
+
+---
+
+## F-016 — Generated schematic placement is not byte-stable at the pinned SKiDL
+
+`boards/loaf.py` generates the same netlist on every run, but not the same `.kicad_sch`.
+SKiDL's placer and router seed `random` from `options.get("seed")`, which defaults to
+`None`; passing `seed=0` removes that source but not all of the variation.
+
+Evidence (`uv run python -m kidl_spike.boards.loaf`, `sha256sum build/loaf/loaf.kicad_sch`,
+`seed=0`): `PYTHONHASHSEED` 0 produced `b6b057e7…` on one run and `aeff5e1b…` on the next;
+`PYTHONHASHSEED` 7 did the same. Three distinct schematics were seen in total; the diffs are
+part positions (e.g. `(at 143.51 90.17 0)` vs `(at 142.24 90.17 0)`). `loaf.net` was
+byte-identical across three runs with different hash seeds, and a generated schematic
+re-exported through KiCad matches the original on all 7 nets; the other placement variants
+were not re-exported.
+
+The remaining source was not isolated. The same hash seed giving different output rules out
+string-hash order; ordering by object identity in the placer is the likeliest candidate,
+unconfirmed.
+
+**Why it matters:** "KiCad files are build artifacts" wants byte-stable artifacts, and
+Freerouting #1016 shows routers are sensitive to input byte order. The schematic is not the
+router's input (pkidl's DSN is), so this does not block phase ①. Re-check after the deferred
+SKiDL pin bump before patching anything.
+
+**Status:** OPEN.
+
+---
+
+## F-015 — Pinned SKiDL emits power-symbol instances with no `lib_symbols` definition
+
+At the pinned commit (`e19d9a6a`), `generate_schematic(auto_stub=True)` placed one
+`power:+12V` / `power:GND` instance per power pin (13 and 19 for the Loaf) but wrote **no**
+definition for them into `(lib_symbols)`. KiCad then has no power pin to name the net, so
+re-exporting the generated schematic's netlist fragmented `+12V` and `GND` into single-pin
+`Net-(…)` nets. The five signal nets, emitted as `global_label`s, matched the original
+exactly.
+
+Root cause (`skidl/src/skidl/tools/kicad9/sexp_schematic.py` at the pin): whether to emit a
+power symbol and how to define it come from two different sources.
+
+- `_get_power_symbol_names()` decides to emit a power symbol. When `power.kicad_sym` is not
+  found it falls back to a **hardcoded** name set that includes `+12V` and `GND`.
+- `_extract_power_lib_symbol_raw()` produces the definition. It has **no** fallback, and
+  returns `None` when the file is not found.
+- `_get_power_lib_text()` looks only in `$KICAD9_SYMBOL_DIR`, `/usr/share/kicad/symbols`,
+  `/usr/local/share/kicad/symbols` and `~/.local/share/kicad/9.0/symbols`. On the flatpak,
+  with the variable unset, it finds none of them.
+
+**Workaround (in-repo, pin unchanged):** `libs.configure_skidl()` sets
+`KICAD<ver>_SYMBOL_DIR` to the stock symbol directory it already resolves. With it, both
+definitions are embedded and the re-exported netlist matches `Loaf_x004` on all 7 nets.
+
+**Upstream:** fixed after our pin; nothing to file. `devbisme/skidl#308` ("emit
+power-symbol lib_symbols from placed instances", merged 2026-06-09, `d7d03848`, not an
+ancestor of `e19d9a6a`) derives the definitions from the instances placed on each sheet.
+Upstream master also loads names and definitions from one library through SKiDL's normal
+search path (`SchLib("power")`), so a missing library fails loudly instead of emitting
+dangling instances. Verified by reading upstream master's source, not by running it; that
+happens at the deferred pin bump, gated by `tests/test_loaf.py`.
+
+**Status:** WORKED AROUND here; fixed upstream.
 
 ---
 
@@ -60,6 +125,17 @@ because it provisions no KiCad symbol libraries (F-007/F-008). Separately, runni
 inside the sandbox needs `XDG_DATA_HOME` pointed at a writable dir, or its library pickle
 cache write to `~/.local/share/skidl/` fails with a read-only-filesystem error — an
 environment note, not a defect.
+
+**Update (2026-10-23) — the original claim was half right.** It is false for *installed*
+KiCad and true for the *source* repo. `kicad-symbols` at tag `10.0.6` (`7800d914`) holds 223
+`.kicad_symdir` directories and no single-file libraries (`Device.kicad_symdir` is 536
+one-symbol files), and the pinned SKiDL cannot read that layout: pointed at it, CI failed
+with `Can't open file: Device.` / `Connector.` KiCad's install packs each directory into a
+single file with the tag's own `tools/kicad_lib_pack.py` (`CMakeLists.txt`,
+`KICAD_PACK_SYM_LIBRARIES ON`). Packing `Connector`, `Device` and `power` that way gives
+files byte-identical to the installed 10.0.6 flatpak's. kidl-spike's CI now runs that
+packing step at the `WANT_KICAD` tag, so stock-part resolution runs in CI instead of
+skipping. F-007/F-008 remain open for the fleet.
 
 **Status:** CLOSED (retracted).
 

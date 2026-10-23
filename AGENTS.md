@@ -18,7 +18,8 @@ Planning lives in `_planning/`; evidence and analysis in `_working/`. Read
 
 - **Python 3.13**, managed with `uv` (`.python-version` pins it)
 - **SKiDL** — consumed from the sibling `../skidl` checkout, **pinned**, not from PyPI.
-  Upstream has no KiCad 10 backend and we expect to carry patches.
+  The pinned commit has no KiCad 10 backend (upstream master has since added one; the bump
+  is deferred, see `_planning/`) and we expect to carry patches.
 - **KiCad 10** — flatpak locally; `KICAD_CLI` overrides the invocation. The exact version is
   pinned in `doctor.py` (`WANT_KICAD`); a bump is a reviewed event, not an auto-update
 - **KiCad-Master-Lib** — via `$KICAD_MASTER_LIB`; supplies every non-stock symbol/footprint
