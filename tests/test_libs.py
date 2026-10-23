@@ -60,11 +60,12 @@ def test_configure_skidl_resolves_master_library_sources(monkeypatch, tmp_path):
 def test_configure_skidl_resolves_stock_part(monkeypatch, tmp_path):
     """A stock KiCad part resolves where stock symbol libraries are present.
 
-    SKiDL reads single-file `.kicad_sym` libraries; KiCad 10 ships stock symbols
-    as sharded `.kicad_symdir` directories it cannot yet parse. So this is
-    exercised only where a stock symbol library is actually available (e.g. a
-    local flatpak install) and skipped where none is (e.g. CI). The master
-    library, resolved in the test above, is the reproducibility boundary.
+    SKiDL reads single-file `.kicad_sym` libraries, which is exactly what KiCad
+    10 ships stock symbols as (see retracted finding F-014). So this is exercised
+    wherever a stock symbol library is on disk (e.g. a local flatpak install) and
+    skipped where none is installed at all (e.g. CI, which provisions no KiCad).
+    The master library, resolved in the test above, is the reproducibility
+    boundary.
     """
     skidl = pytest.importorskip("skidl")
     stock_sym, _ = libs.stock_dirs()

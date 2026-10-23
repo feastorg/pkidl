@@ -10,7 +10,7 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 
 | ID | Finding | Blast radius | Status |
 | --- | --- | --- | --- |
-| [F-014](#f-014) | SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries | upstream / spike | OPEN |
+| [F-014](#f-014) | ~~SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries~~ — RETRACTED, misdiagnosis | spike | CLOSED |
 | [F-013](#f-013) | 38 of 40 `slice.yaml` manifests are never schema-validated | fleet | OPEN |
 | [F-012](#f-012) | **No PR gate anywhere — ERC/DRC only run *after* merge** | **fleet** | **OPEN** |
 | [F-011](#f-011) | **Fleet library rot: 39/42 boards have unresolvable parts; 60 exist nowhere** | **fleet** | **OPEN** |
@@ -27,31 +27,41 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 
 ---
 
-## F-014 — SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries
+## F-014 — RETRACTED: SKiDL reads KiCad 10 stock symbols; the CI failure was a missing stock library
 
-`skidl/src/skidl/tools/kicad9/lib.py:31`:
+**This finding was a misdiagnosis.** It is kept, not deleted, so the wrong turn is on
+record. The original claim — that SKiDL's `lib_suffix = [".kicad_sym"]`
+(`skidl/src/skidl/tools/kicad9/lib.py:31`) cannot read KiCad 10 stock symbols because
+KiCad 10 "ships them as sharded `.kicad_symdir` directories" — is false. It was inferred
+from a CI error, never reproduced.
 
-```python
-lib_suffix = [".kicad_sym"]
-```
+What is actually on disk (KiCad **10.0.6** flatpak, this machine):
 
-SKiDL's kicad9 backend resolves symbol libraries as single **files** ending in
-`.kicad_sym`. KiCad 10 ships its stock symbol libraries as sharded `.kicad_symdir`
-**directories**, which this backend cannot parse. Resolving any stock part through SKiDL
-against a KiCad-10-only symbol install therefore fails with
-`FileNotFoundError: Can't open file: Device.` (surfaced first in CI on `Device:R`).
+- Stock symbols are **single-file** `.kicad_sym`, exactly what the backend reads —
+  `Device.kicad_sym` is one 2.4 MB file. `find` over the whole flatpak symbol library
+  returns **no** `.kicad_symdir` entries; the format does not exist here.
+- Pointed at that directory, SKiDL resolves `Device:R` and `Device:C` cleanly.
+- `just doctor` with the real `$KICAD_MASTER_LIB` wired in resolves all three sources —
+  `Device:R` (stock), `AP63205WU-7_Buck_Regulator` (first-party), `WS2812B_5050`
+  (vendored). The only failing check is `kicad-cli`, for an unrelated sandbox reason.
 
-First-party and vendored `KMLib_*` libraries are **unaffected** — they are committed to
-KiCad-Master-Lib as single-file `.kicad_sym`, so the R1 reproducibility pulls still work.
+**Where the CI `FileNotFoundError: Can't open file: Device.` really came from:** the CI
+`test` job installs no KiCad, so `libs.stock_dirs()` finds no stock symbol directory and
+`Device` is on no search path — "not found anywhere", not "found but unparseable". This
+overlaps F-007 (Master-Lib/stock libs absent from CI) and F-008 (CI runs a KiCad-9
+container). The stock-part test now skips where no stock library is present
+(`tests/test_libs.py`), which is correct for CI on its own terms.
 
-**Blast radius:** blocks phase ① generation for any board that uses a *stock* KiCad part,
-not just CI. Worked around in CI by splitting the stock-part resolution test so it skips
-where no stock symbol library is present (`tests/test_libs.py`), while the master-library
-pulls run unconditionally.
+**No SKiDL patch and no stock-part vendoring are needed for this.** Phase ① generation is
+not blocked by symbol format.
 
-**Status:** OPEN. Needs either a SKiDL patch to read `.kicad_symdir` directories
-(consistent with "we expect to carry patches"), or vendoring the handful of stock parts the
-three boards actually use into KMLib as single-file `.kicad_sym`.
+**Residual, genuine, and tracked elsewhere:** CI cannot exercise stock-part resolution
+because it provisions no KiCad symbol libraries (F-007/F-008). Separately, running SKiDL
+inside the sandbox needs `XDG_DATA_HOME` pointed at a writable dir, or its library pickle
+cache write to `~/.local/share/skidl/` fails with a read-only-filesystem error — an
+environment note, not a defect.
+
+**Status:** CLOSED (retracted).
 
 ---
 
