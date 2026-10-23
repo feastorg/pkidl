@@ -23,12 +23,14 @@ developer's global KiCad config.
 from __future__ import annotations
 
 import os
+import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 from kidl_spike import libs
+from kidl_spike.boards import loaf_layout
 
 BUILD = Path("build/loaf")
 
@@ -79,6 +81,7 @@ def circuit(workdir: Path | None = None) -> dict[str, Any]:
     """Build the Loaf circuit into SKiDL's default circuit; return its nets by name."""
     import skidl
 
+    skidl.reset()  # start from an empty circuit, so repeated builds don't accumulate
     # Resolve libraries from the committed tables, never the global KiCad config.
     libs.configure_skidl(workdir=workdir)
 
@@ -108,15 +111,17 @@ def circuit(workdir: Path | None = None) -> dict[str, Any]:
     return nets
 
 
-def build(outdir: Path = BUILD) -> Path:
-    """Build the Loaf electrical netlist and schematic into *outdir*.
+def build(outdir: Path = BUILD, source: str | None = None) -> Path:
+    """Build the Loaf into *outdir*: netlist, schematic, board and project.
 
+    *source* is printed on the board's silkscreen to trace it back to the
+    generating commit; it defaults to the current checkout's.
     Returns the directory the KiCad files were written to.
     """
     import skidl
 
     # Absolute workdir so the materialised fp-lib-table survives the chdir below.
-    circuit(workdir=(outdir / "kicad-env").resolve())
+    nets = circuit(workdir=(outdir / "kicad-env").resolve())
 
     outdir.mkdir(parents=True, exist_ok=True)
     default_handler = skidl.empty_footprint_handler
@@ -142,12 +147,40 @@ def build(outdir: Path = BUILD) -> Path:
         # pinned SKiDL placement still varies between processes (F-016). The
         # netlist is unaffected and is what the tests gate.
         skidl.generate_schematic(filepath=".", top_name="loaf", auto_stub=True, seed=0)
+
+    pad_nets: dict[str, dict[str, str]] = {}
+    fields: dict[str, dict[str, str]] = {}
+    for name, net in nets.items():
+        for p in net.pins:
+            part = p.part
+            if part.ref.startswith("#"):
+                continue
+            pad_nets.setdefault(part.ref, {})[str(p.num)] = name
+            # KiCad reads a "~" datasheet as empty.
+            datasheet = part.datasheet if part.datasheet not in (None, "~") else ""
+            fields[part.ref] = {"Datasheet": datasheet, "Description": part.description or ""}
+    loaf_layout.build_pcb(outdir, "loaf", pad_nets, fields, source or _source_id())
     return outdir
+
+
+def _source_id() -> str:
+    """Short commit of the generating checkout, marked if the tree is dirty."""
+    try:
+        sha = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()  # fmt: skip
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+    return f"{sha}-dirty" if dirty else sha
 
 
 def main() -> int:
     outdir = build()
-    print(f"Generated Loaf electrical layer into {outdir}/")
+    print(f"Generated Loaf into {outdir}/")
     return 0
 
 

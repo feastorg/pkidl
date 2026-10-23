@@ -54,15 +54,35 @@ doctor:
 gen board:
     uv run python -m kidl_spike.boards.{{ board }}
 
+# The gates fail on errors only; warnings are reported, not gated. Each check
+# writes the full report (all severities) first, then gates. Severities come
+# from the generated .kicad_pro, which escalates schematic parity to errors.
+
 # Run KiCad's own ERC against a generated schematic
 erc board:
-    {{ kicad_cli }} sch erc --exit-code-violations \
+    {{ kicad_cli }} sch erc --severity-all \
         -o build/{{ board }}/erc.rpt build/{{ board }}/{{ board }}.kicad_sch
+    {{ kicad_cli }} sch erc --severity-error --exit-code-violations \
+        -o build/{{ board }}/erc-errors.rpt build/{{ board }}/{{ board }}.kicad_sch
 
-# Run KiCad's own DRC against a generated board, including schematic parity
+# Run KiCad's own DRC against a generated board: zones refilled, schematic parity
 drc board:
-    {{ kicad_cli }} pcb drc --schematic-parity --exit-code-violations \
+    {{ kicad_cli }} pcb drc --refill-zones --schematic-parity --severity-all \
         -o build/{{ board }}/drc.rpt build/{{ board }}/{{ board }}.kicad_pcb
+    {{ kicad_cli }} pcb drc --refill-zones --schematic-parity --severity-error \
+        --exit-code-violations \
+        -o build/{{ board }}/drc-errors.rpt build/{{ board }}/{{ board }}.kicad_pcb
+
+# Export Gerbers, drill files and a PDF render into build/<board>/fab
+fab board:
+    {{ kicad_cli }} pcb export gerbers --check-zones \
+        -l F.Cu,B.Cu,F.Paste,B.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts \
+        -o build/{{ board }}/fab/gerbers/ build/{{ board }}/{{ board }}.kicad_pcb
+    {{ kicad_cli }} pcb export drill --generate-map --map-format pdf \
+        -o build/{{ board }}/fab/drill/ build/{{ board }}/{{ board }}.kicad_pcb
+    {{ kicad_cli }} pcb export pdf --check-zones --mode-multipage \
+        -l F.Cu,B.Cu,F.SilkS,B.SilkS,Edge.Cuts \
+        -o build/{{ board }}/fab/{{ board }}.pdf build/{{ board }}/{{ board }}.kicad_pcb
 
 # Generate and verify a board end to end
 verify board: (gen board) (erc board) (drc board)

@@ -115,6 +115,27 @@ def stock_dirs() -> tuple[Path | None, Path | None]:
     )
 
 
+def footprint_file(lib_id: str, root: Path | None = None) -> Path:
+    """The `.kicad_mod` file for a "Library:Footprint" id.
+
+    Master-library nicknames resolve through the committed table; anything else
+    is looked for among the stock KiCad footprints.
+    """
+    nickname, _, name = lib_id.partition(":")
+    table = load_table("footprint", root)
+    if nickname in table:
+        lib_dir = table[nickname].path
+    else:
+        _, stock_fp = stock_dirs()
+        if stock_fp is None:
+            raise LibraryError(f"{lib_id}: not in the master library, and no stock footprints")
+        lib_dir = stock_fp / f"{nickname}.pretty"
+    path = lib_dir / f"{name}.kicad_mod"
+    if not path.is_file():
+        raise LibraryError(f"{lib_id}: {path} does not exist")
+    return path
+
+
 def write_fp_lib_table(dest: Path, root: Path | None = None) -> Path:
     """Materialise a KiCad-standard `fp-lib-table` that SKiDL can actually read.
 
@@ -137,6 +158,34 @@ def write_fp_lib_table(dest: Path, root: Path | None = None) -> Path:
     table = dest / "fp-lib-table"
     table.write_text("(fp_lib_table\n  (version 7)\n" + "\n".join(entries) + "\n)\n")
     return table
+
+
+def write_project_lib_tables(dest: Path, root: Path | None = None) -> None:
+    """Write a project's `sym-lib-table` and `fp-lib-table` into *dest*.
+
+    Generated projects carry their own tables so KiCad's ERC and DRC resolve
+    libraries from the project, not from a machine's global configuration. URIs
+    keep their variables (`${KICAD_MASTER_LIB}`, `${KICAD10_SYMBOL_DIR}`, ...),
+    which KiCad expands, so the same tables work in any environment that sets
+    them.
+    """
+    root = root or master_lib_root()
+    stock: dict[str, Path | None] = dict(zip(("symbol", "footprint"), stock_dirs(), strict=True))
+    for kind, table_name, stock_var, suffix in (
+        ("symbol", "sym-lib-table", "KICAD10_SYMBOL_DIR", ".kicad_sym"),
+        ("footprint", "fp-lib-table", "KICAD10_FOOTPRINT_DIR", ".pretty"),
+    ):
+        raw = (root / TABLES[kind]).read_text()
+        entries = dict(_LIB_RE.findall(raw))
+        if stock_dir := stock[kind]:
+            for p in sorted(stock_dir.glob(f"*{suffix}")):
+                entries.setdefault(p.stem, f"${{{stock_var}}}/{p.name}")
+        head = table_name.replace("-", "_")
+        lines = [
+            f'  (lib (name "{n}")(type "KiCad")(uri "{u}")(options "")(descr ""))'
+            for n, u in sorted(entries.items())
+        ]
+        (dest / table_name).write_text(f"({head}\n  (version 7)\n" + "\n".join(lines) + "\n)\n")
 
 
 def configure_skidl(tool=None, workdir: Path | None = None) -> None:

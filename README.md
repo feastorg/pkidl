@@ -1,7 +1,7 @@
 # kidl-spike
 
 Generate BREAD KiCad boards from Python — [SKiDL](https://github.com/devbisme/skidl) for
-the electrical layer, `pkidl` (under development) for the physical layer.
+the electrical layer, `pkidl` (under development, in `src/pkidl/`) for the physical layer.
 
 A spike to prove that `Loaf_x004`, `Slice_DCMT` and `Slice_RLHT` — three real boards from
 the BREAD thesis platform, currently hand-drawn in KiCad — can be regenerated from
@@ -32,16 +32,21 @@ entries proves nothing; resolving a part proves the toolchain works.
   `$KICAD_MASTER_LIB` (defaults to `../KiCad-Master-Lib`)
 - A sibling `../skidl` checkout — SKiDL is pinned to a local clone, not taken from PyPI
 
-`pkidl` (the physical layer) is **not a dependency yet** — SKiDL (the electrical
-layer) is wired in first. It lives in the sibling `../pkidl` checkout and is its
-own early-stage library; this spike will depend on it once it has content.
+`pkidl` (the physical layer) is developed inside this repo, in `src/pkidl/`. It
+imports nothing from `kidl_spike`, so it can move to the `pkidl` repo once its
+primitives settle.
 
 ## Generating a board
 
 ```sh
-just gen loaf      # write build/loaf/*.kicad_sch, *.kicad_pcb
+just gen loaf      # write build/loaf/: netlist, schematic, board, project, lib tables
 just verify loaf   # generate, then run KiCad's own ERC and DRC against the result
+just fab loaf      # Gerbers, drill files and a PDF render into build/loaf/fab/
 ```
+
+The gates fail on errors only; the full reports (`build/loaf/erc.rpt`, `drc.rpt`) list
+warnings too. The generated `.kicad_pro` sets the schematic-parity rules to errors, so a
+board that has drifted from its schematic fails DRC instead of passing with a warning.
 
 Everything under `build/` is generated and gitignored. Never hand-edit it — fix the
 generator.

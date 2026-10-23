@@ -31,7 +31,8 @@ Planning lives in `_planning/`; evidence and analysis in `_working/`. Read
 src/kidl_spike/
     libs.py      # library resolution — the reproducibility boundary
     doctor.py    # environment check; run this before trusting any output
-    boards/      # one module per board
+    boards/      # one module per board (+ <board>_layout.py for the physical layer)
+src/pkidl/       # physical layer: writes .kicad_pcb / .kicad_pro. Imports nothing from kidl_spike
 tests/
 build/           # GENERATED. Gitignored. Never hand-edit.
 ```
@@ -46,7 +47,12 @@ just check        # fmt-check + lint + typecheck (CI-equivalent)
 just test         # run tests
 just gen loaf     # generate a board's KiCad files into build/
 just verify loaf  # generate, then run KiCad's own ERC + DRC against the result
+just fab loaf     # Gerbers, drill, PDF render into build/loaf/fab/
 ```
+
+From a sandboxed Claude Code session, KiCad runs only through `kicad-cli-session`, alone in
+its tool call; `just erc`/`drc`/`verify`/`fab` cannot start it there. Call
+`kicad-cli-session` directly with the arguments the recipe uses.
 
 ## Conventions
 
@@ -75,4 +81,5 @@ just verify loaf  # generate, then run KiCad's own ERC + DRC against the result
   into `build/kicad-env/`.
 - KiCad's **`footprint_symbol_mismatch` DRC rule defaults to `warning`, not `error`** — so
   a schematic/PCB footprint mismatch will pass a default DRC run. Set severities
-  explicitly; do not assume DRC is checking what you think it is.
+  explicitly; do not assume DRC is checking what you think it is. Generated projects do
+  this through `pkidl.project.PARITY_ERRORS`.

@@ -259,7 +259,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 | Phase | Board | Proves |
 | --- | --- | --- |
 | 1 ✅ | Loaf_x004 — electrical | skidl → netlist-equivalent `.kicad_sch`, passes KiCad 10 ERC |
-| 2 | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
+| 2 ✅ | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
 | 3 | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances), `HV Relay` netclass, the 70×100 Slice form-factor contract |
 | 4 | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
 | 5 | Generalize | Drive boards from `slice.yaml`/`loaf.yaml`; gitignore KiCad; regenerate in CI; show a *new* Slice variant falling out near-free |
@@ -278,12 +278,42 @@ resemble the original.
 - **ERC:** 0 errors. The generator adds a `PWR_FLAG` on `+12V` and `GND`; the original has
   none and fails ERC with two `power_pin_not_driven` errors. The remaining warnings are all
   `lib_symbol_issues` / `footprint_link_issues`, which come from running ERC on a bare
-  `.kicad_sch` with no project lib-table. They go away when generation emits a `.kicad_pro`
-  with explicit severities (P7 design input).
-- **ERC "passes" means errors-only for now.** `just erc` uses `--exit-code-violations`, which
-  counts warnings, so it exits 5 until the `.kicad_pro` lands.
+  `.kicad_sch` with no project lib-table. Phase 2 removed them by generating the project
+  and its lib tables (see below).
+- **ERC "passes" means errors-only.** Since phase 2, `just erc` gates with
+  `--severity-error` and writes the full report alongside.
 - Carried: F-015 (worked around in `libs.configure_skidl`), F-016 (schematic placement not
   byte-stable; the netlist is).
+
+### Phase 2 — done
+
+`just gen loaf` now writes the board too: `loaf.kicad_pcb`, a `loaf.kicad_pro` with explicit
+rules and severities, and project `sym-lib-table` / `fp-lib-table`. pkidl lives in
+`src/pkidl/` (s-expression reader/writer, footprint placement, board assembly, project
+file); the Loaf's layout is `src/kidl_spike/boards/loaf_layout.py`.
+
+- **Interface fixed, layout generated.** Outline and the seven connector positions and sides
+  are taken from the original as a committed spec (`test_interface_matches_original` pins
+  them to it). The five bus signals are straight tracks from J2 to J7; GND is a pour over
+  B.Cu, +12V a pour over F.Cu that joins around the ends of the bus. No autorouter: the bus
+  is collinear by design. Freerouting comes in with the Slices.
+- **DRC** (`--refill-zones --schematic-parity`): 0 errors, 0 unconnected, 0 parity issues.
+  The 52 warnings are all `silk_edge_clearance`: the J1/J2/J7 bodies overhang the edge, as
+  on the original (55 there).
+- **The parity gate has teeth.** Three broken copies of the board, a wrong footprint, a
+  wrong pad net and a missing footprint, each fail the errors-only gate as
+  `footprint_symbol_mismatch` + `lib_footprint_mismatch`, `net_conflict` and
+  `missing_footprint`; the intact board passes.
+- **ERC** with the project lib tables: 0 errors, 9 warnings, all `lib_symbol_mismatch`
+  (the pinned SKiDL's embedded symbols differ from the KiCad 10 library's). Re-check at the
+  SKiDL bump.
+- **Board pads match the original netlist**, and the board, project and lib tables are
+  byte-identical across builds (`tests/test_loaf.py`).
+- **Footprint placement matches KiCad's own**, pad for pad, on all eight footprints of the
+  original (`tests/test_pkidl_footprint.py`). Rotations of 90/270 degrees are not covered.
+- **Fab outputs:** `just fab loaf` writes Gerbers, drill files and a PDF render. CI's
+  KiCad job (digest-pinned `kicad/kicad:10.0.6`) runs doctor, gen, ERC, DRC and fab, and
+  uploads the outputs as an artifact.
 
 ### Deferred: SKiDL pin bump
 
