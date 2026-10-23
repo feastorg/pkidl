@@ -22,11 +22,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # SKiDL is pinned to an exact commit. The pinned commit has no KiCad 10 backend
-  # (upstream master has since added one; the bump is deferred) and we expect to
-  # carry patches; an unpinned library silently changing the netlist we generate
-  # is exactly the failure this project exists to eliminate.
-  SKIDL_REF: e19d9a6a68f6370bd841cc946c97c9a05ee21567
+  # SKiDL is pinned to an exact commit: release 2.3.0, whose kicad10 backend the
+  # generators use. An unpinned library silently changing the netlist we generate
+  # is exactly the failure this project exists to eliminate; a bump is a reviewed
+  # PR, gated by tests/test_loaf.py.
+  SKIDL_REF: b94f04d436b5012f09ca103d8830e6705874a6f4
 
 jobs:
   changes:
@@ -90,8 +90,8 @@ jobs:
         with:
           path: kidl-spike
 
-      # SKiDL is consumed from a local checkout (uv.sources), not PyPI: the pinned
-      # commit has no KiCad 10 backend and we expect to carry patches.
+      # SKiDL is consumed from a local checkout (uv.sources), not PyPI, so the
+      # pin is an exact commit and patches can be carried if needed.
       - name: Checkout skidl
         uses: actions/checkout@v4
         with:

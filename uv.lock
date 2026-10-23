@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 
 [[package]]
@@ -753,7 +753,7 @@ wheels = [
 
 [[package]]
 name = "skidl"
-version = "2.2.3"
+version = "2.3.0"
 source = { editable = "../skidl" }
 dependencies = [
     { name = "deprecation" },

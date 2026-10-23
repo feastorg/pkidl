@@ -305,8 +305,8 @@ file); the Loaf's layout is `src/kidl_spike/boards/loaf_layout.py`.
   `footprint_symbol_mismatch` + `lib_footprint_mismatch`, `net_conflict` and
   `missing_footprint`; the intact board passes.
 - **ERC** with the project lib tables: 0 errors, 9 warnings, all `lib_symbol_mismatch`
-  (the pinned SKiDL's embedded symbols differ from the KiCad 10 library's). Re-check at the
-  SKiDL bump.
+  (SKiDL's embedded symbols differ from the KiCad 10 library's). Unchanged after the bump to
+  SKiDL 2.3.0 and its kicad10 backend.
 - **Board pads match the original netlist**, and the board, project and lib tables are
   byte-identical across builds (`tests/test_loaf.py`).
 - **Footprint placement matches KiCad's own**, pad for pad, on all eight footprints of the
@@ -315,12 +315,14 @@ file); the Loaf's layout is `src/kidl_spike/boards/loaf_layout.py`.
   KiCad job (digest-pinned `kicad/kicad:10.0.6`) runs doctor, gen, ERC, DRC and fab, and
   uploads the outputs as an artifact.
 
-### Deferred: SKiDL pin bump
+### SKiDL pin bump — done
 
-The pin (`e19d9a6a`, 2026-04-21) is 105 commits behind upstream master, which has since
-added a `kicad10` backend and fixed F-015 properly (#308–#311). Bump it as its own reviewed
-PR, with `tests/test_loaf.py` as the gate, then drop the F-015 workaround if it is no longer
-needed and re-check F-016.
+`e19d9a6a` (2.2.3, 2026-04-21) → release **2.3.0** (`b94f04d4`, 2026-07-28), with the
+generators on its `kicad10` backend. The sibling `../skidl` checkout is detached at the tag.
+Against the phase 2 results, nothing moved: the netlist matches the original (circuit and
+schematic re-export), ERC 0 errors with the same 9 warnings, DRC 0 errors / 0 unconnected / 0
+parity with the same 52 silk warnings, and the board stays byte-stable. F-015 is fixed by
+2.3.0, so its workaround is gone. F-016 persists. F-003's typo is still in 2.3.0.
 
 ### Open questions to resolve before their phase
 

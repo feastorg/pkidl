@@ -10,8 +10,8 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 
 | ID | Finding | Blast radius | Status |
 | --- | --- | --- | --- |
-| [F-016](#f-016) | Generated schematic placement is not byte-stable at the pinned SKiDL (netlist is) | spike | OPEN |
-| [F-015](#f-015) | Pinned SKiDL emits power-symbol instances with no `lib_symbols` definition | upstream | WORKED AROUND |
+| [F-016](#f-016) | Generated schematic placement is not byte-stable (netlist and board are) | spike | OPEN |
+| [F-015](#f-015) | SKiDL 2.2.3 emits power-symbol instances with no `lib_symbols` definition | upstream | FIXED (SKiDL 2.3.0) |
 | [F-014](#f-014) | ~~SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries~~ — RETRACTED for installed KiCad (packed single files); true of the source repo, which CI now packs | spike | CLOSED |
 | [F-013](#f-013) | 38 of 40 `slice.yaml` manifests are never schema-validated | fleet | OPEN |
 | [F-012](#f-012) | **No PR gate anywhere — ERC/DRC only run *after* merge** | **fleet** | **OPEN** |
@@ -49,8 +49,12 @@ unconfirmed.
 
 **Why it matters:** "KiCad files are build artifacts" wants byte-stable artifacts, and
 Freerouting #1016 shows routers are sensitive to input byte order. The schematic is not the
-router's input (pkidl's DSN is), so this does not block phase ①. Re-check after the deferred
-SKiDL pin bump before patching anything.
+router's input (pkidl's DSN is), so this does not block phase ①.
+
+**Re-checked on SKiDL 2.3.0 (kicad10 backend), 2026-10-23: still present.** Five processes
+(`PYTHONHASHSEED` 0, 0, 1, 7, 7) gave five different `loaf.kicad_sch` hashes. The generated
+board (`loaf.kicad_pcb`) was byte-identical in all five: it takes only the schematic's
+symbol UUIDs and values, which are stable.
 
 **Status:** OPEN.
 
@@ -58,7 +62,7 @@ SKiDL pin bump before patching anything.
 
 ## F-015 — Pinned SKiDL emits power-symbol instances with no `lib_symbols` definition
 
-At the pinned commit (`e19d9a6a`), `generate_schematic(auto_stub=True)` placed one
+At the then-pinned commit (`e19d9a6a`, SKiDL 2.2.3), `generate_schematic(auto_stub=True)` placed one
 `power:+12V` / `power:GND` instance per power pin (13 and 19 for the Loaf) but wrote **no**
 definition for them into `(lib_symbols)`. KiCad then has no power pin to name the net, so
 re-exporting the generated schematic's netlist fragmented `+12V` and `GND` into single-pin
@@ -76,7 +80,7 @@ power symbol and how to define it come from two different sources.
   `/usr/local/share/kicad/symbols` and `~/.local/share/kicad/9.0/symbols`. On the flatpak,
   with the variable unset, it finds none of them.
 
-**Workaround (in-repo, pin unchanged):** `libs.configure_skidl()` sets
+**Workaround (in-repo while on 2.2.3; removed with the bump):** `libs.configure_skidl()` set
 `KICAD<ver>_SYMBOL_DIR` to the stock symbol directory it already resolves. With it, both
 definitions are embedded and the re-exported netlist matches `Loaf_x004` on all 7 nets.
 
@@ -88,7 +92,10 @@ search path (`SchLib("power")`), so a missing library fails loudly instead of em
 dangling instances. Verified by reading upstream master's source, not by running it; that
 happens at the deferred pin bump, gated by `tests/test_loaf.py`.
 
-**Status:** WORKED AROUND here; fixed upstream.
+**Status:** FIXED by the bump to SKiDL 2.3.0 (`b94f04d4`), and the workaround is removed.
+With no `KICAD*_SYMBOL_DIR` set, the generated schematic embeds the `power:+12V`, `power:GND`
+and `power:PWR_FLAG` definitions, its KiCad netlist export matches the original on all 7
+nets, and the ERC and DRC gates pass.
 
 ---
 
@@ -376,7 +383,8 @@ ever to become the compiler's input (kidl-spike Phase 5), it *must* be true.
 if kwargs.get("empty_footprint_handler]")   # ← stray ']'
 ```
 
-A user-supplied handler is therefore never honoured by `generate_schematic()`.
+A user-supplied handler is therefore never honoured by `generate_schematic()`. Still present
+in SKiDL 2.3.0 (`circuit.py:1308`). Not yet checked against upstream's issue tracker.
 
 **Status:** upstream bug, good first PR to `devbisme/skidl`. Also: SKiDL's README still
 claims schematic generation is "V5 only" — stale; it supports 6/7/8/9.

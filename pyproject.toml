@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 license = "GPL-3.0-or-later"
 dependencies = [
-    "skidl>=2.2.3",
+    "skidl>=2.3.0",
     "pyyaml>=6.0",
 ]
 
@@ -24,10 +24,9 @@ dev = [
     "pyright>=1.1",
 ]
 
-# SKiDL is pinned to a local checkout: the pinned commit has no KiCad 10 backend
-# (upstream master has since added one; the bump is deferred, see _planning), and
-# we expect to carry patches. Swap for a released version once the boundary is
-# proven.
+# SKiDL is consumed from a local checkout, pinned to release 2.3.0 (SKIDL_REF in
+# CI), so the pin is an exact commit and patches can be carried if needed. Swap
+# for the PyPI release once the boundary is proven.
 [tool.uv.sources]
 skidl = { path = "../skidl", editable = true }
 
