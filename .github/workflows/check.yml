@@ -27,6 +27,9 @@ env:
   # is exactly the failure this project exists to eliminate; a bump is a reviewed
   # PR, gated by tests/test_loaf.py.
   SKIDL_REF: b94f04d436b5012f09ca103d8830e6705874a6f4
+  # The autorouter's jar, for the version doctor.py pins (WANT_FREEROUTING): the
+  # release asset's sha256 digest. A bump changes both, in one reviewed PR.
+  FREEROUTING_SHA256: f6f51bb02245e8e717f9359bd260cc9c5c0b1bc0acc8b7cb2cd5b8ffeb5de3c7
 
 jobs:
   changes:
@@ -120,8 +123,8 @@ jobs:
       # The source repo stores each library as a sharded .kicad_symdir, which
       # the pinned SKiDL cannot read. KiCad's install packs them into single
       # .kicad_sym files with the tag's own tools/kicad_lib_pack.py; we run the
-      # same step. Its output for these three libraries is byte-identical to the
-      # installed 10.0.6 flatpak's.
+      # same step. Its output for Connector, Device and power was checked
+      # byte-identical to the installed 10.0.6 flatpak's.
       - name: Read the pinned KiCad version
         run: |
           ver=$(sed -n 's/^WANT_KICAD = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
@@ -132,14 +135,12 @@ jobs:
         run: |
           git clone --filter=blob:none --sparse --depth 1 --branch "$KICAD_VER" \
             https://gitlab.com/kicad/libraries/kicad-symbols.git kicad-symbols-src
+          libs="Connector Device Isolator MCU_Module Mechanical Relay Sensor_Temperature power"
           git -C kicad-symbols-src sparse-checkout set --no-cone /tools/ \
-            /Connector.kicad_symdir/ /Device.kicad_symdir/ /power.kicad_symdir/
+            $(for l in $libs; do echo "/$l.kicad_symdir/"; done)
           python3 kicad-symbols-src/tools/kicad_lib_pack.py -v -o kicad-symbols \
-            -i kicad-symbols-src/Connector.kicad_symdir \
-               kicad-symbols-src/Device.kicad_symdir \
-               kicad-symbols-src/power.kicad_symdir
-          ls kicad-symbols/Connector.kicad_sym kicad-symbols/Device.kicad_sym \
-             kicad-symbols/power.kicad_sym
+            -i $(for l in $libs; do echo "kicad-symbols-src/$l.kicad_symdir"; done)
+          for l in $libs; do ls "kicad-symbols/$l.kicad_sym"; done
 
       # Stock footprints the boards place, from the same tag, for the board and
       # footprint-placement tests.
@@ -147,12 +148,28 @@ jobs:
         run: |
           git clone --filter=blob:none --sparse --depth 1 --branch "$KICAD_VER" \
             https://gitlab.com/kicad/libraries/kicad-footprints.git kicad-footprints
+          libs="Capacitor_SMD Connector_BarrelJack Connector_PinHeader_2.54mm
+                Connector_PinSocket_2.54mm Diode_THT Fuse Inductor_SMD Module MountingHole
+                Package_SO Relay_THT Resistor_SMD TerminalBlock_Phoenix"
           git -C kicad-footprints sparse-checkout set --no-cone \
-            /Connector_BarrelJack.pretty/ /Connector_PinHeader_2.54mm.pretty/ \
-            /Connector_PinSocket_2.54mm.pretty/
-          ls kicad-footprints/Connector_BarrelJack.pretty/BarrelJack_CUI_PJ-063AH_Horizontal.kicad_mod \
-             kicad-footprints/Connector_PinHeader_2.54mm.pretty/PinHeader_1x10_P2.54mm_Horizontal.kicad_mod \
-             kicad-footprints/Connector_PinSocket_2.54mm.pretty/PinSocket_1x10_P2.54mm_Horizontal.kicad_mod
+            $(for l in $libs; do echo "/$l.pretty/"; done)
+          for l in $libs; do ls -d "kicad-footprints/$l.pretty"; done
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Freerouting (pinned version, checked jar)
+        run: |
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
+          curl -fsSL --retry 3 -o freerouting.jar \
+            "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
+          echo "$FREEROUTING_SHA256  freerouting.jar" | sha256sum -c -
+          # Headless, and without the analytics it otherwise posts on every start.
+          echo "FREEROUTING=java -Djava.awt.headless=true -jar $GITHUB_WORKSPACE/freerouting.jar" \
+            "--gui.enabled=false --usage_and_diagnostic_data.disable_analytics=true" >> "$GITHUB_ENV"
 
       - name: Install just
         uses: extractions/setup-just@v2
@@ -192,7 +209,7 @@ jobs:
       KICAD_STOCK_FOOTPRINT_DIR: /usr/share/kicad/footprints
     steps:
       - name: Install git
-        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl
 
       - uses: actions/checkout@v4
         with:
@@ -222,26 +239,45 @@ jobs:
         with:
           python-version: "3.13"
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Freerouting (pinned version, checked jar)
+        run: |
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
+          curl -fsSL --retry 3 -o freerouting.jar \
+            "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
+          echo "$FREEROUTING_SHA256  freerouting.jar" | sha256sum -c -
+          echo "FREEROUTING=java -Djava.awt.headless=true -jar $GITHUB_WORKSPACE/freerouting.jar" \
+            "--gui.enabled=false --usage_and_diagnostic_data.disable_analytics=true" >> "$GITHUB_ENV"
+
       - name: Setup
         working-directory: kidl-spike
         run: just setup
 
-      - name: Doctor (KiCad version + library resolution)
+      - name: Doctor (KiCad and Freerouting versions, library resolution)
         working-directory: kidl-spike
         run: just doctor
 
       - name: Generate, ERC, DRC
         working-directory: kidl-spike
-        run: just verify loaf
+        run: |
+          just verify loaf
+          just verify rlht
 
       - name: Fab outputs
         working-directory: kidl-spike
-        run: just fab loaf
+        run: |
+          just fab loaf
+          just fab rlht
 
       - name: Reports
         if: always()
         working-directory: kidl-spike
-        run: tail -n +1 build/loaf/erc.rpt build/loaf/drc.rpt || true
+        run: tail -n +1 build/*/erc.rpt build/*/drc.rpt || true
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -251,6 +287,18 @@ jobs:
             kidl-spike/build/loaf/*.kicad_*
             kidl-spike/build/loaf/*.rpt
             kidl-spike/build/loaf/fab/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlht
+          path: |
+            kidl-spike/build/rlht/*.kicad_*
+            kidl-spike/build/rlht/*.rpt
+            kidl-spike/build/rlht/*.dsn
+            kidl-spike/build/rlht/*.ses
+            kidl-spike/build/rlht/freerouting.log
+            kidl-spike/build/rlht/fab/
 
   # ─── Unified gate ─────────────────────────────────────────────────────
   # The ONLY job required by branch protection. Add every job to `needs:`.

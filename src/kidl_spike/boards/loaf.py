@@ -22,32 +22,14 @@ developer's global KiCad config.
 
 from __future__ import annotations
 
-import os
-import subprocess
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 from kidl_spike import libs
 from kidl_spike.boards import loaf_layout
+from kidl_spike.boards.common import BUS_PINOUT, in_dir, source_id
 
 BUILD = Path("build/loaf")
-
-# Slice-bus pinout: connector pin number -> net name. Taken from the hand-drawn
-# Loaf_x004; this is the contract every slice plugs into.
-BUS_PINOUT = {
-    1: "GND",
-    2: "+12V",
-    3: "SCL_5V",
-    4: "SDA_5V",
-    5: "GND",
-    6: "E_STOP_5V",
-    7: "INT_5V",
-    8: "SYNC_5V",
-    9: "+12V",
-    10: "GND",
-}
 
 # The six bus connectors, in board order: (reference, symbol, footprint). J2/J7
 # use stock pin-header/socket footprints; J3–J6 use the BREAD custom bus
@@ -63,18 +45,6 @@ BUS_CONNECTORS = [
 
 # The power input: a 12 V barrel jack. Pin 1 = +12V, pin 2 = GND (2-pin symbol).
 BARREL_JACK = ("J1", "Barrel_Jack", "Connector_BarrelJack:BarrelJack_CUI_PJ-063AH_Horizontal")
-
-
-@contextmanager
-def _in_dir(path: Path) -> Iterator[None]:
-    """Run inside *path*. SKiDL's schematic writer emits into the cwd."""
-    prev = Path.cwd()
-    path.mkdir(parents=True, exist_ok=True)
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(prev)
 
 
 def circuit(workdir: Path | None = None) -> dict[str, Any]:
@@ -138,7 +108,7 @@ def build(outdir: Path = BUILD, source: str | None = None) -> Path:
         skidl.generate_netlist(file_=str((outdir / "loaf.net").resolve()), do_backup=False)
     finally:
         skidl.empty_footprint_handler = default_handler
-    with _in_dir(outdir):
+    with in_dir(outdir):
         # Every net on this board fans out well past the routing threshold, so
         # the bus is expressed as labels (and GND/+12V as power symbols) rather
         # than drawn wires — the natural representation for a backplane, and the
@@ -159,23 +129,8 @@ def build(outdir: Path = BUILD, source: str | None = None) -> Path:
             # KiCad reads a "~" datasheet as empty.
             datasheet = part.datasheet if part.datasheet not in (None, "~") else ""
             fields[part.ref] = {"Datasheet": datasheet, "Description": part.description or ""}
-    loaf_layout.build_pcb(outdir, "loaf", pad_nets, fields, source or _source_id())
+    loaf_layout.build_pcb(outdir, "loaf", pad_nets, fields, source or source_id())
     return outdir
-
-
-def _source_id() -> str:
-    """Short commit of the generating checkout, marked if the tree is dirty."""
-    try:
-        sha = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True
-        ).stdout.strip()
-        dirty = subprocess.run(
-            ["git", "status", "--porcelain", "--untracked-files=no"],
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()  # fmt: skip
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
-    return f"{sha}-dirty" if dirty else sha
 
 
 def main() -> int:

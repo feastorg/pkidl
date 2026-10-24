@@ -31,6 +31,9 @@ entries proves nothing; resolving a part proves the toolchain works.
 - A [KiCad-Master-Lib](https://github.com/feastorg/KiCad-Master-Lib) checkout, found via
   `$KICAD_MASTER_LIB` (defaults to `../KiCad-Master-Lib`)
 - A sibling `../skidl` checkout — SKiDL is pinned to a local clone, not taken from PyPI
+- [Freerouting](https://github.com/freerouting/freerouting) for the boards that are
+  autorouted (the Slices): a `freerouting` command, or `$FREEROUTING` set to one. The version
+  is pinned in `src/kidl_spike/doctor.py`; it needs Java 25
 
 `pkidl` (the physical layer) is developed inside this repo, in `src/pkidl/`. It
 imports nothing from `kidl_spike`, so it can move to the `pkidl` repo once its
@@ -42,9 +45,10 @@ primitives settle.
 just gen loaf      # write build/loaf/: netlist, schematic, board, project, lib tables
 just verify loaf   # generate, then run KiCad's own ERC and DRC against the result
 just fab loaf      # Gerbers, drill files and a PDF render into build/loaf/fab/
+just verify rlht   # Slice_RLHT, likewise; routed by Freerouting during `gen`
 ```
 
-The gates fail on errors only; the full reports (`build/loaf/erc.rpt`, `drc.rpt`) list
+The gates fail on errors only; the full reports (`build/<board>/erc.rpt`, `drc.rpt`) list
 warnings too. The generated `.kicad_pro` sets the schematic-parity rules to errors, so a
 board that has drifted from its schematic fails DRC instead of passing with a warning.
 

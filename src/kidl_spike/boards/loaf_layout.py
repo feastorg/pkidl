@@ -18,10 +18,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from kidl_spike import libs
+from kidl_spike.boards.common import symbols
 from pkidl.board import Board
 from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import PARITY_ERRORS, NetClass, write_project
-from pkidl.sexpr import find, find_all, parse
 
 # Board edge (x0, y0, x1, y1) and corner radius, mm. The original's left edge is
 # 0.014 mm out of square; that is not part of the interface.
@@ -71,21 +71,6 @@ RULES: dict[str, float | bool] = {
 }
 
 
-def _symbols(schematic: Path) -> dict[str, tuple[str, dict[str, str]]]:
-    """Reference -> (symbol uuid, fields) from a generated schematic."""
-    out = {}
-    for sym in find_all(parse(schematic.read_text()), "symbol"):
-        if find(sym, "lib_id") is None:
-            continue
-        props = {p[1]: p[2] for p in find_all(sym, "property")}
-        ref = props.get("Reference", "")
-        uid = find(sym, "uuid")
-        if ref.startswith("#") or uid is None:
-            continue  # power symbols and flags have no footprint
-        out[ref] = (str(uid[1]), props)
-    return out
-
-
 def build_pcb(
     outdir: Path,
     name: str,
@@ -100,18 +85,18 @@ def build_pcb(
     compares). The schematic already in *outdir* supplies the symbol links and
     values.
     """
-    symbols = _symbols(outdir / f"{name}.kicad_sch")
+    links = symbols(outdir / f"{name}.kicad_sch")
     board = Board()
     board.outline_rounded_rect(*OUTLINE, CORNER_RADIUS)
 
     placed = {}
     for ref, (x, y, rot, back) in sorted(PLACEMENT.items()):
-        uid, props = symbols[ref]
-        lib_id = props["Footprint"]
+        link = links[ref]
+        lib_id = link.fields["Footprint"]
         p = Placement(
-            lib_id, ref, props["Value"], x, y, rot, back,
-            nets=pad_nets[ref], path=f"/{uid}", sheetfile=f"{name}.kicad_sch",
-            fields=fields[ref],
+            lib_id, ref, link.fields["Value"], x, y, rot, back,
+            nets=pad_nets[ref], path=link.path, sheetfile=link.sheetfile,
+            sheetname=link.sheetname, fields=fields[ref],
         )  # fmt: skip
         placed[ref] = place(libs.footprint_file(lib_id), p)
         board.footprint(placed[ref])

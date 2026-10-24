@@ -129,8 +129,13 @@ Slice_DCMT
 
 Slice_RLHT
   KMLib_Mounting:Thermal Pad             → KMLib_Mounting:Thermal_Pad          [renamed in P1.2]
-  SparkFun-LED:WS2812B_5050        (sym) → KMLib_IC_Digital:WS2812B_5050
+  SparkFun-LED:WS2812B_5050        (sym) → KMLib_IC_Digital:WS2812B_5050_RGB_LED
 ```
+
+*2026-10-24: both `WS2812B_5050` targets above were written without the `_RGB_LED` suffix;
+the KMLib symbol is `WS2812B_5050_RGB_LED` (same four pins as SparkFun's, default footprint
+`KMLib_IC_SMD:WS2812-5050-4PIN`). The generated Slice_RLHT uses it. The DCMT line is left
+as written until DCMT is checked.*
 
 ---
 
@@ -264,7 +269,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 | --- | --- | --- |
 | 1 ✅ | Loaf_x004 — electrical | skidl → netlist-equivalent `.kicad_sch`, passes KiCad 10 ERC |
 | 2 ✅ | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
-| 3 | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances, as SKiDL subcircuits), `HV Relay` netclass, the 70×100 Slice form-factor contract |
+| 3 ✅ | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances, as SKiDL subcircuits), `HV Relay` netclass, the 70×100 Slice form-factor contract |
 | 4 | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
 | 5 | Generalize | Drive boards from `slice.yaml`/`loaf.yaml`; gitignore KiCad; regenerate in CI; show a *new* Slice variant falling out near-free |
 
@@ -327,6 +332,47 @@ Against the phase 2 results, nothing moved: the netlist matches the original (ci
 schematic re-export), ERC 0 errors with the same 9 warnings, DRC 0 errors / 0 unconnected / 0
 parity with the same 52 silk warnings, and the board stays byte-stable. F-015 is fixed by
 2.3.0, so its workaround is gone. F-016 persists. F-003's typo is still in 2.3.0.
+
+### Phase 3 — done
+
+`src/kidl_spike/boards/rlht.py` + `rlht_layout.py` (`just gen rlht`). Against
+`Slice_RLHT@a7308f3`, with KiCad 10.0.6 and Freerouting 2.5.0:
+
+- **Hierarchy:** the relay and MAX31855K circuits are one `@subcircuit` each, called twice.
+  `tests/test_rlht.py` checks the generated circuit against KiCad's export of the original
+  (`tests/fixtures/slice_rlht_nets.json`): the same pin sets on all nets, the same
+  no-connect pins, the same parts, and each original sheet instance's parts in one
+  subcircuit call. KiCad's own export of the generated schematic has the original's 57
+  nets, pin for pin, and no auto-named net.
+- **Deliberate differences:** SW1/SW2 (off-board E-stop switches, on_board no) are left out,
+  since SKiDL writes every symbol on_board; the holes H1–H4 are board-only footprints
+  (F-019); D1 uses `KMLib_IC_Digital:WS2812B_5050_RGB_LED`; U1's value is its part number.
+- **Form factor:** format S from the fleet's format table (bread-mechanical
+  `formats.yaml`): 70 × 100 mm, R5 corners, four 5 mm holes 5 mm in, J1's pin row 3.6 mm
+  from the bus edge and 50 mm up from the bottom (`common.SLICE_S`, pinned in the test).
+  bread-infra's design constraints say M3 holes; the fleet's boards and the case use 5 mm.
+  The Nano stays where the original puts it: its USB overhangs the bottom edge, and the case
+  takes its USB port position from the board.
+- **Block placement:** each subcircuit's parts are one relative layout, instanced per
+  channel at a fixed pitch (relay channels 31.89 mm apart, thermocouple 7 mm); the test
+  checks the second instance is a pure translation of the first. Root parts keep the
+  original's positions.
+- **`HV Relay`** (3.0 mm / 1.25 mm) covers the 10 nets the original routes in 3 mm track.
+  The original's own patterns match no net (F-021).
+- **Routing:** pkidl writes a Specctra DSN from the placed board (`pkidl/dsn.py`), runs
+  Freerouting 2.5.0 single-threaded (`pkidl/route.py`) and writes the SES routes back into
+  the board. 0 unrouted, 0 violations, in about 8 s. The DSN, SES and board are
+  byte-identical across builds and processes. Freerouting necks 0.5 mm tracks to 0.375 mm
+  where they leave the 1.27 mm-pitch SOIC/SOP pads; accepted as a known deviation from the
+  Slice constraints' 0.5 mm minimum trace (decided 2026-10-24).
+- **ERC:** 0 errors; 38 warnings, all `lib_symbol_mismatch`. **DRC** (`--refill-zones
+  --schematic-parity`): 0 errors, 0 unconnected, 0 parity; 76 silkscreen warnings.
+- **Schematic names:** every net is drawn as labels, and SKiDL's two-pin snap is switched
+  off for the generation call (F-020); otherwise KiCad renames some nets and parity fails.
+- **CI:** the Test job packs the extra stock symbol libraries and sparse-checks-out the
+  extra footprint libraries, installs Java 25 and the Freerouting jar (version from
+  `doctor.py`'s `WANT_FREEROUTING`, sha256 checked), and runs the board tests. The KiCad job
+  runs `verify rlht` and `fab rlht` and uploads the `rlht` artifact.
 
 ### Open questions to resolve before their phase
 

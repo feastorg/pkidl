@@ -10,6 +10,9 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 
 | ID | Finding | Blast radius | Status |
 | --- | --- | --- | --- |
+| [F-021](#f-021) | **`Slice_RLHT`'s `HV Relay` netclass matches no net; applied, the board has 93 clearance violations** | **Slice_RLHT** | **OPEN** |
+| [F-020](#f-020) | SKiDL's two-pin snap drops net labels, so KiCad renames user-named nets `Net-(...)` | upstream | OPEN (worked around) |
+| [F-019](#f-019) | A pinless part (mounting hole) crashes SKiDL's schematic placer | upstream | OPEN (worked around) |
 | [F-018](#f-018) | SKiDL draws hierarchy cosmetically: a file per instance, global labels, no sheet pins | upstream | OPEN (accepted) |
 | [F-017](#f-017) | `netlist_to_skidl` corrupts what it converts: shorts colliding nets, renames fields | upstream | OPEN |
 | [F-016](#f-016) | Generated schematic placement is not byte-stable (netlist and board are) | spike | OPEN |
@@ -28,6 +31,63 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 | [F-003](#f-003) | SKiDL bug: `empty_footprint_handler` silently ignored | upstream | OPEN |
 | [F-002](#f-002) | First-party parts filed under third-party library nicknames | fleet | FIXED |
 | [F-001](#f-001) | Library resolution lived only in a global KiCad config | fleet | FIXED |
+
+---
+
+## F-021 — `Slice_RLHT`'s `HV Relay` netclass matches no net
+
+`Slice_RLHT@a7308f3`'s `BREAD_Slice.kicad_pro` assigns `HV Relay` (3.0 mm track, 1.25 mm
+clearance) by 13 exact-name patterns: `NC1`, `NO1`, `IN1`, `ESTOP1`, `FUSE1`, the same with
+`2`, `ESTOPA2`, `ESTOPB2` and `HV Line`. None of them is a net on the board: KiCad's netlist
+export names the relay-switched nets `/Relay/IN`, `/Relay/NC`, `/Relay/NO`, `/Relay1/...`,
+`Net-(J4-Pin_1)`, `Net-(J4-Pin_2)` and the `J5` pair. So the class applies to nothing, and
+DRC checks those lines at the Default 0.2 mm clearance.
+
+Those 10 nets are the ones the board draws in 3 mm track (95 segments). On a copy of the
+original with the 10 real names added as `HV Relay` patterns, `kicad-cli pcb drc
+--severity-all` reports **93 `clearance` violations** (none before), down to 0.50 mm. Among
+them: `/Relay1/NC` 0.68 mm from `/Relay1/NO`, `Net-(J5-Pin_2)` 0.50 mm from the B.Cu GND
+pour, and `Net-(J5-Pin_1)` 0.71 mm from R5's logic pad.
+
+The generated board (phase 3) assigns `HV Relay` to the same 10 nets
+(`test_hv_relay_netclass_covers_the_original_3mm_nets`) and passes DRC with it.
+
+**Status:** OPEN. The original repo is not touched from here.
+
+---
+
+## F-020 — SKiDL's two-pin snap drops net labels
+
+SKiDL 2.3.0's kicad10 backend runs `snap_two_pin_parts` after placement whenever
+`auto_stub=True`, and always in the labels-only fallback. It moves resistors, capacitors and
+similar parts so a pin lands on the pin it connects to, then suppresses the labels it
+considers redundant. A net joined only by touching pins then carries no label, and KiCad
+names it itself: generating Slice_RLHT, `CH1_LED`, `CH1_LINE` and `TC1_IN+` (and their
+channel-2 twins) came back from KiCad as `Net-(R5-Pad2)`, `Net-(J4-Pin_1)` and
+`Net-(U2-T+)`. The board's pads carry the names given in Python, so DRC reported 16
+`net_conflict` parity errors. Marking every net `stub` does not prevent it.
+
+The topology is right; only names are lost. `rlht.build` replaces `_snap_two_pin_parts`
+with a no-op for its `generate_schematic` call; with it off, KiCad's export of the
+generated schematic has no auto-named net and DRC parity is clean. Not checked against
+upstream's tracker; nothing filed.
+
+**Status:** OPEN, worked around in `boards/rlht.py`.
+
+---
+
+## F-019 — A pinless part crashes SKiDL's schematic placer
+
+On SKiDL 2.3.0, `generate_schematic(auto_stub=True)` raises `AttributeError: 'NoneType'
+object has no attribute 'tx'` (`schematics/place.py`, `similarity_force`) as soon as the
+circuit holds one part with no pins, such as `Mechanical:MountingHole`. Reproduced with one
+resistor plus 1, 2 or 4 holes; one resistor alone, or plus two unconnected resistors, works.
+
+Slice_RLHT's mounting holes are therefore not symbols in the generated circuit: the layout
+places them as board-only footprints (`(attr board_only)`), which schematic parity skips.
+Not checked against upstream's tracker; nothing filed.
+
+**Status:** OPEN, worked around in `boards/rlht_layout.py`.
 
 ---
 

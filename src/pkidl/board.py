@@ -56,6 +56,15 @@ def _stroke(width: float) -> Node:
 class Board:
     thickness: float = 1.6
     items: list[Node] = field(default_factory=list)
+    _uuids: set[str] = field(default_factory=set, repr=False)
+
+    def _uuid(self, *parts: str) -> str:
+        """A UUID from what the item is; repeats of the same item are numbered."""
+        uid, n = gen_uuid(*parts), 1
+        while uid in self._uuids:
+            uid, n = gen_uuid(*parts, str(n)), n + 1
+        self._uuids.add(uid)
+        return uid
 
     def footprint(self, node: Node) -> None:
         self.items.append(node)
@@ -71,7 +80,7 @@ class Board:
         ]:
             self.items.append(
                 [Sym("gr_line"), _xy(a, "start"), _xy(b, "end"), _stroke(w),
-                 [Sym("layer"), "Edge.Cuts"], [Sym("uuid"), gen_uuid("edge", str(a), str(b))]]
+                 [Sym("layer"), "Edge.Cuts"], [Sym("uuid"), self._uuid("edge", str(a), str(b))]]
             )  # fmt: skip
         k = r * (1 - math.sqrt(0.5))
         for start, mid, end in [
@@ -83,14 +92,22 @@ class Board:
             self.items.append(
                 [Sym("gr_arc"), _xy(start, "start"), _xy(mid, "mid"), _xy(end, "end"),
                  _stroke(w), [Sym("layer"), "Edge.Cuts"],
-                 [Sym("uuid"), gen_uuid("edge-arc", str(start), str(end))]]
+                 [Sym("uuid"), self._uuid("edge-arc", str(start), str(end))]]
             )  # fmt: skip
 
     def track(self, start: Point, end: Point, width: float, net: str, layer: str = "F.Cu") -> None:
         self.items.append(
             [Sym("segment"), _xy(start, "start"), _xy(end, "end"), [Sym("width"), num(width)],
              [Sym("layer"), layer], [Sym("net"), net],
-             [Sym("uuid"), gen_uuid("track", net, layer, str(start), str(end))]]
+             [Sym("uuid"), self._uuid("track", net, layer, str(start), str(end))]]
+        )  # fmt: skip
+
+    def via(self, at: Point, size: float, drill: float, net: str) -> None:
+        """A through via, F.Cu to B.Cu."""
+        self.items.append(
+            [Sym("via"), _xy(at, "at"), [Sym("size"), num(size)], [Sym("drill"), num(drill)],
+             [Sym("layers"), "F.Cu", "B.Cu"], [Sym("net"), net],
+             [Sym("uuid"), self._uuid("via", net, str(at))]]
         )  # fmt: skip
 
     def zone(
@@ -107,7 +124,7 @@ class Board:
     ) -> None:
         """A copper pour; islands with no pad on *net* are removed when filled."""
         node: Node = [Sym("zone"), [Sym("net"), net], [Sym("layer"), layer],
-                      [Sym("uuid"), gen_uuid("zone", net, layer)],
+                      [Sym("uuid"), self._uuid("zone", net, layer)],
                       [Sym("hatch"), Sym("edge"), num(0.5)]]  # fmt: skip
         if priority:
             node.append([Sym("priority"), Sym(str(priority))])
@@ -132,7 +149,7 @@ class Board:
     ) -> None:
         self.items.append(
             [Sym("gr_text"), text, _xy(at, "at"), [Sym("layer"), layer],
-             [Sym("uuid"), gen_uuid("text", text, layer)],
+             [Sym("uuid"), self._uuid("text", text, layer)],
              [Sym("effects"), [Sym("font"), [Sym("size"), num(size), num(size)],
                                [Sym("thickness"), num(thickness)]]]]
         )  # fmt: skip

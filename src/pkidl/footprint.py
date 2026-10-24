@@ -64,7 +64,9 @@ class Placement:
     nets: dict[str, str] = field(default_factory=dict)  # pad number -> net name
     path: str | None = None  # "/<symbol uuid>", links the footprint to the schematic
     sheetfile: str | None = None
+    sheetname: str = "/"
     fields: dict[str, str] = field(default_factory=dict)  # symbol fields, e.g. Description
+    board_only: bool = False  # no schematic symbol; schematic parity skips it
 
 
 def _flip(node: Node) -> None:
@@ -121,6 +123,8 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
             _flip(item)
             local = -local
 
+        if kind == "attr" and p.board_only and Sym("board_only") not in item:
+            item.insert(1, Sym("board_only"))
         if kind == "pad":
             _set_angle(item, _norm(local + p.rot))
             number = item[1]
@@ -167,7 +171,7 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
                 )  # fmt: skip
             if p.path:
                 out.append([Sym("path"), p.path])
-                out.append([Sym("sheetname"), "/"])
+                out.append([Sym("sheetname"), p.sheetname])
             if p.sheetfile:
                 out.append([Sym("sheetfile"), p.sheetfile])
             meta_done = True

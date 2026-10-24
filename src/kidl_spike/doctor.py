@@ -21,6 +21,10 @@ from kidl_spike import libs
 # See _planning/01-kidl-spike.md (P4).
 WANT_KICAD = "10.0.6"
 
+# The autorouter, pinned the same way: a router upgrade changes every routed
+# board. CI downloads this version's jar and checks its sha256.
+WANT_FREEROUTING = "2.5.0"
+
 
 def _kicad_cli() -> list[str]:
     import os
@@ -62,6 +66,22 @@ def checks() -> Iterator[tuple[bool, str]]:
         )
     except (OSError, subprocess.SubprocessError) as e:
         yield _check("kicad-cli", False, f"not runnable: {e}")
+
+    from pkidl.route import RouterError, router_command
+
+    try:
+        # Freerouting has no version flag; its help output starts with the version.
+        out = subprocess.run(
+            [*router_command(), "-h"], capture_output=True, text=True, timeout=120
+        ).stdout
+        want = f"Freerouting v{WANT_FREEROUTING} "
+        yield _check(
+            "freerouting",
+            want in out,
+            WANT_FREEROUTING if want in out else f"not v{WANT_FREEROUTING}: {out.strip()[:120]}",
+        )
+    except (OSError, subprocess.SubprocessError, RouterError) as e:
+        yield _check("freerouting", False, f"not runnable: {e}")
 
     try:
         root = libs.master_lib_root()

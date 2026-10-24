@@ -23,6 +23,9 @@ Planning lives in `_planning/`; evidence and analysis in `_working/`. Read
 - **KiCad 10** — flatpak locally; `KICAD_CLI` overrides the invocation. The exact version is
   pinned in `doctor.py` (`WANT_KICAD`); a bump is a reviewed event, not an auto-update
 - **KiCad-Master-Lib** — via `$KICAD_MASTER_LIB`; supplies every non-stock symbol/footprint
+- **Freerouting** — the autorouter for the Slices, run on a DSN pkidl writes. A `freerouting`
+  command or `$FREEROUTING`; version pinned in `doctor.py` (`WANT_FREEROUTING`), jar sha256
+  in CI. Needs Java 25. Runs single-threaded, where its output is deterministic
 - **ruff** (format + lint), **pyright** (types), **pytest**
 
 ## Layout
@@ -31,8 +34,10 @@ Planning lives in `_planning/`; evidence and analysis in `_working/`. Read
 src/kidl_spike/
     libs.py      # library resolution — the reproducibility boundary
     doctor.py    # environment check; run this before trusting any output
-    boards/      # one module per board (+ <board>_layout.py for the physical layer)
-src/pkidl/       # physical layer: writes .kicad_pcb / .kicad_pro. Imports nothing from kidl_spike
+    boards/      # one module per board (+ <board>_layout.py for the physical layer);
+                 # common.py: the slice-bus pinout and the Slice board format
+src/pkidl/       # physical layer: writes .kicad_pcb / .kicad_pro, routes via DSN/SES.
+                 # Imports nothing from kidl_spike
 tests/
 build/           # GENERATED. Gitignored. Never hand-edit.
 ```
@@ -48,6 +53,7 @@ just test         # run tests
 just gen loaf     # generate a board's KiCad files into build/
 just verify loaf  # generate, then run KiCad's own ERC + DRC against the result
 just fab loaf     # Gerbers, drill, PDF render into build/loaf/fab/
+just gen rlht     # Slice_RLHT; routing runs Freerouting during gen
 ```
 
 From a sandboxed Claude Code session, KiCad runs only through `kicad-cli-session`, alone in
@@ -83,3 +89,9 @@ its tool call; `just erc`/`drc`/`verify`/`fab` cannot start it there. Call
   a schematic/PCB footprint mismatch will pass a default DRC run. Set severities
   explicitly; do not assume DRC is checking what you think it is. Generated projects do
   this through `pkidl.project.PARITY_ERRORS`.
+- **A part with no pins crashes SKiDL's schematic placer** (F-019). Mounting holes go on
+  the board as board-only footprints (`Placement(board_only=True)`), not into the circuit.
+- **SKiDL's two-pin snap drops net labels**, and KiCad then renames those nets `Net-(...)`,
+  so the board's pad nets no longer match (F-020). `rlht.build` shows the workaround: every
+  net stubbed, the snap switched off for the `generate_schematic` call. Each no-connect pin
+  also needs KiCad's own net name on its pad, `unconnected-(<ref>-<pin name>-Pad<n>)`.
