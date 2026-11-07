@@ -46,6 +46,7 @@ just gen loaf      # write build/loaf/: netlist, schematic, board, project, lib 
 just verify loaf   # generate, then run KiCad's own ERC and DRC against the result
 just fab loaf      # Gerbers, drill files and a PDF render into build/loaf/fab/
 just verify rlht   # Slice_RLHT, likewise; routed by Freerouting during `gen`
+just verify dcmt   # Slice_DCMT, likewise
 ```
 
 The gates fail on errors only; the full reports (`build/<board>/erc.rpt`, `drc.rpt`) list

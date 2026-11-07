@@ -121,15 +121,22 @@ class Board:
         thermal_gap: float = 0.5,
         thermal_bridge: float = 0.5,
         priority: int = 0,
+        solid: bool = False,
     ) -> None:
-        """A copper pour; islands with no pad on *net* are removed when filled."""
+        """A copper pour; islands with no pad on *net* are removed when filled.
+
+        Pads join it through thermal reliefs, or directly when *solid*.
+        """
         node: Node = [Sym("zone"), [Sym("net"), net], [Sym("layer"), layer],
                       [Sym("uuid"), self._uuid("zone", net, layer)],
                       [Sym("hatch"), Sym("edge"), num(0.5)]]  # fmt: skip
         if priority:
             node.append([Sym("priority"), Sym(str(priority))])
+        connect: Node = [Sym("connect_pads"), [Sym("clearance"), num(clearance)]]
+        if solid:
+            connect.insert(1, Sym("yes"))
         node += [
-            [Sym("connect_pads"), [Sym("clearance"), num(clearance)]],
+            connect,
             [Sym("min_thickness"), num(min_thickness)],
             [Sym("fill"), Sym("yes"), [Sym("thermal_gap"), num(thermal_gap)],
              [Sym("thermal_bridge_width"), num(thermal_bridge)],
@@ -146,12 +153,18 @@ class Board:
         layer: str = "F.SilkS",
         size: float = 1.0,
         thickness: float = 0.15,
+        angle: float = 0.0,
     ) -> None:
+        pos = _xy(at, "at")
+        if angle:
+            pos.append(num(angle))
+        effects: Node = [Sym("effects"), [Sym("font"), [Sym("size"), num(size), num(size)],
+                                          [Sym("thickness"), num(thickness)]]]  # fmt: skip
+        if layer.startswith("B."):
+            effects.append([Sym("justify"), Sym("mirror")])  # read from the back
         self.items.append(
-            [Sym("gr_text"), text, _xy(at, "at"), [Sym("layer"), layer],
-             [Sym("uuid"), self._uuid("text", text, layer)],
-             [Sym("effects"), [Sym("font"), [Sym("size"), num(size), num(size)],
-                               [Sym("thickness"), num(thickness)]]]]
+            [Sym("gr_text"), text, pos, [Sym("layer"), layer],
+             [Sym("uuid"), self._uuid("text", text, layer)], effects]
         )  # fmt: skip
 
     def sexpr(self) -> Node:

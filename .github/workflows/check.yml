@@ -135,7 +135,8 @@ jobs:
         run: |
           git clone --filter=blob:none --sparse --depth 1 --branch "$KICAD_VER" \
             https://gitlab.com/kicad/libraries/kicad-symbols.git kicad-symbols-src
-          libs="Connector Device Isolator MCU_Module Mechanical Relay Sensor_Temperature power"
+          libs="Connector Device Driver_Motor Isolator MCU_Module Mechanical Relay
+                Sensor_Temperature power"
           git -C kicad-symbols-src sparse-checkout set --no-cone /tools/ \
             $(for l in $libs; do echo "/$l.kicad_symdir/"; done)
           python3 kicad-symbols-src/tools/kicad_lib_pack.py -v -o kicad-symbols \
@@ -148,9 +149,10 @@ jobs:
         run: |
           git clone --filter=blob:none --sparse --depth 1 --branch "$KICAD_VER" \
             https://gitlab.com/kicad/libraries/kicad-footprints.git kicad-footprints
-          libs="Capacitor_SMD Connector_BarrelJack Connector_PinHeader_2.54mm
+          libs="Capacitor_SMD Capacitor_THT Connector_BarrelJack Connector_PinHeader_2.54mm
                 Connector_PinSocket_2.54mm Diode_THT Fuse Inductor_SMD Module MountingHole
-                Package_SO Relay_THT Resistor_SMD TerminalBlock_Phoenix"
+                NetTie Package_SO Relay_THT Resistor_SMD TerminalBlock_4Ucon
+                TerminalBlock_Phoenix TerminalBlock_TE-Connectivity"
           git -C kicad-footprints sparse-checkout set --no-cone \
             $(for l in $libs; do echo "/$l.pretty/"; done)
           for l in $libs; do ls -d "kicad-footprints/$l.pretty"; done
@@ -267,12 +269,14 @@ jobs:
         run: |
           just verify loaf
           just verify rlht
+          just verify dcmt
 
       - name: Fab outputs
         working-directory: kidl-spike
         run: |
           just fab loaf
           just fab rlht
+          just fab dcmt
 
       - name: Reports
         if: always()
@@ -299,6 +303,18 @@ jobs:
             kidl-spike/build/rlht/*.ses
             kidl-spike/build/rlht/freerouting.log
             kidl-spike/build/rlht/fab/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dcmt
+          path: |
+            kidl-spike/build/dcmt/*.kicad_*
+            kidl-spike/build/dcmt/*.rpt
+            kidl-spike/build/dcmt/*.dsn
+            kidl-spike/build/dcmt/*.ses
+            kidl-spike/build/dcmt/freerouting.log
+            kidl-spike/build/dcmt/fab/
 
   # ─── Unified gate ─────────────────────────────────────────────────────
   # The ONLY job required by branch protection. Add every job to `needs:`.

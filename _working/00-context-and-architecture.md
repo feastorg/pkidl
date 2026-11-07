@@ -227,8 +227,9 @@ Not a general PCB tool — a **board-family compiler** for the recurring BREAD s
 
 ### Known upstream bugs found (worth reporting)
 
-- **skidl** `circuit.py:1307` — `kwargs.get("empty_footprint_handler]")` has a stray `]`,
-  so a user-supplied handler is silently never honoured. Good first upstream PR.
+- **skidl** — `generate_schematic()` never calls an `empty_footprint_handler` passed to it:
+  the key is misspelled (`"empty_footprint_handler]"`), and the schematic path never
+  invokes a handler anyway (F-003). Filed as devbisme/skidl#331.
 - **skidl** README still claims schematic generation is "V5 only"; it is not (stale docs).
 - **Slice_RLHT** `slice.yaml` declares `primary_ic: MAX6675`, but the schematic uses
   `MAX31855KASA`. Live manifest bug in your repo — worth filing.

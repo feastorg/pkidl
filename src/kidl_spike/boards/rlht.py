@@ -25,26 +25,22 @@ generated circuit compares against KiCad's export of it part for part
 
 from __future__ import annotations
 
-import builtins
-import importlib
 from pathlib import Path
 from typing import Any
 
 from kidl_spike import libs
-from kidl_spike.boards.common import BUS_PINOUT, in_dir, source_id
+from kidl_spike.boards.common import (
+    BUS_PINOUT,
+    buck_5v,
+    default_circuit,
+    generate,
+    status_led,
+)
 
 BUILD = Path("build/rlht")
 
 
-def default_circuit() -> Any:
-    """SKiDL's default circuit. SKiDL keeps it, and its no-connect net, in builtins."""
-    import skidl  # noqa: F401  (creates the default circuit)
-
-    return getattr(builtins, "default_circuit")  # noqa: B009
-
-
 R1206 = "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder"
-C1206 = "Capacitor_SMD:C_1206_3216Metric"
 C1206_HS = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
 
 # Per channel: reference designators, and the Nano pin that drives the relay or
@@ -148,26 +144,9 @@ def circuit(workdir: Path | None = None) -> dict[str, Any]:
     for pin in NANO_UNUSED:
         nano[pin] += default_circuit().NC
 
-    # 12 V -> 5 V buck. The thermal pad under it is tied to GND.
-    buck = part("KMLib_IC_Power", "AP63205WU-7_Buck_Regulator", "U1", value="AP63205WU-7",
-                footprint="KMLib_IC_SMD:SOIC_05WU-7_DIO")  # fmt: skip
-    c_in = part("Device", "C_Small", "C1", value="22uF", footprint=C1206)
-    c_bst = part("Device", "C_Small", "C2", value="100nF", footprint=C1206)
-    c_out = [part("Device", "C_Small", ref, value="22uF", footprint=C1206) for ref in ("C3", "C4")]
-    ind = part("Device", "L_Small", "L1", value="4.7uH", footprint="Inductor_SMD:L_1210_3225Metric")
-    pad = part("Mechanical", "Heatsink_Pad", "HS1", footprint="KMLib_Mounting:Thermal_Pad")
-    net("+12V").connect(buck[2], buck[3], c_in[2])
-    net("GND").connect(buck[4], c_in[1], *(c[1] for c in c_out), pad[1])
-    net("BUCK_SW").connect(buck[5], c_bst[1], ind[1])
-    net("BUCK_BST").connect(buck[6], c_bst[2])
-    net("+5V").connect(buck[1], ind[2], *(c[2] for c in c_out))
-
-    led = part("KMLib_IC_Digital", "WS2812B_5050_RGB_LED", "D1", value="WS2812B_5050",
-               footprint="KMLib_IC_SMD:WS2812-5050-4PIN")  # fmt: skip
-    net("+5V").connect(led[1])
-    net("GND").connect(led[3])
-    net("LED").connect(led[4])
-    led[2] += default_circuit().NC
+    # 12 V -> 5 V buck and the status LED, as on every Nano Slice.
+    buck_5v(part, net, value="AP63205WU-7")
+    status_led(part, net)
 
     for r in RELAYS:
         ch = r["ch"]
@@ -216,66 +195,12 @@ def build(outdir: Path = BUILD, source: str | None = None) -> Path:
     generating commit; it defaults to the current checkout's.
     Returns the directory the KiCad files were written to.
     """
-    import skidl
-
     from kidl_spike.boards import rlht_layout
 
     # Absolute workdir so the materialised fp-lib-table survives the chdir below.
     nets = circuit(workdir=(outdir / "kicad-env").resolve())
 
-    outdir.mkdir(parents=True, exist_ok=True)
-    default_handler = skidl.empty_footprint_handler
-
-    def footprint_handler(part: Any) -> None:
-        # Power flags (#FLG) are virtual: no footprint, nothing on the PCB.
-        if not part.ref.startswith("#"):
-            default_handler(part)
-
-    skidl.empty_footprint_handler = footprint_handler
-    try:
-        # do_backup would write a `<name>_sklib.py` part-library into the cwd.
-        skidl.generate_netlist(file_=str((outdir / "rlht.net").resolve()), do_backup=False)
-    finally:
-        skidl.empty_footprint_handler = default_handler
-    # Every net is drawn as labels, so KiCad reads every net by the name given
-    # here and the board's pads match it. SKiDL's two-pin snap would join some
-    # pins directly and drop their labels, and KiCad would rename those nets
-    # Net-(...) (F-020), so it is switched off for this call.
-    # The package re-exports a function of the same name; take the module.
-    gen_schematic = importlib.import_module("skidl.tools.kicad10.gen_schematic")
-
-    for net in nets.values():
-        net.stub = True
-    snap = getattr(gen_schematic, "_snap_two_pin_parts")  # noqa: B009
-    setattr(gen_schematic, "_snap_two_pin_parts", lambda node: None)  # noqa: B010
-    try:
-        with in_dir(outdir):
-            # Placement is still not byte-stable between processes (F-016); the
-            # netlist is, and is what the tests gate.
-            skidl.generate_schematic(filepath=".", top_name="rlht", auto_stub=True, seed=0)
-    finally:
-        setattr(gen_schematic, "_snap_two_pin_parts", snap)  # noqa: B010
-
-    pad_nets: dict[str, dict[str, str]] = {}
-    for name, net in nets.items():
-        for p in net.pins:
-            if not p.part.ref.startswith("#"):
-                pad_nets.setdefault(p.part.ref, {})[str(p.num)] = name
-    # KiCad gives each no-connect pin a net of its own, named after the pin.
-    for p in default_circuit().NC.pins:
-        pin_name = str(p.name).replace("/", "{slash}")
-        pad_nets.setdefault(p.part.ref, {})[str(p.num)] = (
-            f"unconnected-({p.part.ref}-{pin_name}-Pad{p.num})"
-        )
-    fields: dict[str, dict[str, str]] = {}
-    for part in default_circuit().parts:
-        if part.ref.startswith("#"):
-            continue
-        # KiCad reads a "~" datasheet as empty.
-        datasheet = part.datasheet if part.datasheet not in (None, "~") else ""
-        fields[part.ref] = {"Datasheet": datasheet, "Description": part.description or ""}
-    rlht_layout.build_pcb(outdir, "rlht", pad_nets, fields, source or source_id())
-    return outdir
+    return generate(outdir, "rlht", nets, rlht_layout.build_pcb, source)
 
 
 def main() -> int:

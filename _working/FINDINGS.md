@@ -10,11 +10,12 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 
 | ID | Finding | Blast radius | Status |
 | --- | --- | --- | --- |
-| [F-021](#f-021) | **`Slice_RLHT`'s `HV Relay` netclass matches no net; applied, the board has 93 clearance violations** | **Slice_RLHT** | **OPEN** |
+| [F-022](#f-022) | SKiDL writes every symbol `on_board yes` and `in_bom yes`; off-board and non-BOM parts cannot be expressed | upstream | OPEN (worked around) |
+| [F-021](#f-021) | **`Slice_RLHT`'s `HV Relay` netclass matches no net; applied, the board has 93 clearance violations** | **Slice_RLHT** | **OPEN** (Slice_RLHT#89) |
 | [F-020](#f-020) | SKiDL's two-pin snap drops net labels, so KiCad renames user-named nets `Net-(...)` | upstream | OPEN (worked around) |
 | [F-019](#f-019) | A pinless part (mounting hole) crashes SKiDL's schematic placer | upstream | OPEN (worked around) |
 | [F-018](#f-018) | SKiDL draws hierarchy cosmetically: a file per instance, global labels, no sheet pins | upstream | OPEN (accepted) |
-| [F-017](#f-017) | `netlist_to_skidl` corrupts what it converts: shorts colliding nets, renames fields | upstream | OPEN |
+| [F-017](#f-017) | `netlist_to_skidl` corrupts what it converts: shorts colliding nets, renames fields | upstream | OPEN (skidl#332) |
 | [F-016](#f-016) | Generated schematic placement is not byte-stable (netlist and board are) | spike | OPEN |
 | [F-015](#f-015) | SKiDL 2.2.3 emits power-symbol instances with no `lib_symbols` definition | upstream | FIXED (SKiDL 2.3.0) |
 | [F-014](#f-014) | ~~SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries~~ — RETRACTED for installed KiCad (packed single files); true of the source repo, which CI now packs | spike | CLOSED |
@@ -28,9 +29,29 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 | [F-006](#f-006) | `Makefile` ERC and DRC targets are swapped | Slice_DCMT (+?) | OPEN |
 | [F-005](#f-005) | **DRC schematic-parity gate is fake — mismatches never fail CI** | **fleet** | **OPEN** |
 | [F-004](#f-004) | `Slice_RLHT` manifest declares the wrong primary IC | Slice_RLHT | OPEN |
-| [F-003](#f-003) | SKiDL bug: `empty_footprint_handler` silently ignored | upstream | OPEN |
+| [F-003](#f-003) | SKiDL: `generate_schematic` never calls an `empty_footprint_handler` passed to it | upstream | OPEN (skidl#331) |
 | [F-002](#f-002) | First-party parts filed under third-party library nicknames | fleet | FIXED |
 | [F-001](#f-001) | Library resolution lived only in a global KiCad config | fleet | FIXED |
+
+---
+
+## F-022 — SKiDL writes every symbol on_board and in_bom
+
+SKiDL 2.3.0's kicad10 schematic writer hardcodes `(in_bom yes)` and `(on_board yes)` for
+every part symbol (`tools/kicad10/sexp_schematic.py`, lines 351-352, 512-513 and
+900-901). A part the original marks off-board or out of the BOM cannot be written as such:
+
+- Slice_RLHT's SW1/SW2 (E-stop switches) and Slice_DCMT's M1/M2 (motors) are off-board
+  in the originals. The generators leave them out; the tests drop their pins from the
+  comparison.
+- Slice_DCMT's NT1 (the GND-GNDPWR net tie) is out of the BOM in the original, and its
+  footprint carries `exclude_from_bom`. Parity fails on the difference
+  (`footprint_symbol_mismatch`), so `slice.place_board` places every symbol-linked
+  footprint `in_bom` to match the symbol, and NT1 lands in the BOM.
+
+Not checked on 3.0.0, where schematic writing moved to schematizer. Nothing filed.
+
+**Status:** OPEN, worked around in the generators.
 
 ---
 
@@ -52,7 +73,8 @@ pour, and `Net-(J5-Pin_1)` 0.71 mm from R5's logic pad.
 The generated board (phase 3) assigns `HV Relay` to the same 10 nets
 (`test_hv_relay_netclass_covers_the_original_3mm_nets`) and passes DRC with it.
 
-**Status:** OPEN. The original repo is not touched from here.
+**Status:** OPEN, filed as feastorg/Slice_RLHT#89 (2026-11-07). Still true on
+`bfc0b82` (2026-11-04): the board and sheets are byte-identical, the patterns unchanged.
 
 ---
 
@@ -69,8 +91,9 @@ channel-2 twins) came back from KiCad as `Net-(R5-Pad2)`, `Net-(J4-Pin_1)` and
 
 The topology is right; only names are lost. `rlht.build` replaces `_snap_two_pin_parts`
 with a no-op for its `generate_schematic` call; with it off, KiCad's export of the
-generated schematic has no auto-named net and DRC parity is clean. Not checked against
-upstream's tracker; nothing filed.
+generated schematic has no auto-named net and DRC parity is clean. Nothing filed:
+SKiDL 3.0.0 (2026-10-16) moved schematic drawing into the separate `schematizer`
+package, so this code is no longer in SKiDL; not re-tested on 3.0.0 + schematizer.
 
 **Status:** OPEN, worked around in `boards/rlht.py`.
 
@@ -85,7 +108,8 @@ resistor plus 1, 2 or 4 holes; one resistor alone, or plus two unconnected resis
 
 Slice_RLHT's mounting holes are therefore not symbols in the generated circuit: the layout
 places them as board-only footprints (`(attr board_only)`), which schematic parity skips.
-Not checked against upstream's tracker; nothing filed.
+Nothing filed: sKiDL 3.0.0 (2026-10-16) moved schematic drawing into the separate `schematizer`
+package, so this code is no longer in SKiDL; not re-tested on 3.0.0 + schematizer.
 
 **Status:** OPEN, worked around in `boards/rlht_layout.py`.
 
@@ -123,10 +147,10 @@ code that differs from the netlist it came from:
 - **Reuse is lost.** Each sheet *instance* becomes its own function (`Relay`, `Relay1`), not
   one subcircuit called twice.
 
-Usable as a starting point only behind a netlist-equivalence check. Not checked against
-upstream's issue tracker; nothing filed.
+Usable as a starting point only behind a netlist-equivalence check. The collision is filed
+as devbisme/skidl#332; `netlist_to_skidl.py` is unchanged in 3.0.0.
 
-**Status:** OPEN.
+**Status:** OPEN (skidl#332).
 
 ---
 
@@ -476,7 +500,7 @@ ever to become the compiler's input (kidl-spike Phase 5), it *must* be true.
 
 ---
 
-## F-003 — SKiDL bug: `empty_footprint_handler` silently ignored
+## F-003 — SKiDL: `generate_schematic` never calls an `empty_footprint_handler` passed to it
 
 `skidl/src/skidl/circuit.py:1307`:
 
@@ -484,10 +508,14 @@ ever to become the compiler's input (kidl-spike Phase 5), it *must* be true.
 if kwargs.get("empty_footprint_handler]")   # ← stray ']'
 ```
 
-A user-supplied handler is therefore never honoured by `generate_schematic()`. Still present
-in SKiDL 2.3.0 (`circuit.py:1308`). Not yet checked against upstream's issue tracker.
+*Corrected 2026-11-07:* the typo is not the whole cause. On 2.3.0, a handler passed to
+`generate_schematic(empty_footprint_handler=...)` for a part with no footprint gets no
+calls; passing the misspelled key as well, so the handler is installed, still gets none.
+Nothing on the schematic path calls `skidl.empty_footprint_handler`: only
+`check_for_empty_footprints()` does, and only the netlist generators call it. The same
+check is at `circuit.py:1018` in 3.0.0 (read, not run).
 
-**Status:** upstream bug, good first PR to `devbisme/skidl`. Also: SKiDL's README still
+**Status:** filed as devbisme/skidl#331. Also: SKiDL's README still
 claims schematic generation is "V5 only" — stale; it supports 6/7/8/9.
 
 ---

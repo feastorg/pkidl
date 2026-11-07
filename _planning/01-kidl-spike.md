@@ -270,7 +270,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 | 1 ✅ | Loaf_x004 — electrical | skidl → netlist-equivalent `.kicad_sch`, passes KiCad 10 ERC |
 | 2 ✅ | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
 | 3 ✅ | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances, as SKiDL subcircuits), `HV Relay` netclass, the 70×100 Slice form-factor contract |
-| 4 | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
+| 4 ✅ | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
 | 5 | Generalize | Drive boards from `slice.yaml`/`loaf.yaml`; gitignore KiCad; regenerate in CI; show a *new* Slice variant falling out near-free |
 
 **Success criterion (all phases):** generated netlist matches the original's,
@@ -373,6 +373,49 @@ parity with the same 52 silk warnings, and the board stays byte-stable. F-015 is
   extra footprint libraries, installs Java 25 and the Freerouting jar (version from
   `doctor.py`'s `WANT_FREEROUTING`, sha256 checked), and runs the board tests. The KiCad job
   runs `verify rlht` and `fab rlht` and uploads the `rlht` artifact.
+
+### Phase 4 — done
+
+`src/kidl_spike/boards/dcmt.py` + `dcmt_layout.py` (`just gen dcmt`). Against
+`Slice_DCMT@b32e3b2` (its board and sheets are unchanged through `main` as of
+2026-11-07), with KiCad 10.0.6 and Freerouting 2.5.0:
+
+- **Hierarchy:** the LMD18200 H-bridge sheet is one `@subcircuit`, called twice.
+  `tests/test_dcmt.py` checks the circuit against KiCad's export of the original
+  (`tests/fixtures/slice_dcmt_nets.json`): pin sets on all 46 nets, the 8 no-connect pins,
+  the parts, and each sheet instance's parts in one call. KiCad's export of the generated
+  schematic has the original's 46 nets, pin for pin, and no auto-named net.
+- **Deliberate differences:** M1/M2 (off-board motors) are left out; H1–H4 are board-only
+  footprints (F-019); NT1, the GND–GNDPWR net tie, is in the BOM, because SKiDL writes
+  every symbol in the BOM (F-022). The original project's `HV Relay` netclass, copied from
+  Slice_RLHT, matches no net on this board and is not carried over.
+- **Shared with RLHT:** the 12 V → 5 V buck and status LED (`common.buck_5v`,
+  `common.status_led`), the build step (`common.generate`), and the Slice placement and
+  routing (`boards/slice.py`). Slice_RLHT's and the Loaf's outputs are byte-identical to
+  `main`'s after the move.
+- **Placement:** each bridge is one block, the original's first channel, instanced at the
+  original's channel pitch (32.05 mm); the test checks the second is a pure translation.
+  Its output and supply terminals are moved into the right-edge column, so the second
+  channel's clear the top-right hole. Root parts keep the original's positions.
+- **Current (decided 2026-11-07: 3 A per channel, the LMD18200's rating):** `Motor`
+  (VS, external supply, both outputs, per channel) is sized by IPC-2221 for 3 A on 1 oz
+  copper at a 10 °C rise: 1.4 mm. Clearance 0.6 mm, IPC-2221 B2 for up to 150 V, since VS
+  can be an external supply up to the LMD18200's 55 V. `Power` (+12V, GNDPWR) uses the
+  same width; both channels' current shares those nets, and the pours carry the rest.
+  Nothing checks a pour's current capacity.
+- **Pours (decided 2026-11-07: route every net, pours on top):** Freerouting connects
+  every net with tracks, so connectivity never depends on a fill. Each channel's VS and
+  external-supply pours (F.Cu) and output pours (B.Cu) are the outline around their pads
+  (`slice.pour_outline`), so they move with the block; the test checks the second
+  channel's are the first's, translated. Logic GND is poured on B.Cu around its pads,
+  GNDPWR fills both layers beneath. Power pours join pads solid; J1's pads too, where a
+  thermal relief between the edge and the bus tracks was starved of spokes.
+- **Routing:** 0 unrouted, 0 violations, about 14 s per build. DSN, SES and board are
+  byte-identical across processes.
+- **ERC:** 0 errors; 38 warnings, all `lib_symbol_mismatch`. **DRC** (`--refill-zones
+  --schematic-parity`): 0 errors, 0 unconnected, 0 parity; 64 silkscreen warnings (the
+  original: 53, plus 38 `lib_footprint_issues` and 1 `via_dangling`). The supply terminals' labels are on
+  B.SilkS: on top, the bulk capacitor's outline leaves 0.7 mm beside them.
 
 ### Open questions to resolve before their phase
 

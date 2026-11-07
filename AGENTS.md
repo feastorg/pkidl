@@ -35,7 +35,8 @@ src/kidl_spike/
     libs.py      # library resolution — the reproducibility boundary
     doctor.py    # environment check; run this before trusting any output
     boards/      # one module per board (+ <board>_layout.py for the physical layer);
-                 # common.py: the slice-bus pinout and the Slice board format
+                 # common.py: the bus pinout, the Slice format, shared parts, the build;
+                 # slice.py: Slice placement, routing and pours
 src/pkidl/       # physical layer: writes .kicad_pcb / .kicad_pro, routes via DSN/SES.
                  # Imports nothing from kidl_spike
 tests/
@@ -54,6 +55,7 @@ just gen loaf     # generate a board's KiCad files into build/
 just verify loaf  # generate, then run KiCad's own ERC + DRC against the result
 just fab loaf     # Gerbers, drill, PDF render into build/loaf/fab/
 just gen rlht     # Slice_RLHT; routing runs Freerouting during gen
+just gen dcmt     # Slice_DCMT, likewise
 ```
 
 From a sandboxed Claude Code session, KiCad runs only through `kicad-cli-session`, alone in
@@ -92,6 +94,6 @@ its tool call; `just erc`/`drc`/`verify`/`fab` cannot start it there. Call
 - **A part with no pins crashes SKiDL's schematic placer** (F-019). Mounting holes go on
   the board as board-only footprints (`Placement(board_only=True)`), not into the circuit.
 - **SKiDL's two-pin snap drops net labels**, and KiCad then renames those nets `Net-(...)`,
-  so the board's pad nets no longer match (F-020). `rlht.build` shows the workaround: every
+  so the board's pad nets no longer match (F-020). `common.generate` holds the workaround: every
   net stubbed, the snap switched off for the `generate_schematic` call. Each no-connect pin
   also needs KiCad's own net name on its pad, `unconnected-(<ref>-<pin name>-Pad<n>)`.

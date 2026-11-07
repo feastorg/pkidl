@@ -24,31 +24,14 @@ compare directly.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 from kidl_spike import libs
-from kidl_spike.boards.common import SLICE_S, symbols
+from kidl_spike.boards.common import SLICE_S
 from kidl_spike.boards.rlht import RELAYS, THERMOCOUPLES
-from pkidl.board import Board
-from pkidl.dsn import read_ses, write_dsn
+from kidl_spike.boards.slice import ORIGIN, RULES, Spot, place_board, route
 from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import PARITY_ERRORS, NetClass, write_project
-from pkidl.route import freerouting
-
-ORIGIN = (122.6, 39.8)  # top-left corner of the board edge
-
-
-@dataclass(frozen=True)
-class Spot:
-    x: float
-    y: float
-    rot: float = 0.0
-    back: bool = False
-
-    def at(self, dx: float, dy: float) -> Spot:
-        return Spot(round(self.x + dx, 6), round(self.y + dy, 6), self.rot, self.back)
-
 
 # Fixed, by the format or by the original.
 J1_PIN1 = SLICE_S.bus_pin1(*ORIGIN)
@@ -66,9 +49,6 @@ FIXED = {
     "HS1": Spot(135.3, 62.7),
     "D1": Spot(173.3, 136.132769),  # status LED
 }
-HOLES = dict(zip(["H1", "H2", "H3", "H4"], SLICE_S.holes(*ORIGIN), strict=True))
-HOLE_FOOTPRINT = "MountingHole:MountingHole_5mm"
-
 # Relay block, relative to the relay. The original's first channel, with the
 # terminal 3.7 mm closer, so the second channel's relay clears the Nano, and the
 # opto and its resistor underneath moved left, between the Nano's pin rows.
@@ -113,27 +93,6 @@ NETCLASSES = [
 ]
 MEMBERS = {"HV Relay": HV_NETS}
 
-# Design rules carried over from the original project, with the board-edge
-# clearance the Loaf uses for its pours.
-RULES: dict[str, float | bool] = {
-    "allow_blind_buried_vias": False,
-    "allow_microvias": False,
-    "max_error": 0.005,
-    "min_clearance": 0.1,
-    "min_connection": 0.0,
-    "min_copper_edge_clearance": 0.5,
-    "min_hole_clearance": 0.25,
-    "min_hole_to_hole": 0.25,
-    "min_resolved_spokes": 2,
-    "min_silk_clearance": 0.0,
-    "min_text_height": 0.8,
-    "min_text_thickness": 0.08,
-    "min_through_hole_diameter": 0.3,
-    "min_track_width": 0.2,
-    "min_via_annular_width": 0.05,
-    "min_via_diameter": 0.4,
-}
-
 
 def placement() -> dict[str, Spot]:
     """Every footprint's position, by reference."""
@@ -145,21 +104,6 @@ def placement() -> dict[str, Spot]:
         for role, spot in TC_BLOCK.items():
             spots[t[role]] = spot.at(ax, ay)
     return spots
-
-
-def _outline_polygon(
-    x0: float, y0: float, x1: float, y1: float, r: float
-) -> list[tuple[float, float]]:
-    """The rounded-rectangle edge as a polygon whose corner chords lie inside the arcs."""
-    import math
-
-    pts = []
-    for cx, cy, a0 in ((x1 - r, y0 + r, -90), (x1 - r, y1 - r, 0), (x0 + r, y1 - r, 90),
-                       (x0 + r, y0 + r, 180)):  # fmt: skip
-        for i in range(5):
-            a = math.radians(a0 + 22.5 * i)
-            pts.append((round(cx + r * math.cos(a), 6), round(cy + r * math.sin(a), 6)))
-    return pts
 
 
 def build_pcb(
@@ -174,42 +118,8 @@ def build_pcb(
     As ``loaf_layout.build_pcb``. Routing writes ``<name>.dsn``, ``<name>.ses`` and
     the router's log alongside.
     """
-    links = symbols(outdir / f"{name}.kicad_sch")
-    board = Board()
-    outline = SLICE_S.outline(*ORIGIN)
-    board.outline_rounded_rect(*outline, SLICE_S.corner_r)
-
-    placed = {}
-    for ref, s in sorted(placement().items()):
-        link = links[ref]
-        lib_id = link.fields["Footprint"]
-        p = Placement(
-            lib_id, ref, link.fields["Value"], s.x, s.y, s.rot, s.back,
-            nets=pad_nets.get(ref, {}), path=link.path, sheetfile=link.sheetfile,
-            sheetname=link.sheetname, fields=fields[ref],
-        )  # fmt: skip
-        placed[ref] = place(libs.footprint_file(lib_id), p)
-        board.footprint(placed[ref])
-    for ref, (x, y) in HOLES.items():
-        hole = Placement(HOLE_FOOTPRINT, ref, "MountingHole", x, y, board_only=True)
-        placed[ref] = place(libs.footprint_file(HOLE_FOOTPRINT), hole)
-        board.footprint(placed[ref])
-
-    dsn = write_dsn(
-        outdir / f"{name}.dsn", list(placed.values()),
-        _outline_polygon(*outline, SLICE_S.corner_r), NETCLASSES, MEMBERS,
-        edge_clearance=float(RULES["min_copper_edge_clearance"]),
-    )  # fmt: skip
-    ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log")
-    wires, vias = read_ses(ses)
-    via_size = {f"Via[0-1]_{round(c.via_diameter * 1000)}:{round(c.via_drill * 1000)}_um":
-                (c.via_diameter, c.via_drill) for c in NETCLASSES}  # fmt: skip
-    for w in wires:
-        for a, b in zip(w.points, w.points[1:], strict=False):
-            board.track(a, b, w.width, w.net, w.layer)
-    for v in vias:
-        size, drill = via_size[v.padstack]
-        board.via(v.at, size, drill, v.net)
+    board, placed = place_board(outdir, name, placement(), pad_nets, fields)
+    route(board, placed, outdir, name, NETCLASSES, MEMBERS)
 
     lib_id, x, y = LOGO
     board.footprint(place(libs.footprint_file(lib_id), Placement(lib_id, "LOGO1", "", x, y)))
@@ -221,7 +131,7 @@ def build_pcb(
             px, py = pad_xy(placed[c["J"]], str(max(labels)))
             board.text(c["ch"], (px - 6.5, py - 3.0), size=1.2, thickness=0.2)
 
-    x0, y0, x1, y1 = outline
+    x0, y0, x1, y1 = SLICE_S.outline(*ORIGIN)
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     for layer in ("F.Cu", "B.Cu"):
         board.zone("GND", layer, edge, clearance=0.5)

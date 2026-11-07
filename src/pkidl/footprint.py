@@ -67,6 +67,8 @@ class Placement:
     sheetname: str = "/"
     fields: dict[str, str] = field(default_factory=dict)  # symbol fields, e.g. Description
     board_only: bool = False  # no schematic symbol; schematic parity skips it
+    in_bom: bool | None = None  # override the library's exclude_from_bom to match the symbol
+    solid_pads: bool = False  # pads join copper pours directly, without thermal reliefs
 
 
 def _flip(node: Node) -> None:
@@ -125,6 +127,12 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
 
         if kind == "attr" and p.board_only and Sym("board_only") not in item:
             item.insert(1, Sym("board_only"))
+        if kind == "attr" and p.in_bom is not None:
+            excluded = Sym("exclude_from_bom") in item
+            if p.in_bom and excluded:
+                item.remove(Sym("exclude_from_bom"))
+            elif not p.in_bom and not excluded:
+                item.append(Sym("exclude_from_bom"))
         if kind == "pad":
             _set_angle(item, _norm(local + p.rot))
             number = item[1]
@@ -135,6 +143,13 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
                     item.insert(item.index(tail), net)
                 else:
                     item.append(net)
+            if p.solid_pads and find(item, "zone_connect") is None:
+                tail = find(item, "uuid")
+                solid = [Sym("zone_connect"), Sym("2")]
+                if tail is not None:
+                    item.insert(item.index(tail), solid)
+                else:
+                    item.append(solid)
             if find(item, "uuid") is None:
                 item.append([Sym("uuid"), gen_uuid("pad", p.ref, number, str(len(out)))])
         elif kind in _TEXT_KEYS:
