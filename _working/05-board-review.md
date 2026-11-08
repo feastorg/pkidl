@@ -99,7 +99,7 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
 
 ### 7. Pipeline and CI
 
-- **Upstream, and ours in CI, M:** CI runs the bare jar, where `FREEROUTING__USER_DATA_PATH` throws `IllegalArgumentException`. The user data path falls back to the default, so CI's router settings aren't pinned by our code. Locally the wrapper turns the variable into the `--user_data_path` flag. The analytics and GUI flags are passed in CI (checked: check.yml lines 173–174 and 256–257). Fix: pass `--user_data_path` from `route.py`; file the environment-variable bug with Freerouting.
+- **Upstream, m (cosmetic):** CI runs the bare jar, which logs an `IllegalArgumentException` for `FREEROUTING__USER_DATA_PATH`. *Corrected 2026-11-08:* the variable still takes effect. `UserDataPathResolver.resolveAndLock` applies and locks it before the settings load, and only a later reflective write fails. Run bare with the variable set, the 2.5.0 jar writes `freerouting.json` and its log into that directory. So CI's router settings are pinned and our side needs no change. Filed as freerouting/freerouting#1109, with the one-line fix (skip `user_data_path` in `applyNonRouterEnvironmentVariables`). The analytics and GUI flags are passed in CI (check.yml lines 173–174 and 256–257).
 - **m:** the DSN boundary is inset 0.5 mm, and the router adds its class clearance on top. That leaves at least 0.7 mm from the edge, or 1.75 mm for HV, which narrows the J1 channel. The NPTH keepout is the bare drill: the router keeps 0.2 mm, KiCad wants 0.25 (latent). An oval pad with w = h becomes a zero-length path (works today).
 
 ### 8. Inherited from the originals, or unchanged
@@ -136,7 +136,7 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
 4. **Thermal and stitching via generation (§5).** HS1, under the LMD18200 tabs, and pour stitching.
 5. **HV on both layers, and a Power class on RLHT.**
 6. **A silkscreen placement pass, and post-route clean-up.**
-7. **Make the CI router invocation hermetic (§7)**, and file the environment-variable bug with Freerouting.
+7. ~~Make the CI router invocation hermetic (§7).~~ Not needed: the setting is applied (§7, corrected). Filed as freerouting#1109.
 
 ## Decisions (2026-11-08)
 
