@@ -271,6 +271,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 | 2 ✅ | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
 | 3 ✅ | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances, as SKiDL subcircuits), `HV Relay` netclass, the 70×100 Slice form-factor contract |
 | 4 ✅ | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
+| 4½ | All three | Quality pass from the 2026-11-08 review (`_working/05-board-review.md`): DRC rules that gate width, holes and mains creepage; pour design; router told about pours and pin clearances, neck-down off; thermal and stitching vias; HV on both layers; silk and post-route clean-up |
 | 5 | Generalize | Drive boards from `slice.yaml`/`loaf.yaml`; gitignore KiCad; regenerate in CI; show a *new* Slice variant falling out near-free |
 
 **Success criterion (all phases):** generated netlist matches the original's,
@@ -365,6 +366,9 @@ parity with the same 52 silk warnings, and the board stays byte-stable. F-015 is
   byte-identical across builds and processes. Freerouting necks 0.5 mm tracks to 0.375 mm
   where they leave the 1.27 mm-pitch SOIC/SOP pads; accepted as a known deviation from the
   Slice constraints' 0.5 mm minimum trace (decided 2026-10-24).
+  *Superseded 2026-11-08: the review (`_working/05-board-review.md` §1) measured the necking
+  along whole straights, not only at SOIC pads (RLHT Default: 47 segments, 86.7 mm), and the
+  HV lines down to 1.5 mm. The deviation was accepted on incomplete evidence.*
 - **ERC:** 0 errors; 38 warnings, all `lib_symbol_mismatch`. **DRC** (`--refill-zones
   --schematic-parity`): 0 errors, 0 unconnected, 0 parity; 76 silkscreen warnings.
 - **Schematic names:** every net is drawn as labels, and SKiDL's two-pin snap is switched
@@ -402,7 +406,8 @@ parity with the same 52 silk warnings, and the board stays byte-stable. F-015 is
   copper at a 10 °C rise: 1.4 mm. Clearance 0.6 mm, IPC-2221 B2 for up to 150 V, since VS
   can be an external supply up to the LMD18200's 55 V. `Power` (+12V, GNDPWR) uses the
   same width; both channels' current shares those nets, and the pours carry the rest.
-  Nothing checks a pour's current capacity.
+  Nothing checks a pour's current capacity. *2026-11-08: wrong for +12V — its pour breaks into
+  pieces that join nothing (`_working/05-board-review.md` §3).*
 - **Pours (decided 2026-11-07: route every net, pours on top):** Freerouting connects
   every net with tracks, so connectivity never depends on a fill. Each channel's VS and
   external-supply pours (F.Cu) and output pours (B.Cu) are the outline around their pads
@@ -410,6 +415,9 @@ parity with the same 52 silk warnings, and the board stays byte-stable. F-015 is
   channel's are the first's, translated. Logic GND is poured on B.Cu around its pads,
   GNDPWR fills both layers beneath. Power pours join pads solid; J1's pads too, where a
   thermal relief between the edge and the bus tracks was starved of spokes.
+  *2026-11-08: the outlines translate, the fills do not (other nets cut channel 1's), and
+  GNDPWR filling the whole of F.Cu defeats the GND/GNDPWR split there
+  (`_working/05-board-review.md` §3, §4).*
 - **Routing:** 0 unrouted, 0 violations, about 14 s per build. DSN, SES and board are
   byte-identical across processes.
 - **ERC:** 0 errors; 38 warnings, all `lib_symbol_mismatch`. **DRC** (`--refill-zones
