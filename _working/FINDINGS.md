@@ -15,7 +15,7 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 | [F-020](#f-020) | SKiDL's two-pin snap drops net labels, so KiCad renames user-named nets `Net-(...)` | upstream | OPEN (worked around) |
 | [F-019](#f-019) | A pinless part (mounting hole) crashes SKiDL's schematic placer | upstream | OPEN (worked around) |
 | [F-018](#f-018) | SKiDL draws hierarchy cosmetically: a file per instance, global labels, no sheet pins | upstream | OPEN (accepted) |
-| [F-017](#f-017) | `netlist_to_skidl` corrupts what it converts: shorts colliding nets, renames fields | upstream | OPEN (skidl#332) |
+| [F-017](#f-017) | `netlist_to_skidl` corrupts what it converts: shorts colliding nets, renames fields | upstream | collision FIXED on master (skidl#332, unreleased); rest OPEN |
 | [F-016](#f-016) | Generated schematic placement is not byte-stable (netlist and board are) | spike | OPEN |
 | [F-015](#f-015) | SKiDL 2.2.3 emits power-symbol instances with no `lib_symbols` definition | upstream | FIXED (SKiDL 2.3.0) |
 | [F-014](#f-014) | ~~SKiDL cannot read KiCad 10's sharded `.kicad_symdir` symbol libraries~~ — RETRACTED for installed KiCad (packed single files); true of the source repo, which CI now packs | spike | CLOSED |
@@ -29,7 +29,7 @@ Status: `OPEN` · `FIXED` · `WONTFIX` · `INVESTIGATING`
 | [F-006](#f-006) | `Makefile` ERC and DRC targets are swapped | Slice_DCMT (+?) | OPEN |
 | [F-005](#f-005) | **DRC schematic-parity gate is fake — mismatches never fail CI** | **fleet** | **OPEN** |
 | [F-004](#f-004) | `Slice_RLHT` manifest declares the wrong primary IC | Slice_RLHT | OPEN |
-| [F-003](#f-003) | SKiDL: `generate_schematic` never calls an `empty_footprint_handler` passed to it | upstream | OPEN (skidl#331) |
+| [F-003](#f-003) | SKiDL: `generate_schematic` never calls an `empty_footprint_handler` passed to it | upstream | FIXED on master (skidl#331, unreleased), with a regression |
 | [F-002](#f-002) | First-party parts filed under third-party library nicknames | fleet | FIXED |
 | [F-001](#f-001) | Library resolution lived only in a global KiCad config | fleet | FIXED |
 
@@ -150,7 +150,10 @@ code that differs from the netlist it came from:
 Usable as a starting point only behind a netlist-equivalence check. The collision is filed
 as devbisme/skidl#332; `netlist_to_skidl.py` is unchanged in 3.0.0.
 
-**Status:** OPEN (skidl#332).
+**Status:** the collision is fixed on SKiDL master in `efff5d7` (2026-11-07), not yet
+released: each net gets a unique identifier, suffixed on a clash with another net, a part
+reference, a sheet name, a name `from skidl import *` exports, or a Python keyword. The
+field rename and the one-function-per-instance output were not reported and are OPEN.
 
 ---
 
@@ -515,7 +518,15 @@ Nothing on the schematic path calls `skidl.empty_footprint_handler`: only
 `check_for_empty_footprints()` does, and only the netlist generators call it. The same
 check is at `circuit.py:1018` in 3.0.0 (read, not run).
 
-**Status:** filed as devbisme/skidl#331. Also: SKiDL's README still
+**Status:** fixed on SKiDL master in `7e39ff5` (2026-11-07), not yet released: both
+`generate_schematic` and `generate_svg` call the handler. The fix brings a regression,
+reproduced and reported on skidl#331: the default drawing handler leaves the placeholder
+footprint `":"` on the part, so a later `generate_netlist()` neither calls the handler
+nor logs the missing footprint, and writes `(footprint ":")`. Same script, a part with
+no footprint: on 2.3.0 the netlist handler is called for R1 and the netlist has
+`(footprint "")`; on master `efff5d7` it is not called and the netlist has
+`(footprint ":")`. For this repo, after a bump past 3.0.0: pass `generate_schematic`
+a handler that skips the power flags, as the netlist step already does. Also: SKiDL's README still
 claims schematic generation is "V5 only" — stale; it supports 6/7/8/9.
 
 ---
