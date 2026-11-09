@@ -22,6 +22,9 @@ PARITY_ERRORS = {
     "missing_footprint": "error",
     "net_conflict": "error",
 }
+# Silkscreen over exposed copper is unreadable and smears at fab; placed references
+# keep off it (pkidl.silk), so any new case fails the build.
+SILK_ERRORS = {"silk_over_copper": "error"}
 
 
 @dataclass(frozen=True)

@@ -21,7 +21,16 @@ from kidl_spike import libs
 from kidl_spike.boards.common import symbols
 from pkidl.board import Board
 from pkidl.footprint import Placement, pad_xy, place
-from pkidl.project import PARITY_ERRORS, DruRule, NetClass, width_rules, write_project, write_rules
+from pkidl.project import (
+    PARITY_ERRORS,
+    SILK_ERRORS,
+    DruRule,
+    NetClass,
+    width_rules,
+    write_project,
+    write_rules,
+)
+from pkidl.silk import nearest_clear_spot, place_references, silk_box, text_box
 
 # Board edge (x0, y0, x1, y1) and corner radius, mm. The original's left edge is
 # 0.014 mm out of square; that is not part of the interface.
@@ -40,6 +49,16 @@ PLACEMENT = {
 }
 LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", 59.0, 120.7)
 LABEL_AT = (116.5, 79.0)  # between the J4 and J5 mounting holes
+# Every bus connector's pins are labelled, as on the original, by these short names.
+PIN_LABEL = {"GND": "GND", "+12V": "12V", "SCL_5V": "SCL", "SDA_5V": "SDA",
+             "E_STOP_5V": "ESTOP", "INT_5V": "INT", "SYNC_5V": "SYNC"}  # fmt: skip
+BUS_CONNECTORS = ["J2", "J3", "J4", "J5", "J6", "J7"]
+PIN_LABEL_GAP = 0.4  # pin label to the connector's outline
+# J7, 3.7 mm right of J6, has no room on its left: the original's small diagonal labels
+# right of each pin, (dx, dy, size, angle) from the pad.
+PIN_LABEL_RIGHT = {"J7": (2.0, 0.2, 0.6, -45.0)}
+# Slot titles, where the original puts them: from each slice connector's origin.
+SLOT_TITLE = (-11.8, -19.5)
 
 SIGNALS = ["SCL_5V", "SDA_5V", "E_STOP_5V", "INT_5V", "SYNC_5V"]
 BUS_NETS = ["+12V", "GND", *SIGNALS]
@@ -120,13 +139,33 @@ def build_pcb(
     for net in SIGNALS:
         board.track(pad_xy(placed["J2"], pin[net]), pad_xy(placed["J7"], pin[net]), 0.4, net)
 
+    for ref in BUS_CONNECTORS:
+        outline = silk_box(placed[ref])
+        assert outline is not None
+        # By pin number: the pad map's order varies between runs, and labels that repeat
+        # (GND, 12V) are numbered in the order they are written.
+        for number, net in sorted(pad_nets[ref].items(), key=lambda kv: int(kv[0])):
+            text = PIN_LABEL[net]
+            px, py = pad_xy(placed[ref], number)
+            if ref in PIN_LABEL_RIGHT:
+                dx, dy, size, angle = PIN_LABEL_RIGHT[ref]
+                board.text(text, (px + dx, py + dy), size=size, thickness=size * 0.15, angle=angle)
+                continue
+            half = text_box(text, (0, 0), 0.8, 0.12, 0)[2]
+            board.text(text, (outline[0] - PIN_LABEL_GAP - half, py), size=0.8, thickness=0.12)
+    for slot, ref in enumerate(["J3", "J4", "J5", "J6"], start=1):
+        jx, jy = PLACEMENT[ref][:2]
+        title = f"SLICE {slot}"
+        want = (jx + SLOT_TITLE[0], jy + SLOT_TITLE[1])
+        at = nearest_clear_spot(board.items, title, want, OUTLINE, size=2.5, thickness=0.375)
+        board.text(title, at or want, size=2.5, thickness=0.375)
+
     x0, y0, x1, y1 = OUTLINE
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     # Solid pad connections: thermal spokes limit a slice pin to about 2.9 A, under
     # the 5 A budget (decided 2026-11-08). Above 5 A, see _working/05-board-review.md.
     board.zone("GND", "B.Cu", edge, solid=True)
     board.zone("+12V", "F.Cu", edge, solid=True)
-    board.text(f"Loaf_x004 | kidl-spike {source}", LABEL_AT, size=0.8, thickness=0.12)
 
     libs.write_project_lib_tables(outdir)
     write_project(
@@ -134,7 +173,13 @@ def build_pcb(
         netclasses=NETCLASSES,
         members={"BREAD": BUS_NETS},
         rules=RULES,
-        severities=PARITY_ERRORS,
+        severities=PARITY_ERRORS | SILK_ERRORS,
     )
     write_rules(outdir / f"{name}.kicad_dru", DRU_RULES)
+    place_references(board.items, OUTLINE)
+    label = f"Loaf_x004 | kidl-spike {source}"
+    # After the references, nearest its intended spot that is clear of parts and
+    # text: its length varies with the source id, so it gives way, not them.
+    at = nearest_clear_spot(board.items, label, LABEL_AT, OUTLINE, size=0.8, thickness=0.12)
+    board.text(label, at or LABEL_AT, size=0.8, thickness=0.12)
     return board.write(outdir / f"{name}.kicad_pcb")

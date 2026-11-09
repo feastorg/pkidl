@@ -271,7 +271,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 | 2 ✅ | Loaf_x004 — physical (pkidl v0) | **The crux.** First fully generated, fabbable board. Outline, placement, `BREAD` netclass, GND zone, autoroute, DRC pass. |
 | 3 ✅ | Slice_RLHT | Hierarchy (2 sub-sheets × 2 instances, as SKiDL subcircuits), `HV Relay` netclass, the 70×100 Slice form-factor contract |
 | 4 ✅ | Slice_DCMT | The hard zone case (17 zones, hierarchical net names) |
-| 4½ | All three | Quality pass from the 2026-11-08 review (`_working/05-board-review.md`): DRC rules that gate width, holes and mains creepage; pour design; router told about pours and pin clearances, neck-down off; thermal and stitching vias; HV on both layers; silk and post-route clean-up. *Progress: `_working/05-board-review.md` § Progress. HV on both layers and RLHT's Power class deferred to an RLHT placement rework (2026-11-09).* |
+| 4½ | All three | Quality pass from the 2026-11-08 review (`_working/05-board-review.md`): DRC rules that gate width, holes and mains creepage; pour design; router told about pours and pin clearances, neck-down off; thermal and stitching vias; HV on both layers; silk and post-route clean-up. *Progress: `_working/05-board-review.md` § Progress. HV on both layers and RLHT's Power class deferred to an RLHT placement rework (2026-11-09). Done 2026-11-09 apart from that.* |
 | 5 | Generalize | Drive boards from `slice.yaml`/`loaf.yaml`; gitignore KiCad; regenerate in CI; show a *new* Slice variant falling out near-free |
 
 **Success criterion (all phases):** generated netlist matches the original's,

@@ -251,3 +251,26 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
   - `NetClass("Power", clearance=0.2, track_width=1.0, via_diameter=1.0, via_drill=0.5)` for `+12V`, `+5V` and `BUCK_SW` (the original: +12V 1.0–1.5 mm, +5V 1.5 mm on its main runs);
   - `stages=[Stage("hv", {"HV Relay"}, both_layers=True), Stage("power", {"Power"})]`.
 - **To pick it up:** make room in RLHT's placement, mainly around the relay blocks and the buck, then rerun the table above.
+
+**2026-11-09: step 6, silkscreen (decided 2026-11-09). This closes phase 4½ apart from deferred step 5.**
+
+- **Post-route clean-up needed nothing new.** Since the two-stage routing, our boards have 0 zero-length and 0 duplicate segments. Mergeable collinear joints: RLHT 5 (the original 5), DCMT 12 (the original 7).
+- **References: `pkidl.silk.place_references`.** It runs on every board after everything else is placed. Each reference goes to the first spot around its courtyard that is clear of pads, silk and text, and inside the edge. Failing that, it tries again at 0.8 mm, then any spot within 4 mm of the part, and only then the fab layer. On all three boards it moved no reference to fab. HS1, LOGO1 and D1 are on fab in their libraries.
+- **Labels the layouts place:**
+  - RLHT's terminal labels go left of each terminal's silk outline, and its titles go to the nearest clear spot.
+  - Each board's source label now goes in last, to the nearest clear spot (`nearest_clear_spot`), because its length varies with the commit id.
+- **The Loaf gains the original's 60 per-pin labels and its "SLICE 1"–"SLICE 4" titles.** J7, 3.7 mm from J6, gets the original's small diagonal labels.
+  - Found on the way: labels written in the pad map's order made two builds of the Loaf differ. They are now written by pin number.
+- **Result** (`drc --refill-zones --schematic-parity --severity-all`, 0 errors on all three):
+
+| Board | Silk on copper | Overlapping silk | Over the edge | Text height |
+|---|---|---|---|---|
+| RLHT | 0 (was 12; the original 6) | 3 (was 26; the original 13) | 36 (the original 39) | 0 |
+| DCMT | 0 (was 11; the original 8) | 11 (was 15; the original 10) | 32 (the original 35) | 0 |
+| Loaf | 0 | 15 (the original 16) | 51 (the original 55) | 10 (the original 10) |
+
+- **Silk over copper is now an error** (`pkidl.project.SILK_ERRORS`). Built without reference placement, RLHT gives 12 such errors.
+- **What remains is inherited.**
+  - Edge findings: mostly the bus connector J1's outline, which sits 3.6 mm from the edge in the Slice format.
+  - Overlaps: footprint-internal text (the `*` marks in S1, S2 and U1), and outlines of parts at the original's positions (C5/U2, C10/U3).
+  - Loaf: the original's J7 label style, 0.6 mm and on J6's outline line.

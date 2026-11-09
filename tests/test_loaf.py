@@ -14,6 +14,8 @@ from pathlib import Path
 import pytest
 
 from kidl_spike import libs
+from kidl_spike.boards import loaf_layout
+from pkidl.footprint import pad_xy
 from pkidl.sexpr import find, find_all, parse
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -125,3 +127,43 @@ def test_supply_pours_connect_pads_solidly(loaf_board):
     for net in ("+12V", "GND"):
         connect = find(zones[net], "connect_pads")
         assert connect is not None and connect[1] == "yes", net
+
+
+def _texts(board: Path) -> list[tuple[str, float, float]]:
+    out = []
+    for g in find_all(parse(board.read_text()), "gr_text"):
+        at = find(g, "at")
+        assert at is not None
+        out.append((str(g[1]), float(at[1]), float(at[2])))
+    return out
+
+
+def test_every_bus_pin_is_labelled(loaf_board):
+    """As on the original: each bus connector's pins carry their signal's short name, in
+    the pin's row (J7, beside the board edge, just right of each pin)."""
+    board = parse(loaf_board.read_text())
+    texts = _texts(loaf_board)
+    fps = {next(p for p in find_all(f, "property") if p[1] == "Reference")[2]: f
+           for f in find_all(board, "footprint")}  # fmt: skip
+    labels = 0
+    for ref in loaf_layout.BUS_CONNECTORS:
+        for pad in find_all(fps[ref], "pad"):
+            net = find(pad, "net")
+            if net is None:
+                continue
+            px, py = pad_xy(fps[ref], str(pad[1]))
+            name = loaf_layout.PIN_LABEL[str(net[1])]
+            dy = loaf_layout.PIN_LABEL_RIGHT.get(ref, (0, 0))[1]
+            row = [t for t in texts if t[0] == name and abs(t[2] - (py + dy)) < 0.01
+                   and abs(t[1] - px) < 15]  # fmt: skip
+            assert row, (ref, pad[1], name)
+            labels += 1
+    assert labels == 60
+    assert sorted(t[0] for t in texts if t[0].startswith("SLICE")) == [
+        f"SLICE {n}" for n in range(1, 5)
+    ]
+
+
+def test_silk_over_copper_is_an_error(loaf_board):
+    pro = json.loads(loaf_board.with_suffix(".kicad_pro").read_text())
+    assert pro["board"]["design_settings"]["rule_severities"]["silk_over_copper"] == "error"

@@ -41,8 +41,16 @@ from kidl_spike.boards.slice import (
 )
 from pkidl.dsn import Via, via_padstack
 from pkidl.footprint import Placement, pad_xy, place
-from pkidl.project import PARITY_ERRORS, NetClass, width_rules, write_project, write_rules
+from pkidl.project import (
+    PARITY_ERRORS,
+    SILK_ERRORS,
+    NetClass,
+    width_rules,
+    write_project,
+    write_rules,
+)
 from pkidl.sexpr import Node, find
+from pkidl.silk import nearest_clear_spot, place_references
 
 # The design current of each motor channel. The LMD18200 is rated 3 A continuous.
 MOTOR_AMPS = 3.0
@@ -281,7 +289,6 @@ def build_pcb(
     x0, y0, x1, y1 = SLICE_S.outline(*ORIGIN)
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     board.zone("GNDPWR", "B.Cu", edge, clearance=0.5, min_thickness=POUR_MIN_WIDTH)
-    board.text(f"Slice_DCMT\nkidl-spike {source}", LABEL_AT, size=0.8, thickness=0.12)
 
     libs.write_project_lib_tables(outdir)
     write_project(
@@ -289,7 +296,15 @@ def build_pcb(
         netclasses=NETCLASSES,
         members=MEMBERS,
         rules=RULES,
-        severities=PARITY_ERRORS,
+        severities=PARITY_ERRORS | SILK_ERRORS,
     )
     write_rules(outdir / f"{name}.kicad_dru", DRU_RULES)
+    place_references(board.items, SLICE_S.outline(*ORIGIN))
+    label = f"Slice_DCMT\nkidl-spike {source}"
+    # After the references, nearest its intended spot that is clear of parts and
+    # text: its length varies with the source id, so it gives way, not them.
+    at = nearest_clear_spot(
+        board.items, label, LABEL_AT, SLICE_S.outline(*ORIGIN), size=0.8, thickness=0.12
+    )
+    board.text(label, at or LABEL_AT, size=0.8, thickness=0.12)
     return board.write(outdir / f"{name}.kicad_pcb")

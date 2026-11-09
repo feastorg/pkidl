@@ -328,3 +328,21 @@ def test_gnd_stitching_keeps_off_mains(rlht_board):
             )
             gap = math.dist(p, (ax + t * dx, ay + t * dy)) - float(_get(s, "width")[1]) / 2 - 0.4
             assert gap >= rlht_layout.MAINS_LV_CREEPAGE - 1e-6, (p, _get(s, "net")[1])
+
+
+def test_references_stay_on_the_silkscreen_and_off_copper(rlht_board):
+    """Every reference its library puts on the silkscreen is still there, placed clear of
+    pads (pkidl.silk); silk over copper is a DRC error."""
+    board = parse(rlht_board.read_text())
+    moved = []
+    for f in find_all(board, "footprint"):
+        prop = next(p for p in find_all(f, "property") if p[1] == "Reference")
+        lib = parse(libs.footprint_file(str(f[1])).read_text())
+        lib_layer = _get(next(p for p in find_all(lib, "property") if p[1] == "Reference"), "layer")
+        if str(lib_layer[1]).endswith("SilkS") and not str(_get(prop, "layer")[1]).endswith(
+            "SilkS"
+        ):
+            moved.append(str(prop[2]))
+    assert moved == []
+    pro = json.loads(rlht_board.with_suffix(".kicad_pro").read_text())
+    assert pro["board"]["design_settings"]["rule_severities"]["silk_over_copper"] == "error"

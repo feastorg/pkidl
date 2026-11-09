@@ -42,8 +42,17 @@ from kidl_spike.boards.slice import (
 )
 from pkidl.dsn import Via, via_padstack
 from pkidl.footprint import Placement, pad_xy, place
-from pkidl.project import PARITY_ERRORS, DruRule, NetClass, width_rules, write_project, write_rules
+from pkidl.project import (
+    PARITY_ERRORS,
+    SILK_ERRORS,
+    DruRule,
+    NetClass,
+    width_rules,
+    write_project,
+    write_rules,
+)
 from pkidl.sexpr import find
+from pkidl.silk import nearest_clear_spot, place_references, silk_box, text_box
 from pkidl.stitch import stitch_points
 
 # Fixed, by the format or by the original.
@@ -92,6 +101,7 @@ TC_ANCHORS = [(163.68, 125.0), (163.68, 118.0)]  # 7 mm apart: the 2-way termina
 
 LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", 136.5, 83.0)
 LABEL_AT = (161.0, 136.6)
+LABEL_GAP = 0.4  # terminal label to the terminal's outline
 
 # Terminal labels, by pin, beside each terminal.
 RELAY_TERMINAL = {1: "LINE", 2: "ESTOP", 3: "GND", 4: "ESTOP", 5: "NO", 6: "NC"}
@@ -195,20 +205,28 @@ def build_pcb(
 
     lib_id, x, y = LOGO
     board.footprint(place(libs.footprint_file(lib_id), Placement(lib_id, "LOGO1", "", x, y)))
+    # Terminal labels go left of the terminal's silkscreen outline, a gap clear of it.
     for chans, labels in ((RELAYS, RELAY_TERMINAL), (THERMOCOUPLES, TC_TERMINAL)):
         for c in chans:
+            outline = silk_box(placed[c["J"]])
+            assert outline is not None
             for pin, label in labels.items():
-                px, py = pad_xy(placed[c["J"]], str(pin))
-                board.text(label, (px - 6.5, py), size=1.0, thickness=0.15)
-            px, py = pad_xy(placed[c["J"]], str(max(labels)))
-            board.text(c["ch"], (px - 6.5, py - 3.0), size=1.2, thickness=0.2)
+                _, py = pad_xy(placed[c["J"]], str(pin))
+                half = text_box(label, (0, 0), 1.0, 0.15, 0)[2]
+                board.text(label, (outline[0] - LABEL_GAP - half, py), size=1.0, thickness=0.15)
+            _, py = pad_xy(placed[c["J"]], str(max(labels)))
+            half = text_box(c["ch"], (0, 0), 1.2, 0.2, 0)[2]
+            want = (outline[0] - LABEL_GAP - half, py - 3.0)
+            # The title need not line up with a pin: the nearest clear spot to it.
+            at = nearest_clear_spot(board.items, c["ch"], want, SLICE_S.outline(*ORIGIN),
+                                    size=1.2, thickness=0.2)  # fmt: skip
+            board.text(c["ch"], at or want, size=1.2, thickness=0.2)
 
     x0, y0, x1, y1 = SLICE_S.outline(*ORIGIN)
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     for layer in ("F.Cu", "B.Cu"):
         # Not POUR_MIN_WIDTH yet: at 0.5 mm, U1.4 and U5.3 keep one thermal spoke of two.
         board.zone("GND", layer, edge, clearance=0.5)
-    board.text(f"Slice_RLHT | kidl-spike {source}", LABEL_AT, size=0.8, thickness=0.12)
 
     libs.write_project_lib_tables(outdir)
     write_project(
@@ -216,7 +234,15 @@ def build_pcb(
         netclasses=NETCLASSES,
         members=MEMBERS,
         rules=RULES,
-        severities=PARITY_ERRORS,
+        severities=PARITY_ERRORS | SILK_ERRORS,
     )
     write_rules(outdir / f"{name}.kicad_dru", DRU_RULES)
+    place_references(board.items, SLICE_S.outline(*ORIGIN))
+    label = f"Slice_RLHT | kidl-spike {source}"
+    # After the references, nearest its intended spot that is clear of parts and
+    # text: its length varies with the source id, so it gives way, not them.
+    at = nearest_clear_spot(
+        board.items, label, LABEL_AT, SLICE_S.outline(*ORIGIN), size=0.8, thickness=0.12
+    )
+    board.text(label, at or LABEL_AT, size=0.8, thickness=0.12)
     return board.write(outdir / f"{name}.kicad_pcb")
