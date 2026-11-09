@@ -30,22 +30,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from kidl_spike import libs
-from kidl_spike.boards.common import (
-    BUS_PINOUT,
-    buck_5v,
-    default_circuit,
-    generate,
-    status_led,
-)
+from kidl_spike.boards.blocks import Channel, SliceCircuit, build_circuit
+from kidl_spike.boards.common import generate
 
 BUILD = Path("build/dcmt")
-
-R1206 = "Resistor_SMD:R_1206_3216Metric_Pad1.30x1.75mm_HandSolder"
-C1206_HS = "Capacitor_SMD:C_1206_3216Metric_Pad1.33x1.80mm_HandSolder"
-C0603_HS = "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder"
-TERMINAL_2 = "TerminalBlock_4Ucon:TerminalBlock_4Ucon_1x02_P3.50mm_Horizontal"
-TERMINAL_4 = "TerminalBlock_TE-Connectivity:TerminalBlock_TE_282834-4_1x04_P2.54mm_Horizontal"
 
 # Per channel: reference designators, and the Nano pins that drive and read the
 # bridge.
@@ -61,9 +49,6 @@ BRIDGES = [
 # Encoder terminals: A, B, +5V, GND, with the Nano pins for A and B.
 ENCODERS = [("J2", "ENC1", 20, 19), ("J3", "ENC2", 22, 21)]
 
-# The bus ground is the power ground on this board.
-BUS_NETS = {pin: ("GNDPWR" if name == "GND" else name) for pin, name in BUS_PINOUT.items()}
-
 # Nano pins on the bus and shared nets: pin number -> net name.
 NANO_PINS = {
     4: "GND", 29: "GND", 27: "+5V",
@@ -72,109 +57,26 @@ NANO_PINS = {
 NANO_UNUSED = [1, 2, 3, 17, 18, 28, 30]
 
 
+def spec() -> SliceCircuit:
+    """The DCMT's composition: the net tie, two encoders, then two H-bridges."""
+    return SliceCircuit(
+        nano_pins=NANO_PINS,
+        nano_unused=NANO_UNUSED,
+        buck_value="AP63205",
+        channels=[
+            Channel("encoder", {"J": j, "ch": ch, "a": a, "b": b}) for j, ch, a, b in ENCODERS
+        ]
+        + [Channel("bridge", b) for b in BRIDGES],  # fmt: skip
+        ground="GNDPWR",
+        net_tie=True,
+        # ERC treats the two sides of the net tie as separate nets, so GND needs one.
+        pwr_flags=("+12V", "GNDPWR", "GND"),
+    )
+
+
 def circuit(workdir: Path | None = None) -> dict[str, Any]:
     """Build the DCMT circuit into SKiDL's default circuit; return its nets by name."""
-    import skidl
-
-    skidl.reset()  # start from an empty circuit, so repeated builds don't accumulate
-    # Resolve libraries from the committed tables, never the global KiCad config.
-    libs.configure_skidl(workdir=workdir)
-
-    nets: dict[str, Any] = {}
-
-    def net(name: str) -> Any:
-        if name not in nets:
-            nets[name] = skidl.Net(name)
-        return nets[name]
-
-    def part(lib: str, sym: str, ref: str, **kw: Any) -> Any:
-        # A fixed tag keeps SKiDL's generated UUIDs stable from run to run.
-        return skidl.Part(lib, sym, ref=ref, tag=ref, **kw)
-
-    @skidl.subcircuit
-    def bridge(b: dict, v12: Any, gndpwr: Any, ctl: dict[str, Any]) -> None:
-        """LMD18200 H-bridge: switched supply, bootstrap caps, current sense, terminals."""
-        ch = b["ch"]
-        vs, vdc = net(f"{ch}_VS"), net(f"{ch}_VDC")
-        out1, out2 = net(f"{ch}_OUT1"), net(f"{ch}_OUT2")
-        boot1, boot2 = net(f"{ch}_BOOT1"), net(f"{ch}_BOOT2")
-        u = part("Driver_Motor", "LMD18200", b["U"], value="LMD18200T_NOPB", footprint=(
-            "KMLib_IC_THT:TO-220-11_P3.4x5.08mm_StaggerOdd_Lead8.45mm_TabDown"
-        ))  # fmt: skip
-        c_bulk = part("Device", "C_Polarized", b["CBULK"], value="220uF_T",
-                      footprint="Capacitor_THT:CP_Radial_D10.0mm_P5.00mm")  # fmt: skip
-        c_vs = part("Device", "C", b["CVS"], value="1u", footprint=C1206_HS)
-        c_sns = part("Device", "C", b["CSNS"], value="1u", footprint=C1206_HS)
-        c_b1 = part("Device", "C", b["CB1"], value="10n", footprint=C0603_HS)
-        c_b2 = part("Device", "C", b["CB2"], value="10n", footprint=C0603_HS)
-        r_sns = part("Device", "R", b["R"], value="4.42k", footprint=R1206)
-        sw = part("KMLib_Switches", "1101M2S3CQE2", b["S"],
-                  footprint="KMLib_Switches:SW_Slide-CK-1101M2S3CQE2")  # fmt: skip
-        j_vdc = part("Connector", "Screw_Terminal_01x02", b["JVDC"], footprint=TERMINAL_2)
-        j_out = part("Connector", "Screw_Terminal_01x02", b["JOUT"], footprint=TERMINAL_2)
-        # VS comes from the bus (switch pin 1) or the external terminal (pin 3).
-        v12 += sw[1]
-        vs += sw[2], u[6], c_bulk[1], c_vs[1]
-        vdc += sw[3], j_vdc[2]
-        gndpwr += u[7], c_bulk[2], c_vs[2], c_sns[2], r_sns[2], j_vdc[1]
-        out1 += u[2], c_b1[1], j_out[1]
-        out2 += u[10], c_b2[2], j_out[2]
-        boot1 += u[1], c_b1[2]
-        boot2 += u[11], c_b2[1]
-        ctl["DIR"] += u[3]
-        ctl["BRAKE"] += u[4]
-        ctl["PWM"] += u[5]
-        ctl["CSENS"] += u[8], r_sns[1], c_sns[1]
-        ctl["THRM"] += u[9]
-        # VS reaches the bridge through the passive switch, from the bus or the
-        # external terminal; ERC cannot see that it is driven.
-        vs += part("power", "PWR_FLAG", f"#FLG1{ch[-1]}")[1]
-
-    # The slice bus.
-    bus = part(
-        "Connector",
-        "Conn_01x10_Socket",
-        "J1",
-        footprint="Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Horizontal",
-    )
-    for pin, name in BUS_NETS.items():
-        net(name).connect(bus[pin])
-
-    nano = part("MCU_Module", "Arduino_Nano_v3.x", "A1", footprint="Module:Arduino_Nano")
-    for pin, name in NANO_PINS.items():
-        net(name).connect(nano[pin])
-    for pin in NANO_UNUSED:
-        nano[pin] += default_circuit().NC
-
-    # 12 V -> 5 V buck and the status LED, as on every Nano Slice.
-    buck_5v(part, net, value="AP63205")
-    status_led(part, net)
-
-    # Logic ground meets power ground at one point.
-    tie = part("Device", "NetTie_2", "NT1", footprint="NetTie:NetTie-2_SMD_Pad2.0mm")
-    net("GND").connect(tie[1])
-    net("GNDPWR").connect(tie[2])
-
-    for ref, ch, pin_a, pin_b in ENCODERS:
-        term = part("Connector", "Screw_Terminal_01x04", ref, footprint=TERMINAL_4)
-        net(f"{ch}_A").connect(nano[pin_a], term[1])
-        net(f"{ch}_B").connect(nano[pin_b], term[2])
-        net("+5V").connect(term[3])
-        net("GND").connect(term[4])
-
-    for b in BRIDGES:
-        ctl = {sig: net(f"{b['ch']}_{sig}") for sig in b["pins"]}
-        for sig, pin in b["pins"].items():
-            nano[pin] += ctl[sig]
-        bridge(b, net("+12V"), net("GNDPWR"), ctl)
-
-    # Power enters over the bus, whose pins are passive, so nothing on the board
-    # drives +12V or GNDPWR. PWR_FLAG tells ERC they are driven off-board. ERC
-    # also treats the two sides of the net tie as separate nets, so GND needs one.
-    for i, name in enumerate(("+12V", "GNDPWR", "GND"), start=1):
-        nets[name] += part("power", "PWR_FLAG", f"#FLG0{i}")[1]
-
-    return nets
+    return build_circuit(spec(), workdir)
 
 
 def build(outdir: Path = BUILD, source: str | None = None) -> Path:

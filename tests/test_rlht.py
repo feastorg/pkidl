@@ -19,6 +19,7 @@ import pytest
 
 from kidl_spike import libs
 from kidl_spike.boards import rlht, rlht_layout
+from kidl_spike.boards.common import default_circuit
 from pkidl.route import RouterError, router_command
 from pkidl.sexpr import find, find_all, parse
 
@@ -81,14 +82,14 @@ def test_unconnected_pins_match_original(rlht_nets):
 
     expected = {n for name, nodes in FIXTURE["nets"].items() if name.startswith("unconnected-")
                 for n in nodes}  # fmt: skip
-    generated = {f"{p.part.ref}.{p.num}" for p in rlht.default_circuit().NC.pins}
+    generated = {f"{p.part.ref}.{p.num}" for p in default_circuit().NC.pins}
     assert generated == expected
 
 
 def test_parts_match_original(rlht_nets):
     generated = {
         p.ref: {"symbol": p.name, "value": str(p.value), "footprint": p.footprint}
-        for p in rlht.default_circuit().parts
+        for p in default_circuit().parts
         if not p.ref.startswith("#")
     }
     expected = {}
@@ -112,7 +113,7 @@ def test_hierarchy_matches_original(rlht_nets):
         if ref not in OFF_BOARD | BOARD_ONLY:
             by_sheet.setdefault(c["sheet"], set()).add(ref)
     by_call: dict[tuple, set[str]] = {}
-    for p in rlht.default_circuit().parts:
+    for p in default_circuit().parts:
         if not p.ref.startswith("#"):
             by_call.setdefault(p.hiertuple, set()).add(p.ref)
     assert sorted(map(sorted, by_call.values())) == sorted(map(sorted, by_sheet.values()))
