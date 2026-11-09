@@ -1,0 +1,32 @@
+# Slice_TC4: four MAX31855K thermocouple channels, a Slice that is only this file.
+# Modelled on feastorg/Slice_THRM_31855@0bd6221: its Nano pin map (SS1-SS4 on 12, 11, 10,
+# 9; SCK 15; SO 14) and its channels' terminal positions. Its circuit is this repo's
+# thermocouple block, not the reference's (one pull-up per channel there, two here; TE
+# terminals there, Phoenix here; its I2C connector is left out). No references are
+# listed: every one is generated.
+name: tc4
+title: Slice_TC4
+# RLHT's root layout: the Nano clear of the right-hand blocks, GND poured on both layers.
+root: rlht
+stitch: true
+buck: AP63205
+nano:
+  pins:
+    4: "GND"
+    29: "GND"
+    27: "+5V"
+    24: "SCL_5V"
+    23: "SDA_5V"
+    5: "E_STOP_5V"
+    6: "INT_5V"
+    7: "SYNC_5V"
+    8: "LED"
+    15: "TC_CLK"
+    14: "TC_DATA"
+  unused: [1, 2, 3, 13, 16, 17, 18, 19, 20, 21, 22, 25, 26, 28, 30]
+# Anchors put each terminal's first pin where the reference's is: (x - 24.89, y - 1.27).
+channels:
+  - {kind: thermocouple, ch: TC1, ss: 12, anchor: [163.235, 54.838]}
+  - {kind: thermocouple, ch: TC2, ss: 11, anchor: [163.214, 73.184]}
+  - {kind: thermocouple, ch: TC3, ss: 10, anchor: [163.135, 90.568]}
+  - {kind: thermocouple, ch: TC4, ss: 9, anchor: [163.035, 106.408]}

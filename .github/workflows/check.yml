@@ -271,6 +271,7 @@ jobs:
           just verify rlht
           just verify dcmt
           just verify hbtc
+          just verify tc4
 
       - name: Fab outputs
         working-directory: kidl-spike
@@ -279,6 +280,7 @@ jobs:
           just fab rlht
           just fab dcmt
           just fab hbtc
+          just fab tc4
 
       - name: Reports
         if: always()
@@ -329,6 +331,18 @@ jobs:
             kidl-spike/build/hbtc/*.ses
             kidl-spike/build/hbtc/freerouting*.log
             kidl-spike/build/hbtc/fab/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tc4
+          path: |
+            kidl-spike/build/tc4/*.kicad_*
+            kidl-spike/build/tc4/*.rpt
+            kidl-spike/build/tc4/*.dsn
+            kidl-spike/build/tc4/*.ses
+            kidl-spike/build/tc4/freerouting*.log
+            kidl-spike/build/tc4/fab/
 
   # ─── Unified gate ─────────────────────────────────────────────────────
   # The ONLY job required by branch protection. Add every job to `needs:`.

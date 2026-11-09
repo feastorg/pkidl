@@ -224,3 +224,22 @@ def ground_both_layers(board: Board, placed: dict[str, Node], outline: tuple, bl
     for layer in ("F.Cu", "B.Cu"):
         # Not POUR_MIN_WIDTH yet: at 0.5 mm, U1.4 and U5.3 keep one thermal spoke of two.
         board.zone("GND", layer, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], clearance=0.5)
+
+
+def build(name: str, outdir: Path | None = None, source: str | None = None) -> Path:
+    """Build the Slice ``boards/<name>.yaml`` describes into *outdir* (``build/<name>``):
+    netlist, schematic, routed board, project and rules. A Slice needs no module of its
+    own. Returns the directory written."""
+    from kidl_spike.boards.blocks import build_circuit
+    from kidl_spike.boards.common import generate
+    from kidl_spike.boards.spec import load
+
+    spec = load(name)
+    outdir = outdir or Path("build") / name
+    # Absolute workdir so the materialised fp-lib-table survives generate's chdir.
+    nets = build_circuit(spec.circuit, workdir=(outdir / "kicad-env").resolve())
+
+    def pcb(out: Path, board: str, pad_nets: dict, fields: dict, src: str) -> Path:
+        return build_pcb(spec, out, board, pad_nets, fields, src)
+
+    return generate(outdir, name, nets, pcb, source)

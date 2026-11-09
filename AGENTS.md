@@ -56,7 +56,13 @@ just verify loaf  # generate, then run KiCad's own ERC + DRC against the result
 just fab loaf     # Gerbers, drill, PDF render into build/loaf/fab/
 just gen rlht     # Slice_RLHT; routing runs Freerouting during gen
 just gen dcmt     # Slice_DCMT, likewise
+just gen tc4      # a Slice with no module: built from boards/tc4.yaml alone
 ```
+
+A new Slice is a YAML file in `src/kidl_spike/boards/`: a root layout (`root: rlht` or
+`root: dcmt`) and its channels (`relay`, `thermocouple`, `bridge`, `encoder`), each with
+its Nano pins and anchor. `kidl_spike.build` builds it through `slice_build`; references
+are generated unless a channel lists its own. See `rlht.yaml`, `dcmt.yaml`, `tc4.yaml`.
 
 From a sandboxed Claude Code session, KiCad runs only through `kicad-cli-session`, alone in
 its tool call; `just erc`/`drc`/`verify`/`fab` cannot start it there. Call

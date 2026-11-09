@@ -52,7 +52,7 @@ doctor:
 
 # Generate a board's KiCad files from Python (e.g. `just gen loaf`)
 gen board:
-    uv run python -m kidl_spike.boards.{{ board }}
+    uv run python -m kidl_spike.build {{ board }}
 
 # The gates fail on errors only; warnings are reported, not gated. Each check
 # writes the full report (all severities) first, then gates. Severities come
