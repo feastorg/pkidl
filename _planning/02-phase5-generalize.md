@@ -63,3 +63,27 @@ variant is added. That is the regression gate for the refactor.
 - Moving pkidl into its own repository (feastorg/pkidl).
 - RLHT's step 5 (placement rework).
 - New footprints, or new symbols in KiCad-Master-Lib.
+
+## Progress
+
+- **Steps 1–3 are done** (#25, #26, #27, #28). Through each, RLHT, DCMT and the Loaf came out identical to `main`: 29 generated files compared at each step.
+- **Step 4: Slice_HBTC** (2026-11-09). One H-bridge channel (DCMT's) and two thermocouple channels (RLHT's) on one Nano:
+  - ERC 0 errors.
+  - DRC 0 errors, 0 unconnected items, 0 parity issues, with `--refill-zones --schematic-parity`. Its warnings are the same kinds as DCMT's.
+  - It routes completely in both stages, and the tests show it is byte-stable.
+- **Step 5: what it cost.** All counts are of lines in the files that make up HBTC.
+
+| File | Lines | What it is |
+|---|---|---|
+| `hbtc.yaml` | 39 | The composition: Nano pins, three channels, anchors. No references: all 24 are generated. |
+| `hbtc.py` | 53 | Load the YAML, build the circuit. The same shape as `dcmt.py`. |
+| `hbtc_layout.py` | 133 | Root spots, netclasses and HS1 vias taken from DCMT; then the build sequence. |
+| `tests/test_hbtc.py` | 81 | Nano pins used once, unique references, routed, byte-stable. |
+| `check.yml` | +14 | Verify, fab and upload the new board. |
+
+- **What came free:**
+  - the circuits of both blocks, and the references;
+  - routing, pours, thermal vias, stitching and silk;
+  - the DRC rules, and CI.
+- **What did not:** about 60 of `hbtc_layout.py`'s 133 lines repeat DCMT's build sequence: place, vias, route, logo, labels, pours, project, rules, references, label. Each Slice layout repeats it because netclasses, pours and labels are still per board in Python. The next step toward "a new Slice is a YAML file" is one Slice build sequence driven by the spec, with netclasses and pours declared per block kind.
+- **Found on the way, and fixed (#29):** Freerouting's optimizer ignored `-mt 1`. The same HBTC DSN routed six times gave three different sessions. RLHT and DCMT happened not to vary.

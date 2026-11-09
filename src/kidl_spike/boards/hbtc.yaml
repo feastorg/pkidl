@@ -1,0 +1,39 @@
+# Slice_HBTC: a new Slice from existing blocks, one LMD18200 H-bridge channel (from
+# Slice_DCMT) and two MAX31855K thermocouple channels (from Slice_RLHT), on one Nano.
+# No references are listed: every one is generated. Anchors are board mm.
+name: hbtc
+buck: AP63205
+# The motor current returns on the bus ground, tied to logic ground at NT1 (as on DCMT).
+ground: GNDPWR
+net_tie: true
+pwr_flags: ["+12V", GNDPWR, GND]
+nano:
+  pins:
+    4: "GND"
+    29: "GND"
+    27: "+5V"
+    24: "SCL_5V"
+    23: "SDA_5V"
+    5: "E_STOP_5V"
+    6: "INT_5V"
+    7: "SYNC_5V"
+    8: "LED"
+    13: "TC_CLK"
+    15: "TC_DATA"
+  unused: [1, 2, 3, 17, 18, 19, 20, 21, 22, 26, 28, 30]
+channels:
+  # DCMT's second channel, its pins and its place at the top of the board.
+  - kind: bridge
+    ch: CH1
+    pins: {DIR: 10, BRAKE: 11, PWM: 9, CSENS: 25, THRM: 12}
+    anchor: [155.570692, 42.15]
+  # RLHT's thermocouple channels, their pins, with their terminals in the right-edge
+  # column below the bridge.
+  - kind: thermocouple
+    ch: TC1
+    ss: 16
+    anchor: [163.68, 82.0]
+  - kind: thermocouple
+    ch: TC2
+    ss: 14
+    anchor: [163.68, 89.0]
