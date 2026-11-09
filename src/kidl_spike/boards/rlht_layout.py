@@ -35,7 +35,7 @@ from kidl_spike.boards.block_layout import (
     label_terminal,
 )
 from kidl_spike.boards.common import SLICE_S
-from kidl_spike.boards.rlht import RELAYS, THERMOCOUPLES
+from kidl_spike.boards.rlht import RELAYS, SPEC, THERMOCOUPLES
 from kidl_spike.boards.slice import (
     MOUNTING_HOLE_RULE,
     ORIGIN,
@@ -79,9 +79,11 @@ FIXED = {
 }
 # The 6-way terminals sit where the original puts them, 31.89 mm apart (each is
 # 31.48 long); the top one as high as the top-right hole's courtyard allows.
-RELAY_ANCHORS = [(153.725, 62.9), (153.725, 94.79)]
+RELAY_ANCHORS = [SPEC.anchors[r["ch"]] for r in RELAYS]
 
-TC_ANCHORS = [(163.68, 125.0), (163.68, 118.0)]  # 7 mm apart: the 2-way terminal is 6.54
+TC_ANCHORS = [
+    SPEC.anchors[t["ch"]] for t in THERMOCOUPLES
+]  # 7 mm apart: the 2-way terminal is 6.54
 
 LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", 136.5, 83.0)
 LABEL_AT = (161.0, 136.6)

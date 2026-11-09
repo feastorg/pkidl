@@ -34,7 +34,7 @@ from kidl_spike.boards.block_layout import (
     channel_spots,
 )
 from kidl_spike.boards.common import SLICE_S
-from kidl_spike.boards.dcmt import BRIDGES, ENCODERS
+from kidl_spike.boards.dcmt import BRIDGES, ENCODERS, SPEC
 from kidl_spike.boards.slice import (
     MOUNTING_HOLE_RULE,
     ORIGIN,
@@ -92,7 +92,7 @@ FIXED = {
     "J3": Spot(188.76, 108.04, -90),  # encoder 2
 }
 # The original's channel pitch (U2 to U3), 32.05 mm.
-BRIDGE_ANCHORS = [(155.570692, 74.2), (155.570692, 42.15)]
+BRIDGE_ANCHORS = [SPEC.anchors[b["ch"]] for b in BRIDGES]
 
 LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", 136.5, 82.0)
 LABEL_AT = (171.0, 115.0)  # right of the Nano, between the bridge and the encoders

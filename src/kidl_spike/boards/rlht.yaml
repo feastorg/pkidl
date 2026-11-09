@@ -1,0 +1,41 @@
+# Slice_RLHT: two opto-driven relay channels, then two thermocouple channels.
+# References are the original's (feastorg/Slice_RLHT@a7308f3), so it compares part for
+# part. Anchors: the relay's and the converter's positions, board mm.
+name: rlht
+buck: AP63205WU-7
+bus_value: Conn_01x10_Female
+nano:
+  pins:
+    4: "GND"
+    29: "GND"
+    27: "+5V"
+    24: "SCL_5V"
+    23: "SDA_5V"
+    5: "E_STOP_5V"
+    6: "INT_5V"
+    7: "SYNC_5V"
+    13: "TC_CLK"
+    15: "TC_DATA"
+    8: "LED"
+  unused: [1, 2, 3, 11, 12, 17, 18, 19, 20, 21, 22, 25, 26, 28, 30]
+channels:
+  - kind: relay
+    ch: CH1
+    ctrl: 9
+    refs: {D: D2, K: K1, R: R5, U: U4, F: F1, J: J4}
+    anchor: [153.725, 62.9]
+  - kind: relay
+    ch: CH2
+    ctrl: 10
+    refs: {D: D3, K: K2, R: R6, U: U5, F: F2, J: J5}
+    anchor: [153.725, 94.79]
+  - kind: thermocouple
+    ch: TC1
+    ss: 16
+    refs: {U: U2, C: C5, FBP: FB1, FBN: FB2, RCLK: R1, RSS: R2, J: J2}
+    anchor: [163.68, 125.0]
+  - kind: thermocouple
+    ch: TC2
+    ss: 14
+    refs: {U: U3, C: C6, FBP: FB3, FBN: FB4, RCLK: R3, RSS: R4, J: J3}
+    anchor: [163.68, 118.0]

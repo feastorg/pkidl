@@ -30,53 +30,23 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from kidl_spike.boards.blocks import Channel, SliceCircuit, build_circuit
+from kidl_spike.boards.blocks import build_circuit
 from kidl_spike.boards.common import generate
+from kidl_spike.boards.spec import load
 
 BUILD = Path("build/dcmt")
 
-# Per channel: reference designators, and the Nano pins that drive and read the
-# bridge.
-BRIDGES = [
-    {"ch": "CH1", "U": "U2", "CBULK": "C5", "CVS": "C7", "CSNS": "C6", "CB1": "C8", "CB2": "C9",
-     "R": "R1", "S": "S1", "JVDC": "J4", "JOUT": "J5",
-     "pins": {"DIR": 14, "BRAKE": 15, "PWM": 13, "CSENS": 26, "THRM": 16}},
-    {"ch": "CH2", "U": "U3", "CBULK": "C10", "CVS": "C12", "CSNS": "C11", "CB1": "C13",
-     "CB2": "C14", "R": "R2", "S": "S2", "JVDC": "J6", "JOUT": "J7",
-     "pins": {"DIR": 10, "BRAKE": 11, "PWM": 9, "CSENS": 25, "THRM": 12}},
-]  # fmt: skip
-
-# Encoder terminals: A, B, +5V, GND, with the Nano pins for A and B.
-ENCODERS = [("J2", "ENC1", 20, 19), ("J3", "ENC2", 22, 21)]
-
-# Nano pins on the bus and shared nets: pin number -> net name.
-NANO_PINS = {
-    4: "GND", 29: "GND", 27: "+5V",
-    24: "SCL_5V", 23: "SDA_5V", 5: "E_STOP_5V", 6: "INT_5V", 7: "SYNC_5V", 8: "LED",
-}  # fmt: skip
-NANO_UNUSED = [1, 2, 3, 17, 18, 28, 30]
-
-
-def spec() -> SliceCircuit:
-    """The DCMT's composition: the net tie, two encoders, then two H-bridges."""
-    return SliceCircuit(
-        nano_pins=NANO_PINS,
-        nano_unused=NANO_UNUSED,
-        buck_value="AP63205",
-        channels=[
-            Channel("encoder", {"J": j, "ch": ch, "a": a, "b": b}) for j, ch, a, b in ENCODERS
-        ]
-        + [Channel("bridge", b) for b in BRIDGES],  # fmt: skip
-        ground="GNDPWR",
-        net_tie=True,
-        # ERC treats the two sides of the net tie as separate nets, so GND needs one.
-        pwr_flags=("+12V", "GNDPWR", "GND"),
-    )
+# The composition, from dcmt.yaml: per channel, reference designators, the Nano pins
+# that drive and read it, and where the block goes.
+SPEC = load("dcmt")
+BRIDGES = SPEC.channels("bridge")
+# Encoder terminals: (terminal, channel, Nano pin for A, for B).
+ENCODERS = [(e["J"], e["ch"], e["a"], e["b"]) for e in SPEC.channels("encoder")]
 
 
 def circuit(workdir: Path | None = None) -> dict[str, Any]:
     """Build the DCMT circuit into SKiDL's default circuit; return its nets by name."""
-    return build_circuit(spec(), workdir)
+    return build_circuit(SPEC.circuit, workdir)
 
 
 def build(outdir: Path = BUILD, source: str | None = None) -> Path:
