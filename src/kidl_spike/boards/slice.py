@@ -47,6 +47,8 @@ RULES: dict[str, float | bool] = {
     "min_via_diameter": 0.4,
 }
 
+# The Slice design constraint's 0.5 mm minimum track, as the narrowest a pour may fill.
+POUR_MIN_WIDTH = 0.5
 
 MOUNTING_HOLE_RULE = DruRule(
     "mounting hole keepout", "hole_clearance", 2.0, condition="A.memberOfFootprint('H?')",

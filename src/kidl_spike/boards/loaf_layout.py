@@ -122,8 +122,10 @@ def build_pcb(
 
     x0, y0, x1, y1 = OUTLINE
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-    board.zone("GND", "B.Cu", edge)
-    board.zone("+12V", "F.Cu", edge)
+    # Solid pad connections: thermal spokes limit a slice pin to about 2.9 A, under
+    # the 5 A budget (decided 2026-11-08). Above 5 A, see _working/05-board-review.md.
+    board.zone("GND", "B.Cu", edge, solid=True)
+    board.zone("+12V", "F.Cu", edge, solid=True)
     board.text(f"Loaf_x004 | kidl-spike {source}", LABEL_AT, size=0.8, thickness=0.12)
 
     libs.write_project_lib_tables(outdir)

@@ -31,13 +31,14 @@ from kidl_spike.boards.dcmt import BRIDGES, ENCODERS
 from kidl_spike.boards.slice import (
     MOUNTING_HOLE_RULE,
     ORIGIN,
+    POUR_MIN_WIDTH,
     RULES,
     Spot,
     place_board,
     pour_outline,
     route,
 )
-from pkidl.footprint import Placement, pad_xy, place
+from pkidl.footprint import Placement, board_xy, pad_xy, place
 from pkidl.project import PARITY_ERRORS, NetClass, width_rules, write_project, write_rules
 
 # The design current of each motor channel. The LMD18200 is rated 3 A continuous.
@@ -138,6 +139,9 @@ POURS = [
     ("GND", "B.Cu", 1),
 ]
 POUR_MARGIN = 1.5
+# The LMD18200's body in its footprint's frame (the F.Fab outline). It lies flat, and
+# its metal back is at ground: no pour of another net goes underneath it.
+BRIDGE_BODY = (-1.6, -25.88, 18.6, -8.38)
 
 
 def placement() -> dict[str, Spot]:
@@ -190,11 +194,17 @@ def build_pcb(
 
     for net, layer, priority in POURS:
         board.zone(net, layer, pour_outline(placed, net, POUR_MARGIN), clearance=0.5,
-                   priority=priority, solid=True)  # fmt: skip
+                   min_thickness=POUR_MIN_WIDTH, priority=priority, solid=True)  # fmt: skip
+    for b in BRIDGES:
+        bx0, by0, bx1, by1 = BRIDGE_BODY
+        corners = [(bx0, by0), (bx1, by0), (bx1, by1), (bx0, by1)]
+        body = [board_xy(placed[b["U"]], lx, ly) for lx, ly in corners]
+        board.keepout(f"{b['U']} body", "F.Cu", body, tracks=True, vias=True)
+    # GNDPWR fills the back only. On the front it would cover the logic area, where
+    # its one connection is a bulk capacitor's pad: the GND/GNDPWR split would not exist.
     x0, y0, x1, y1 = SLICE_S.outline(*ORIGIN)
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
-    for layer in ("F.Cu", "B.Cu"):
-        board.zone("GNDPWR", layer, edge, clearance=0.5)
+    board.zone("GNDPWR", "B.Cu", edge, clearance=0.5, min_thickness=POUR_MIN_WIDTH)
     board.text(f"Slice_DCMT\nkidl-spike {source}", LABEL_AT, size=0.8, thickness=0.12)
 
     libs.write_project_lib_tables(outdir)

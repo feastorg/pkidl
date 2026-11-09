@@ -225,15 +225,20 @@ def pads(footprint: Node) -> list[Node]:
 
 
 def pad_xy(footprint: Node, number: str) -> tuple[float, float]:
-    """Board position of a placed footprint's pad *number* (y down, CCW angles)."""
+    """Board position of a placed footprint's pad *number*."""
+    pad = next(p for p in pads(footprint) if p[1] == number)
+    pa = find(pad, "at")
+    assert pa is not None
+    return board_xy(footprint, float(pa[1]), float(pa[2]))
+
+
+def board_xy(footprint: Node, lx: float, ly: float) -> tuple[float, float]:
+    """Board position of the point (*lx*, *ly*) in a placed footprint's own frame
+    (y down, CCW angles)."""
     at = find(footprint, "at")
     assert at is not None
     x0, y0 = float(at[1]), float(at[2])
     r = math.radians(float(at[3]) if len(at) > 3 else 0.0)
-    pad = next(p for p in pads(footprint) if p[1] == number)
-    pa = find(pad, "at")
-    assert pa is not None
-    lx, ly = float(pa[1]), float(pa[2])
     return (
         round(x0 + lx * math.cos(r) + ly * math.sin(r), 6),
         round(y0 - lx * math.sin(r) + ly * math.cos(r), 6),

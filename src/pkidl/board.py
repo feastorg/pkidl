@@ -145,6 +145,34 @@ class Board:
         ]  # fmt: skip
         self.items.append(node)
 
+    def keepout(
+        self,
+        name: str,
+        layer: str,
+        outline: list[Point],
+        *,
+        tracks: bool = False,
+        vias: bool = False,
+        pours: bool = False,
+    ) -> None:
+        """A rule area on *layer*: no tracks, vias or pours inside unless allowed."""
+
+        def allowed(ok: bool) -> Sym:
+            return Sym("allowed" if ok else "not_allowed")
+
+        self.items.append(
+            [Sym("zone"), [Sym("layer"), layer], [Sym("uuid"), self._uuid("keepout", name, layer)],
+             [Sym("name"), name], [Sym("hatch"), Sym("edge"), num(0.5)],
+             [Sym("connect_pads"), [Sym("clearance"), num(0)]],
+             [Sym("min_thickness"), num(0.25)],
+             [Sym("keepout"), [Sym("tracks"), allowed(tracks)], [Sym("vias"), allowed(vias)],
+              [Sym("pads"), allowed(True)], [Sym("copperpour"), allowed(pours)],
+              [Sym("footprints"), allowed(True)]],
+             [Sym("fill"), [Sym("thermal_gap"), num(0.5)], [Sym("thermal_bridge_width"), num(0.5)],
+              [Sym("island_removal_mode"), Sym("0")]],
+             [Sym("polygon"), [Sym("pts"), *(_xy(p) for p in outline)]]]
+        )  # fmt: skip
+
     def text(
         self,
         text: str,

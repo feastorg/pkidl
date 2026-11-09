@@ -18,6 +18,7 @@ import pytest
 from kidl_spike import libs
 from kidl_spike.boards import dcmt
 from kidl_spike.boards.common import default_circuit
+from pkidl.footprint import board_xy
 from pkidl.route import RouterError, router_command
 from pkidl.sexpr import find, find_all, parse
 
@@ -211,6 +212,8 @@ def test_power_pours_follow_the_blocks(dcmt_board):
     board = parse(dcmt_board.read_text())
     zones: dict[tuple[str, str], list[tuple[float, float]]] = {}
     for z in find_all(board, "zone"):
+        if find(z, "net") is None:
+            continue  # a keepout
         pts = [(float(p[1]), float(p[2])) for p in find_all(_get(_get(z, "polygon"), "pts"), "xy")]
         zones[(_get(z, "net")[1], _get(z, "layer")[1])] = pts
     for net, layer in (("VS", "F.Cu"), ("VDC", "F.Cu"), ("OUT1", "B.Cu"), ("OUT2", "B.Cu")):
@@ -253,3 +256,37 @@ def test_rules_gate_widths_and_holes(dcmt_board):
     assert "(constraint track_width (min 1.4mm))" in rules["Power width"]
     assert "(constraint track_width (min 0.5mm))" in rules["Default width"]
     assert "(constraint hole_clearance (min 2mm))" in rules["mounting hole keepout"]
+
+
+def test_pours_keep_off_the_bridge_bodies_and_the_logic_area(dcmt_board):
+    """No pour reaches under an LMD18200 body, whose metal back is at ground, and
+    GNDPWR is not poured on the front, where it would cover the logic area."""
+    board = parse(dcmt_board.read_text())
+    footprints = {
+        next(p for p in find_all(f, "property") if p[1] == "Reference")[2]: f
+        for f in find_all(board, "footprint")
+    }
+    keepouts = {}
+    for z in find_all(board, "zone"):
+        if find(z, "keepout") is not None:
+            pts = [
+                (float(p[1]), float(p[2])) for p in find_all(_get(_get(z, "polygon"), "pts"), "xy")
+            ]
+            keepouts[_get(z, "name")[1]] = (
+                _get(z, "layer")[1],
+                _get(_get(z, "keepout"), "copperpour")[1],
+                pts,
+            )
+    x0, y0, x1, y1 = (-1.6, -25.88, 18.6, -8.38)  # the body's F.Fab outline
+    for b in dcmt.BRIDGES:
+        u = footprints[b["U"]]
+        body = [board_xy(u, x, y) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+        assert keepouts[f"{b['U']} body"] == ("F.Cu", "not_allowed", body)
+    front_gndpwr = [
+        z
+        for z in find_all(board, "zone")
+        if find(z, "net") is not None
+        and _get(z, "net")[1] == "GNDPWR"
+        and _get(z, "layer")[1] == "F.Cu"
+    ]
+    assert front_gndpwr == []

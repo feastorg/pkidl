@@ -180,3 +180,11 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
 
   The RLHT mains rules cannot reach 0 by layout alone. J4/J5 pin 3 is GND between mains pins (Slice_RLHT#90), and the G5Q-1's coil pin sits close to its contacts, an insulation rating not yet checked.
 - **New finding, fixed.** `pkidl.footprint.place` kept library UUIDs on pads and graphics, so repeated footprints shared them: on the CI builds, Loaf 58 UUIDs by 232 items, RLHT 77 by 154, DCMT 87 by 174. KiCad attributes items by UUID, so a DRC run named all eight Loaf slice-connector holes as J3's. Every item in a placed footprint now has its own UUID.
+
+**2026-11-09: pour design (§4).**
+
+- **DCMT front GNDPWR is gone.** The B.Cu pour stays. On the filled board: F.Cu GNDPWR 0 pieces (6 pieces, 3485.5 mm² before).
+- **No pour under an LMD18200 body.** A no-pour keepout covers each body's F.Fab outline. Sampled at 0.1 mm over each body: no fill of any net. Before: CH1_VS 33.9 mm² and GNDPWR 276.6 mm² under U2, CH2_VS 109.1 mm² and GNDPWR 213.9 mm² under U3. The 20 mm² in §4 was the tab strip only. Putting GNDPWR there, with vias to the back as the original does, waits for the thermal-via step: without vias the area holds no GNDPWR pad, and the fill removes it as an island.
+- **Loaf supply pours connect solidly.** The fraction of a ring 0.25 mm outside each +12V/GND pad that is filled is now 1.00 at every pad (0.14–0.61 through spokes before). Single-layer pours with solid pads are what the 5 A budget needs; both layers and stitching are for above it.
+- **DCMT pours fill nothing under 0.5 mm** (`POUR_MIN_WIDTH`). RLHT stays at 0.25 mm for now: at 0.5, U1.4 and U5.3 keep only one of their two GND thermal spokes (`starved_thermal`, an error). Revisit with RLHT's HV-on-both-layers rework.
+- **Still open from §4:** RLHT's GND at 1.25 mm from HV copper (the mains rules now flag it); tighter hulls.

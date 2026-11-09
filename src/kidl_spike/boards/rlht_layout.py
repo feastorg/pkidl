@@ -159,6 +159,7 @@ def build_pcb(
     x0, y0, x1, y1 = SLICE_S.outline(*ORIGIN)
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     for layer in ("F.Cu", "B.Cu"):
+        # Not POUR_MIN_WIDTH yet: at 0.5 mm, U1.4 and U5.3 keep one thermal spoke of two.
         board.zone("GND", layer, edge, clearance=0.5)
     board.text(f"Slice_RLHT | kidl-spike {source}", LABEL_AT, size=0.8, thickness=0.12)
 

@@ -113,3 +113,15 @@ def test_rules_gate_widths_and_holes(loaf_board):
     hole = rules["mounting hole keepout"]
     assert "(constraint hole_clearance (min 2mm))" in hole
     assert all(f"memberOfFootprint('{j}')" in hole for j in ("J3", "J4", "J5", "J6"))
+
+
+def test_supply_pours_connect_pads_solidly(loaf_board):
+    """Thermal spokes would limit each slice pin to about 2.9 A, under the 5 A budget."""
+    zones = {}
+    for z in find_all(parse(loaf_board.read_text()), "zone"):
+        net = find(z, "net")
+        assert net is not None
+        zones[net[1]] = z
+    for net in ("+12V", "GND"):
+        connect = find(zones[net], "connect_pads")
+        assert connect is not None and connect[1] == "yes", net
