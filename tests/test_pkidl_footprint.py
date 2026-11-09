@@ -91,3 +91,23 @@ def test_placement_matches_kicad(theirs, footprint_file):
     )
     mine = place(footprint_file(theirs[1]), placement)
     assert _summary(mine) == _summary(theirs)
+
+
+def _uuids(node: Node) -> list[str]:
+    out = []
+    for child in node[1:]:
+        if isinstance(child, list) and child:
+            out += [str(child[1])] if child[0] == "uuid" else _uuids(child)
+    return out
+
+
+def test_two_placements_share_no_uuid(footprint_file):
+    """Every item in a placed footprint has its own UUID, even when one library
+    footprint is placed twice: KiCad attributes DRC findings by UUID."""
+    lib_id = "KMLib_Connectors:BREAD_Slice_Bus_10Pin"  # has pads with library UUIDs
+    a = place(footprint_file(lib_id), Placement(lib_id, "J3", "", 70.9, 102.02))
+    b = place(footprint_file(lib_id), Placement(lib_id, "J4", "", 101.3, 102.02))
+    ua, ub = _uuids(a), _uuids(b)
+    assert len(ua) > 10
+    assert len(set(ua)) == len(ua)
+    assert not set(ua) & set(ub)

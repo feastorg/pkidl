@@ -28,9 +28,17 @@ from pathlib import Path
 from kidl_spike import libs
 from kidl_spike.boards.common import SLICE_S
 from kidl_spike.boards.dcmt import BRIDGES, ENCODERS
-from kidl_spike.boards.slice import ORIGIN, RULES, Spot, place_board, pour_outline, route
+from kidl_spike.boards.slice import (
+    MOUNTING_HOLE_RULE,
+    ORIGIN,
+    RULES,
+    Spot,
+    place_board,
+    pour_outline,
+    route,
+)
 from pkidl.footprint import Placement, pad_xy, place
-from pkidl.project import PARITY_ERRORS, NetClass, write_project
+from pkidl.project import PARITY_ERRORS, NetClass, width_rules, write_project, write_rules
 
 # The design current of each motor channel. The LMD18200 is rated 3 A continuous.
 MOTOR_AMPS = 3.0
@@ -118,6 +126,7 @@ NETCLASSES = [
     ),  # fmt: skip
 ]
 MEMBERS = {"Motor": MOTOR_NETS, "Power": POWER_NETS}
+DRU_RULES = width_rules(NETCLASSES) + [MOUNTING_HOLE_RULE]
 
 # Pours: (net, layer, priority). Higher priority wins where pours overlap.
 POURS = [
@@ -196,4 +205,5 @@ def build_pcb(
         rules=RULES,
         severities=PARITY_ERRORS,
     )
+    write_rules(outdir / f"{name}.kicad_dru", DRU_RULES)
     return board.write(outdir / f"{name}.kicad_pcb")

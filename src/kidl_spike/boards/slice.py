@@ -17,7 +17,7 @@ from kidl_spike.boards.common import SLICE_S, symbols
 from pkidl.board import Board
 from pkidl.dsn import read_ses, write_dsn
 from pkidl.footprint import Placement, pad_xy, place
-from pkidl.project import NetClass
+from pkidl.project import DruRule, NetClass
 from pkidl.route import freerouting
 from pkidl.sexpr import Node, find, find_all
 
@@ -46,6 +46,13 @@ RULES: dict[str, float | bool] = {
     "min_via_annular_width": 0.05,
     "min_via_diameter": 0.4,
 }
+
+
+MOUNTING_HOLE_RULE = DruRule(
+    "mounting hole keepout", "hole_clearance", 2.0, condition="A.memberOfFootprint('H?')",
+    why="metal screws and standoffs (decided 2026-11-08): no copper within 2 mm of a hole's "
+    "edge, room for a screw head or washer on a 5 mm hole",
+)  # fmt: skip
 
 
 @dataclass(frozen=True)

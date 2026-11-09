@@ -235,6 +235,21 @@ def test_board_is_byte_stable(dcmt_board):
     """A second build, routing included, writes the same files byte for byte."""
     first = dcmt_board.parent
     second = dcmt.build(first.parent / "b", source="test")
-    for name in ("dcmt.dsn", "dcmt.ses", "dcmt.kicad_pcb", "dcmt.kicad_pro", "sym-lib-table",
-                 "fp-lib-table"):  # fmt: skip
+    for name in ("dcmt.dsn", "dcmt.ses", "dcmt.kicad_pcb", "dcmt.kicad_pro", "dcmt.kicad_dru",
+                 "sym-lib-table", "fp-lib-table"):  # fmt: skip
         assert (second / name).read_bytes() == (first / name).read_bytes(), name
+
+
+def _rules(board: Path) -> dict[str, str]:
+    """Rule name -> rule text, from the generated .kicad_dru beside the board."""
+    text = board.with_suffix(".kicad_dru").read_text()
+    return {chunk.split('"')[1]: chunk for chunk in text.split("(rule ")[1:]}
+
+
+def test_rules_gate_widths_and_holes(dcmt_board):
+    """Netclass widths are DRC minimums, and metal mounting hardware gets a keepout."""
+    rules = _rules(dcmt_board)
+    assert "(constraint track_width (min 1.4mm))" in rules["Motor width"]
+    assert "(constraint track_width (min 1.4mm))" in rules["Power width"]
+    assert "(constraint track_width (min 0.5mm))" in rules["Default width"]
+    assert "(constraint hole_clearance (min 2mm))" in rules["mounting hole keepout"]

@@ -21,7 +21,7 @@ from kidl_spike import libs
 from kidl_spike.boards.common import symbols
 from pkidl.board import Board
 from pkidl.footprint import Placement, pad_xy, place
-from pkidl.project import PARITY_ERRORS, NetClass, write_project
+from pkidl.project import PARITY_ERRORS, DruRule, NetClass, width_rules, write_project, write_rules
 
 # Board edge (x0, y0, x1, y1) and corner radius, mm. The original's left edge is
 # 0.014 mm out of square; that is not part of the interface.
@@ -47,6 +47,18 @@ BUS_NETS = ["+12V", "GND", *SIGNALS]
 NETCLASSES = [
     NetClass("Default", clearance=0.2, track_width=0.25),
     NetClass("BREAD", clearance=0.2, track_width=0.4),
+]
+# The slice connectors' 3.3 mm holes take metal hardware (decided 2026-11-08). The
+# barrel jack's own non-plated pegs are left out.
+DRU_RULES = width_rules(NETCLASSES) + [
+    DruRule(
+        "mounting hole keepout",
+        "hole_clearance",
+        2.0,
+        condition="A.Pad_Type == 'NPTH, mechanical' && (A.memberOfFootprint('J3') || "
+        "A.memberOfFootprint('J4') || A.memberOfFootprint('J5') || A.memberOfFootprint('J6'))",
+        why="metal screws and standoffs: no copper within 2 mm of a hole's edge",
+    )  # fmt: skip
 ]
 
 # Design rules carried over from the original project, plus a board-edge
@@ -122,4 +134,5 @@ def build_pcb(
         rules=RULES,
         severities=PARITY_ERRORS,
     )
+    write_rules(outdir / f"{name}.kicad_dru", DRU_RULES)
     return board.write(outdir / f"{name}.kicad_pcb")

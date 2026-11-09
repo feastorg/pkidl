@@ -150,3 +150,33 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
 - **Loaf +12V budget: design for 5 A for now.** The real need is above 5 A. Going beyond it needs +12V and GND on both layers with stitching vias (as the original does), solid or wide thermal connections at the jack and the slice pins, and a jack and connector pins rated for the current. Kept to 5 A so the spike stays on pkidl, not on board design.
 - **Mounting hardware is metal.** Keep copper out of a ring around every hole on both layers. The originals keep 1.9–5.7 mm.
 - **Order of work: a quality pass on the three boards comes before phase ⑤.**
+
+## Progress (phase 4½)
+
+**2026-11-08: DRC rules, and a UUID bug.**
+
+- **Rules.** Each board now gets a generated `.kicad_dru` (`pkidl.project.write_rules`):
+  - every netclass width as a minimum (`width_rules`);
+  - the mains spacing on RLHT;
+  - a 2 mm copper keepout around the metal-hardware holes.
+
+  They are all at warning for now, and each becomes an error as the fix it guards lands.
+- **KiCad's zone fill honours these rules.** Refilled under them, the pours stop exactly 2.000 mm from the hole edges (Loaf J4 hole, RLHT H1, both layers; previously 0.250 mm) and 3.0 mm from the HV copper. So the mounting-hole finding in §4 is fixed for every pour, and what remains per rule is tracks and pads.
+- **Baseline.** `kicad-cli pcb drc --refill-zones --schematic-parity --severity-all` on fresh builds of the branch:
+
+| Board | Rule | Violations |
+|---|---|---|
+| Loaf | all custom rules | 0 |
+| RLHT | Default width (0.5) | 47 |
+| RLHT | HV Relay width (3.0) | 28 |
+| RLHT | mains to LV clearance (3.0) | 22 |
+| RLHT | mains to LV creepage (5.6) | 24 |
+| RLHT | mains to mains clearance (1.5) | 14 |
+| RLHT | mounting hole keepout | 0 |
+| DCMT | Default width | 28 |
+| DCMT | Motor width (1.4) | 8 |
+| DCMT | Power width (1.4) | 18 |
+| DCMT | mounting hole keepout | 1 (a routed CH2_OUT1 track at H3; the router sees only the drill) |
+
+  The RLHT mains rules cannot reach 0 by layout alone. J4/J5 pin 3 is GND between mains pins (Slice_RLHT#90), and the G5Q-1's coil pin sits close to its contacts, an insulation rating not yet checked.
+- **New finding, fixed.** `pkidl.footprint.place` kept library UUIDs on pads and graphics, so repeated footprints shared them: on the CI builds, Loaf 58 UUIDs by 232 items, RLHT 77 by 154, DCMT 87 by 174. KiCad attributes items by UUID, so a DRC run named all eight Loaf slice-connector holes as J3's. Every item in a placed footprint now has its own UUID.

@@ -247,6 +247,25 @@ def test_board_is_byte_stable(rlht_board):
     """A second build, routing included, writes the same files byte for byte."""
     first = rlht_board.parent
     second = rlht.build(first.parent / "b", source="test")
-    for name in ("rlht.dsn", "rlht.ses", "rlht.kicad_pcb", "rlht.kicad_pro", "sym-lib-table",
-                 "fp-lib-table"):  # fmt: skip
+    for name in ("rlht.dsn", "rlht.ses", "rlht.kicad_pcb", "rlht.kicad_pro", "rlht.kicad_dru",
+                 "sym-lib-table", "fp-lib-table"):  # fmt: skip
         assert (second / name).read_bytes() == (first / name).read_bytes(), name
+
+
+def _rules(board: Path) -> dict[str, str]:
+    """Rule name -> rule text, from the generated .kicad_dru beside the board."""
+    text = board.with_suffix(".kicad_dru").read_text()
+    return {chunk.split('"')[1]: chunk for chunk in text.split("(rule ")[1:]}
+
+
+def test_rules_gate_widths_mains_spacing_and_holes(rlht_board):
+    """The decisions of 2026-11-08 are DRC rules: mains spacing (IEC 60664-1, 230 V),
+    netclass widths as minimums, and a keepout for metal mounting hardware."""
+    rules = _rules(rlht_board)
+    assert "(constraint track_width (min 3mm))" in rules["HV Relay width"]
+    assert "(constraint track_width (min 0.5mm))" in rules["Default width"]
+    assert "(constraint clearance (min 3mm))" in rules["mains to LV clearance"]
+    assert "(constraint creepage (min 5.6mm))" in rules["mains to LV creepage"]
+    assert "(constraint clearance (min 1.5mm))" in rules["mains to mains clearance"]
+    assert "memberOfFootprint('H?')" in rules["mounting hole keepout"]
+    assert "(constraint hole_clearance (min 2mm))" in rules["mounting hole keepout"]

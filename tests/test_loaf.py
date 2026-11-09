@@ -95,5 +95,21 @@ def test_board_is_byte_stable(loaf_board):
 
     first = loaf_board.parent
     second = loaf.build(first.parent / "b", source="test")
-    for name in ("loaf.kicad_pcb", "loaf.kicad_pro", "sym-lib-table", "fp-lib-table"):
+    for name in ("loaf.kicad_pcb", "loaf.kicad_pro", "loaf.kicad_dru", "sym-lib-table",
+                 "fp-lib-table"):  # fmt: skip
         assert (second / name).read_bytes() == (first / name).read_bytes(), name
+
+
+def _rules(board: Path) -> dict[str, str]:
+    """Rule name -> rule text, from the generated .kicad_dru beside the board."""
+    text = board.with_suffix(".kicad_dru").read_text()
+    return {chunk.split('"')[1]: chunk for chunk in text.split("(rule ")[1:]}
+
+
+def test_rules_gate_widths_and_holes(loaf_board):
+    """The bus width is a DRC minimum, and the slice connectors' holes get a keepout."""
+    rules = _rules(loaf_board)
+    assert "(constraint track_width (min 0.4mm))" in rules["BREAD width"]
+    hole = rules["mounting hole keepout"]
+    assert "(constraint hole_clearance (min 2mm))" in hole
+    assert all(f"memberOfFootprint('{j}')" in hole for j in ("J3", "J4", "J5", "J6"))

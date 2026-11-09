@@ -89,3 +89,54 @@ def write_project(
     }
     path.write_text(json.dumps(project, indent=2) + "\n")
     return path
+
+
+@dataclass(frozen=True)
+class DruRule:
+    """One KiCad custom design rule: ``constraint`` must be at least ``min_mm``.
+
+    ``condition`` is a KiCad rule expression (``A.NetClass == 'HV Relay'``); empty
+    applies to everything. ``why`` is written above the rule as a comment.
+    """
+
+    name: str
+    constraint: str  # track_width, clearance, creepage, hole_clearance, ...
+    min_mm: float
+    condition: str = ""
+    severity: str = "warning"
+    why: str = ""
+
+
+def width_rules(netclasses: list[NetClass], severity: str = "warning") -> list[DruRule]:
+    """One minimum-width rule per netclass, at the class's own width.
+
+    KiCad treats a netclass width as the default for new tracks, not a minimum:
+    a narrower track passes DRC unless a rule like these says otherwise.
+    """
+    return [
+        DruRule(
+            f"{c.name} width",
+            "track_width",
+            c.track_width,
+            condition="" if c.name == "Default" else f"A.NetClass == '{c.name}'",
+            severity=severity,
+            why=f"the {c.name} netclass width, as a minimum",
+        )  # fmt: skip
+        for c in netclasses
+    ]
+
+
+def write_rules(path: Path, rules: list[DruRule]) -> Path:
+    """Write a ``.kicad_dru`` custom rules file. KiCad reads ``<project>.kicad_dru``."""
+    out = ["(version 1)"]
+    for r in rules:
+        out.append("")
+        if r.why:
+            out.append(f"# {r.why}")
+        out.append(f'(rule "{r.name}"')
+        out.append(f"  (severity {r.severity})")
+        if r.condition:
+            out.append(f'  (condition "{r.condition}")')
+        out.append(f"  (constraint {r.constraint} (min {r.min_mm:g}mm)))")
+    path.write_text("\n".join(out) + "\n")
+    return path

@@ -191,7 +191,33 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
                 out.append([Sym("sheetfile"), p.sheetfile])
             meta_done = True
         out.append(item)
+    _own_uuids(out, p.ref)
     return out
+
+
+def _own_uuids(footprint: Node, ref: str) -> None:
+    """Give every item inside a placed footprint a UUID of its own.
+
+    Library footprints carry UUIDs on their pads and graphics, so two placements
+    of one footprint would share them, and KiCad attributes items by UUID (a DRC
+    report would name the first footprint for both). Each is derived from the
+    reference and the item's position in the tree, so it is stable across builds.
+    """
+    count = 0
+
+    def walk(node: Node) -> None:
+        nonlocal count
+        for child in node[1:]:
+            if isinstance(child, list) and child:
+                if child[0] == "uuid":
+                    child[1] = gen_uuid("fpitem", ref, str(count))
+                    count += 1
+                walk(child)
+
+    # The footprint's own (uuid ...) is a direct child; only items inside it change.
+    for child in footprint[1:]:
+        if isinstance(child, list) and child and child[0] != "uuid":
+            walk(child)
 
 
 def pads(footprint: Node) -> list[Node]:

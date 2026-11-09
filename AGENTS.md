@@ -91,6 +91,10 @@ its tool call; `just erc`/`drc`/`verify`/`fab` cannot start it there. Call
   a schematic/PCB footprint mismatch will pass a default DRC run. Set severities
   explicitly; do not assume DRC is checking what you think it is. Generated projects do
   this through `pkidl.project.PARITY_ERRORS`.
+- **A netclass width is a default, not a minimum.** KiCad passes a track narrower than its
+  class. Minimums, mains spacing and hole keepouts live in the generated `<board>.kicad_dru`
+  (`pkidl.project.write_rules`). KiCad's zone fill honours those rules too, so a refilled
+  pour keeps out of the keepouts on its own.
 - **A part with no pins crashes SKiDL's schematic placer** (F-019). Mounting holes go on
   the board as board-only footprints (`Placement(board_only=True)`), not into the circuit.
 - **SKiDL's two-pin snap drops net labels**, and KiCad then renames those nets `Net-(...)`,

@@ -29,9 +29,16 @@ from pathlib import Path
 from kidl_spike import libs
 from kidl_spike.boards.common import SLICE_S
 from kidl_spike.boards.rlht import RELAYS, THERMOCOUPLES
-from kidl_spike.boards.slice import ORIGIN, RULES, Spot, place_board, route
+from kidl_spike.boards.slice import (
+    MOUNTING_HOLE_RULE,
+    ORIGIN,
+    RULES,
+    Spot,
+    place_board,
+    route,
+)
 from pkidl.footprint import Placement, pad_xy, place
-from pkidl.project import PARITY_ERRORS, NetClass, write_project
+from pkidl.project import PARITY_ERRORS, DruRule, NetClass, width_rules, write_project, write_rules
 
 # Fixed, by the format or by the original.
 J1_PIN1 = SLICE_S.bus_pin1(*ORIGIN)
@@ -93,6 +100,24 @@ NETCLASSES = [
 ]
 MEMBERS = {"HV Relay": HV_NETS}
 
+# Mains on the relay-switched lines (decided 2026-11-08). IEC 60664-1, 230 V,
+# overvoltage category II, pollution degree 2, material group III, as reproduced in
+# TI SLUP421: reinforced insulation to the bus side (SELV), basic between mains
+# conductors. Warnings until the layout meets them; J4/J5 pin 3 (GND between mains
+# pins) cannot, by circuit (Slice_RLHT#90).
+MAINS_RULES = [
+    DruRule("mains to LV clearance", "clearance", 3.0,
+            "A.NetClass == 'HV Relay' && B.NetClass != 'HV Relay'",
+            why="reinforced clearance: Table F.2, one step above 2.5 kV"),
+    DruRule("mains to LV creepage", "creepage", 5.6,
+            "A.NetClass == 'HV Relay' && B.NetClass != 'HV Relay'",
+            why="reinforced creepage: twice Table F.4's ~2.8 mm basic value at 250 V"),
+    DruRule("mains to mains clearance", "clearance", 1.5,
+            "A.NetClass == 'HV Relay' && B.NetClass == 'HV Relay' && A.NetName != B.NetName",
+            why="basic clearance as the floor between mains conductors"),
+]  # fmt: skip
+DRU_RULES = width_rules(NETCLASSES) + MAINS_RULES + [MOUNTING_HOLE_RULE]
+
 
 def placement() -> dict[str, Spot]:
     """Every footprint's position, by reference."""
@@ -145,4 +170,5 @@ def build_pcb(
         rules=RULES,
         severities=PARITY_ERRORS,
     )
+    write_rules(outdir / f"{name}.kicad_dru", DRU_RULES)
     return board.write(outdir / f"{name}.kicad_pcb")
