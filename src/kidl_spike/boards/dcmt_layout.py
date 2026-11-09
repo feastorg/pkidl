@@ -26,6 +26,13 @@ import math
 from pathlib import Path
 
 from kidl_spike import libs
+from kidl_spike.boards.block_layout import (
+    LABEL_DX,
+    bridge_terminals,
+    bridge_vias,
+    bridge_zones,
+    channel_spots,
+)
 from kidl_spike.boards.common import SLICE_S
 from kidl_spike.boards.dcmt import BRIDGES, ENCODERS
 from kidl_spike.boards.slice import (
@@ -84,32 +91,11 @@ FIXED = {
     "J2": Spot(188.75, 119.68, -90),  # encoder 1
     "J3": Spot(188.76, 108.04, -90),  # encoder 2
 }
-# H-bridge block, relative to the bridge. The original's first channel, with the
-# output and supply terminals stacked in the right-edge column.
-BRIDGE_BLOCK = {
-    "U": Spot(0, 0, -90),
-    "CBULK": Spot(21.1, 22.45, -45),
-    "CVS": Spot(25.25, 21.75, -45, True),
-    "CSNS": Spot(-2.720692, 10.2875, 90),
-    "CB1": Spot(2.1875, 1.7, 180, True),
-    "CB2": Spot(1.65, 15.3, 0, True),
-    "R": Spot(-5.251384, 10.3, 90),
-    "S": Spot(6.1, 23.6, 90),
-    "JOUT": Spot(33.0, 10.6, -90),
-    "JVDC": Spot(33.0, 19.5, -90),
-}
 # The original's channel pitch (U2 to U3), 32.05 mm.
 BRIDGE_ANCHORS = [(155.570692, 74.2), (155.570692, 42.15)]
 
 LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", 136.5, 82.0)
 LABEL_AT = (171.0, 115.0)  # right of the Nano, between the bridge and the encoders
-# Terminal labels run along each terminal, this far left of its pads: between the
-# terminal's outline and the bulk capacitor's, a gap about 2.5 mm wide.
-LABEL_DX = 5.4
-
-# Terminal labels, by pin, beside each terminal.
-OUT_TERMINAL = {1: "OUT1", 2: "OUT2"}
-VDC_TERMINAL = {1: "GND", 2: "VDC"}
 # Encoder pins carry their channel: the two terminals are 4 mm apart, no room for a title.
 ENCODER_TERMINAL = {1: "{n}A", 2: "{n}B", 3: "5V", 4: "GND"}
 
@@ -149,47 +135,6 @@ POURS = [
 ]
 POUR_MARGIN = 1.5
 
-# Each channel's LMD18200 lies flat, its metal back at ground, and sheds heat into GNDPWR
-# on both layers through a via field, as the original's first channel does. Board
-# millimetres from the LMD18200's origin (U2 at 155.570692, 74.2 on both boards; the
-# channels are rotated alike, so these translate):
-# - GNDPWR on F.Cu under the body, above every other pour;
-BODY_GNDPWR = [
-    (11.93, -0.016),
-    (12.791, -0.9),
-    (24.55, -0.9),
-    (25.932, 0.417),
-    (25.92, 17.579),
-    (24.791, 18.68),
-    (13.474, 18.68),
-    (11.93, 17.126),
-]
-# - the original's vias: a 9 x 8 grid at 1.2 mm less 8 points (some at the tab hole), and
-#   less its bottom row here: this board's output terminal pin sits 1.4 mm below it, and
-#   a full-width OUT2 track does not pass at the Motor clearance. 56 vias of the 64;
-THERMAL_VIA = (0.6, 0.4)
-THERMAL_SKIP = {(7, 3), (7, 4), (8, 0), (8, 2), (8, 3), (8, 4), (8, 5), (8, 7)}
-THERMAL_VIAS = [
-    (round(12.479 + 1.2 * i, 3), round(4.31 + 1.2 * j, 3))
-    for i in range(9)
-    for j in range(7)
-    if (i, j) not in THERMAL_SKIP
-]
-# - on B.Cu, the outputs run as strips beside the field, the original's, extended to this
-#   board's output terminal (moved into the right-edge column); GNDPWR fills between.
-OUT_STRIPS = [
-    (
-        "OUT1",
-        3,
-        [(2.65, -0.9), (35.5, -0.9), (35.5, 12.3), (30.03, 12.3), (30.03, 3.4), (2.65, 3.4)],
-    ),
-    # Past the field, only as deep as the terminal pin: J4 below needs its GNDPWR.
-    (
-        "OUT2",
-        2,
-        [(2.5, 13.6), (35.5, 13.6), (35.5, 15.9), (30.03, 15.9), (30.03, 18.1), (2.5, 18.1)],
-    ),
-]
 # GND vias at HS1, the original's, from HS1's origin: (dx, dy, diameter, drill). Less the
 # one at (-5.45, -0.55), where this board's +12V leaves C1: there, it necks +12V for 4 mm.
 HS1_VIAS = [
@@ -224,9 +169,8 @@ def _at(footprint: Node, dx: float, dy: float) -> tuple[float, float]:
 def placement() -> dict[str, Spot]:
     """Every footprint's position, by reference."""
     spots = dict(FIXED)
-    for b, (ax, ay) in zip(BRIDGES, BRIDGE_ANCHORS, strict=True):
-        for role, spot in BRIDGE_BLOCK.items():
-            spots[b[role]] = spot.at(ax, ay)
+    for b, anchor in zip(BRIDGES, BRIDGE_ANCHORS, strict=True):
+        spots |= channel_spots("bridge", b, anchor)
     return spots
 
 
@@ -249,19 +193,13 @@ def build_pcb(
     )
     vias = [Via("GND", via_padstack(d, h), _at(placed["HS1"], dx, dy)) for dx, dy, d, h in HS1_VIAS]
     for b in BRIDGES:
-        vias += [Via("GNDPWR", via_padstack(*THERMAL_VIA), _at(placed[b["U"]], dx, dy))
-                 for dx, dy in THERMAL_VIAS]  # fmt: skip
+        vias += bridge_vias(placed, b)
     route(board, placed, outdir, name, NETCLASSES, MEMBERS, vias=vias)
 
     lib_id, x, y = LOGO
     board.footprint(place(libs.footprint_file(lib_id), Placement(lib_id, "LOGO1", "", x, y)))
     # (terminal, pin labels, title or "", silkscreen layer, distance left of the pads).
-    # The supply terminal's labels go underneath: on top, the bulk capacitor's outline
-    # leaves 0.7 mm, and underneath, the 1 uF capacitor's pad sits 1.2 mm further left.
-    terminals = []
-    for b in BRIDGES:
-        terminals.append((b["JOUT"], OUT_TERMINAL, b["ch"], "F.SilkS", LABEL_DX))
-        terminals.append((b["JVDC"], VDC_TERMINAL, "", "B.SilkS", LABEL_DX - 1.2))
+    terminals = [t for b in BRIDGES for t in bridge_terminals(b)]
     for ref, ch, _, _ in ENCODERS:
         labels = {pin: label.format(n=ch[-1]) for pin, label in ENCODER_TERMINAL.items()}
         terminals.append((ref, labels, "", "F.SilkS", LABEL_DX))
@@ -277,12 +215,7 @@ def build_pcb(
         board.zone(net, layer, pour_outline(placed, net, POUR_MARGIN), clearance=0.5,
                    min_thickness=POUR_MIN_WIDTH, priority=priority, solid=True)  # fmt: skip
     for b in BRIDGES:
-        u = placed[b["U"]]
-        board.zone("GNDPWR", "F.Cu", [_at(u, *p) for p in BODY_GNDPWR], clearance=0.5,
-                   min_thickness=POUR_MIN_WIDTH, priority=6, solid=True)  # fmt: skip
-        for out, priority, outline in OUT_STRIPS:
-            board.zone(f"{b['ch']}_{out}", "B.Cu", [_at(u, *p) for p in outline], clearance=0.5,
-                       min_thickness=POUR_MIN_WIDTH, priority=priority, solid=True)  # fmt: skip
+        bridge_zones(board, placed, b)
     # GNDPWR fills the back. On the front it is only under the bodies: elsewhere it would
     # cover the logic area, where
     # its one connection is a bulk capacitor's pad: the GND/GNDPWR split would not exist.

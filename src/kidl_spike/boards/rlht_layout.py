@@ -28,6 +28,12 @@ from dataclasses import replace
 from pathlib import Path
 
 from kidl_spike import libs
+from kidl_spike.boards.block_layout import (
+    RELAY_TERMINAL,
+    TC_TERMINAL,
+    channel_spots,
+    label_terminal,
+)
 from kidl_spike.boards.common import SLICE_S
 from kidl_spike.boards.rlht import RELAYS, THERMOCOUPLES
 from kidl_spike.boards.slice import (
@@ -41,7 +47,7 @@ from kidl_spike.boards.slice import (
     route,
 )
 from pkidl.dsn import Via, via_padstack
-from pkidl.footprint import Placement, pad_xy, place
+from pkidl.footprint import Placement, place
 from pkidl.project import (
     PARITY_ERRORS,
     SILK_ERRORS,
@@ -52,7 +58,7 @@ from pkidl.project import (
     write_rules,
 )
 from pkidl.sexpr import find
-from pkidl.silk import nearest_clear_spot, place_references, silk_box, text_box
+from pkidl.silk import nearest_clear_spot, place_references
 from pkidl.stitch import stitch_points
 
 # Fixed, by the format or by the original.
@@ -71,41 +77,15 @@ FIXED = {
     "HS1": Spot(135.3, 62.7),
     "D1": Spot(173.3, 136.132769),  # status LED
 }
-# Relay block, relative to the relay. The original's first channel, with the
-# terminal 3.7 mm closer, so the second channel's relay clears the Nano, and the
-# opto and its resistor underneath moved left, between the Nano's pin rows.
-RELAY_BLOCK = {
-    "K": Spot(0, 0),
-    "D": Spot(-4.025, -7.61, -90),
-    "R": Spot(-8.5, 5.6, 0, True),
-    "U": Spot(-8.5, 2.6, 180, True),
-    "F": Spot(16.175, -13.2, 180),
-    "J": Spot(32.875, 16.2, 90),
-}
 # The 6-way terminals sit where the original puts them, 31.89 mm apart (each is
 # 31.48 long); the top one as high as the top-right hole's courtyard allows.
 RELAY_ANCHORS = [(153.725, 62.9), (153.725, 94.79)]
 
-# Thermocouple block, relative to the converter. Its pins 1-4 (GND, T-, T+, VCC)
-# face the filter and the terminal; 5-7 (SCK, CS, SO) face the Nano.
-TC_BLOCK = {
-    "U": Spot(0, 0, 180),
-    "C": Spot(5.25, 0, -90),
-    "FBP": Spot(9.05, -1.3),
-    "FBN": Spot(9.05, 1.39),
-    "RCLK": Spot(-6.4, -1.35),
-    "RSS": Spot(-6.4, 1.35),
-    "J": Spot(24.89, 1.27, 90),
-}
 TC_ANCHORS = [(163.68, 125.0), (163.68, 118.0)]  # 7 mm apart: the 2-way terminal is 6.54
 
 LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", 136.5, 83.0)
 LABEL_AT = (161.0, 136.6)
-LABEL_GAP = 0.4  # terminal label to the terminal's outline
 
-# Terminal labels, by pin, beside each terminal.
-RELAY_TERMINAL = {1: "LINE", 2: "ESTOP", 3: "GND", 4: "ESTOP", 5: "NO", 6: "NC"}
-TC_TERMINAL = {1: "T-", 2: "T+"}
 
 HV_NETS = [f"{r['ch']}_{n}" for r in RELAYS for n in ("COM", "NO", "NC", "LINE", "ESTOP")]
 NETCLASSES = [
@@ -161,12 +141,10 @@ DRU_RULES = (
 def placement() -> dict[str, Spot]:
     """Every footprint's position, by reference."""
     spots = dict(FIXED)
-    for r, (ax, ay) in zip(RELAYS, RELAY_ANCHORS, strict=True):
-        for role, spot in RELAY_BLOCK.items():
-            spots[r[role]] = spot.at(ax, ay)
-    for t, (ax, ay) in zip(THERMOCOUPLES, TC_ANCHORS, strict=True):
-        for role, spot in TC_BLOCK.items():
-            spots[t[role]] = spot.at(ax, ay)
+    for r, anchor in zip(RELAYS, RELAY_ANCHORS, strict=True):
+        spots |= channel_spots("relay", r, anchor)
+    for t, anchor in zip(THERMOCOUPLES, TC_ANCHORS, strict=True):
+        spots |= channel_spots("thermocouple", t, anchor)
     return spots
 
 
@@ -208,19 +186,7 @@ def build_pcb(
     # Terminal labels go left of the terminal's silkscreen outline, a gap clear of it.
     for chans, labels in ((RELAYS, RELAY_TERMINAL), (THERMOCOUPLES, TC_TERMINAL)):
         for c in chans:
-            outline = silk_box(placed[c["J"]])
-            assert outline is not None
-            for pin, label in labels.items():
-                _, py = pad_xy(placed[c["J"]], str(pin))
-                half = text_box(label, (0, 0), 1.0, 0.15, 0)[2]
-                board.text(label, (outline[0] - LABEL_GAP - half, py), size=1.0, thickness=0.15)
-            _, py = pad_xy(placed[c["J"]], str(max(labels)))
-            half = text_box(c["ch"], (0, 0), 1.2, 0.2, 0)[2]
-            want = (outline[0] - LABEL_GAP - half, py - 3.0)
-            # The title need not line up with a pin: the nearest clear spot to it.
-            at = nearest_clear_spot(board.items, c["ch"], want, SLICE_S.outline(*ORIGIN),
-                                    size=1.2, thickness=0.2)  # fmt: skip
-            board.text(c["ch"], at or want, size=1.2, thickness=0.2)
+            label_terminal(board, placed, c, labels, SLICE_S.outline(*ORIGIN))
 
     x0, y0, x1, y1 = SLICE_S.outline(*ORIGIN)
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
