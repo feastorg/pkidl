@@ -188,3 +188,28 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
 - **Loaf supply pours connect solidly.** The fraction of a ring 0.25 mm outside each +12V/GND pad that is filled is now 1.00 at every pad (0.14–0.61 through spokes before). Single-layer pours with solid pads are what the 5 A budget needs; both layers and stitching are for above it.
 - **DCMT pours fill nothing under 0.5 mm** (`POUR_MIN_WIDTH`). RLHT stays at 0.25 mm for now: at 0.5, U1.4 and U5.3 keep only one of their two GND thermal spokes (`starved_thermal`, an error). Revisit with RLHT's HV-on-both-layers rework.
 - **Still open from §4:** RLHT's GND at 1.25 mm from HV copper (the mains rules now flag it); tighter hulls.
+
+**2026-11-09: two-stage routing (§1, part of §2).**
+
+- **How.** `slice.route` routes every class but Default first, alone, with neck-down off. It then routes the signals around those routes, which are fixed as protected wiring, with neck-down on. Signals may neck from 0.5 to 0.375 mm (decided 2026-11-09). With a strict 0.5 mm, 15 (RLHT) and 16 (DCMT) signal connections stayed unrouted: I2C from J1 to the Nano, and the Nano's lines to the LMD18200s.
+- **Measured before choosing:** neck-down off in one stage left 11 connections unrouted on each board, and neck-down and fanout both off left 15 and 16. Power alone with neck-down off routes completely on both boards.
+- **RLHT's signals keep 3 mm from mains copper in the router** (a DSN `class_class` rule). Asking the same of the mains stage leaves 6 connections unrouted, because pins sit closer than 3 mm by their footprints. With the signal-stage rule, the router adds no violations beyond the 16 present before it starts.
+- **Result** (`drc --refill-zones --schematic-parity --severity-all`, 0 errors on both):
+
+| Board | Rule | Before | After |
+|---|---|---|---|
+| RLHT | HV Relay width (now an error) | 28 | 0 |
+| RLHT | Default width | 47 | 0 |
+| RLHT | mains to LV clearance | 22 | 26 |
+| RLHT | mains to LV creepage | 24 | 25 |
+| RLHT | mains to mains clearance | 14 | 6 |
+| DCMT | Default width | 28 | 2 |
+| DCMT | Motor width | 8 | 4 |
+| DCMT | Power width | 18 | 4 |
+
+- **What remains.**
+  - **DCMT Motor and Power:** pin entries up to 2.6 mm long (LMD18200 OUT pins at 1.05 mm, a +12V regulator pad at 0.84 mm).
+  - **DCMT Default:** Freerouting's 3/5 neck, 0.3 mm (CH2_BRAKE for 12.9 mm).
+  - **RLHT mains clearance:** 26 against 22. The full-width HV tracks are wider, and the rest are pad pairs set by the footprints and the circuit (Slice_RLHT#90).
+- **Nano pads.** RLHT's Nano (A1) pads now join the GND pours solidly. A signal routed beside A1.29 had left its thermal one spoke short, a `starved_thermal` error.
+- **Not done:** pours in the DSN (§3). As hard keepouts for the signal stage, the current hulls leave 22 DCMT connections unrouted, with 37 violations before routing, because they cover other nets' pins. That waits for tighter pours. Pin-clearance classes beyond the mains rule (§2) are also still open.

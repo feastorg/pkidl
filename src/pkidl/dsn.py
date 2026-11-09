@@ -115,12 +115,20 @@ def write_dsn(
     members: dict[str, list[str]],
     *,
     edge_clearance: float = 0.5,
+    only: set[str] | None = None,
+    fixed: tuple[list[Wire], list[Via]] = ([], []),
+    class_clearances: dict[tuple[str, str], float] | None = None,
 ) -> Path:
     """Write *path* for routing *footprints* (placed board nodes) inside *outline*.
 
     *outline* is the board edge as a closed polygon in board millimetres; the
     router is kept *edge_clearance* inside it. Netclasses and their members are
     as given to ``pkidl.project.write_project``: the first is Default.
+
+    With *only*, just those nets are routed; every pin stays an obstacle. *fixed*
+    routes (as ``read_ses`` returns them) are written as protected wiring: the
+    router keeps them and routes around them. *class_clearances* sets the router's
+    clearance between two classes' nets, in mm, over their own.
     """
     padstacks: dict[str, list[str]] = {}
     images: list[str] = []
@@ -210,16 +218,18 @@ def write_dsn(
         "  (network",
     ]  # fmt: skip
     for net in sorted(nets):
-        if len(nets[net]) > 1:
+        if len(nets[net]) > 1 and (only is None or net in only):
             lines.append(f"    (net {_q(net)} (pins {' '.join(sorted(nets[net]))}))")
-    routed = {n for n in nets if len(nets[n]) > 1}
+    routed = {n for n in nets if len(nets[n]) > 1 and (only is None or n in only)}
     classed: set[str] = set()
     for c in netclasses[1:]:
         classed |= set(members.get(c.name, []))
+    written: set[str] = set()
     for c in netclasses:
         names = sorted(routed - classed if c is default else routed & set(members.get(c.name, [])))
         if not names:
             continue
+        written.add(c.name)
         width, clearance = _n(c.track_width * 1000), _n(c.clearance * 1000)
         lines.append(
             f"    (class {_q(c.name)} {' '.join(_q(n) for n in names)}\n"
@@ -227,7 +237,20 @@ def write_dsn(
             f"      (rule (width {width}) (clearance {clearance}))\n"
             "    )"
         )
-    lines += ["  )", "  (wiring", "  )", ")"]
+    for (a, b), clearance in (class_clearances or {}).items():
+        if a in written and b in written:
+            lines.append(f"    (class_class (classes {_q(a)} {_q(b)}) "
+                         f"(rule (clearance {_n(clearance * 1000)})))")  # fmt: skip
+    lines += ["  )", "  (wiring"]
+    wires, vias = fixed
+    for w in wires:
+        pts = " ".join(f"{_n(x * 1000)} {_n(-y * 1000)}" for x, y in w.points)
+        lines.append(f"    (wire (path {w.layer} {_n(w.width * 1000)} {pts}) (net {_q(w.net)}) "
+                     "(type protect))")  # fmt: skip
+    for v in vias:
+        lines.append(f"    (via {_q(v.padstack)} {_n(v.at[0] * 1000)} {_n(-v.at[1] * 1000)} "
+                     f"(net {_q(v.net)}) (type protect))")  # fmt: skip
+    lines += ["  )", ")"]
     path.write_text("\n".join(lines) + "\n")
     return path
 

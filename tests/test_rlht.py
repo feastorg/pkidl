@@ -11,12 +11,14 @@ KiCad's ERC and DRC verdicts on the generated files run in CI's KiCad job.
 """
 
 import json
+import math
+import re
 from pathlib import Path
 
 import pytest
 
 from kidl_spike import libs
-from kidl_spike.boards import rlht
+from kidl_spike.boards import rlht, rlht_layout
 from pkidl.route import RouterError, router_command
 from pkidl.sexpr import find, find_all, parse
 
@@ -239,8 +241,16 @@ def test_board_is_routed(rlht_board):
             if net is not None:
                 pads[net[1]] = pads.get(net[1], 0) + 1
     assert {n for n, k in pads.items() if k > 1} <= routed
+    # The signal stage asks for 3 mm from mains copper, which some pins are closer than
+    # by their footprints: the router may report those, and must add none.
     log = (rlht_board.parent / "freerouting.log").read_text()
-    assert "(0 unrouted and 0 violations)" in log.split("Auto-routing stage completed")[-1]
+    before = re.search(r"Board has (\d+) pre-existing clearance violation", log)
+    after = re.search(r"\((\d+) unrouted and (\d+) violations\)",
+                      log.split("Auto-routing stage completed")[-1])  # fmt: skip
+    assert after is not None and after[1] == "0"
+    assert int(after[2]) == (int(before[1]) if before else 0)
+    power = (rlht_board.parent / "freerouting-power.log").read_text()
+    assert "(0 unrouted and 0 violations)" in power.split("Auto-routing stage completed")[-1]
 
 
 def test_board_is_byte_stable(rlht_board):
@@ -248,6 +258,7 @@ def test_board_is_byte_stable(rlht_board):
     first = rlht_board.parent
     second = rlht.build(first.parent / "b", source="test")
     for name in ("rlht.dsn", "rlht.ses", "rlht.kicad_pcb", "rlht.kicad_pro", "rlht.kicad_dru",
+                 "rlht-power.dsn", "rlht-power.ses",
                  "sym-lib-table", "fp-lib-table"):  # fmt: skip
         assert (second / name).read_bytes() == (first / name).read_bytes(), name
 
@@ -263,9 +274,35 @@ def test_rules_gate_widths_mains_spacing_and_holes(rlht_board):
     netclass widths as minimums, and a keepout for metal mounting hardware."""
     rules = _rules(rlht_board)
     assert "(constraint track_width (min 3mm))" in rules["HV Relay width"]
-    assert "(constraint track_width (min 0.5mm))" in rules["Default width"]
+    assert "(constraint track_width (min 0.375mm))" in rules["Default width"]
     assert "(constraint clearance (min 3mm))" in rules["mains to LV clearance"]
     assert "(constraint creepage (min 5.6mm))" in rules["mains to LV creepage"]
     assert "(constraint clearance (min 1.5mm))" in rules["mains to mains clearance"]
     assert "memberOfFootprint('H?')" in rules["mounting hole keepout"]
     assert "(constraint hole_clearance (min 2mm))" in rules["mounting hole keepout"]
+
+
+def _segments(board: Path) -> list[tuple[str, float, float]]:
+    """(net, width, length) of every track segment on the board."""
+    out = []
+    for s in find_all(parse(board.read_text()), "segment"):
+        a, b = _get(s, "start"), _get(s, "end")
+        length = math.dist((float(a[1]), float(a[2])), (float(b[1]), float(b[2])))
+        out.append((str(_get(s, "net")[1]), float(_get(s, "width")[1]), length))
+    return out
+
+
+def test_mains_tracks_are_full_width(rlht_board):
+    """Mains nets are routed first, alone, with neck-down off: no segment narrower than 3 mm,
+    and the rule that says so is an error."""
+    hv = set(rlht_layout.MEMBERS["HV Relay"])
+    widths = [w for net, w, _ in _segments(rlht_board) if net in hv]
+    assert widths and min(widths) >= 3.0
+    assert "(severity error)" in _rules(rlht_board)["HV Relay width"]
+
+
+def test_signals_keep_mains_clearance_in_the_router(rlht_board):
+    """The signal stage asks the router for 3 mm from mains copper."""
+    dsn = rlht_board.with_name("rlht.dsn").read_text()
+    assert '(class_class (classes "HV Relay" "Default") (rule (clearance 3000)))' in dsn
+    assert "(class_class" not in rlht_board.with_name("rlht-power.dsn").read_text()

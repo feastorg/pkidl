@@ -107,23 +107,26 @@ class DruRule:
     why: str = ""
 
 
-def width_rules(netclasses: list[NetClass], severity: str = "warning") -> list[DruRule]:
-    """One minimum-width rule per netclass, at the class's own width.
+def width_rules(
+    netclasses: list[NetClass],
+    severity: str = "warning",
+    minimums: dict[str, tuple[float, str]] | None = None,
+) -> list[DruRule]:
+    """One minimum-width rule per netclass, at the class's own width, or at the
+    (width, reason) *minimums* gives for it.
 
     KiCad treats a netclass width as the default for new tracks, not a minimum:
     a narrower track passes DRC unless a rule like these says otherwise.
     """
-    return [
-        DruRule(
-            f"{c.name} width",
-            "track_width",
-            c.track_width,
-            condition="" if c.name == "Default" else f"A.NetClass == '{c.name}'",
-            severity=severity,
-            why=f"the {c.name} netclass width, as a minimum",
-        )  # fmt: skip
-        for c in netclasses
-    ]
+    minimums = minimums or {}
+    out = []
+    for c in netclasses:
+        width, why = minimums.get(
+            c.name, (c.track_width, f"the {c.name} netclass width, as a minimum")
+        )
+        condition = "" if c.name == "Default" else f"A.NetClass == '{c.name}'"
+        out.append(DruRule(f"{c.name} width", "track_width", width, condition, severity, why))
+    return out
 
 
 def write_rules(path: Path, rules: list[DruRule]) -> Path:

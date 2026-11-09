@@ -11,12 +11,13 @@ KiCad's ERC and DRC verdicts on the generated files run in CI's KiCad job.
 """
 
 import json
+import math
 from pathlib import Path
 
 import pytest
 
 from kidl_spike import libs
-from kidl_spike.boards import dcmt
+from kidl_spike.boards import dcmt, dcmt_layout
 from kidl_spike.boards.common import default_circuit
 from pkidl.footprint import board_xy
 from pkidl.route import RouterError, router_command
@@ -230,8 +231,9 @@ def test_board_is_routed(dcmt_board):
     routed = {_get(s, "net")[1] for s in find_all(board, "segment")}
     multi = {n for n, p in _pad_nets(dcmt_board).items() if len(p) > 1}
     assert multi <= routed
-    log = (dcmt_board.parent / "freerouting.log").read_text()
-    assert "(0 unrouted and 0 violations)" in log.split("Auto-routing stage completed")[-1]
+    for log_name in ("freerouting-power.log", "freerouting.log"):
+        log = (dcmt_board.parent / log_name).read_text()
+        assert "(0 unrouted and 0 violations)" in log.split("Auto-routing stage completed")[-1]
 
 
 def test_board_is_byte_stable(dcmt_board):
@@ -239,6 +241,7 @@ def test_board_is_byte_stable(dcmt_board):
     first = dcmt_board.parent
     second = dcmt.build(first.parent / "b", source="test")
     for name in ("dcmt.dsn", "dcmt.ses", "dcmt.kicad_pcb", "dcmt.kicad_pro", "dcmt.kicad_dru",
+                 "dcmt-power.dsn", "dcmt-power.ses",
                  "sym-lib-table", "fp-lib-table"):  # fmt: skip
         assert (second / name).read_bytes() == (first / name).read_bytes(), name
 
@@ -254,7 +257,7 @@ def test_rules_gate_widths_and_holes(dcmt_board):
     rules = _rules(dcmt_board)
     assert "(constraint track_width (min 1.4mm))" in rules["Motor width"]
     assert "(constraint track_width (min 1.4mm))" in rules["Power width"]
-    assert "(constraint track_width (min 0.5mm))" in rules["Default width"]
+    assert "(constraint track_width (min 0.375mm))" in rules["Default width"]
     assert "(constraint hole_clearance (min 2mm))" in rules["mounting hole keepout"]
 
 
@@ -290,3 +293,24 @@ def test_pours_keep_off_the_bridge_bodies_and_the_logic_area(dcmt_board):
         and _get(z, "layer")[1] == "F.Cu"
     ]
     assert front_gndpwr == []
+
+
+def _segments(board: Path) -> list[tuple[str, float, float]]:
+    """(net, width, length) of every track segment on the board."""
+    out = []
+    for s in find_all(parse(board.read_text()), "segment"):
+        a, b = _get(s, "start"), _get(s, "end")
+        length = math.dist((float(a[1]), float(a[2])), (float(b[1]), float(b[2])))
+        out.append((str(_get(s, "net")[1]), float(_get(s, "width")[1]), length))
+    return out
+
+
+def test_power_tracks_neck_only_into_pins(dcmt_board):
+    """Motor and power nets are routed first, alone. A segment narrower than its class is
+    a short entry into a pin, never a run."""
+    width = {c.name: c.track_width for c in dcmt_layout.NETCLASSES}
+    cls = {n: c for c, nets in dcmt_layout.MEMBERS.items() for n in nets}
+    narrow = [(net, w, ln) for net, w, ln in _segments(dcmt_board)
+              if net in cls and w < width[cls[net]] - 1e-6]  # fmt: skip
+    assert narrow, "expected the LMD18200 pin entries"
+    assert max(ln for _, _, ln in narrow) < 3.0, narrow

@@ -15,7 +15,7 @@ from pathlib import Path
 from kidl_spike import libs
 from kidl_spike.boards.common import SLICE_S, symbols
 from pkidl.board import Board
-from pkidl.dsn import read_ses, write_dsn
+from pkidl.dsn import Via, Wire, read_ses, write_dsn
 from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import DruRule, NetClass
 from pkidl.route import freerouting
@@ -46,6 +46,10 @@ RULES: dict[str, float | bool] = {
     "min_via_annular_width": 0.05,
     "min_via_diameter": 0.4,
 }
+
+# Signal tracks route at the Default class's 0.5 mm and may neck to 3/4 of it, which the
+# router needs to complete them (decided 2026-11-09).
+SIGNAL_MINIMUM = {"Default": (0.375, "signals may neck from 0.5 to 0.375 mm (decided 2026-11-09)")}
 
 # The Slice design constraint's 0.5 mm minimum track, as the narrowest a pour may fill.
 POUR_MIN_WIDTH = 0.5
@@ -124,15 +128,31 @@ def route(
     name: str,
     netclasses: list[NetClass],
     members: dict[str, list[str]],
+    signal_clearances: dict[tuple[str, str], float] | None = None,
 ) -> None:
     """Route *board* with Freerouting and add its tracks and vias.
 
-    Writes ``<name>.dsn``, ``<name>.ses`` and the router's log into *outdir*.
+    Two stages. The nets of every class but Default (power, motor, mains) are
+    routed first, alone, with neck-down off: Freerouting would otherwise narrow
+    them along whole runs, not only into pins. The rest are then routed around
+    those, fixed, with neck-down on: signal tracks may neck to 3/4 of their width
+    (decided 2026-11-09), kept *signal_clearances* (class pairs, mm) from the
+    first stage's copper. Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses``
+    and the router's logs into *outdir*.
     """
-    dsn = write_dsn(
-        outdir / f"{name}.dsn", list(placed.values()), outline_polygon(), netclasses, members,
-        edge_clearance=float(RULES["min_copper_edge_clearance"]),
-    )  # fmt: skip
+    footprints, outline = list(placed.values()), outline_polygon()
+    edge = float(RULES["min_copper_edge_clearance"])
+    power = {n for c in netclasses[1:] for n in members.get(c.name, [])}
+    fixed: tuple[list[Wire], list[Via]] = ([], [])
+    if power:
+        dsn = write_dsn(outdir / f"{name}-power.dsn", footprints, outline, netclasses, members,
+                        edge_clearance=edge, only=power)  # fmt: skip
+        ses = freerouting(dsn, outdir / f"{name}-power.ses", log=outdir / "freerouting-power.log",
+                          options=["--router.automatic_neckdown=false"])  # fmt: skip
+        fixed = read_ses(ses)
+    dsn = write_dsn(outdir / f"{name}.dsn", footprints, outline, netclasses, members,
+                    edge_clearance=edge, fixed=fixed,
+                    class_clearances=signal_clearances)  # fmt: skip
     ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log")
     wires, vias = read_ses(ses)
     via_size = {f"Via[0-1]_{round(c.via_diameter * 1000)}:{round(c.via_drill * 1000)}_um":

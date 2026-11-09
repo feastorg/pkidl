@@ -11,6 +11,7 @@ import os
 import shlex
 import shutil
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 
@@ -26,14 +27,22 @@ def router_command() -> list[str]:
     return cmd
 
 
-def freerouting(dsn: Path, ses: Path, *, passes: int = 100, log: Path | None = None) -> Path:
-    """Route *dsn* into *ses*. Raises ``RouterError`` if no session is written."""
+def freerouting(
+    dsn: Path,
+    ses: Path,
+    *,
+    passes: int = 100,
+    log: Path | None = None,
+    options: Sequence[str] = (),
+) -> Path:
+    """Route *dsn* into *ses*, passing *options* to the router. Raises ``RouterError`` if
+    no session is written."""
     cmd = router_command()
     ses.unlink(missing_ok=True)
     # Settings and log go next to the output, not into the user's home.
     env = dict(os.environ, FREEROUTING__USER_DATA_PATH=str(ses.parent.resolve() / "freerouting"))
     result = subprocess.run(
-        [*cmd, "-de", str(dsn), "-do", str(ses), "-mp", str(passes), "-mt", "1"],
+        [*cmd, "-de", str(dsn), "-do", str(ses), "-mp", str(passes), "-mt", "1", *options],
         capture_output=True, text=True, env=env,
     )  # fmt: skip
     if log is not None:

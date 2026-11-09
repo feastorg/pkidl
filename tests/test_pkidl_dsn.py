@@ -1,0 +1,43 @@
+"""pkidl's DSN writer: which nets the router sees, fixed routes and class clearances."""
+
+from pkidl.dsn import Via, Wire, write_dsn
+from pkidl.project import NetClass
+from pkidl.sexpr import parse
+
+FOOTPRINT = """(footprint "R" (at {x} 10) (property "Reference" "{ref}")
+  (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net "A"))
+  (pad "2" smd rect (at 2 0) (size 1 1) (layers "F.Cu") (net "HV")))"""
+FOOTPRINTS = [parse(FOOTPRINT.format(x=x, ref=ref)) for x, ref in ((10, "R1"), (20, "R2"))]
+OUTLINE = [(0.0, 0.0), (40.0, 0.0), (40.0, 30.0), (0.0, 30.0)]
+CLASSES = [NetClass("Default", 0.2, 0.5), NetClass("HV", 1.25, 3.0)]
+MEMBERS = {"HV": ["HV"]}
+
+
+def test_only_leaves_other_nets_out_of_the_network(tmp_path):
+    text = write_dsn(
+        tmp_path / "b.dsn", FOOTPRINTS, OUTLINE, CLASSES, MEMBERS, only={"HV"}
+    ).read_text()
+    assert '(net "HV" (pins R1-2 R2-2))' in text
+    assert '(net "A"' not in text
+    assert '(class "Default"' not in text
+    assert text.count("(pin Pad") == 4  # every pin is still an obstacle
+
+
+def test_fixed_routes_are_protected_wiring(tmp_path):
+    fixed = ([Wire("HV", "F.Cu", 3.0, [(12.0, 10.0), (22.0, 10.5)])],
+             [Via("HV", "Via[0-1]_1000:500_um", (15.0, 12.0))])  # fmt: skip
+    text = write_dsn(
+        tmp_path / "b.dsn", FOOTPRINTS, OUTLINE, CLASSES, MEMBERS, fixed=fixed
+    ).read_text()
+    assert '(wire (path F.Cu 3000 12000 -10000 22000 -10500) (net "HV") (type protect))' in text
+    assert '(via "Via[0-1]_1000:500_um" 15000 -12000 (net "HV") (type protect))' in text
+
+
+def test_class_clearance_needs_both_classes(tmp_path):
+    pair = {("HV", "Default"): 3.0}
+    both = write_dsn(tmp_path / "a.dsn", FOOTPRINTS, OUTLINE, CLASSES, MEMBERS,
+                     class_clearances=pair).read_text()  # fmt: skip
+    assert '(class_class (classes "HV" "Default") (rule (clearance 3000)))' in both
+    one = write_dsn(tmp_path / "b.dsn", FOOTPRINTS, OUTLINE, CLASSES, MEMBERS, only={"HV"},
+                    class_clearances=pair).read_text()  # fmt: skip
+    assert "class_class" not in one

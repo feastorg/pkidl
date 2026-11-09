@@ -24,6 +24,7 @@ compare directly.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from kidl_spike import libs
@@ -33,6 +34,7 @@ from kidl_spike.boards.slice import (
     MOUNTING_HOLE_RULE,
     ORIGIN,
     RULES,
+    SIGNAL_MINIMUM,
     Spot,
     place_board,
     route,
@@ -105,8 +107,9 @@ MEMBERS = {"HV Relay": HV_NETS}
 # TI SLUP421: reinforced insulation to the bus side (SELV), basic between mains
 # conductors. Warnings until the layout meets them; J4/J5 pin 3 (GND between mains
 # pins) cannot, by circuit (Slice_RLHT#90).
+MAINS_LV_CLEARANCE = 3.0
 MAINS_RULES = [
-    DruRule("mains to LV clearance", "clearance", 3.0,
+    DruRule("mains to LV clearance", "clearance", MAINS_LV_CLEARANCE,
             "A.NetClass == 'HV Relay' && B.NetClass != 'HV Relay'",
             why="reinforced clearance: Table F.2, one step above 2.5 kV"),
     DruRule("mains to LV creepage", "creepage", 5.6,
@@ -116,7 +119,15 @@ MAINS_RULES = [
             "A.NetClass == 'HV Relay' && B.NetClass == 'HV Relay' && A.NetName != B.NetName",
             why="basic clearance as the floor between mains conductors"),
 ]  # fmt: skip
-DRU_RULES = width_rules(NETCLASSES) + MAINS_RULES + [MOUNTING_HOLE_RULE]
+# The mains routes are full width (two-stage routing, 2026-11-09): their minimum is an error.
+DRU_RULES = (
+    [
+        replace(r, severity="error") if r.name == "HV Relay width" else r
+        for r in width_rules(NETCLASSES, minimums=SIGNAL_MINIMUM)
+    ]
+    + MAINS_RULES
+    + [MOUNTING_HOLE_RULE]
+)
 
 
 def placement() -> dict[str, Spot]:
@@ -143,8 +154,15 @@ def build_pcb(
     As ``loaf_layout.build_pcb``. Routing writes ``<name>.dsn``, ``<name>.ses`` and
     the router's log alongside.
     """
-    board, placed = place_board(outdir, name, placement(), pad_nets, fields)
-    route(board, placed, outdir, name, NETCLASSES, MEMBERS)
+    # The Nano's GND pins join the GND pours directly: routing beside them can leave a
+    # thermal relief one spoke short of the two the rules require.
+    board, placed = place_board(
+        outdir, name, placement(), pad_nets, fields, solid_pads=frozenset({"A1"})
+    )
+    # The mains routes cannot all keep 3 mm from LV copper (pins sit closer by their
+    # footprints), so only the signals routed around them are held to it.
+    route(board, placed, outdir, name, NETCLASSES, MEMBERS,
+          signal_clearances={("HV Relay", "Default"): MAINS_LV_CLEARANCE})  # fmt: skip
 
     lib_id, x, y = LOGO
     board.footprint(place(libs.footprint_file(lib_id), Placement(lib_id, "LOGO1", "", x, y)))

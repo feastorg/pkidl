@@ -33,6 +33,7 @@ from kidl_spike.boards.slice import (
     ORIGIN,
     POUR_MIN_WIDTH,
     RULES,
+    SIGNAL_MINIMUM,
     Spot,
     place_board,
     pour_outline,
@@ -127,7 +128,7 @@ NETCLASSES = [
     ),  # fmt: skip
 ]
 MEMBERS = {"Motor": MOTOR_NETS, "Power": POWER_NETS}
-DRU_RULES = width_rules(NETCLASSES) + [MOUNTING_HOLE_RULE]
+DRU_RULES = width_rules(NETCLASSES, minimums=SIGNAL_MINIMUM) + [MOUNTING_HOLE_RULE]
 
 # Pours: (net, layer, priority). Higher priority wins where pours overlap.
 POURS = [
