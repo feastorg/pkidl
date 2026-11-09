@@ -274,3 +274,51 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
   - Edge findings: mostly the bus connector J1's outline, which sits 3.6 mm from the edge in the Slice format.
   - Overlaps: footprint-internal text (the `*` marks in S1, S2 and U1), and outlines of parts at the original's positions (C5/U2, C10/U3).
   - Loaf: the original's J7 label style, 0.6 mm and on J6's outline line.
+
+## Second review, phase ⑤½ (2026-11-09)
+
+**Method.** I built all five boards from `main` (6446eb0) with zones filled and rendered both sides with `kicad-cli pcb render`. Five reviewers then went through them, one per board, with the renders, the filled board, its DRC report, and the original where there is one. Their briefs listed the issues already known and accepted. I re-measured each claim marked ✔ on the board file.
+
+### Major
+
+1. **DCMT ✔: tracks fragment the pours** (§3, still open). The B.Cu GNDPWR pour is in 3 pieces (2275, 224, 142 mm²).
+   - Channel 1's return and bulk-capacitor loop (J4.1, C5.2, C7.2) are in the 224 mm² piece. They leave through about 29 mm of track that passes C10.2, channel 2's capacitor.
+   - Both switches' +12V hangs on one 1.4 mm × 30.4 mm B.Cu track at y 95.71. It carries up to 6 A; IPC-2221 gives about 3 A for that width at 1 oz.
+   - CH1_VS, CH2_VS and the CH2 outputs are also in pieces: C10.1 reaches U3.6 over 25.7 mm of track.
+   - The original has one pour per net.
+2. **HBTC ✔: composition reused DCMT's ground pours unchanged.**
+   - The thermocouple filters and terminals sit over B.Cu GNDPWR, the motor return: every point from x 170 to 188.6 at y 85.5. Only the MAX31855s are over GND.
+   - CH1_CSENS, the PWM-chopped current sense, runs on B.Cu at x 167.12 (y 78.4–100.9), under all four thermocouple input traces.
+   - A block needs to bring its ground domain, not only its parts.
+3. **RLHT ✔: mains routing.**
+   - Each CH_LINE (3 mm, B.Cu) runs under its relay at x 158.11, about 1.3 mm from the coil and +12V pins. The original routed it 3.3 mm away.
+   - J4.3/J5.3 (GND) hang on a 0.375 mm track down the edge (x 191.15, y 71.2–100.2) behind the mains pins, returning through the MAX31855 ground. There is also a 124 mm² F.Cu GND sliver beside it.
+4. **Loaf ✔: J2's ten pin labels are off the board** (x 45.69–46.49; the edge is at x 48.3). J2's silk outline overhangs the edge, and the labels go left of that outline. The render clips them and DRC does not report them.
+5. **TC4 ✔: the terminals don't line up with Slice_THRM_31855.** Pin 1 matches, but pin 2 runs up (−y) where the reference's runs down, so the bodies sit 2.54 mm off its cutouts.
+   - Ours are Phoenix MPT at 90°, as on the hand-drawn RLHT; the reference uses TE 282834 at −90°.
+   - Which side the wire enters from is not settled: both footprints draw a double fab line on local −y, yet RLHT's original uses this terminal at 90° at its edge. It needs a datasheet or a built board.
+
+### Minor
+
+- **Thermocouple pairs split across layers** (one wire through a via) on RLHT, HBTC and TC4. TC4's TC4 inputs have TC_DATA under them.
+- **Silkscreen:**
+  - The new labels are 0.8 mm / 0.12 mm, below a common 1.0 / 0.15 fab minimum.
+  - DCMT's VDC terminal (55 V in) is marked on B.SilkS only.
+  - DCMT's bus-pin labels, "LED", "GND TIE" and the Loaf's title block are gone.
+  - C5/C10 references land far from their parts; J3's reference on RLHT sits under the terminal.
+- **RLHT:** stitching vias under the fuse bodies (they meet the 5.6 mm rule); 1 mm² GND slivers by J1.
+- **HBTC:** a 290 mm² B.Cu area with no pour; the lower right is empty; the thermocouple blocks could move there, onto GND.
+- **DCMT:** no stackup declared (the original declares copper thickness, ENIG and black mask); BUCK_SW and +5V at 0.5 mm (the original uses 1.0–1.5).
+
+### In the originals
+
+The hand-drawn Loaf_x004 labels pins 7 and 8 the wrong way round on every slice connector: SYNC on 7 and INT on 8, while the pads are INT on 7 and SYNC on 8. The generated board is correct. Whether to file it upstream is undecided.
+
+### Order of work (decided 2026-11-09)
+
+1. **Pour-aware routing.** The router keeps other nets out of a pour, so the pour stays one piece; each block brings its own pour outlines and ground domain. This fixes Major 1 and HBTC's ground (2), and should fix RLHT's GND path (3).
+2. **Quick fixes:**
+   - the Loaf's J2 labels: keep labels on the board;
+   - RLHT's LINE offset and GND path, if step 1 doesn't fix them;
+   - TC4's terminal orientation, once the entry side is known.
+3. **Minor items**, as they fall out.
