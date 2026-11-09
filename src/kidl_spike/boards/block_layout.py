@@ -247,3 +247,21 @@ def terminal_labels(
             texts.append((title, (px, py - 4.6)))
         for text, (px, py) in texts:
             board.text(text, (px - dx, py), layer=layer, size=0.8, thickness=0.12, angle=90)
+
+
+# A thermocouple front end's regions, from the converter (all its parts are on F.Cu):
+# - no track or via on B.Cu under its inputs, from the converter's input pins to the
+#   terminal: a signal there (a bridge's current sense, say) couples into microvolts;
+# - GND on B.Cu over the whole block, above a power-ground pour: on a board whose bus
+#   ground carries motor current, the front end still sits on logic ground.
+TC_INPUT_KEEPOUT = (3.5, -2.6, 26.0, 2.9)  # x0, y0, x1, y1
+TC_GROUND = (-8.5, -3.4, 28.5, 3.4)  # under 7 mm, the closest channel pitch: regions never touch
+
+
+def thermocouple_region(t: dict, anchor: tuple[float, float], box: tuple) -> list[tuple]:
+    """One of a thermocouple channel's regions, *box* from its converter, as a polygon."""
+    ax, ay = anchor
+    x0, y0, x1, y1 = box
+    return [
+        (round(ax + x, 6), round(ay + y, 6)) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))
+    ]

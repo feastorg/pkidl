@@ -34,3 +34,22 @@ def test_pads_of_any_net_are_avoided():
     pts = _points([pad])
     assert all(math.dist(p, (9, 9)) >= 0.4 + math.hypot(2, 2) / 2 + 0.5 for p in pts)
     assert (9.0, 9.0) not in pts
+
+
+def test_no_via_in_a_pocket_the_fill_would_drop():
+    """A square of another net's tracks encloses a pocket; the pour there is an island the
+    fill drops, so a via in it would connect on one layer only. None goes there, on
+    either layer's account."""
+    box = [((6, 6), (14, 6)), ((14, 6), (14, 14)), ((14, 14), (6, 14)), ((6, 14), (6, 6))]
+    items = [parse(f'(segment (start {a[0]} {a[1]}) (end {b[0]} {b[1]}) (width 0.5) '
+                   f'(layer "B.Cu") (net "SIG"))') for a, b in box]  # fmt: skip
+    pts = _points(items)
+    assert pts
+    assert not [p for p in pts if 6 < p[0] < 14 and 6 < p[1] < 14]
+
+
+def test_no_via_in_an_avoided_area():
+    keepout = [(4.0, 4.0), (16.0, 4.0), (16.0, 16.0), (4.0, 16.0)]
+    pts = stitch_points([], "GND", OUTLINE, pitch=2.0, diameter=0.8, clearance=0.5, edge=0.5,
+                        avoid=[keepout])  # fmt: skip
+    assert pts and not [p for p in pts if 3.1 < p[0] < 16.9 and 3.1 < p[1] < 16.9]

@@ -28,6 +28,8 @@ from kidl_spike.boards.block_layout import (
     MOTOR_SIGNALS,
     POWER,
     RELAY_TERMINAL,
+    TC_GROUND,
+    TC_INPUT_KEEPOUT,
     TC_TERMINAL,
     at_offset,
     bridge_terminals,
@@ -37,6 +39,7 @@ from kidl_spike.boards.block_layout import (
     encoder_terminals,
     label_terminal,
     terminal_labels,
+    thermocouple_region,
 )
 from kidl_spike.boards.common import SLICE_S
 from kidl_spike.boards.slice import (
@@ -72,6 +75,9 @@ LOGO_FOOTPRINT = "KMLib_Aesthetic:OSHW_Logo_10mm"
 DEFAULT = NetClass("Default", clearance=0.2, track_width=0.5, via_diameter=1.0, via_drill=0.5)
 STITCH_PITCH = 5.0  # GND stitching: the original RLHT's 0.8/0.4 vias, on a grid
 STITCH_VIA = (0.8, 0.4)
+# Clear of other copper by this much, so the pours reach a stitching via on both layers:
+# at 0.5 mm, vias boxed in by tracks landed in pockets the fill drops (dangling vias).
+STITCH_CLEARANCE = 1.0
 
 
 @dataclass(frozen=True)
@@ -155,14 +161,19 @@ def build_pcb(
     # The mains routes cannot all keep 3 mm from LV copper (pins sit closer by their
     # footprints), so only the signals routed around them are held to it.
     clearances = {("HV Relay", "Default"): MAINS_LV_CLEARANCE} if relays else None
+    thermocouples = [(t, spec.anchors[t["ch"]]) for t in spec.channels("thermocouple")]
+    # B.Cu under each thermocouple front end: no track under its inputs; on a board whose
+    # bus ground is a power ground, none under the whole block, which gets logic ground.
+    box = TC_GROUND if spec.circuit.ground != "GND" else TC_INPUT_KEEPOUT
+    inputs = [("B.Cu", thermocouple_region(t, a, box)) for t, a in thermocouples]
     route(board, placed, outdir, name, classes, members, signal_clearances=clearances,
-          vias=vias)  # fmt: skip
+          vias=vias, keepouts=inputs)  # fmt: skip
     if spec.stitch:
         keep = {net: MAINS_LV_CREEPAGE for net in hv_nets} | {"": MOUNTING_HOLE_RULE.min_mm}
         edge = float(RULES["min_copper_edge_clearance"])
         for p in stitch_points(board.items, "GND", outline_polygon(), pitch=STITCH_PITCH,
-                               diameter=STITCH_VIA[0], clearance=0.5, edge=edge,
-                               keep_from=keep):  # fmt: skip
+                               diameter=STITCH_VIA[0], clearance=STITCH_CLEARANCE, edge=edge,
+                               keep_from=keep, avoid=[poly for _, poly in inputs]):  # fmt: skip
             board.via(p, *STITCH_VIA, "GND")
 
     board.footprint(place(libs.footprint_file(LOGO_FOOTPRINT),
@@ -182,6 +193,15 @@ def build_pcb(
     r.pours(board, placed, outline, block_pours)
     for b in bridges:
         bridge_zones(board, placed, b)
+    for t, a in thermocouples:
+        # The router's keepout, as a rule area DRC holds the board to.
+        board.keepout(f"{t['ch']} inputs", "B.Cu", thermocouple_region(t, a, box), pours=True)
+        if spec.circuit.ground != "GND":
+            # Logic ground on B.Cu over the whole block, above the power-ground pour. No
+            # track crosses it (below), so it fills as one piece, joined to the board's GND
+            # pour where the two overlap at the converter.
+            board.zone("GND", "B.Cu", thermocouple_region(t, a, TC_GROUND), clearance=0.5,
+                       min_thickness=POUR_MIN_WIDTH, priority=4, solid=True)  # fmt: skip
     x0, y0, x1, y1 = outline
     if spec.circuit.ground != "GND":
         # The power ground fills the back. On the front it is only under the bridges'

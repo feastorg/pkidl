@@ -130,6 +130,7 @@ def route(
     members: dict[str, list[str]],
     signal_clearances: dict[tuple[str, str], float] | None = None,
     vias: list[Via] | None = None,
+    keepouts: list[tuple[str, list[tuple[float, float]]]] | None = None,
 ) -> None:
     """Route *board* with Freerouting and add its tracks and vias.
 
@@ -139,7 +140,8 @@ def route(
     those, fixed, with neck-down on: signal tracks may neck to 3/4 of their width
     (decided 2026-11-09), kept *signal_clearances* (class pairs, mm) from the
     first stage's copper. *vias* are placed before routing and kept: thermal vias
-    under a part, say. Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses``
+    under a part, say. *keepouts* (layer, polygon) hold every track and via out, in
+    both stages. Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses``
     and the router's logs into *outdir*.
     """
     footprints, outline = list(placed.values()), outline_polygon()
@@ -150,7 +152,8 @@ def route(
     fixed: tuple[list[Wire], list[Via]] = ([], list(vias))
     if power:
         dsn = write_dsn(outdir / f"{name}-power.dsn", footprints, outline, netclasses, members,
-                        edge_clearance=edge, only=power, fixed=fixed)  # fmt: skip
+                        edge_clearance=edge, only=power, fixed=fixed,
+                        areas=keepouts)  # fmt: skip
         ses = freerouting(dsn, outdir / f"{name}-power.ses", log=outdir / "freerouting-power.log",
                           options=["--router.automatic_neckdown=false"])  # fmt: skip
         wires, out_vias = read_ses(ses)
@@ -159,7 +162,7 @@ def route(
         fixed = (wires, out_vias + [v for v in vias if (v.net, v.at) not in kept])
     dsn = write_dsn(outdir / f"{name}.dsn", footprints, outline, netclasses, members,
                     edge_clearance=edge, fixed=fixed,
-                    class_clearances=signal_clearances)  # fmt: skip
+                    class_clearances=signal_clearances, areas=keepouts)  # fmt: skip
     ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log")
     wires, routed_vias = read_ses(ses)
     for w in wires:

@@ -79,3 +79,22 @@ def test_board_is_byte_stable(hbtc_board):
     for name in ("hbtc.dsn", "hbtc.ses", "hbtc-power.dsn", "hbtc-power.ses", "hbtc.kicad_pcb",
                  "hbtc.kicad_pro", "hbtc.kicad_dru", "sym-lib-table", "fp-lib-table"):  # fmt: skip
         assert (first / name).read_bytes() == (second / name).read_bytes(), name
+
+
+def _value(node, key: str) -> str:
+    child = find(node, key)
+    return "" if child is None else str(child[1])
+
+
+def test_thermocouples_sit_on_logic_ground(hbtc_board):
+    """On a board whose bus ground carries motor current, each thermocouple block gets GND
+    on B.Cu above the power ground, and no track crosses it (a rule area DRC enforces)."""
+    zones = find_all(parse(hbtc_board.read_text()), "zone")
+    gnd = [z for z in zones if _value(z, "net") == "GND" and _value(z, "priority") == "4"]
+    keepouts = [
+        z for z in zones if find(z, "keepout") is not None and _value(z, "name").endswith("inputs")
+    ]
+    assert len(gnd) == len(keepouts) == len(hbtc.THERMOCOUPLES)
+    for z in keepouts:
+        rules = find(z, "keepout")
+        assert rules is not None and _value(rules, "tracks") == "not_allowed"

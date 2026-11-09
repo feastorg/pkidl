@@ -322,3 +322,29 @@ The hand-drawn Loaf_x004 labels pins 7 and 8 the wrong way round on every slice 
    - RLHT's LINE offset and GND path, if step 1 doesn't fix them;
    - TC4's terminal orientation, once the entry side is known.
 3. **Minor items**, as they fall out.
+
+### Progress (phase ⑤½)
+
+**Targeted fixes, not general pour-aware routing (decided 2026-11-09).** I measured on DCMT what pour-aware routing would take:
+
+- **A Freerouting `plane`:** it connects its own net through the pour (GNDPWR then needs 6 tracks, not 37 connections), but other nets still route across it. Even a small plane didn't keep signals out (CH2_CSENS entered the VS region), and with it 15 connections went unrouted.
+- **Power on one layer** (`use_layer F.Cu` for Motor and Power): 9 connections unrouted.
+- **Hull keepouts** (2026-11-09, earlier): 22 unrouted, because the hulls cover other nets' pins.
+
+What remains is per-board layer design, as the originals do it: both-layer pours carrying the connections, plus stitching. That is out of the spike's scope. Measured limits:
+
+- **DCMT +12V capacity:** the Power class sized for both channels (6 A, 3.6 mm by IPC-2221) leaves 15 connections unrouted in the power stage; 2.5 mm leaves 5 and 2.0 mm leaves 6. The +12V trunk to the switches stays a 1.4 mm track (about 3 A). It needs a placement or layer redesign.
+- **DCMT GNDPWR pieces and the long return loop** (through C10.2) stay as they are, for the same reason.
+- **RLHT's J4.3/J5.3 GND path** runs behind the mains pins because pin 3 is GND between mains pins (Slice_RLHT#90): the circuit, not the layout.
+- **RLHT's CH_LINE offset under the relay:** not attempted. It is the HV routing step 5 was going to rework.
+- **TC4's terminal entry side:** open, waiting on a Phoenix MPT datasheet or a built RLHT.
+
+**Done:**
+
+- **The Loaf's J2 labels are on the board** (#35): x 50.06–50.86, as on the original.
+- **Thermocouple ground domain:**
+  - every thermocouple block keeps B.Cu tracks and vias out from under its inputs, a router keepout and a DRC rule area;
+  - on a board whose bus ground is a power ground (HBTC), the whole block gets a B.Cu GND pour above GNDPWR, with no tracks across it.
+
+  On HBTC, B.Cu under both blocks is now GND at every point tested (x 157–186, y 80–91.5), where before it was GNDPWR from x 170. CH1_CSENS no longer runs under the inputs. Every thermocouple pair on RLHT, HBTC and TC4 now runs on F.Cu only.
+- **Stitching vias land only where the pour reaches them:** `stitch_points` models each layer's fill and keeps a via only in the main region on both layers. After the routing change, TC4 had 2 dangling vias in pockets under the Nano; now it has none. Counts: RLHT 38, TC4 110.
