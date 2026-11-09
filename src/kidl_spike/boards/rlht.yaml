@@ -2,6 +2,10 @@
 # References are the original's (feastorg/Slice_RLHT@a7308f3), so it compares part for
 # part. Anchors: the relay's and the converter's positions, board mm.
 name: rlht
+title: Slice_RLHT
+root: rlht
+# GND is poured on both layers: stitch them.
+stitch: true
 buck: AP63205WU-7
 bus_value: Conn_01x10_Female
 nano:

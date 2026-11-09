@@ -2,6 +2,9 @@
 # Slice_DCMT) and two MAX31855K thermocouple channels (from Slice_RLHT), on one Nano.
 # No references are listed: every one is generated. Anchors are board mm.
 name: hbtc
+title: Slice_HBTC
+root: dcmt
+power_nets: ["+12V", GNDPWR]
 buck: AP63205
 # The motor current returns on the bus ground, tied to logic ground at NT1 (as on DCMT).
 ground: GNDPWR

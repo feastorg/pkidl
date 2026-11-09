@@ -5,10 +5,13 @@ channel an anchor; the block's parts follow, so a block placed twice repeats exa
 
 from __future__ import annotations
 
+import math
+
 from kidl_spike.boards.slice import POUR_MIN_WIDTH, Spot
 from pkidl.board import Board
 from pkidl.dsn import Via, via_padstack
 from pkidl.footprint import pad_xy
+from pkidl.project import DruRule, NetClass
 from pkidl.sexpr import Node, find
 from pkidl.silk import nearest_clear_spot, silk_box, text_box
 
@@ -107,7 +110,64 @@ RELAY_TERMINAL = {1: "LINE", 2: "ESTOP", 3: "GND", 4: "ESTOP", 5: "NO", 6: "NC"}
 TC_TERMINAL = {1: "T-", 2: "T+"}
 
 
-BLOCK_SPOTS = {"relay": RELAY_BLOCK, "thermocouple": TC_BLOCK, "bridge": BRIDGE_BLOCK}
+# The design current of each motor channel. The LMD18200 is rated 3 A continuous.
+MOTOR_AMPS = 3.0
+
+
+def ipc2221_width(amps: float, rise_c: float = 10.0, copper_oz: float = 1.0) -> float:
+    """Track width (mm, rounded up to 0.1) for *amps* on an outer layer, IPC-2221.
+
+    I = 0.048 * dT^0.44 * A^0.725, with A the cross-section in mil^2; 1 oz copper
+    is 1.378 mil thick.
+    """
+    area_mil2 = (amps / (0.048 * rise_c**0.44)) ** (1 / 0.725)
+    width_mm = area_mil2 / (1.378 * copper_oz) * 0.0254
+    return math.ceil(width_mm * 10 - 1e-9) / 10
+
+
+# Mains on the relay-switched lines (decided 2026-11-08). IEC 60664-1, 230 V,
+# overvoltage category II, pollution degree 2, material group III, as reproduced in
+# TI SLUP421: reinforced insulation to the bus side (SELV), basic between mains
+# conductors. Warnings until the layout meets them; J4/J5 pin 3 (GND between mains
+# pins) cannot, by circuit (Slice_RLHT#90).
+MAINS_LV_CLEARANCE = 3.0
+MAINS_LV_CREEPAGE = 5.6
+MAINS_RULES = [
+    DruRule("mains to LV clearance", "clearance", MAINS_LV_CLEARANCE,
+            "A.NetClass == 'HV Relay' && B.NetClass != 'HV Relay'",
+            why="reinforced clearance: Table F.2, one step above 2.5 kV"),
+    DruRule("mains to LV creepage", "creepage", MAINS_LV_CREEPAGE,
+            "A.NetClass == 'HV Relay' && B.NetClass != 'HV Relay'",
+            why="reinforced creepage: twice Table F.4's ~2.8 mm basic value at 250 V"),
+    DruRule("mains to mains clearance", "clearance", 1.5,
+            "A.NetClass == 'HV Relay' && B.NetClass == 'HV Relay' && A.NetName != B.NetName",
+            why="basic clearance as the floor between mains conductors"),
+]  # fmt: skip
+
+
+# What each block kind brings to the board's rules.
+# - A relay switches mains: its lines are the HV Relay class, full width, kept from
+#   everything else by the mains rules.
+HV_RELAY = NetClass("HV Relay", clearance=1.25, track_width=3.0, via_diameter=1.6, via_drill=0.8)
+HV_SIGNALS = ("COM", "NO", "NC", "LINE", "ESTOP")
+# - A bridge carries a motor channel's current: its supply and outputs are the Motor
+#   class. Clearance per IPC-2221 B2 (outer layer, uncoated) for 31-150 V: VS can be an
+#   external supply, up to the LMD18200's 55 V.
+MOTOR = NetClass("Motor", clearance=0.6, track_width=ipc2221_width(MOTOR_AMPS),
+                 via_diameter=1.6, via_drill=0.8)  # fmt: skip
+MOTOR_SIGNALS = ("VS", "VDC", "OUT1", "OUT2")
+# - A board's supply and return (its power_nets): sized for one motor channel; the
+#   pours on both layers carry the rest.
+POWER = NetClass("Power", clearance=0.2, track_width=ipc2221_width(MOTOR_AMPS),
+                 via_diameter=1.6, via_drill=0.8)  # fmt: skip
+
+# Encoder pins carry their channel: the two terminals are 4 mm apart, no room for a title.
+ENCODER_TERMINAL = {1: "{n}A", 2: "{n}B", 3: "5V", 4: "GND"}
+# Encoder block: just its terminal, turned to face the edge.
+ENCODER_BLOCK = {"J": Spot(0, 0, -90)}
+
+BLOCK_SPOTS = {"relay": RELAY_BLOCK, "thermocouple": TC_BLOCK, "bridge": BRIDGE_BLOCK,
+               "encoder": ENCODER_BLOCK}  # fmt: skip
 
 
 def channel_spots(kind: str, params: dict, anchor: tuple[float, float]) -> dict[str, Spot]:
@@ -165,3 +225,25 @@ def label_terminal(
     # The title need not line up with a pin: the nearest clear spot to it.
     at = nearest_clear_spot(board.items, c["ch"], want, outline_box, size=1.2, thickness=0.2)
     board.text(c["ch"], at or want, size=1.2, thickness=0.2)
+
+
+def encoder_terminals(e: dict) -> list[tuple[str, dict[int, str], str, str, float]]:
+    """An encoder terminal's pin labels, as ``bridge_terminals``: they carry the channel."""
+    labels = {pin: label.format(n=e["ch"][-1]) for pin, label in ENCODER_TERMINAL.items()}
+    return [(e["J"], labels, "", "F.SilkS", LABEL_DX)]
+
+
+def terminal_labels(
+    board: Board,
+    placed: dict[str, Node],
+    entries: list[tuple[str, dict[int, str], str, str, float]],
+) -> None:
+    """Pin labels along each terminal, *dx* left of its pads, turned along it; a title, if
+    any, above the first pin, clear of the bridge's reference text."""
+    for ref, labels, title, layer, dx in entries:
+        texts = [(label, pad_xy(placed[ref], str(pin))) for pin, label in labels.items()]
+        if title:
+            px, py = pad_xy(placed[ref], str(min(labels)))
+            texts.append((title, (px, py - 4.6)))
+        for text, (px, py) in texts:
+            board.text(text, (px - dx, py), layer=layer, size=0.8, thickness=0.12, angle=90)

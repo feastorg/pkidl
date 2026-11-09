@@ -1,8 +1,11 @@
 # Slice_DCMT: two encoder terminals, then two LMD18200 H-bridge channels. The bus
 # ground is the power ground, tied to logic ground at NT1. References are the
-# original's (feastorg/Slice_DCMT), so it compares part for part. Encoder terminals
-# sit where the layout fixes them; bridges at their LMD18200's position, board mm.
+# original's (feastorg/Slice_DCMT), so it compares part for part. Anchors: each
+# encoder terminal's and each bridge's LMD18200's position, board mm.
 name: dcmt
+title: Slice_DCMT
+root: dcmt
+power_nets: ["+12V", GNDPWR]
 buck: AP63205
 ground: GNDPWR
 net_tie: true
@@ -26,11 +29,13 @@ channels:
     a: 20
     b: 19
     refs: {J: J2}
+    anchor: [188.75, 119.68]
   - kind: encoder
     ch: ENC2
     a: 22
     b: 21
     refs: {J: J3}
+    anchor: [188.76, 108.04]
   - kind: bridge
     ch: CH1
     pins: {DIR: 14, BRAKE: 15, PWM: 13, CSENS: 26, THRM: 16}

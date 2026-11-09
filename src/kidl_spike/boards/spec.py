@@ -57,6 +57,10 @@ class BoardSpec:
     name: str
     circuit: SliceCircuit
     anchors: dict[str, tuple[float, float]]  # channel name -> block anchor
+    title: str = ""  # on the silkscreen, before the source label
+    root: str = ""  # whose root-part layout it uses: "rlht" or "dcmt" (slice_build.ROOTS)
+    power_nets: tuple[str, ...] = ()  # the Power netclass: supply and return
+    stitch: bool = False  # GND stitching vias between whole-board GND pours
 
     def channels(self, kind: str) -> list[dict[str, Any]]:
         """The parameters of every channel of *kind*, in board order."""
@@ -156,7 +160,18 @@ def parse(data: Any, where: str) -> BoardSpec:
         net_tie=bool(data.get("net_tie", False)),
         pwr_flags=tuple(data.get("pwr_flags", ("+12V", "GND"))),
     )
-    return BoardSpec(name=need(data, "name", str, ""), circuit=circuit, anchors=anchors)
+    power = data.get("power_nets", [])
+    if not (isinstance(power, list) and all(isinstance(n, str) for n in power)):
+        raise fail("power_nets", "expected a list of net names")
+    return BoardSpec(
+        name=need(data, "name", str, ""),
+        circuit=circuit,
+        anchors=anchors,
+        title=str(data.get("title", "")),
+        root=str(data.get("root", "")),
+        power_nets=tuple(power),
+        stitch=bool(data.get("stitch", False)),
+    )
 
 
 @dataclass(frozen=True)

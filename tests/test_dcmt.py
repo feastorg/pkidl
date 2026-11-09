@@ -194,7 +194,7 @@ def test_bridge_blocks_repeat_by_translation(dcmt_board):
 
 def test_motor_netclass_sized_for_the_design_current(dcmt_board):
     """Every net carrying a channel's motor current is in Motor, sized by IPC-2221 for 3 A."""
-    from kidl_spike.boards.dcmt_layout import MOTOR_AMPS
+    from kidl_spike.boards.block_layout import MOTOR_AMPS
 
     project = json.loads(dcmt_board.with_suffix(".kicad_pro").read_text())["net_settings"]
     members = {p["pattern"] for p in project["netclass_patterns"] if p["netclass"] == "Motor"}
