@@ -230,3 +230,24 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
   - DCMT: Default width 2, Motor 4, Power 3.
   - RLHT: mains 26/25/6, unchanged.
 - **Not done:** Loaf stitching, which is only needed above 5 A; DCMT GND stitching (DCMT's GND is poured on B.Cu only).
+
+**2026-11-09: step 5 (HV on both layers, a Power class on RLHT) deferred** (decided 2026-11-09). RLHT's current placement doesn't fit it, and making room is Slice layout work, not pkidl.
+
+- **Measured** (fresh builds, Freerouting's final unrouted counts):
+
+| Variant | HV stage | Power stage | Signals |
+|---|---|---|---|
+| HV on both layers, Power 1.0 mm | 0 | 1 | 9 |
+| HV on one layer, Power 1.0 mm | 0 | 1 | 2 |
+| HV on one layer, Power 0.8 mm | 0 | 0 | 1 |
+
+- **HV on both layers works when there is room:** 511.9 mm of HV, 14 routes on each layer, nothing necked.
+- **Mechanism, on branch `feat/rlht-hv-power` (commit 9d6a422, not merged).** `slice.route(stages=[...])`:
+  - a `both_layers` stage routes on F.Cu only (`use_layer`), with every pad blocking both layers, and copies each route onto B.Cu;
+  - fixed wires on nets a stage doesn't route are carried forward, since Freerouting keeps them as obstacles but leaves them out of its session.
+
+  With no stages given, the branch routes RLHT and DCMT byte-identically to main.
+- **The RLHT settings tried:**
+  - `NetClass("Power", clearance=0.2, track_width=1.0, via_diameter=1.0, via_drill=0.5)` for `+12V`, `+5V` and `BUCK_SW` (the original: +12V 1.0–1.5 mm, +5V 1.5 mm on its main runs);
+  - `stages=[Stage("hv", {"HV Relay"}, both_layers=True), Stage("power", {"Power"})]`.
+- **To pick it up:** make room in RLHT's placement, mainly around the relay blocks and the buck, then rerun the table above.
