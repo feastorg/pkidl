@@ -243,14 +243,14 @@ def test_board_is_routed(rlht_board):
     assert {n for n, k in pads.items() if k > 1} <= routed
     # The signal stage asks for 3 mm from mains copper, which some pins are closer than
     # by their footprints: the router may report those, and must add none.
-    log = (rlht_board.parent / "freerouting.log").read_text()
-    before = re.search(r"Board has (\d+) pre-existing clearance violation", log)
-    after = re.search(r"\((\d+) unrouted and (\d+) violations\)",
-                      log.split("Auto-routing stage completed")[-1])  # fmt: skip
-    assert after is not None and after[1] == "0"
-    assert int(after[2]) == (int(before[1]) if before else 0)
-    power = (rlht_board.parent / "freerouting-power.log").read_text()
-    assert "(0 unrouted and 0 violations)" in power.split("Auto-routing stage completed")[-1]
+    # The fixed GND vias at HS1 sit in its GND pad, which the router counts too.
+    for log_name in ("freerouting-power.log", "freerouting.log"):
+        log = (rlht_board.parent / log_name).read_text()
+        before = re.search(r"Board has (\d+) pre-existing clearance violation", log)
+        after = re.search(r"\((\d+) unrouted and (\d+) violations\)",
+                          log.split("Auto-routing stage completed")[-1])  # fmt: skip
+        assert after is not None and after[1] == "0", log_name
+        assert int(after[2]) == (int(before[1]) if before else 0), log_name
 
 
 def test_board_is_byte_stable(rlht_board):
@@ -306,3 +306,25 @@ def test_signals_keep_mains_clearance_in_the_router(rlht_board):
     dsn = rlht_board.with_name("rlht.dsn").read_text()
     assert '(class_class (classes "HV Relay" "Default") (rule (clearance 3000)))' in dsn
     assert "(class_class" not in rlht_board.with_name("rlht-power.dsn").read_text()
+
+
+def test_gnd_stitching_keeps_off_mains(rlht_board):
+    """The original's GND vias at HS1, and GND stitching placed after routing: every
+    stitching via keeps the mains creepage distance from HV copper."""
+    board = parse(rlht_board.read_text())
+    hv = set(rlht_layout.MEMBERS["HV Relay"])
+    gnd = [v for v in find_all(board, "via") if _get(v, "net")[1] == "GND"]
+    stitches = [v for v in gnd if float(_get(v, "size")[1]) == rlht_layout.STITCH_VIA[0]]
+    assert len(gnd) >= len(rlht_layout.HS1_VIAS) + 30
+    hv_tracks = [s for s in find_all(board, "segment") if _get(s, "net")[1] in hv]
+    for v in stitches:
+        p = (float(_get(v, "at")[1]), float(_get(v, "at")[2]))
+        for s in hv_tracks:
+            a, b = _get(s, "start"), _get(s, "end")
+            ax, ay, bx, by = float(a[1]), float(a[2]), float(b[1]), float(b[2])
+            dx, dy = bx - ax, by - ay
+            t = max(
+                0.0, min(1.0, ((p[0] - ax) * dx + (p[1] - ay) * dy) / ((dx * dx + dy * dy) or 1))
+            )
+            gap = math.dist(p, (ax + t * dx, ay + t * dy)) - float(_get(s, "width")[1]) / 2 - 0.4
+            assert gap >= rlht_layout.MAINS_LV_CREEPAGE - 1e-6, (p, _get(s, "net")[1])

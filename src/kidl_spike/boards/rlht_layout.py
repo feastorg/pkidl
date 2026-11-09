@@ -36,11 +36,15 @@ from kidl_spike.boards.slice import (
     RULES,
     SIGNAL_MINIMUM,
     Spot,
+    outline_polygon,
     place_board,
     route,
 )
+from pkidl.dsn import Via, via_padstack
 from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import PARITY_ERRORS, DruRule, NetClass, width_rules, write_project, write_rules
+from pkidl.sexpr import find
+from pkidl.stitch import stitch_points
 
 # Fixed, by the format or by the original.
 J1_PIN1 = SLICE_S.bus_pin1(*ORIGIN)
@@ -108,17 +112,31 @@ MEMBERS = {"HV Relay": HV_NETS}
 # conductors. Warnings until the layout meets them; J4/J5 pin 3 (GND between mains
 # pins) cannot, by circuit (Slice_RLHT#90).
 MAINS_LV_CLEARANCE = 3.0
+MAINS_LV_CREEPAGE = 5.6
 MAINS_RULES = [
     DruRule("mains to LV clearance", "clearance", MAINS_LV_CLEARANCE,
             "A.NetClass == 'HV Relay' && B.NetClass != 'HV Relay'",
             why="reinforced clearance: Table F.2, one step above 2.5 kV"),
-    DruRule("mains to LV creepage", "creepage", 5.6,
+    DruRule("mains to LV creepage", "creepage", MAINS_LV_CREEPAGE,
             "A.NetClass == 'HV Relay' && B.NetClass != 'HV Relay'",
             why="reinforced creepage: twice Table F.4's ~2.8 mm basic value at 250 V"),
     DruRule("mains to mains clearance", "clearance", 1.5,
             "A.NetClass == 'HV Relay' && B.NetClass == 'HV Relay' && A.NetName != B.NetName",
             why="basic clearance as the floor between mains conductors"),
 ]  # fmt: skip
+# GND vias at HS1, the original's, from HS1's origin: (dx, dy, diameter, drill).
+HS1_VIAS = [
+    (-5.2, 1.85, 0.8, 0.4), (-5.0, 5.1, 0.8, 0.4), (-2.6, 2.3, 0.5, 0.3), (-1.5, -0.4, 0.5, 0.3),
+    (-1.4, -5.15, 0.8, 0.4), (-1.3, -3.4, 0.5, 0.3), (-0.6, -0.4, 0.5, 0.3), (-0.2, -2.6, 0.5, 0.3),
+    (-0.2, -1.3, 0.5, 0.3), (1.0, -3.4, 0.5, 0.3), (5.5, -3.45, 0.8, 0.4), (5.5, -0.55, 0.8, 0.4),
+    (5.5, 4.45, 0.8, 0.4),
+]  # fmt: skip
+# GND stitching between the two pours, placed after routing where nothing else is: the
+# original's 0.8/0.4 vias, kept the mains creepage from HV copper and the mounting-hardware
+# keepout from holes.
+STITCH_PITCH = 5.0
+STITCH_VIA = (0.8, 0.4)
+
 # The mains routes are full width (two-stage routing, 2026-11-09): their minimum is an error.
 DRU_RULES = (
     [
@@ -161,8 +179,19 @@ def build_pcb(
     )
     # The mains routes cannot all keep 3 mm from LV copper (pins sit closer by their
     # footprints), so only the signals routed around them are held to it.
+    hs1 = find(placed["HS1"], "at")
+    assert hs1 is not None
+    hx, hy = float(hs1[1]), float(hs1[2])
+    vias = [Via("GND", via_padstack(d, h), (round(hx + dx, 6), round(hy + dy, 6)))
+            for dx, dy, d, h in HS1_VIAS]  # fmt: skip
     route(board, placed, outdir, name, NETCLASSES, MEMBERS,
-          signal_clearances={("HV Relay", "Default"): MAINS_LV_CLEARANCE})  # fmt: skip
+          signal_clearances={("HV Relay", "Default"): MAINS_LV_CLEARANCE}, vias=vias)  # fmt: skip
+    keep = {net: MAINS_LV_CREEPAGE for net in HV_NETS} | {"": MOUNTING_HOLE_RULE.min_mm}
+    edge_clearance = float(RULES["min_copper_edge_clearance"])
+    for p in stitch_points(board.items, "GND", outline_polygon(), pitch=STITCH_PITCH,
+                           diameter=STITCH_VIA[0], clearance=0.5, edge=edge_clearance,
+                           keep_from=keep):  # fmt: skip
+        board.via(p, *STITCH_VIA, "GND")
 
     lib_id, x, y = LOGO
     board.footprint(place(libs.footprint_file(lib_id), Placement(lib_id, "LOGO1", "", x, y)))

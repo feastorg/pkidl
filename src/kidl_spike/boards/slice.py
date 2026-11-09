@@ -15,7 +15,7 @@ from pathlib import Path
 from kidl_spike import libs
 from kidl_spike.boards.common import SLICE_S, symbols
 from pkidl.board import Board
-from pkidl.dsn import Via, Wire, read_ses, write_dsn
+from pkidl.dsn import Via, Wire, read_ses, via_size, write_dsn
 from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import DruRule, NetClass
 from pkidl.route import freerouting
@@ -129,6 +129,7 @@ def route(
     netclasses: list[NetClass],
     members: dict[str, list[str]],
     signal_clearances: dict[tuple[str, str], float] | None = None,
+    vias: list[Via] | None = None,
 ) -> None:
     """Route *board* with Freerouting and add its tracks and vias.
 
@@ -137,32 +138,35 @@ def route(
     them along whole runs, not only into pins. The rest are then routed around
     those, fixed, with neck-down on: signal tracks may neck to 3/4 of their width
     (decided 2026-11-09), kept *signal_clearances* (class pairs, mm) from the
-    first stage's copper. Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses``
+    first stage's copper. *vias* are placed before routing and kept: thermal vias
+    under a part, say. Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses``
     and the router's logs into *outdir*.
     """
     footprints, outline = list(placed.values()), outline_polygon()
     edge = float(RULES["min_copper_edge_clearance"])
     power = {n for c in netclasses[1:] for n in members.get(c.name, [])}
-    fixed: tuple[list[Wire], list[Via]] = ([], [])
+    vias = vias or []
+    # Every fixed via is an obstacle in both stages, whichever net it is on.
+    fixed: tuple[list[Wire], list[Via]] = ([], list(vias))
     if power:
         dsn = write_dsn(outdir / f"{name}-power.dsn", footprints, outline, netclasses, members,
-                        edge_clearance=edge, only=power)  # fmt: skip
+                        edge_clearance=edge, only=power, fixed=fixed)  # fmt: skip
         ses = freerouting(dsn, outdir / f"{name}-power.ses", log=outdir / "freerouting-power.log",
                           options=["--router.automatic_neckdown=false"])  # fmt: skip
-        fixed = read_ses(ses)
+        wires, out_vias = read_ses(ses)
+        # A fixed via on a net this stage does not route may not come back: keep each once.
+        kept = {(v.net, v.at) for v in out_vias}
+        fixed = (wires, out_vias + [v for v in vias if (v.net, v.at) not in kept])
     dsn = write_dsn(outdir / f"{name}.dsn", footprints, outline, netclasses, members,
                     edge_clearance=edge, fixed=fixed,
                     class_clearances=signal_clearances)  # fmt: skip
     ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log")
-    wires, vias = read_ses(ses)
-    via_size = {f"Via[0-1]_{round(c.via_diameter * 1000)}:{round(c.via_drill * 1000)}_um":
-                (c.via_diameter, c.via_drill) for c in netclasses}  # fmt: skip
+    wires, routed_vias = read_ses(ses)
     for w in wires:
         for a, b in zip(w.points, w.points[1:], strict=False):
             board.track(a, b, w.width, w.net, w.layer)
-    for v in vias:
-        size, drill = via_size[v.padstack]
-        board.via(v.at, size, drill, v.net)
+    for v in routed_vias:
+        board.via(v.at, *via_size(v.padstack), v.net)
 
 
 def pour_outline(placed: dict[str, Node], net: str, margin: float) -> list[tuple[float, float]]:

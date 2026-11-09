@@ -26,6 +26,17 @@ from pkidl.sexpr import Node, find, find_all, parse
 VIA = "Via[0-1]_{d}:{h}_um"
 
 
+def via_padstack(diameter: float, drill: float) -> str:
+    """The DSN padstack name of a through via, sizes in mm."""
+    return VIA.format(d=round(diameter * 1000), h=round(drill * 1000))
+
+
+def via_size(padstack: str) -> tuple[float, float]:
+    """(diameter, drill) in mm of a padstack named by ``via_padstack``."""
+    sizes = padstack.removeprefix("Via[0-1]_").removesuffix("_um").split(":")
+    return float(sizes[0]) / 1000, float(sizes[1]) / 1000
+
+
 def _q(s: str) -> str:
     return '"' + s.replace('"', "") + '"'
 
@@ -107,6 +118,55 @@ def _pad_shapes(pad: Node, angle: float) -> list[str]:
     return shapes
 
 
+def _cut(span: tuple[float, float], holes: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """*span* less every interval in *holes*."""
+    spans = [span]
+    for h0, h1 in holes:
+        spans = [s for a, b in spans for s in ((a, min(b, h0)), (max(a, h1), b)) if s[1] > s[0]]
+    return spans
+
+
+def _copper_keepouts(
+    fp: Node, rot: float, pad_boxes: list[tuple[float, float, float, float]]
+) -> list[str]:
+    """Keepouts for a footprint's copper polygons (a net tie's bridge, say): the router
+    sees pads, not graphics, and would route other nets across them.
+
+    An axis-aligned rectangle is written less the pads that span it, so its own pads
+    stay reachable; any other polygon is written whole. In image um, y up.
+    """
+    out = []
+    for g in find_all(fp, "fp_poly"):
+        layer = find(g, "layer")
+        pts_node = find(g, "pts")
+        if layer is None or str(layer[1]) not in ("F.Cu", "B.Cu") or pts_node is None:
+            continue
+        pts = []
+        for xy in find_all(pts_node, "xy"):
+            lx, ly = _rot(float(xy[1]), float(xy[2]), rot)
+            pts.append((lx * 1000, -ly * 1000))
+        xs, ys = sorted({round(x, 1) for x, _ in pts}), sorted({round(y, 1) for _, y in pts})
+        if len(pts) != 4 or len(xs) != 2 or len(ys) != 2:
+            coords = " ".join(f"{_n(x)} {_n(y)}" for x, y in pts + pts[:1])
+            out.append(f'(keepout "" (polygon {layer[1]} 0 {coords}))')
+            continue
+        # Subtract, along one axis, each pad spanning the rectangle across the other.
+        e = 0.5  # um: rotation leaves the pads' edges a hair off the rectangle's
+        across_x = [(b[1], b[3]) for b in pad_boxes if b[0] <= xs[0] + e and b[2] >= xs[1] - e]
+        across_y = [(b[0], b[2]) for b in pad_boxes if b[1] <= ys[0] + e and b[3] >= ys[1] - e]
+        if across_x or not across_y:  # pads stacked in y: cut y spans
+            for a, b in _cut((ys[0], ys[1]), across_x):
+                out.append(
+                    f'(keepout "" (rect {layer[1]} {_n(xs[0])} {_n(a)} {_n(xs[1])} {_n(b)}))'
+                )
+        else:  # pads side by side in x: cut x spans
+            for a, b in _cut((xs[0], xs[1]), across_y):
+                out.append(
+                    f'(keepout "" (rect {layer[1]} {_n(a)} {_n(ys[0])} {_n(b)} {_n(ys[1])}))'
+                )
+    return out
+
+
 def write_dsn(
     path: Path,
     footprints: list[Node],
@@ -143,6 +203,7 @@ def write_dsn(
         rot = float(at[3]) if len(at) > 3 else 0.0
         pins: list[_Pin] = []
         keepouts: list[str] = []
+        pad_boxes: list[tuple[float, float, float, float]] = []
         seen: dict[str, int] = {}
         for pad in find_all(fp, "pad"):
             pa = find(pad, "at")
@@ -156,6 +217,12 @@ def write_dsn(
                                 f"{_n(x)} {_n(y)}))")  # fmt: skip
                 continue
             angle = float(pa[3]) if len(pa) > 3 else 0.0
+            size = find(pad, "size")
+            assert size is not None
+            w, h = float(size[1]) * 1000, float(size[2]) * 1000
+            if round(angle) % 180 == 90:
+                w, h = h, w
+            pad_boxes.append((x - w / 2, y - h / 2, x + w / 2, y + h / 2))
             shapes = _pad_shapes(pad, angle)
             key = "|".join(shapes)
             name = next((n for n, s in padstacks.items() if "|".join(s) == key), None)
@@ -171,6 +238,7 @@ def write_dsn(
             net = find(pad, "net")
             if net is not None:
                 nets.setdefault(str(net[1]), []).append(f"{ref}-{pin_name}")
+        keepouts += _copper_keepouts(fp, rot, pad_boxes)
         body = [f"(pin {p.padstack} {_q(p.name)} {_n(p.x)} {_n(p.y)})" for p in pins] + keepouts
         images.append(f"    (image {_q(ref)}\n" + "".join(f"      {b}\n" for b in body) + "    )")
         places.append(
@@ -180,10 +248,15 @@ def write_dsn(
 
     via_names = {}
     for c in netclasses:
-        name = VIA.format(d=round(c.via_diameter * 1000), h=round(c.via_drill * 1000))
+        name = via_padstack(c.via_diameter, c.via_drill)
         via_names[c.name] = name
         padstacks.setdefault(
             name, [f"(circle {layer} {_n(c.via_diameter * 1000)})" for layer in ("F.Cu", "B.Cu")]
+        )
+    for v in fixed[1]:  # fixed vias may be sizes no netclass uses
+        diameter = via_size(v.padstack)[0]
+        padstacks.setdefault(
+            v.padstack, [f"(circle {layer} {_n(diameter * 1000)})" for layer in ("F.Cu", "B.Cu")]
         )
 
     inset = _inset(outline, edge_clearance)

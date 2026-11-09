@@ -39,8 +39,10 @@ from kidl_spike.boards.slice import (
     pour_outline,
     route,
 )
-from pkidl.footprint import Placement, board_xy, pad_xy, place
+from pkidl.dsn import Via, via_padstack
+from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import PARITY_ERRORS, NetClass, width_rules, write_project, write_rules
+from pkidl.sexpr import Node, find
 
 # The design current of each motor channel. The LMD18200 is rated 3 A continuous.
 MOTOR_AMPS = 3.0
@@ -135,14 +137,80 @@ POURS = [
     *[(f"{b['ch']}_VDC", "F.Cu", 5) for b in BRIDGES],
     *[(f"{b['ch']}_VS", "F.Cu", 4) for b in BRIDGES],
     ("+12V", "F.Cu", 3),
-    *[(f"{b['ch']}_OUT1", "B.Cu", 3) for b in BRIDGES],
-    *[(f"{b['ch']}_OUT2", "B.Cu", 2) for b in BRIDGES],
     ("GND", "B.Cu", 1),
 ]
 POUR_MARGIN = 1.5
-# The LMD18200's body in its footprint's frame (the F.Fab outline). It lies flat, and
-# its metal back is at ground: no pour of another net goes underneath it.
-BRIDGE_BODY = (-1.6, -25.88, 18.6, -8.38)
+
+# Each channel's LMD18200 lies flat, its metal back at ground, and sheds heat into GNDPWR
+# on both layers through a via field, as the original's first channel does. Board
+# millimetres from the LMD18200's origin (U2 at 155.570692, 74.2 on both boards; the
+# channels are rotated alike, so these translate):
+# - GNDPWR on F.Cu under the body, above every other pour;
+BODY_GNDPWR = [
+    (11.93, -0.016),
+    (12.791, -0.9),
+    (24.55, -0.9),
+    (25.932, 0.417),
+    (25.92, 17.579),
+    (24.791, 18.68),
+    (13.474, 18.68),
+    (11.93, 17.126),
+]
+# - the original's vias: a 9 x 8 grid at 1.2 mm less 8 points (some at the tab hole), and
+#   less its bottom row here: this board's output terminal pin sits 1.4 mm below it, and
+#   a full-width OUT2 track does not pass at the Motor clearance. 56 vias of the 64;
+THERMAL_VIA = (0.6, 0.4)
+THERMAL_SKIP = {(7, 3), (7, 4), (8, 0), (8, 2), (8, 3), (8, 4), (8, 5), (8, 7)}
+THERMAL_VIAS = [
+    (round(12.479 + 1.2 * i, 3), round(4.31 + 1.2 * j, 3))
+    for i in range(9)
+    for j in range(7)
+    if (i, j) not in THERMAL_SKIP
+]
+# - on B.Cu, the outputs run as strips beside the field, the original's, extended to this
+#   board's output terminal (moved into the right-edge column); GNDPWR fills between.
+OUT_STRIPS = [
+    (
+        "OUT1",
+        3,
+        [(2.65, -0.9), (35.5, -0.9), (35.5, 12.3), (30.03, 12.3), (30.03, 3.4), (2.65, 3.4)],
+    ),
+    # Past the field, only as deep as the terminal pin: J4 below needs its GNDPWR.
+    (
+        "OUT2",
+        2,
+        [(2.5, 13.6), (35.5, 13.6), (35.5, 15.9), (30.03, 15.9), (30.03, 18.1), (2.5, 18.1)],
+    ),
+]
+# GND vias at HS1, the original's, from HS1's origin: (dx, dy, diameter, drill). Less the
+# one at (-5.45, -0.55), where this board's +12V leaves C1: there, it necks +12V for 4 mm.
+HS1_VIAS = [
+    (-5.55, 1.8, 0.8, 0.4),
+    (-5.45, 5.005, 0.8, 0.4),
+    (-3.325, 3.45, 0.8, 0.4),
+    (-3.1, -4.25, 1.6, 0.8),
+    (-1.275, -5.4, 0.8, 0.4),
+    (-1.025, -4.075, 0.8, 0.4),
+    (-0.65, -0.45, 0.8, 0.4),
+    (-0.625, -2.775, 0.8, 0.4),
+    (-0.6, 3.25, 0.8, 0.4),
+    (1.375, -3.55, 0.8, 0.4),
+    (2.05, -0.575, 0.8, 0.4),
+    (2.05, 3.3, 0.8, 0.4),
+    (2.1, 5.2, 0.8, 0.4),
+    (5.075, -5.025, 0.8, 0.4),
+    (5.075, -2.125, 0.8, 0.4),
+    (5.075, 2.875, 0.8, 0.4),
+    (5.075, 5.15, 0.8, 0.4),
+    (5.125, 0.47, 0.8, 0.4),
+]
+
+
+def _at(footprint: Node, dx: float, dy: float) -> tuple[float, float]:
+    """A point *dx*, *dy* from a placed footprint's origin, in board millimetres."""
+    at = find(footprint, "at")
+    assert at is not None
+    return (round(float(at[1]) + dx, 6), round(float(at[2]) + dy, 6))
 
 
 def placement() -> dict[str, Spot]:
@@ -171,7 +239,11 @@ def build_pcb(
     board, placed = place_board(
         outdir, name, placement(), pad_nets, fields, solid_pads=frozenset({"J1"})
     )
-    route(board, placed, outdir, name, NETCLASSES, MEMBERS)
+    vias = [Via("GND", via_padstack(d, h), _at(placed["HS1"], dx, dy)) for dx, dy, d, h in HS1_VIAS]
+    for b in BRIDGES:
+        vias += [Via("GNDPWR", via_padstack(*THERMAL_VIA), _at(placed[b["U"]], dx, dy))
+                 for dx, dy in THERMAL_VIAS]  # fmt: skip
+    route(board, placed, outdir, name, NETCLASSES, MEMBERS, vias=vias)
 
     lib_id, x, y = LOGO
     board.footprint(place(libs.footprint_file(lib_id), Placement(lib_id, "LOGO1", "", x, y)))
@@ -197,11 +269,14 @@ def build_pcb(
         board.zone(net, layer, pour_outline(placed, net, POUR_MARGIN), clearance=0.5,
                    min_thickness=POUR_MIN_WIDTH, priority=priority, solid=True)  # fmt: skip
     for b in BRIDGES:
-        bx0, by0, bx1, by1 = BRIDGE_BODY
-        corners = [(bx0, by0), (bx1, by0), (bx1, by1), (bx0, by1)]
-        body = [board_xy(placed[b["U"]], lx, ly) for lx, ly in corners]
-        board.keepout(f"{b['U']} body", "F.Cu", body, tracks=True, vias=True)
-    # GNDPWR fills the back only. On the front it would cover the logic area, where
+        u = placed[b["U"]]
+        board.zone("GNDPWR", "F.Cu", [_at(u, *p) for p in BODY_GNDPWR], clearance=0.5,
+                   min_thickness=POUR_MIN_WIDTH, priority=6, solid=True)  # fmt: skip
+        for out, priority, outline in OUT_STRIPS:
+            board.zone(f"{b['ch']}_{out}", "B.Cu", [_at(u, *p) for p in outline], clearance=0.5,
+                       min_thickness=POUR_MIN_WIDTH, priority=priority, solid=True)  # fmt: skip
+    # GNDPWR fills the back. On the front it is only under the bodies: elsewhere it would
+    # cover the logic area, where
     # its one connection is a bulk capacitor's pad: the GND/GNDPWR split would not exist.
     x0, y0, x1, y1 = SLICE_S.outline(*ORIGIN)
     edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]

@@ -12,6 +12,7 @@ KiCad's ERC and DRC verdicts on the generated files run in CI's KiCad job.
 
 import json
 import math
+import re
 from pathlib import Path
 
 import pytest
@@ -231,9 +232,15 @@ def test_board_is_routed(dcmt_board):
     routed = {_get(s, "net")[1] for s in find_all(board, "segment")}
     multi = {n for n, p in _pad_nets(dcmt_board).items() if len(p) > 1}
     assert multi <= routed
+    # The fixed GND vias at HS1 sit in its GND pad, which the router counts as violations
+    # before it starts: it must add none.
     for log_name in ("freerouting-power.log", "freerouting.log"):
         log = (dcmt_board.parent / log_name).read_text()
-        assert "(0 unrouted and 0 violations)" in log.split("Auto-routing stage completed")[-1]
+        before = re.search(r"Board has (\d+) pre-existing clearance violation", log)
+        after = re.search(r"\((\d+) unrouted and (\d+) violations\)",
+                          log.split("Auto-routing stage completed")[-1])  # fmt: skip
+        assert after is not None and after[1] == "0", log_name
+        assert int(after[2]) == (int(before[1]) if before else 0), log_name
 
 
 def test_board_is_byte_stable(dcmt_board):
@@ -261,38 +268,59 @@ def test_rules_gate_widths_and_holes(dcmt_board):
     assert "(constraint hole_clearance (min 2mm))" in rules["mounting hole keepout"]
 
 
-def test_pours_keep_off_the_bridge_bodies_and_the_logic_area(dcmt_board):
-    """No pour reaches under an LMD18200 body, whose metal back is at ground, and
-    GNDPWR is not poured on the front, where it would cover the logic area."""
+def test_bridge_bodies_shed_heat_into_gndpwr(dcmt_board):
+    """Under each LMD18200 body (its metal back at ground): GNDPWR on the front, above every
+    other pour, and the original's via field, less its bottom row (56 vias). GNDPWR is on
+    the front nowhere else, where it would cover the logic area."""
     board = parse(dcmt_board.read_text())
     footprints = {
         next(p for p in find_all(f, "property") if p[1] == "Reference")[2]: f
         for f in find_all(board, "footprint")
     }
-    keepouts = {}
+    priority = {}
+    front_gndpwr = []
     for z in find_all(board, "zone"):
-        if find(z, "keepout") is not None:
-            pts = [
-                (float(p[1]), float(p[2])) for p in find_all(_get(_get(z, "polygon"), "pts"), "xy")
-            ]
-            keepouts[_get(z, "name")[1]] = (
-                _get(z, "layer")[1],
-                _get(_get(z, "keepout"), "copperpour")[1],
-                pts,
+        net, layer = find(z, "net"), _get(z, "layer")[1]
+        prio = find(z, "priority")
+        priority[(_get(z, "net")[1] if net is not None else "", layer)] = (
+            int(prio[1]) if prio else 0
+        )
+        if net is not None and net[1] == "GNDPWR" and layer == "F.Cu":
+            front_gndpwr.append(
+                [
+                    (float(p[1]), float(p[2]))
+                    for p in find_all(_get(_get(z, "polygon"), "pts"), "xy")
+                ]
             )
-    x0, y0, x1, y1 = (-1.6, -25.88, 18.6, -8.38)  # the body's F.Fab outline
-    for b in dcmt.BRIDGES:
+    assert len(front_gndpwr) == len(dcmt.BRIDGES)
+    assert priority[("GNDPWR", "F.Cu")] > max(v for (n, la), v in priority.items()
+                                             if la == "F.Cu" and n != "GNDPWR")  # fmt: skip
+    vias = [(float(_get(v, "at")[1]), float(_get(v, "at")[2])) for v in find_all(board, "via")
+            if _get(v, "net")[1] == "GNDPWR"]  # fmt: skip
+    for b, zone in zip(dcmt.BRIDGES, front_gndpwr, strict=True):
         u = footprints[b["U"]]
-        body = [board_xy(u, x, y) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
-        assert keepouts[f"{b['U']} body"] == ("F.Cu", "not_allowed", body)
-    front_gndpwr = [
-        z
-        for z in find_all(board, "zone")
-        if find(z, "net") is not None
-        and _get(z, "net")[1] == "GNDPWR"
-        and _get(z, "layer")[1] == "F.Cu"
-    ]
-    assert front_gndpwr == []
+        corners = [board_xy(u, x, y) for x, y in ((-1.6, -25.88), (18.6, -8.38))]  # body F.Fab
+        (x0, x1), (y0, y1) = sorted(c[0] for c in corners), sorted(c[1] for c in corners)
+        under = [p for p in vias if x0 <= p[0] <= x1 and y0 <= p[1] <= y1]
+        assert len(under) == 56, b["U"]
+        zx, zy = [p[0] for p in zone], [p[1] for p in zone]
+        assert x0 < min(zx) and max(zx) <= x1 + 0.1 and min(zy) <= y0 + 1 and max(zy) >= y1 - 1
+
+
+def test_hs1_has_the_originals_gnd_vias(dcmt_board):
+    """The original's GND vias at HS1, less one where this board's +12V leaves C1."""
+    board = parse(dcmt_board.read_text())
+    refs = {next(p for p in find_all(f, "property") if p[1] == "Reference")[2]: f
+            for f in find_all(board, "footprint")}  # fmt: skip
+    hs1 = refs["HS1"]
+    hx, hy = float(_get(hs1, "at")[1]), float(_get(hs1, "at")[2])
+    gnd = set()
+    for v in find_all(board, "via"):
+        if _get(v, "net")[1] == "GND":
+            at = _get(v, "at")
+            gnd.add((round(float(at[1]), 3), round(float(at[2]), 3), float(_get(v, "size")[1])))
+    want = {(round(hx + dx, 3), round(hy + dy, 3), d) for dx, dy, d, _ in dcmt_layout.HS1_VIAS}
+    assert len(want) == 18 and want <= gnd
 
 
 def _segments(board: Path) -> list[tuple[str, float, float]]:

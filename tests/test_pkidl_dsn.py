@@ -41,3 +41,18 @@ def test_class_clearance_needs_both_classes(tmp_path):
     one = write_dsn(tmp_path / "b.dsn", FOOTPRINTS, OUTLINE, CLASSES, MEMBERS, only={"HV"},
                     class_clearances=pair).read_text()  # fmt: skip
     assert "class_class" not in one
+
+
+# KiCad's NetTie-2_SMD_Pad2.0mm: two 2 mm pads joined by a 4 x 2 mm polygon.
+NET_TIE = """(footprint "NT" (at 10 10 {rot}) (property "Reference" "NT1")
+  (pad "1" smd circle (at -2 0 {rot}) (size 2 2) (layers "B.Cu") (net "A"))
+  (pad "2" smd circle (at 2 0 {rot}) (size 2 2) (layers "B.Cu") (net "B"))
+  (fp_poly (pts (xy -2 1) (xy 2 1) (xy 2 -1) (xy -2 -1)) (fill yes) (layer "B.Cu")))"""
+
+
+def test_net_tie_bridge_is_a_keepout_its_pads_stay_reachable(tmp_path):
+    """The copper between a net tie's pads is kept out; the pads themselves are not."""
+    for rot, rect in ((0, "-1000 -1000 1000 1000"), (90, "-1000 -1000 1000 1000")):
+        text = write_dsn(tmp_path / f"{rot}.dsn", [parse(NET_TIE.format(rot=rot))], OUTLINE,
+                         CLASSES, MEMBERS).read_text()  # fmt: skip
+        assert f'(keepout "" (rect B.Cu {rect}))' in text, rot

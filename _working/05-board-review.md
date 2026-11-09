@@ -213,3 +213,20 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
   - **RLHT mains clearance:** 26 against 22. The full-width HV tracks are wider, and the rest are pad pairs set by the footprints and the circuit (Slice_RLHT#90).
 - **Nano pads.** RLHT's Nano (A1) pads now join the GND pours solidly. A signal routed beside A1.29 had left its thermal one spoke short, a `starved_thermal` error.
 - **Not done:** pours in the DSN (§3). As hard keepouts for the signal stage, the current hulls leave 22 DCMT connections unrouted, with 37 violations before routing, because they cover other nets' pins. That waits for tighter pours. Pin-clearance classes beyond the mains rule (§2) are also still open.
+
+**2026-11-09: thermal and stitching vias (§5), the original's heat paths (decided 2026-11-09).**
+
+- **DCMT, under each LMD18200.** I took the original's first channel, relative to U2, which sits where the original's does:
+  - GNDPWR on F.Cu under the body, above every other pour;
+  - the original's 1.2 mm via grid at 0.6/0.4 mm, less its bottom row (56 vias of its 64): our output terminal pin sits 1.4 mm under that row, and with it there CH2_OUT2 did not route at full width;
+  - the outputs on B.Cu as strips beside the field, the original's, extended to our terminal column, in place of the convex hulls.
+
+  On the filled board, all 56 vias under each body are in GNDPWR fill on both layers, as in the original. The vias are fixed before routing (`route(..., vias=)`), so the router routes around them.
+- **HS1 on both Slices: the original's GND vias.** DCMT has 18 of its 19: the one at (−5.45, −0.55) from HS1 sits where our +12V leaves C1, and with it there +12V necked to 1.05 mm for 4.1 mm. RLHT has all 13.
+- **RLHT GND stitching:** `pkidl.stitch.stitch_points`, after routing. It places 0.8/0.4 vias on a 5 mm grid wherever no other copper is, holding 5.6 mm (the mains creepage) from HV copper and 2 mm from holes. It placed 67, and every one is in GND fill on both layers. The original has about 35 outside HS1.
+- **Found on the way, and fixed:** the DSN gave the router no footprint copper graphics. A SYNC_5V track crossed the bridge of DCMT's net tie NT1 (three `shorting_items` errors).
+- **Router counts:** the router counts a fixed via inside a same-net pad (HS1's) as a violation before it starts: 20 on DCMT, 13 on RLHT's stage one. The tests now check that it adds none.
+- **DRC** (`--refill-zones --schematic-parity --severity-all`): 0 errors on both Slices.
+  - DCMT: Default width 2, Motor 4, Power 3.
+  - RLHT: mains 26/25/6, unchanged.
+- **Not done:** Loaf stitching, which is only needed above 5 A; DCMT GND stitching (DCMT's GND is poured on B.Cu only).
