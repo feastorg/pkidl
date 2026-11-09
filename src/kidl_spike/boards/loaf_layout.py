@@ -19,6 +19,7 @@ from pathlib import Path
 
 from kidl_spike import libs
 from kidl_spike.boards.common import symbols
+from kidl_spike.boards.spec import load_loaf
 from pkidl.board import Board
 from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import (
@@ -32,23 +33,14 @@ from pkidl.project import (
 )
 from pkidl.silk import nearest_clear_spot, place_references, silk_box, text_box
 
-# Board edge (x0, y0, x1, y1) and corner radius, mm. The original's left edge is
-# 0.014 mm out of square; that is not part of the interface.
-OUTLINE = (48.3, 77.0, 169.5, 127.0)
-CORNER_RADIUS = 2.0
-
-# The interface: reference -> (x, y, rotation, on the back).
-PLACEMENT = {
-    "J1": (86.5, 114.7, 180.0, True),  # 12 V barrel jack
-    "J2": (58.3, 90.6, 180.0, True),  # chain in (pin header)
-    "J3": (70.9, 102.02, 0.0, False),  # slice connectors, 30.4 mm pitch
-    "J4": (101.3, 102.02, 0.0, False),
-    "J5": (131.7, 102.02, 0.0, False),
-    "J6": (162.1, 102.02, 0.0, False),
-    "J7": (165.8, 90.6, 180.0, True),  # chain out (pin socket)
-}
-LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", 59.0, 120.7)
-LABEL_AT = (116.5, 79.0)  # between the J4 and J5 mounting holes
+# The interface, from loaf.yaml: edge, corner radius, connectors as
+# reference -> (x, y, rotation, on the back), and the logo and label spots.
+SPEC = load_loaf()
+OUTLINE = SPEC.outline
+CORNER_RADIUS = SPEC.corner_radius
+PLACEMENT = SPEC.interface
+LOGO = ("KMLib_Aesthetic:OSHW_Logo_10mm", *SPEC.logo)
+LABEL_AT = SPEC.label_at
 # Every bus connector's pins are labelled, as on the original, by these short names.
 PIN_LABEL = {"GND": "GND", "+12V": "12V", "SCL_5V": "SCL", "SDA_5V": "SDA",
              "E_STOP_5V": "ESTOP", "INT_5V": "INT", "SYNC_5V": "SYNC"}  # fmt: skip

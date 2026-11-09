@@ -157,3 +157,41 @@ def parse(data: Any, where: str) -> BoardSpec:
         pwr_flags=tuple(data.get("pwr_flags", ("+12V", "GND"))),
     )
     return BoardSpec(name=need(data, "name", str, ""), circuit=circuit, anchors=anchors)
+
+
+@dataclass(frozen=True)
+class LoafSpec:
+    name: str
+    outline: tuple[float, float, float, float]  # x0, y0, x1, y1
+    corner_radius: float
+    interface: dict[str, tuple[float, float, float, bool]]  # ref -> (x, y, rotation, back)
+    logo: tuple[float, float]
+    label_at: tuple[float, float]
+
+
+def load_loaf(name: str = "loaf", directory: Path = HERE) -> LoafSpec:
+    """The Loaf's interface from ``<name>.yaml``: edge, connectors, logo and label spots."""
+    path = directory / f"{name}.yaml"
+    data = yaml.safe_load(path.read_text())
+    where = path.name
+
+    def numbers(value: Any, n: int, key: str) -> tuple[float, ...]:
+        if not (isinstance(value, list) and len(value) == n
+                and all(isinstance(v, (int, float)) for v in value)):  # fmt: skip
+            raise SpecError(f"{where}: {key}: expected {n} numbers")
+        return tuple(float(v) for v in value)
+
+    if not isinstance(data, dict):
+        raise SpecError(f"{where}: expected a mapping")
+    interface: dict[str, tuple[float, float, float, bool]] = {}
+    for ref, part in (data.get("interface") or {}).items():
+        if not isinstance(part, dict) or not isinstance(part.get("back"), bool):
+            raise SpecError(f"{where}: interface.{ref}: expected at, rotation, back")
+        x, y = numbers(part.get("at"), 2, f"interface.{ref}.at")
+        (rot,) = numbers([part.get("rotation")], 1, f"interface.{ref}.rotation")
+        interface[ref] = (x, y, rot, part["back"])
+    x0, y0, x1, y1 = numbers(data.get("outline"), 4, "outline")
+    (radius,) = numbers([data.get("corner_radius")], 1, "corner_radius")
+    lx, ly = numbers(data.get("logo"), 2, "logo")
+    ax, ay = numbers(data.get("label_at"), 2, "label_at")
+    return LoafSpec(str(data.get("name")), (x0, y0, x1, y1), radius, interface, (lx, ly), (ax, ay))

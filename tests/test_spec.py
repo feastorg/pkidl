@@ -5,7 +5,7 @@ import re
 
 import pytest
 
-from kidl_spike.boards.spec import SpecError, load, parse
+from kidl_spike.boards.spec import SpecError, load, load_loaf, parse
 
 BASE = {
     "name": "t",
@@ -69,3 +69,14 @@ def test_rlht_yaml_keeps_the_originals_references():
 def test_errors_name_the_file_and_key(channel, message):
     with pytest.raises(SpecError, match=r"^t\.yaml: " + re.escape(message)):
         _board(channel)
+
+
+def test_loaf_interface_and_its_errors(tmp_path):
+    loaf = load_loaf()
+    assert loaf.interface["J3"] == (70.9, 102.02, 0.0, False)
+    assert loaf.outline == (48.3, 77.0, 169.5, 127.0)
+    (tmp_path / "bad.yaml").write_text(
+        "name: bad\noutline: [0, 0, 10]\ncorner_radius: 1\nlogo: [0, 0]\nlabel_at: [0, 0]\n"
+    )
+    with pytest.raises(SpecError, match=r"^bad\.yaml: outline: expected 4 numbers"):
+        load_loaf("bad", tmp_path)

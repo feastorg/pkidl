@@ -1,0 +1,17 @@
+# Loaf_x004: the backplane. Its interface, taken from the hand-drawn board, where the
+# Slices and the case expect it. Board mm; rotation in degrees; back = on B.Cu.
+name: loaf
+# Edge (x0, y0, x1, y1). The original's left edge is 0.014 mm out of square; that is not
+# part of the interface.
+outline: [48.3, 77.0, 169.5, 127.0]
+corner_radius: 2.0
+interface:
+  J1: {at: [86.5, 114.7], rotation: 180.0, back: true}    # 12 V barrel jack
+  J2: {at: [58.3, 90.6], rotation: 180.0, back: true}     # chain in (pin header)
+  J3: {at: [70.9, 102.02], rotation: 0.0, back: false}    # slice connectors, 30.4 mm pitch
+  J4: {at: [101.3, 102.02], rotation: 0.0, back: false}
+  J5: {at: [131.7, 102.02], rotation: 0.0, back: false}
+  J6: {at: [162.1, 102.02], rotation: 0.0, back: false}
+  J7: {at: [165.8, 90.6], rotation: 180.0, back: true}    # chain out (pin socket)
+logo: [59.0, 120.7]
+label_at: [116.5, 79.0]  # between the J4 and J5 mounting holes
