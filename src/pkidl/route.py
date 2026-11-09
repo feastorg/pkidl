@@ -1,8 +1,12 @@
 """Run the autorouter: Freerouting on a DSN file, writing an SES file.
 
 Freerouting is run single-threaded, the mode in which 2.5.0 is deterministic for
-a given input. ``$FREEROUTING`` overrides the command (default ``freerouting``,
-the pinned wrapper that runs the 2.5.0 jar headless).
+a given input. ``-mt 1`` limits only the autorouter: the optimizer has its own thread
+count (one fewer than the cores by default), and with several threads the same DSN
+routed six times gave three different sessions. Both are set to one.
+
+``$FREEROUTING`` overrides the command (default ``freerouting``, the pinned wrapper that
+runs the 2.5.0 jar headless).
 """
 
 from __future__ import annotations
@@ -42,7 +46,8 @@ def freerouting(
     # Settings and log go next to the output, not into the user's home.
     env = dict(os.environ, FREEROUTING__USER_DATA_PATH=str(ses.parent.resolve() / "freerouting"))
     result = subprocess.run(
-        [*cmd, "-de", str(dsn), "-do", str(ses), "-mp", str(passes), "-mt", "1", *options],
+        [*cmd, "-de", str(dsn), "-do", str(ses), "-mp", str(passes), "-mt", "1",
+         "--router.optimizer.max_threads=1", *options],
         capture_output=True, text=True, env=env,
     )  # fmt: skip
     if log is not None:
