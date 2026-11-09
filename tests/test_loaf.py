@@ -167,3 +167,17 @@ def test_every_bus_pin_is_labelled(loaf_board):
 def test_silk_over_copper_is_an_error(loaf_board):
     pro = json.loads(loaf_board.with_suffix(".kicad_pro").read_text())
     assert pro["board"]["design_settings"]["rule_severities"]["silk_over_copper"] == "error"
+
+
+def test_every_text_is_on_the_board(loaf_board):
+    """J2's header body overhangs the edge; its pin labels must still land on the board."""
+    from pkidl.silk import text_box
+
+    x0, y0, x1, y1 = loaf_layout.OUTLINE
+    for g in find_all(parse(loaf_board.read_text()), "gr_text"):
+        at, font = find(g, "at"), find(find(g, "effects"), "font")  # type: ignore[arg-type]
+        assert at is not None and font is not None
+        size = float(find(font, "size")[1])  # type: ignore[index]
+        bx0, by0, bx1, by1 = text_box(str(g[1]).split("\n")[0], (float(at[1]), float(at[2])),
+                                      size, 0.12, float(at[3]) if len(at) > 3 else 0.0)  # fmt: skip
+        assert x0 <= bx0 and bx1 <= x1 and y0 <= by0 and by1 <= y1, (g[1], bx0, bx1)

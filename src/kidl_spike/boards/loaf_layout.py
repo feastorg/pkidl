@@ -46,6 +46,7 @@ PIN_LABEL = {"GND": "GND", "+12V": "12V", "SCL_5V": "SCL", "SDA_5V": "SDA",
              "E_STOP_5V": "ESTOP", "INT_5V": "INT", "SYNC_5V": "SYNC"}  # fmt: skip
 BUS_CONNECTORS = ["J2", "J3", "J4", "J5", "J6", "J7"]
 PIN_LABEL_GAP = 0.4  # pin label to the connector's outline
+LABEL_EDGE = 0.5  # pin label to the board edge, at least
 # J7, 3.7 mm right of J6, has no room on its left: the original's small diagonal labels
 # right of each pin, (dx, dy, size, angle) from the pad.
 PIN_LABEL_RIGHT = {"J7": (2.0, 0.2, 0.6, -45.0)}
@@ -144,7 +145,10 @@ def build_pcb(
                 board.text(text, (px + dx, py + dy), size=size, thickness=size * 0.15, angle=angle)
                 continue
             half = text_box(text, (0, 0), 0.8, 0.12, 0)[2]
-            board.text(text, (outline[0] - PIN_LABEL_GAP - half, py), size=0.8, thickness=0.12)
+            # Left of the outline, but never past the edge: J2's header body overhangs
+            # it, so its labels go between the edge and its pads, as on the original.
+            x = max(outline[0] - PIN_LABEL_GAP - half, OUTLINE[0] + LABEL_EDGE + half)
+            board.text(text, (x, py), size=0.8, thickness=0.12)
     for slot, ref in enumerate(["J3", "J4", "J5", "J6"], start=1):
         jx, jy = PLACEMENT[ref][:2]
         title = f"SLICE {slot}"
