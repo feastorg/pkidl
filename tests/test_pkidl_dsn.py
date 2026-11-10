@@ -56,3 +56,16 @@ def test_net_tie_bridge_is_a_keepout_its_pads_stay_reachable(tmp_path):
         text = write_dsn(tmp_path / f"{rot}.dsn", [parse(NET_TIE.format(rot=rot))], OUTLINE,
                          CLASSES, MEMBERS).read_text()  # fmt: skip
         assert f'(keepout "" (rect B.Cu {rect}))' in text, rot
+
+
+def test_planes_are_written_closed_in_the_structure(tmp_path):
+    """A plane is a pour the router connects through: net, layer, closed polygon in um."""
+    square = [(1.0, 1.0), (5.0, 1.0), (5.0, 4.0), (1.0, 4.0)]
+    text = write_dsn(
+        tmp_path / "b.dsn", FOOTPRINTS, OUTLINE, CLASSES, MEMBERS, planes=[("A", "B.Cu", square)]
+    ).read_text()
+    plane = (
+        '(plane "A" (polygon B.Cu 0  1000 -1000  5000 -1000  5000 -4000  1000 -4000  1000 -1000))'
+    )
+    assert plane in text
+    assert text.index(plane) < text.index("  (placement")  # in the structure

@@ -8,6 +8,7 @@ license = "GPL-3.0-or-later"
 dependencies = [
     "skidl>=2.3.0",
     "pyyaml>=6.0",
+    "shapely>=2.2.0",
 ]
 
 [build-system]

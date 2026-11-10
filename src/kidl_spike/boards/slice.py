@@ -131,6 +131,7 @@ def route(
     signal_clearances: dict[tuple[str, str], float] | None = None,
     vias: list[Via] | None = None,
     keepouts: list[tuple[str, list[tuple[float, float]]]] | None = None,
+    planes: list[tuple[str, str, list[tuple[float, float]]]] | None = None,
 ) -> None:
     """Route *board* with Freerouting and add its tracks and vias.
 
@@ -141,29 +142,32 @@ def route(
     (decided 2026-11-09), kept *signal_clearances* (class pairs, mm) from the
     first stage's copper. *vias* are placed before routing and kept: thermal vias
     under a part, say. *keepouts* (layer, polygon) hold every track and via out, in
-    both stages. Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses``
-    and the router's logs into *outdir*.
+    both stages. *planes* (``pkidl.fill.prefill``) are pours the router connects
+    through and every other net keeps out of (``plane_as_obstacle``), in both stages.
+    Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses`` and the router's
+    logs into *outdir*.
     """
     footprints, outline = list(placed.values()), outline_polygon()
     edge = float(RULES["min_copper_edge_clearance"])
     power = {n for c in netclasses[1:] for n in members.get(c.name, [])}
     vias = vias or []
+    obstacle = ["--router.plane_as_obstacle=true"] if planes else []
     # Every fixed via is an obstacle in both stages, whichever net it is on.
     fixed: tuple[list[Wire], list[Via]] = ([], list(vias))
     if power:
         dsn = write_dsn(outdir / f"{name}-power.dsn", footprints, outline, netclasses, members,
                         edge_clearance=edge, only=power, fixed=fixed,
-                        areas=keepouts)  # fmt: skip
+                        areas=keepouts, planes=planes)  # fmt: skip
         ses = freerouting(dsn, outdir / f"{name}-power.ses", log=outdir / "freerouting-power.log",
-                          options=["--router.automatic_neckdown=false"])  # fmt: skip
+                          options=["--router.automatic_neckdown=false", *obstacle])  # fmt: skip
         wires, out_vias = read_ses(ses)
         # A fixed via on a net this stage does not route may not come back: keep each once.
         kept = {(v.net, v.at) for v in out_vias}
         fixed = (wires, out_vias + [v for v in vias if (v.net, v.at) not in kept])
     dsn = write_dsn(outdir / f"{name}.dsn", footprints, outline, netclasses, members,
                     edge_clearance=edge, fixed=fixed,
-                    class_clearances=signal_clearances, areas=keepouts)  # fmt: skip
-    ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log")
+                    class_clearances=signal_clearances, areas=keepouts, planes=planes)  # fmt: skip
+    ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log", options=obstacle)
     wires, routed_vias = read_ses(ses)
     for w in wires:
         for a, b in zip(w.points, w.points[1:], strict=False):

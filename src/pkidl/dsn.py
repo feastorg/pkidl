@@ -179,6 +179,7 @@ def write_dsn(
     fixed: tuple[list[Wire], list[Via]] = ([], []),
     class_clearances: dict[tuple[str, str], float] | None = None,
     areas: list[tuple[str, list[Point]]] | None = None,
+    planes: list[tuple[str, str, list[Point]]] | None = None,
 ) -> Path:
     """Write *path* for routing *footprints* (placed board nodes) inside *outline*.
 
@@ -190,7 +191,10 @@ def write_dsn(
     routes (as ``read_ses`` returns them) are written as protected wiring: the
     router keeps them and routes around them. *class_clearances* sets the router's
     clearance between two classes' nets, in mm, over their own. *areas* are keepouts
-    no track or via may enter on their layer: (layer, polygon in board mm).
+    no track or via may enter on their layer: (layer, polygon in board mm). *planes*
+    are pours the router may connect through: (net, layer, hole-free polygon in
+    board mm), as ``pkidl.fill.prefill`` makes them; route with ``plane_as_obstacle``
+    so other nets keep out of them.
     """
     padstacks: dict[str, list[str]] = {}
     images: list[str] = []
@@ -281,6 +285,9 @@ def write_dsn(
         *(f'    (keepout "" (polygon {layer} 0  '
           + "  ".join(f"{_n(x * 1000)} {_n(-y * 1000)}" for x, y in poly + poly[:1]) + "))"
           for layer, poly in areas or []),
+        *(f"    (plane {_q(net)} (polygon {layer} 0  "
+          + "  ".join(f"{_n(x * 1000)} {_n(-y * 1000)}" for x, y in poly + poly[:1]) + "))"
+          for net, layer, poly in planes or []),
         f"    (via {_q(via_names[default.name])})",
         f"    (rule (width {_n(default.track_width * 1000)}) "
         f"(clearance {_n(default.clearance * 1000)}))",
