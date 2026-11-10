@@ -100,6 +100,7 @@ Severity: **B** blocker, **M** major, **m** minor. Origin: **ours** (our code or
 ### 7. Pipeline and CI
 
 - **Upstream, m (cosmetic):** CI runs the bare jar, which logs an `IllegalArgumentException` for `FREEROUTING__USER_DATA_PATH`. *Corrected 2026-11-08:* the variable still takes effect. `UserDataPathResolver.resolveAndLock` applies and locks it before the settings load, and only a later reflective write fails. Run bare with the variable set, the 2.5.0 jar writes `freerouting.json` and its log into that directory. So CI's router settings are pinned and our side needs no change. Filed as freerouting/freerouting#1109, with the one-line fix (skip `user_data_path` in `applyNonRouterEnvironmentVariables`). The analytics and GUI flags are passed in CI (check.yml lines 173–174 and 256–257).
+  - *Fixed upstream 2026-11-10:* #1111 merged into master as `a3b36e3`, and #1109 is closed. Not yet in a release: the latest is still v2.5.0, the version pinned here. When a release after 2.5.0 is pinned (`WANT_FREEROUTING` in `doctor.py`, `FREEROUTING_SHA256` in CI), the error goes and nothing else changes. Don't move to the nightly SNAPSHOT for it: it isn't pinned.
 - **m:** the DSN boundary is inset 0.5 mm, and the router adds its class clearance on top. That leaves at least 0.7 mm from the edge, or 1.75 mm for HV, which narrows the J1 channel. The NPTH keepout is the bare drill: the router keeps 0.2 mm, KiCad wants 0.25 (latent). An oval pad with w = h becomes a zero-length path (works today).
 
 ### 8. Inherited from the originals, or unchanged
