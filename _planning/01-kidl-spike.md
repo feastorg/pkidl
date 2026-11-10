@@ -274,6 +274,7 @@ Not yet planned in detail. Each gets its own `_planning/NN-*.md` when it comes u
 | 4½ | All three | Quality pass from the 2026-11-08 review (`_working/05-board-review.md`): DRC rules that gate width, holes and mains creepage; pour design; router told about pours and pin clearances, neck-down off; thermal and stitching vias; HV on both layers; silk and post-route clean-up. *Progress: `_working/05-board-review.md` § Progress. HV on both layers and RLHT's Power class deferred to an RLHT placement rework (2026-11-09). Done 2026-11-09 apart from that.* |
 | 5 | Generalize | Drive boards from `slice.yaml`/`loaf.yaml`; gitignore KiCad; regenerate in CI; show a *new* Slice variant falling out near-free. *Plan: `_planning/02-phase5-generalize.md` (approved 2026-11-09); the variant is one H-bridge + two thermocouples.* |
 | 6 | DCMT, HBTC | Authored power copper per block: pours, via fields and fixed tracks as block and root data, given to the router as planes that block other nets. *Plan: `_planning/03-block-power-copper.md` (approved 2026-11-10).* |
+| 6½ | All, plus PCBench | Router bake-off: does any router keep pours whole while routing across them, and how do routers compare. *Plan: `_planning/04-router-bakeoff.md` (approved 2026-11-10).* |
 
 **Success criterion (all phases):** generated netlist matches the original's,
 `kicad-cli pcb drc` passes, layout is genuinely manufacturable. Layout need **not**
