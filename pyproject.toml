@@ -40,6 +40,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
+# build/ is generated output (gitignored, which ruff honours and pyright does not).
+exclude = ["build", "**/node_modules", "**/__pycache__", "**/.*"]
 # SKiDL ships no type stubs and uses dynamic attribute injection heavily.
 reportMissingTypeStubs = false
 
