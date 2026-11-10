@@ -141,7 +141,11 @@ Each one is filed only after a minimal reproduction and your approval. The Freer
    - **With the flag on, 2.5.0 reports:** `ObstacleArea#2 [net GND] <-> FixedVia#5 [net GND]`.
    - **Controls:** with the flag off, no violation; with the via outside the plane, no violation.
    - **On DCMT:** 678 violations before routing with the flag, 53 without.
-   - **Not yet checked on `master`.** `098f5f2` (2026-10-10) fixed the same thing for pins (`PinPlaneObstacleTest`). Running the snapshot jar here was blocked.
+   - **Fixed on `master`; not filed.** Checked 2026-11-10 on the snapshot jar built from `842ad83` (`freerouting-SNAPSHOT-20261110_153900.jar`):
+     - `via-in-plane.dsn` reports no violation;
+     - a control, `via-foreign-in-plane.dsn` with the via on another net, reports `FixedVia#5 [net SIG] <-> ObstacleArea#2 [net GND]`.
+
+     The fix is after 2.5.0 and not yet in a release; likely the same change as `098f5f2`'s pin fix. Pinning the next release removes it here.
 2. **copperline: KiCad 10 boards and KiCad's DSN boundary can't be read.** Confirmed in the source (above). *Filed 2026-11-10 as iamdarshg/copperline#50*, with an upgraded public PCBench board as the reproduction.
 3. **fastroute: why it leaves 2–3 open on DCMT and HBTC** where Freerouting completes (it claims Freerouting parity). Not investigated. Its own `--report` lists them, so `--diagnose` is the next step.
 
