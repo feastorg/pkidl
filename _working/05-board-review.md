@@ -329,6 +329,7 @@ The hand-drawn Loaf_x004 labels pins 7 and 8 the wrong way round on every slice 
 **Targeted fixes, not general pour-aware routing (decided 2026-11-09).** I measured on DCMT what pour-aware routing would take:
 
 - **A Freerouting `plane`:** it connects its own net through the pour (GNDPWR then needs 6 tracks, not 37 connections), but other nets still route across it. Even a small plane didn't keep signals out (CH2_CSENS entered the VS region), and with it 15 connections went unrouted.
+  - *Corrected 2026-11-10:* other nets crossing a plane is Freerouting's default, not a limit. `plane_as_obstacle` (v2.5.0 `RouterSettings`, default false) makes a plane block foreign traces. With `--router.plane_as_obstacle=true`, no foreign track entered the original's CH1 VS pour on our DCMT; without it, +12V crossed it. This reopens planes as the way to give the router authored pours (`06-verdict.md`, option 1).
 - **Power on one layer** (`use_layer F.Cu` for Motor and Power): 9 connections unrouted.
 - **Hull keepouts** (2026-11-09, earlier): 22 unrouted, because the hulls cover other nets' pins.
 
