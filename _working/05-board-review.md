@@ -350,3 +350,27 @@ What remains is per-board layer design, as the originals do it: both-layer pours
 
   On HBTC, B.Cu under both blocks is now GND at every point tested (x 157–186, y 80–91.5), where before it was GNDPWR from x 170. CH1_CSENS no longer runs under the inputs. Every thermocouple pair on RLHT, HBTC and TC4 now runs on F.Cu only.
 - **Stitching vias land only where the pour reaches them:** `stitch_points` models each layer's fill and keeps a via only in the main region on both layers. After the routing change, TC4 had 2 dangling vias in pockets under the Nano; now it has none. Counts: RLHT 38, TC4 110.
+
+## Phase 6, step 0: authored pours as router planes (2026-11-10)
+
+**No-go for the approach as planned** (`_planning/03-block-power-copper.md`). Measured on DCMT with the original's power copper. The block copper is the original's channel 2, relative to its U3, applied at our U2 and U3; the root copper (+12V, GNDPWR, GND) is used where it is.
+
+**Premise, checked first.** 25 of 37 shared parts sit where the original has them. Our channel 2 is the original's shifted 0.36 mm in x. Our channel 1 is a copy of channel 2, translated, so its terminals J4/J5 sit 7.6 and 8.7 mm from the original's. The original's two channels differ.
+
+| Probe | Power stage | Signal stage | Pours after fill |
+|---|---|---|---|
+| The original's zone outlines as planes | 6 unrouted; 865 violations before routing | 30 unrouted | — |
+| The original's filled polygons as planes | 10 unrouted; 664 before | 14 unrouted | — |
+| Our board filled by KiCad before routing (the original's outlines and priorities), fills as planes | 7 unrouted | — | one piece per net and layer, before routing |
+| As above, plus the original's power tracks fixed before the fill | 2 pads apart (S1.1, R1.2), probe artefacts; Freerouting counts 8 | planes blocking: 24 unrouted (every Nano-to-LMD18200 line, the buck) | — |
+| As above, signals allowed across the pours | as above | all signals route (the same 2 artefacts) | GNDPWR B.Cu 4 pieces (`main` 3); +12V F.Cu 6, B.Cu 4; CH1_VS 2; DRC 7 unconnected |
+
+- **Why the first two fail.** The original's fills were computed against its own copper, and our channel 1 is different. 2 plane pairs overlap, and 34 foreign pads and vias sit within 1 mm of a plane edge.
+- **The pre-route fill works.** Planes have to be filled against our own board before routing: by KiCad, or by a polygon fill in pkidl.
+- **The deciding result is the signal stage.** Planes that block other nets leave the signals no way from the Nano to the bridges: the original's +12V pour covers the Nano's area on both layers. Planes that signals may cross get cut into pieces, the problem this phase set out to fix.
+- **What the original does instead.** Its designer put the crossings where they cut nothing. That is per-board signal routing, not a block's copper.
+- **The artefacts.** My probe filtered tracks by region, and so dropped the ones in the original's channel-1 area (S1's +12V, R1's GNDPWR).
+
+**For Freerouting, a candidate report, not yet reproduced minimally.** With `plane_as_obstacle` on, fixed vias inside a plane of their own net count as clearance violations: 678 before routing with the flag, 53 without, on the same DSN. The counts fit roughly two per via (one per layer): 112 thermal vias, 18 HS1 vias, 184 original +12V vias.
+
+**Probe scripts** are in the session scratchpad, untracked: `p6_probe.py`, `p6a_route.py`, `p6b_tracks.py`, `p6c_signals.py`, `unrouted.py`, `pieces.py`.
