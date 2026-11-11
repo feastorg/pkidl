@@ -1,0 +1,62 @@
+{
+  "freerouting_commit": "842ad83",
+  "kicad_dsn": "unrouted.dsn from PCBench, exported by KiCad 10.0.2 (pcbnew.ExportSpecctraDSN)",
+  "board": "unrouted.kicad_pcb from PCBench, upgraded with kicad-cli pcb upgrade (KiCad 10.0.6)",
+  "boards": [
+    {
+      "board_id": "arduino-led-driver_arduino-led-driver",
+      "source": "https://github.com/daniestevez/arduino-led-driver",
+      "license": "Unlicense",
+      "pcbench": "scripts/benchmark/fixtures/PCBench/arduino-led-driver_arduino-led-driver",
+      "sha256": {
+        "LICENSE": "88d9b4eb60579c191ec391ca04c16130572d7eedc4a86daa58bf28c6e14c9bcd",
+        "board.kicad_pcb": "ac5cab3d468bb8b6f0611fdbd322bc4a56d5d68b20488d973600787f7f5e97a3",
+        "kicad.dsn": "d3420a4c08f63ed00005308f0c1b26e42e5ef3c3f8e4a5873b33e557aec97325"
+      }
+    },
+    {
+      "board_id": "bldc-gimbal-1d_gimbal-board",
+      "source": "https://github.com/swedishhat/bldc-gimbal-1d",
+      "license": "MIT",
+      "pcbench": "scripts/benchmark/fixtures/PCBench/bldc-gimbal-1d_gimbal-board",
+      "sha256": {
+        "LICENSE": "49fae371e90b78d46147e2d736531060373f5d020a1e2f5b5cd67e9e3454caf5",
+        "board.kicad_pcb": "d0ff5f33d7d857545343f457fe8f28652767db0fe8e8fe10ddf966b9d5237aef",
+        "kicad.dsn": "66929c4dff4d85f98dc5ad98e195573e718c81a1e569bec958a2c9ee9b9b0e6b"
+      }
+    },
+    {
+      "board_id": "DualLM317BenchSupply_DualLM317BenchSupply",
+      "source": "https://github.com/pepaslabs/DualLM317BenchSupply",
+      "license": "MIT",
+      "pcbench": "scripts/benchmark/fixtures/PCBench/DualLM317BenchSupply_DualLM317BenchSupply",
+      "sha256": {
+        "LICENSE": "c0216d743872f4fe73fcc852d9f84d9089e4483019d39fda64b6e8a478a8dc28",
+        "board.kicad_pcb": "93cb66c4caa5a2719058900de7cad58fa106c536b797b4c52a8e0c4790a304aa",
+        "kicad.dsn": "e80b80c80d8e6ec22fb1cc5e88bc673220fe82856ff3717587beeefd9c9a5613"
+      }
+    },
+    {
+      "board_id": "free-of-charge_BMS",
+      "source": "https://github.com/hosier/free-of-charge",
+      "license": "MIT",
+      "pcbench": "scripts/benchmark/fixtures/PCBench/free-of-charge_BMS",
+      "sha256": {
+        "LICENSE": "089fa3779525b716e7b86385206ddb7a807a4ba3b6fe850f23a213ab49ced2dd",
+        "board.kicad_pcb": "eef5d4c921e1cf52d13b3d2070b07872367f175bc0f3100a72168409e4b7a95a",
+        "kicad.dsn": "310ac2fc8862f35cd806cf7bb9aed2df96036052dc153c38d3fc7d910fe50dfc"
+      }
+    },
+    {
+      "board_id": "OpenMPPT_OpenMPPT",
+      "source": "https://github.com/Ralim/OpenMPPT",
+      "license": "MIT",
+      "pcbench": "scripts/benchmark/fixtures/PCBench/OpenMPPT_OpenMPPT",
+      "sha256": {
+        "LICENSE": "bf9e701d3cb5b4e7cb6e2544f0e606416225a1cd4dcdffd0793f4fb3c084fd6a",
+        "board.kicad_pcb": "a1eea9a9c4b59a71625596c7911bdd7b0111a37219fd54614cfd54496658e82c",
+        "kicad.dsn": "562722f57a69270181674f3747c575008bb0da08e92ae07abbac5d202113ba45"
+      }
+    }
+  ]
+}
