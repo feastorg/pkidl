@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from pkidl import Board
+from pkidl import Board, Edge, inch, mm
 from pkidl.circuit import natural
 from pkidl.footprint import Placement, footprint_path, library_form, place
 from pkidl.importer import _property, circuit, footprints, mechanical
@@ -151,3 +151,32 @@ def test_each_strap_of_the_t0_board_finds_the_module_pin_it_biases():
     assert (u1.value, p1.value, p2.value) == ("ESP-12E", "CONN_01X08", "CONN_01X08")
     biased = [str(u1.pin_on(r.signal_net)) for r in board.parts("R1..R5")]
     assert biased == ["U1.1", "U1.3", "U1.18", "U1.17", "U1.16"]
+
+
+def test_what_the_t0_board_file_says_about_placement_is_said_without_conflict():
+    """The placement lines of the T0 board file, on its real inputs: said, not yet solved."""
+    board = Board.from_inputs(CORPUS / "t0" / "esp12-breakout_ESP12Breakout")
+    before = dumps(board.sexpr())
+    board.rails("VCC", "GND")
+    u1, p1, p2 = board.parts("U1", "P1", "P2")
+    board.place(p1, against=Edge.LEFT, inset=1.27 * mm)
+    board.place(p2, against=Edge.RIGHT, inset=1.27 * mm)
+    board.align(p1, p2, grid=0.1 * inch)
+    board.place(u1, between=(p1, p2), facing=Edge.TOP)
+    for r in board.parts("R1..R5"):
+        board.place(r, near=u1.pin_on(r.signal_net), within=3 * mm)
+    assert board.conflicts() == ()
+    assert [s.data() for s in board.statements()] == [
+        {"place": "P1", "against": "left", "inset": 1_270_000},
+        {"place": "P2", "against": "right", "inset": 1_270_000},
+        {"align": ["P1", "P2"], "grid": 2_540_000},
+        {"place": "U1", "between": ["P1", "P2"], "facing": "top"},
+        {"place": "R1", "near": "U1.1", "within": 3_000_000},
+        {"place": "R2", "near": "U1.3", "within": 3_000_000},
+        {"place": "R3", "near": "U1.18", "within": 3_000_000},
+        {"place": "R4", "near": "U1.17", "within": 3_000_000},
+        {"place": "R5", "near": "U1.16", "within": 3_000_000},
+    ]
+    # Every part of the board has something said about it, and nothing has moved.
+    assert all(board.statements(about=part) for part in board.parts())
+    assert dumps(board.sexpr()) == before

@@ -15,9 +15,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pkidl.circuit import Circuit, Net, Part, Selector
+from pkidl import intent
+from pkidl.circuit import Circuit, Net, Part, Pin, Selector
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
+from pkidl.intent import Align, Conflict, Edge, Place, Statement
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
+from pkidl.units import Length
 
 # The two-layer stack, as KiCad 10 writes it: (id, name, type, user name).
 _LAYERS = [
@@ -122,6 +125,8 @@ class Board:
     # name it uses.
     circuit: Circuit = field(default_factory=Circuit, repr=False)
     library: dict[str, Node] = field(default_factory=dict, repr=False)
+    # What the board file has said about the layout, each statement once.
+    _statements: dict[Statement, None] = field(default_factory=dict, repr=False)
 
     @classmethod
     def from_inputs(cls, where: Path | str) -> Board:
@@ -188,6 +193,57 @@ class Board:
         ``vin, sw = board.name_nets({"Net-(C106-Pad1)": "VIN", "Net-(C105-Pad1)": "SW"})``.
         See ``Circuit.name_nets``."""
         return self.circuit.name_nets(names)
+
+    def add(self, *statements: Statement) -> tuple[Statement, ...]:
+        """Add statements made elsewhere, by a block function say, and give them back.
+        Nothing moves: the board solves everything said about it together when it is
+        built, whatever order it was said in. Saying the same thing twice says it once."""
+        for statement in statements:
+            if not isinstance(statement, Statement):
+                raise TypeError(f"add() takes statements, such as place(...), not {statement!r}")
+            try:
+                statement.check(self.circuit)
+            except LookupError as e:
+                raise LookupError(f"{statement}: {e.args[0]}") from None
+        for statement in statements:
+            self._statements.setdefault(statement)
+        return statements
+
+    def place(
+        self,
+        part: Part,
+        *,
+        against: Edge | None = None,
+        inset: Length | str | None = None,
+        between: tuple[Part, Part] | None = None,
+        facing: Edge | None = None,
+        near: Pin | Part | None = None,
+        within: Length | str | None = None,
+    ) -> Place:
+        """Say where *part* goes, and get the statement back. See ``pkidl.place``."""
+        statement = intent.place(part, against=against, inset=inset, between=between,
+                                 facing=facing, near=near, within=within)  # fmt: skip
+        self.add(statement)
+        return statement
+
+    def align(self, *parts: Part, grid: Length | str) -> Align:
+        """Say that *parts* sit a whole number of *grid* steps apart, and get the
+        statement back. See ``pkidl.align``."""
+        statement = intent.align(*parts, grid=grid)
+        self.add(statement)
+        return statement
+
+    def statements(self, about: Part | str | None = None) -> tuple[Statement, ...]:
+        """What has been said about the layout, in the order it was added, which means
+        nothing; with *about*, what speaks of that part."""
+        if about is None:
+            return tuple(self._statements)
+        part = self.circuit.part(about.ref if isinstance(about, Part) else about)
+        return tuple(s for s in self._statements if part in s.mentions())
+
+    def conflicts(self) -> tuple[Conflict, ...]:
+        """Each aspect of a part that two statements give differently, with both."""
+        return intent.conflicts(self._statements)
 
     def _uuid(self, *parts: str) -> str:
         """A UUID from what the item is; repeats of the same item are numbered."""

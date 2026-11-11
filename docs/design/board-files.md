@@ -56,12 +56,13 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 |---|---|---|
 | `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name from `footprints/` | yes: the outline drawn, the holes placed, the parts loaded and waiting for placement; takes the directory or a file in it (`__file__`) |
 | `board.parts("R1..R5")` | typed part handles, range selectors | yes (`pkidl.circuit`): references, runs, `on_net(...)`, `where(value=...)` |
-| `place(against=Edge.LEFT, inset=)` | placement relative to the outline | no: absolute only |
-| `align(p1, p2, grid=)` | grid alignment across parts | no |
-| `place(between=, facing=)` | relative placement, orientation by intent | no |
+| `place(against=Edge.LEFT, inset=)` | placement relative to the outline | said, not solved: a statement with its line (`pkidl.intent`); nothing is placed by it yet |
+| `align(p1, p2, grid=)` | grid alignment across parts | said, not solved |
+| `place(between=, facing=)` | relative placement, orientation by intent | said, not solved |
 | `u1.area("antenna")` | named regions on a footprint | no: KiCad footprints don't carry it; see below |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
-| `place(near=, within=)` | proximity placement | no |
+| `place(near=, within=)` | proximity placement | said, not solved |
+| `1.27 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
 | `board.rules(...)` | design rules from intent | `pkidl.project` writes rules; not from a board API |
 | `board.pour("GND", layer=)` | whole-layer pour | yes (`Board.pour`) |
 | `board.route()` | staged routing | in `spike/`, not pkidl |
@@ -97,6 +98,32 @@ the netlist still matches. Rails are declared before `signal_net` is read: a rai
 declared afterwards is refused, since the answer already given would no longer hold.
 A pin is found by number (`fan.pin(4)`); by name (`driver.pin("B")`) waits for part
 annotations, since no corpus reference carries pin names.
+
+**As built, statements** (`pkidl.intent`): `place(...)` and `align(...)` make a
+statement and move nothing; `board.place`, `board.align` and `board.add` add it to a
+board and give it back. A statement is a value: two that say the same thing are equal
+wherever they were written, and saying one twice says it once. Each records the line of
+the board file that made it, the line inside a block function when a block made it.
+`board.statements(about=part)` reads back what has been said, and `statement.data()` is
+the same plain data however it was written (`{"place": "P1", "against": "left",
+"inset": 1270000}`).
+
+What one statement alone can say about a part is said once: its inset from an edge, the
+edge it faces, its distance from a pin. Two statements that give one of these
+differently are a conflict, reported with both lines and neither winning: `P1: inset
+from the left edge is 1.27 mm (board.py:33) and 2.54 mm (board.py:40)`. An inset left
+out and an inset given are also two answers. Against the left edge and against the top
+edge is a corner, not a conflict. `board.conflicts()` finds these before anything is
+solved, in an order that does not depend on the order the statements were added. Whether
+the statements can all hold on the board at once (a part between two others and against
+an edge, parts on a grid) is geometry, and is the placement solver's to report.
+
+Question 5, units: both. A length is `1.27 * mm`, `50 * mil`, `0.1 * inch`, or the text
+`"1.27mm"`, `"50mil"`, `"0.1in"`, and is kept as a whole number of nanometres, as KiCad
+stores it, so the three are one value. A bare number is refused rather than taken for
+millimetres. `align(..., grid=)` means the parts are a whole number of grid steps from
+each other, across and along; it does not put them on a grid fixed to the board, which
+has no physical meaning for a board that plugs into a breadboard.
 
 ## API style: a board you add to, made of statements
 
