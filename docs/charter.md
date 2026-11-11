@@ -6,19 +6,24 @@ Nearly every layer of a hardware design can be written as code: firmware, mechan
 CAD (build123d, CadQuery), and the schematic (SKiDL). The PCB layout is the exception.
 It is still drawn by hand in a GUI and stored as a large file of absolute coordinates.
 
-That is the gap for AI. An agent can write a circuit in SKiDL today, but it cannot
-design the board: the only thing it can produce is coordinates. The reasoning behind a
-layout is never written down: why this pour is this wide, why this part sits by that
-pin, which return path a signal relies on. A KiCad file holds only the result of that
-reasoning, so neither a person nor an agent can review it, change it, reuse it or check
-it.
+The reasoning behind a layout is never written down: why this pour is this wide, why
+this part sits by that pin, which return path a signal relies on. A KiCad file holds
+only the result. So a layout can't be reviewed or diffed as design, reused on the next
+board, regenerated when the circuit changes, or checked in CI against what it was meant
+to do, the way code can.
 
 ## What pkidl is
 
-**A language for a board's design intent, and a compiler from intent to copper, with
-KiCad as the output format and the judge.** A board file says what the designer means;
-pkidl makes the geometry; KiCad and pkidl's own measures check that the result meets
-what was said.
+**A Python library for designing PCBs in code: a DSL for a board's layout and intent, and
+a generator that turns it into KiCad files.** A board file says what the designer
+means; pkidl makes the geometry; KiCad and pkidl's own measures check that the result
+meets what was said.
+
+It is for anyone who would rather design a board in code than draw it: engineers with
+families of boards or variants, teams who want hardware reviewed and tested like
+software, and programs that generate designs, LLM-based agents included. A program can
+write Python; it cannot sensibly produce a board's coordinates. pkidl gives all of them
+the same thing: the board as readable, checkable source.
 
 Four layers, each usable on its own and each built on the one below:
 
@@ -39,8 +44,8 @@ Four layers, each usable on its own and each built on the one below:
    layer.
 4. **Verification in the language of intent.** KiCad's DRC, plus a measure of every
    stated intent on the real result: "the +12V pour's narrowest neck is 1.4 mm at U1;
-   6 A needs 4.2 mm". This closes the loop for an agent: write intent, compile, read
-   diagnostics that name intent, revise.
+   6 A needs 4.2 mm". This closes the loop for whoever writes the board, a person or a
+   program: write intent, build, read diagnostics that name intent, revise.
 
 The bar for the language: **simple boards take a few readable lines, as SKiDL
 circuits do, and the ceiling is KiCad's.**
@@ -53,26 +58,40 @@ place, preserving hand edits, waits for a real user who needs it (decided 2026-1
 
 ## Design principles
 
-Adopted from reviewing what code-first PCB tooling converges on:
+Adopted from reviewing what code-first PCB tooling converges on, and revised by the
+prior-art survey (`docs/survey/`):
 
 - **Logical and physical apart.** The circuit (parts, pins, nets) is input, never
   edited by layout; physical objects refer to it by stable IDs, so two netlists diff.
-- **Explicit objects, no hidden state.** No implicit stack (CadQuery's lesson), no
-  global default board (SKiDL's). Calls that read imperatively build inspectable
-  constraints underneath, so solvers and agents can reason about them.
+- **Python to write, one model underneath.** Boards are written in Python, not a new
+  language: nothing new to learn, no parser to maintain, and all of Python's loops,
+  functions and tests (code generators, LLMs among them, also handle it better than a
+  new syntax or JSON). The calls register intent in one typed model that serialises to
+  canonical data, for plans, diffs and diagnostics; solving and writing KiCad come
+  after. Whether the data form is also worth editing directly, by tools that generate
+  boards, is decided in step 4.
+- **Explicit objects, no ambient state.** Objects combined by functions and operators,
+  as in build123d's algebra mode: no implicit stack (CadQuery), no global default board
+  (SKiDL), no builder context such as `with Board():`.
 - **Everything queryable.** Any object can be measured and located (OpenSCAD's lesson).
 - **Units that can't go wrong:** `"0.2mm"`, `"8mil"`, or typed values; integer
   nanometres inside, as KiCad stores them.
-- **Selectors:** `"C1..C4"`, `on_net("GND")`, `where(value="100nF")`.
+- **Typed selectors, strings as sugar:** select by reference, net and pin
+  (`on_net("GND")`, `where(value="100nF")`), with `"C1..C4"` shorthand over them.
 - **Engines propose, the core applies.** A placer, router or filler returns a change;
-  the core checks it, applies or rejects it, and can show it first.
-- **Results, not booleans.** Routing reports routed, partly routed, infeasible or not
-  found; errors name pads, nets and distances in board terms.
-- **Determinism.** The same input gives the same bytes.
-- **Seeing is part of the loop.** A render after every build, for people and for
-  agents, which cannot otherwise see a board.
-- **Don't rebuild what exists:** KiCad for DRC, fill and fab output; existing routers
-  behind one interface; shapely (or Clipper2) for geometry.
+  the core checks it, applies or rejects it, and can show it first, as data.
+- **Results, not booleans, from every solver.** Routing reports routed, partly routed,
+  infeasible or not found; placement names the parts left free and the intents that
+  conflict, never choosing silently; errors name pads, nets and distances in board terms
+  and point at the line of the board file that made the object.
+- **Determinism.** The same input gives the same bytes. Identity comes from the netlist
+  and the intent, never from the order code ran in.
+- **Numbers first, then pictures.** A build is judged by layer-4 measures; a render after
+  every build is for review by eye, which catches only coarse mistakes.
+- **Don't rebuild what exists:** KiCad for DRC, fill and fab output, through files and
+  `kicad-cli` (the IPC API needs a running GUI until KiCad 11); existing routers behind
+  one interface (Freerouting's REST API for structured results); shapely (or Clipper2)
+  for geometry.
 
 ## What pkidl is not (yet)
 
@@ -121,7 +140,7 @@ A change to pkidl is judged by the whole scorecard, not by the board it was made
    - **Design languages:** CadQuery against build123d (chaining against explicit
      objects), OpenSCAD, SKiDL, Python-embedded HDLs (Amaranth, Chisel), atopile's
      own language, UI constraint layout (flexbox, Cassowary), Terraform's plan and
-     apply. What made each pleasant or painful, for people and for agents.
+     apply. What made each pleasant or painful to write, read and generate.
 3. The corpus and the scorecard harness, before more language code.
 4. The language designed by writing it first: pkidl files for 5-8 corpus boards across
    the tiers, as we would want to write them, reviewed as the API design.
@@ -136,9 +155,10 @@ A change to pkidl is judged by the whole scorecard, not by the board it was made
 
 ## Open questions
 
-- Is pkidl a Python DSL in the SKiDL style, or does its intent layer want a declarative
-  form (data, not code) that Python generates and an agent edits? The survey and the
-  board files of step 4 should decide.
+- Whether the intent model's data form is worth editing directly, by tools that
+  generate or revise boards, or only the Python. The survey settled the rest (Python to
+  write, one serialisable model underneath); step 4 tests this part: the same revision
+  made both ways on two or three corpus boards.
 - How a netlist enters for corpus boards that have no SKiDL source: SKiDL's KiCad
   netlist import, or pkidl reading KiCad netlists directly.
 - Which licences the corpus can commit, and which boards are fetched at test time
