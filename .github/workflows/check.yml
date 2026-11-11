@@ -73,7 +73,24 @@ jobs:
         with:
           python-version: "3.13"
 
-      # pkidl itself: no KiCad, SKiDL or router needed.
+      # pkidl itself: no KiCad or SKiDL needed. The router is here so the tests
+      # that run Freerouting run rather than skip.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Freerouting (pinned version, checked jar)
+        run: |
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/freerouting.jar" \
+            "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
+          echo "$FREEROUTING_SHA256  $RUNNER_TEMP/freerouting.jar" | sha256sum -c -
+          # Headless, and without the analytics it otherwise posts on every start.
+          echo "FREEROUTING=java -Djava.awt.headless=true -jar $RUNNER_TEMP/freerouting.jar" \
+            "--gui.enabled=false --usage_and_diagnostic_data.disable_analytics=true" >> "$GITHUB_ENV"
+
       - name: Setup
         run: just setup
 

@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pkidl.board import Board
-from pkidl.dsn import Via, Wire, read_ses, via_size, write_dsn
+from pkidl.dsn import Via, Wire
 from pkidl.footprint import Placement, place
 from pkidl.project import DruRule, NetClass
-from pkidl.route import freerouting
-from pkidl.sexpr import Node, find, find_all
+from pkidl.route import Freerouting
+from pkidl.routing import Job, lay, staged
+from pkidl.sexpr import Node
 
 from kidl_spike import libs
 from kidl_spike.boards.common import SLICE_S, symbols
@@ -135,92 +136,31 @@ def route(
     planes: list[tuple[str, str, list[tuple[float, float]]]] | None = None,
     wires: list[Wire] | None = None,
 ) -> None:
-    """Route *board* with Freerouting and add its tracks and vias.
+    """Route *board* with Freerouting, in pkidl's stages (``pkidl.routing.staged``), and
+    add its tracks and vias.
 
-    Two stages. The nets of every class but Default (power, motor, mains) are
-    routed first, alone, with neck-down off: Freerouting would otherwise narrow
-    them along whole runs, not only into pins. The rest are then routed around
-    those, fixed, with neck-down on: signal tracks may neck to 3/4 of their width
-    (decided 2026-11-09), kept *signal_clearances* (class pairs, mm) from the
-    first stage's copper. *vias* are placed before routing and kept: thermal vias
-    under a part, say. *keepouts* (layer, polygon) hold every track and via out, in
-    both stages. *planes* (``pkidl.fill.prefill``) are pours the router connects
-    through and every other net keeps out of (``plane_as_obstacle``), in both stages;
-    a third stage then routes whatever is left, crossing signal nets' pours if it must.
-    *wires* are tracks placed before routing and kept, as *vias* are: a block's
-    power copper, say. Each ends up on the board once.
-    Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses`` and the router's
-    logs into *outdir*.
+    The nets of every class but Default (power, motor, mains) are routed first, alone,
+    with neck-down off. The rest are then routed around those with neck-down on: signal
+    tracks may neck to 3/4 of their width (decided 2026-11-09), kept *signal_clearances*
+    (class pairs, mm) from the first stage's copper. *vias* are placed before routing
+    and kept: thermal vias under a part, say. *keepouts* (layer, polygon) hold every
+    track and via out. *planes* (``pkidl.fill.prefill``) are pours the router connects
+    through and every other net keeps out of; a third stage then routes whatever is
+    left, crossing signal nets' pours if it must. *wires* are tracks placed before
+    routing and kept, as *vias* are: a block's power copper, say. Each ends up on the
+    board once. Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses`` and the
+    router's logs into *outdir*.
     """
-    footprints, outline = list(placed.values()), outline_polygon()
-    edge = float(RULES["min_copper_edge_clearance"])
-    power = {n for c in netclasses[1:] for n in members.get(c.name, [])}
-    vias = vias or []
-    obstacle = ["--router.plane_as_obstacle=true"] if planes else []
-    # Against planes, two of Freerouting 2.5.0's stages cost minutes for nothing: on DCMT
-    # the optimizer's every pass was rejected (its output is byte-identical without it,
-    # 2026-11-11) and fanout spent 220 s in one pass, oscillating on GND. Off for the
-    # stages with planes; the result is checked on the filled board.
-    quick = ["--router.fanout.enabled=false", "--router.optimizer.enabled=false"] if planes else []
-    # Every fixed via is an obstacle in both stages, whichever net it is on.
-    authored = list(wires or [])
-    fixed: tuple[list[Wire], list[Via]] = (list(authored), list(vias))
-    if power:
-        # Only the power nets' pours are planes here: a plane makes its net one the router
-        # connects, and the signal nets wait for the second stage. Their pours are plain
-        # keepouts meanwhile, so the power routes still keep out of them.
-        own = [p for p in planes or [] if p[0] in power]
-        others = [(layer, poly) for n, layer, poly in planes or [] if n not in power]
-        dsn = write_dsn(outdir / f"{name}-power.dsn", footprints, outline, netclasses, members,
-                        edge_clearance=edge, only=power, fixed=fixed,
-                        areas=[*(keepouts or []), *others], planes=own)  # fmt: skip
-        ses = freerouting(dsn, outdir / f"{name}-power.ses", log=outdir / "freerouting-power.log",
-                          options=["--router.automatic_neckdown=false", *obstacle])  # fmt: skip
-        wires, out_vias = read_ses(ses)
-        # A fixed via on a net this stage does not route may not come back: keep each once.
-        kept = {(v.net, v.at) for v in out_vias}
-        fixed = (_with(wires, authored), out_vias + [v for v in vias if (v.net, v.at) not in kept])
-    dsn = write_dsn(outdir / f"{name}.dsn", footprints, outline, netclasses, members,
-                    edge_clearance=edge, fixed=fixed,
-                    class_clearances=signal_clearances, areas=keepouts, planes=planes)  # fmt: skip
-    ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log",
-                      options=[*obstacle, *quick])  # fmt: skip
-    wires, routed_vias = read_ses(ses)
-    if planes:
-        # What could not reach its pins through the corridors may cross a signal net's pour
-        # (logic ground), never a power pour: everything routed so far is fixed, so only the
-        # missing connections are routed, and the pours they cut show in the filled
-        # board's regions. The power nets are complete by now, so their pours are plain
-        # keepouts here.
-        power_pours = [(layer, poly) for n, layer, poly in planes if n in power]
-        signal_nets = {str(n[-1]) for fp in footprints for pad in find_all(fp, "pad")
-                       if (n := find(pad, "net")) is not None and str(n[-1])} - power  # fmt: skip
-        dsn = write_dsn(outdir / f"{name}-cross.dsn", footprints, outline, netclasses, members,
-                        edge_clearance=edge, only=signal_nets,
-                        fixed=(_with(wires, authored), routed_vias),
-                        class_clearances=signal_clearances,
-                        areas=[*(keepouts or []), *power_pours],
-                        planes=[p for p in planes if p[0] not in power])  # fmt: skip
-        ses = freerouting(dsn, outdir / f"{name}-cross.ses", log=outdir / "freerouting-cross.log",
-                          options=quick)  # fmt: skip
-        cross_wires, cross_vias = read_ses(ses)
-        # The session holds only the nets this stage routes: the rest carry forward.
-        wires = cross_wires + [w for w in wires if w.net not in signal_nets]
-        routed_vias = cross_vias + [v for v in routed_vias if v.net not in signal_nets]
-    for w in _with(wires, authored):
-        for a, b in zip(w.points, w.points[1:], strict=False):
-            board.track(a, b, w.width, w.net, w.layer)
-    for v in routed_vias:
-        board.via(v.at, *via_size(v.padstack), v.net)
-
-
-def _with(wires: list[Wire], authored: list[Wire]) -> list[Wire]:
-    """*wires* plus each *authored* wire the router did not hand back. The router rounds
-    what it hands back and may reverse it, so segments are compared to the micrometre."""
-    have = {s for w in wires for s in _segments(w)}
-    return wires + [w for w in authored if not _segments(w) <= have]
-
-
-def _segments(w: Wire) -> set[tuple]:
-    pts = [(round(x, 3), round(y, 3)) for x, y in w.points]
-    return {(w.net, w.layer, frozenset((a, b))) for a, b in zip(pts, pts[1:], strict=False)}
+    job = Job(
+        list(placed.values()),
+        outline_polygon(),
+        netclasses,
+        members,
+        edge_clearance=float(RULES["min_copper_edge_clearance"]),
+        wires=wires or (),
+        vias=vias or (),
+        class_clearances=signal_clearances,
+        keepouts=keepouts or (),
+        planes=planes or (),
+    )
+    lay(board, staged(Freerouting(), job, outdir, name))

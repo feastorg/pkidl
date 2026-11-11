@@ -9,6 +9,18 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- `pkidl.routing`: a board routed in stages, by a router behind one interface. A `Job`
+  is what a board asks of a router: its footprints, outline, net classes, the copper
+  already there, and what to keep out of. A `Router` has one method, `route(job, outdir,
+  name, stage)`, and hands back a `Run`: the wires and vias it proposes, and how many
+  connections it says it left unmade (`unrouted`, `None` where it does not say).
+  `staged()` routes the nets of every class but the first alone and not necked, then
+  the rest around that copper, then, on a board with planes, what is left, which may
+  cross a signal net's pour. It gives a `Routed`: the wires, the vias and each stage's
+  `Run`. Nothing is on a board until `lay()` puts it there. (#16)
+- `pkidl.route.Freerouting`: the first `Router`. It leaves each stage's `.dsn`, `.ses`
+  and `freerouting.log` in the directory it is given, and reads `Run.unrouted` from
+  the log's last auto-routing line, as Freerouting 2.5.0 writes it. (#16)
 - `pkidl.annotations`: what a footprint does not say about its part, held as named
   areas. An annotation is a TOML file written against two of the part's pads, not the
   footprint's origin. `fit()` turns it through right angles until those two pads are
@@ -151,6 +163,8 @@ Unreleased. History before this file was reconstructed from the git log.
   (`near=`), then by reference, so a part that looks sees every area kept clear. (#14)
 - `place(between=, against=)` with an edge: the edge says how far the part is from it,
   and `between=` where it is along it. The two were reported as two places. (#14)
+- The tests that run Freerouting are skipped where it is not installed. The rest
+  still need no KiCad, SKiDL or router. (#16)
 
 ### Fixed
 

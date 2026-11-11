@@ -28,7 +28,8 @@ just test         # pkidl's tests
 ```
 
 `spike/` has its own: run `just --list` there. Its boards need KiCad, SKiDL and
-Freerouting; pkidl's own tests need none of them.
+Freerouting. pkidl's own tests need no KiCad or SKiDL; the ones that run
+Freerouting are skipped where it is not installed, and run in CI.
 
 ## Conventions
 

@@ -67,7 +67,7 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
 | `board.rules(...)` | design rules from intent | `pkidl.project` writes rules; not from a board API |
 | `board.pour("GND", layer=)` | whole-layer pour | yes (`Board.pour`) |
-| `board.route()` | staged routing | in `spike/`, not pkidl |
+| `board.route()` | staged routing | the stages and the router are in pkidl (`pkidl.routing`, `pkidl.route.Freerouting`); `board.route()` itself is the build's |
 | the build and the scorecard | KiCad files, refill, DRC, measures | partly (`pkidl.measure`, `just corpus`) |
 
 **Design questions it raises:**
@@ -233,6 +233,37 @@ Open after this:
 - **Limits of this solver:** the board is taken as the box around its outline, and
   mounting holes are not kept clear of; `near=` is solved alone, not with `against=` or
   `between=` beside it; parts turn in right angles.
+
+**As built, routing** (`pkidl.routing`): a router is an engine behind one interface.
+It is given a `Job` (the placed footprints, the outline, the net classes, what copper
+is there already, the areas to keep out of, the pours, and how to route: `neck_down`,
+`cross_planes`, `quick`) and hands back a `Run`: wires, vias, and how many connections
+it says it left unmade. `pkidl.route.Freerouting` is the first; it writes the job as a
+DSN file, runs Freerouting on it and reads the session and the log.
+
+`staged(router, job, outdir, name)` routes a board in up to three runs: the nets of
+every class but Default first and alone, with neck-down off; everything left around
+those; and, on a board with pours, a last run for what the corridors between the pours
+left unconnected, which may cross a signal net's pour and never a power one. It gives
+back a `Routed`: the tracks and vias proposed, each once, and each stage's run. Nothing
+is on the board until `lay(board, routed)` puts it there. What a router says of its
+own work is reported and not trusted: KiCad's DRC judges the board.
+
+The stages are the ones `spike/` routed its boards in, moved; its boards are built
+through them. The flags a stage sets are Freerouting's reasons (a router that may neck
+narrows a wide track along whole runs; against planes its optimizer and fan-out cost
+minutes for nothing), said in terms another router could answer.
+
+Open after this:
+
+- **`board.route()`** is not there: a board file cannot ask for routing yet. Making
+  the job from the board (its footprints, outline, `board.rules(...)`, the kept areas
+  placement reports) is the build's.
+- **A `Run` says a number**, not which connections are unmade. The charter's "routed,
+  partly routed, infeasible or not found" needs the nets named, which Freerouting's
+  log does not give and its REST API does.
+- **Stages come from net classes**: a class other than Default is routed first. A
+  board file has no words yet for which nets those are.
 
 Question 5, units: both. A length is `1.27 * mm`, `50 * mil`, `0.1 * inch`, or the text
 `"1.27mm"`, `"50mil"`, `"0.1in"`, and is kept as a whole number of nanometres, as KiCad
