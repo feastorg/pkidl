@@ -11,8 +11,8 @@ from pkidl.footprint import footprint_path
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.sexpr import Node, dumps, parse
 
-# A board to take inputs from: a part, a two-hole bracket turned and on the back, and two
-# holes that share the reference KiCad gives a footprint with no symbol.
+# A board to take inputs from: a part with one pad on no net, a two-hole bracket turned and
+# on the back, and two holes that share the reference KiCad gives a footprint with no symbol.
 SOURCE = """(kicad_pcb
   (gr_line (start 0 0) (end 40 0) (layer "Edge.Cuts"))
   (gr_line (start 40 0) (end 40 30) (layer "Edge.Cuts"))
@@ -22,7 +22,8 @@ SOURCE = """(kicad_pcb
     (property "Reference" "R1" (at 0 -2) (layer "F.SilkS") (uuid "a1"))
     (property "Value" "10k" (at 0 2) (layer "F.Fab") (uuid "a2"))
     (pad "1" smd rect (at -1 0 90) (size 1 1) (layers "F.Cu") (net "VCC") (uuid "a3"))
-    (pad "2" smd rect (at 1 0 90) (size 1 1) (layers "F.Cu") (net "OUT") (uuid "a4")))
+    (pad "2" smd rect (at 1 0 90) (size 1 1) (layers "F.Cu") (net "OUT") (uuid "a4"))
+    (pad "3" smd rect (at 0 1 90) (size 1 1) (layers "F.Cu") (uuid "a5")))
   (footprint "Mech:Bracket" (layer "B.Cu") (at 20 15 90)
     (property "Reference" "H1" (at 0 0) (layer "B.SilkS") (uuid "b1"))
     (pad "" np_thru_hole circle (at 0 0) (size 3 3) (drill 3) (layers "*.Cu") (uuid "b2"))
@@ -72,9 +73,25 @@ def test_the_outline_is_drawn_and_the_holes_are_where_they_were(inputs):
 
 def test_the_circuit_and_its_footprints_are_loaded_and_no_part_is_placed(inputs):
     board = Board.from_inputs(inputs)
-    assert board.circuit == circuit(parse(SOURCE))
+    assert board.circuit.data == circuit(parse(SOURCE))
     assert set(board.library) == {"Device:R", "Mech:Bracket", "Mech:M3"}
     assert circuit(_written(board)) == {"parts": [], "nets": []}
+
+
+def test_the_boards_parts_pins_and_nets_are_its_circuits(inputs):
+    board = Board.from_inputs(inputs)
+    r1 = board["R1"]
+    assert (r1.value, r1.footprint) == ("10k", "Device:R")
+    assert board.parts("R1") == board.parts() == (r1,)
+    assert [n.name for n in board.nets()] == ["OUT", "VCC"]
+    # The footprint says which pins there are; the circuit, which of them are on a net.
+    assert [(p.number, p.net and p.net.name) for p in r1.pins()] == [
+        ("1", "VCC"), ("2", "OUT"), ("3", None)]  # fmt: skip
+    assert board.rails("VCC") == (board.net("VCC"),)
+    assert r1.signal_net == board.net("OUT")
+    (sense,) = board.name_nets({"OUT": "SENSE"})
+    assert str(sense) == "SENSE" and r1.pin_on("SENSE") == r1.pin(2)
+    assert board.circuit.data == circuit(parse(SOURCE))  # the circuit is as it was
 
 
 def test_a_board_file_passes_its_own_path(inputs):

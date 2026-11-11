@@ -18,9 +18,9 @@ other parts.
 
 from __future__ import annotations
 
-import re
 from collections import Counter
 
+from pkidl.circuit import natural
 from pkidl.footprint import board_xy, library_form
 from pkidl.sexpr import Node, dumps, find, find_all
 
@@ -104,10 +104,6 @@ def mechanical(board: Node) -> dict:
     return {"outline": outline, "holes": sorted(holes, key=lambda h: h["ref"]), "fixed": {}}
 
 
-def _natural(ref: str) -> tuple:
-    return tuple(int(t) if t.isdigit() else t for t in re.split(r"(\d+)", ref))
-
-
 def _shape(lib: Node) -> str:
     """A library footprint's pads and graphics, whatever order or UUIDs they carry."""
 
@@ -135,7 +131,7 @@ def footprints(board: Node) -> tuple[dict[str, Node], dict[str, list[str]]]:
     for fp in find_all(board, "footprint"):
         if str(fp[1]) in wanted:
             ref = _property(fp, "Reference")
-            by_name.setdefault(str(fp[1]), []).append((_natural(ref), ref, library_form(fp)))
+            by_name.setdefault(str(fp[1]), []).append((natural(ref), ref, library_form(fp)))
     libs: dict[str, Node] = {}
     differ: dict[str, list[str]] = {}
     for name, found in sorted(by_name.items()):

@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from pkidl import Board
+from pkidl.circuit import natural
 from pkidl.footprint import Placement, footprint_path, library_form, place
 from pkidl.importer import _property, circuit, footprints, mechanical
 from pkidl.sexpr import Node, dumps, find, find_all, parse
@@ -112,7 +113,7 @@ def _uuids(node: Node) -> list[str]:
 @each_board
 def test_a_board_from_the_inputs_has_the_references_outline_and_holes(d):
     board = Board.from_inputs(d)
-    assert board.circuit == json.loads((d / "circuit.json").read_text())
+    assert board.circuit.data == json.loads((d / "circuit.json").read_text())
     written = parse(dumps(board.sexpr()))
     assert mechanical(written) == json.loads((d / "mechanical.json").read_text())
     assert circuit(written) == {"parts": [], "nets": []}  # no part is placed yet
@@ -123,3 +124,30 @@ def test_a_board_from_the_inputs_has_the_references_outline_and_holes(d):
     points = [p for item in mechanical(reference(d))["outline"]
               for key in ("start", "mid", "end") if (p := item.get(key))]  # fmt: skip
     assert all(x0 <= x <= x1 and y0 <= y <= y1 for x, y in points)
+
+
+@each_board
+def test_the_circuit_as_objects_is_the_circuit_as_data(d):
+    board = Board.from_inputs(d)
+    data = json.loads((d / "circuit.json").read_text())
+    assert [p.ref for p in board.parts()] == sorted((p["ref"] for p in data["parts"]), key=natural)
+    assert [n.name for n in board.nets()] == data["nets"]
+    on_nets = {(str(pin), pin.net.name) for part in board.parts() for pin in part.pins()
+               if pin.net is not None}  # fmt: skip
+    assert on_nets == {(f"{p['ref']}.{number}", net)
+                       for p in data["parts"] for number, net in p["pads"].items()}  # fmt: skip
+    assert {str(pin) for net in board.nets() for pin in net.pins()} == {p for p, _ in on_nets}
+    for part in board.parts():
+        numbered = [str(pad[1]) for pad in find_all(board.library[part.footprint], "pad")
+                    if str(pad[1])]  # fmt: skip
+        assert [pin.number for pin in part.pins()] == list(dict.fromkeys(numbered)), part.ref
+
+
+def test_each_strap_of_the_t0_board_finds_the_module_pin_it_biases():
+    """The lines of the T0 board file that read the circuit, on its real inputs."""
+    board = Board.from_inputs(CORPUS / "t0" / "esp12-breakout_ESP12Breakout")
+    board.rails("VCC", "GND")
+    u1, p1, p2 = board.parts("U1", "P1", "P2")
+    assert (u1.value, p1.value, p2.value) == ("ESP-12E", "CONN_01X08", "CONN_01X08")
+    biased = [str(u1.pin_on(r.signal_net)) for r in board.parts("R1..R5")]
+    assert biased == ["U1.1", "U1.3", "U1.18", "U1.17", "U1.16"]

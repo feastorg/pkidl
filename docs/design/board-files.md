@@ -23,6 +23,7 @@ breadboard."""
 from pkidl import Board, Edge, inch, mm
 
 board = Board.from_inputs(__file__)  # the circuit, outline, holes and footprints beside it
+board.rails("VCC", "GND")
 
 u1, p1, p2 = board.parts("U1", "P1", "P2")
 straps = board.parts("R1..R5")
@@ -46,7 +47,7 @@ board.pour("GND", layer="B.Cu")
 board.route()
 ```
 
-Twenty lines, fourteen of them code; no coordinates except the outline's (from
+Under thirty lines, blank ones counted; no coordinates except the outline's (from
 `mechanical.json`) and the two insets.
 
 **What it needs from pkidl:**
@@ -54,12 +55,12 @@ Twenty lines, fourteen of them code; no coordinates except the outline's (from
 | Line | Feature | Exists today |
 |---|---|---|
 | `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name from `footprints/` | yes: the outline drawn, the holes placed, the parts loaded and waiting for placement; takes the directory or a file in it (`__file__`) |
-| `board.parts("R1..R5")` | typed part handles, range selectors | no |
+| `board.parts("R1..R5")` | typed part handles, range selectors | yes (`pkidl.circuit`): references, runs, `on_net(...)`, `where(value=...)` |
 | `place(against=Edge.LEFT, inset=)` | placement relative to the outline | no: absolute only |
 | `align(p1, p2, grid=)` | grid alignment across parts | no |
 | `place(between=, facing=)` | relative placement, orientation by intent | no |
 | `u1.area("antenna")` | named regions on a footprint | no: KiCad footprints don't carry it; see below |
-| `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | no |
+| `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | no |
 | `board.rules(...)` | design rules from intent | `pkidl.project` writes rules; not from a board API |
 | `board.pour("GND", layer=)` | whole-layer pour | yes (`Board.pour`) |
@@ -89,6 +90,13 @@ Twenty lines, fourteen of them code; no coordinates except the outline's (from
 **Decided (2026-11-11):** footprint meaning lives in pkidl part annotations (shipped for
 common parts, declarable in a board file); rails are declared (`board.rails(...)`); the
 API style is the working choice below, to be confirmed by the comparison that follows.
+
+**As built:** `board.rails(...)` and `board.name_nets(...)` give back the nets they were
+given, not the board, and a named net keeps the circuit's name in the KiCad files, so
+the netlist still matches. Rails are declared before `signal_net` is read: a rail
+declared afterwards is refused, since the answer already given would no longer hold.
+A pin is found by number (`fan.pin(4)`); by name (`driver.pin("B")`) waits for part
+annotations, since no corpus reference carries pin names.
 
 ## API style: a board you add to, made of statements
 
@@ -195,7 +203,8 @@ def breakout(board, spacing):
         keepout(u1.area("antenna"), copper=True, both_sides=True),
     ]
 
-wide = Board.from_inputs(ESP12).rails("VCC", "GND")
+wide = Board.from_inputs(ESP12)
+wide.rails("VCC", "GND")
 wide.add(*breakout(wide, spacing=0.9 * inch))
 narrow = wide.copy()                                   # explicit copy for the variant
 narrow.remove(*narrow.statements(about="P2"))          # or build it from breakout(..., 0.6)

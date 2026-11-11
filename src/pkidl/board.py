@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from pkidl.circuit import Circuit, Net, Part, Selector
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 
@@ -117,9 +118,9 @@ class Board:
     items: list[Node] = field(default_factory=list)
     _uuids: set[str] = field(default_factory=set, repr=False)
     extent: tuple[float, float, float, float] | None = None  # the outline's box, once drawn
-    # What from_inputs loads: the circuit as circuit.json holds it, and the library
-    # footprint behind each footprint name it uses.
-    circuit: dict[str, Any] = field(default_factory=lambda: {"parts": [], "nets": []})
+    # What from_inputs loads: the circuit, and the library footprint behind each footprint
+    # name it uses.
+    circuit: Circuit = field(default_factory=Circuit, repr=False)
     library: dict[str, Node] = field(default_factory=dict, repr=False)
 
     @classmethod
@@ -135,20 +136,23 @@ class Board:
         d = Path(where)
         if not d.is_dir():
             d = d.parent
-        board = cls(circuit=json.loads((d / "circuit.json").read_text()))
+        board = cls()
+        circuit = json.loads((d / "circuit.json").read_text())
         mech = json.loads((d / "mechanical.json").read_text())
-        uses = [(p["ref"], p["footprint"]) for p in board.circuit["parts"]]
+        uses = [(p["ref"], p["footprint"]) for p in circuit["parts"]]
         uses += [(f"the hole at {h['at']}", h["footprint"]) for h in mech["holes"]]
         for user, name in uses:
             path = d / "footprints" / footprint_path(name)
             if not path.is_file():
                 raise ValueError(f"{user}: no footprint {name!r} at {path}")
             board.library.setdefault(name, parse(path.read_text()))
-        for part in board.circuit["parts"]:
-            has = {str(pad[1]) for pad in find_all(board.library[part["footprint"]], "pad")}
-            if missing := sorted(set(part["pads"]) - has):
+        pads = {name: [str(pad[1]) for pad in find_all(lib, "pad")]
+                for name, lib in board.library.items()}  # fmt: skip
+        for part in circuit["parts"]:
+            if missing := sorted(set(part["pads"]) - set(pads[part["footprint"]])):
                 raise ValueError(f"{part['ref']}: its footprint {part['footprint']!r} has no "
                                  f"pad {', '.join(missing)}")  # fmt: skip
+        board.circuit = Circuit(circuit, pads)
         board.outline(mech["outline"])
         for hole in mech["holes"]:
             name, (x, y) = hole["footprint"], hole["at"]
@@ -156,6 +160,34 @@ class Board:
                            hole["back"], board_only=True, uid=f"hole:{x},{y}")  # fmt: skip
             board.footprint(place(board.library[name], at))
         return board
+
+    def __getitem__(self, ref: str) -> Part:
+        """The part with this reference: ``board["U1"]``."""
+        return self.circuit.part(ref)
+
+    def parts(self, *which: str | Part | Selector) -> tuple[Part, ...]:
+        """The parts selected, each once, in the order asked for: ``"U1"``, a run such as
+        ``"R1..R5"``, or a selector such as ``on_net("GND")``; with nothing asked for,
+        every part. See ``Circuit.parts``."""
+        return self.circuit.parts(*which)
+
+    def net(self, name: Net | str) -> Net:
+        """A net by the circuit's name for it, or by the name ``name_nets`` gave it."""
+        return self.circuit.net(name)
+
+    def nets(self) -> tuple[Net, ...]:
+        return self.circuit.nets()
+
+    def rails(self, *nets: Net | str) -> tuple[Net, ...]:
+        """Declare the supplies and grounds, and get them back: what ``signal_net`` leaves
+        out. See ``Circuit.rails``."""
+        return self.circuit.rails(*nets)
+
+    def name_nets(self, names: Mapping[str, str]) -> tuple[Net, ...]:
+        """Give anonymous nets a name to write and read, and get them back:
+        ``vin, sw = board.name_nets({"Net-(C106-Pad1)": "VIN", "Net-(C105-Pad1)": "SW"})``.
+        See ``Circuit.name_nets``."""
+        return self.circuit.name_nets(names)
 
     def _uuid(self, *parts: str) -> str:
         """A UUID from what the item is; repeats of the same item are numbered."""
