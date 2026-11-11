@@ -72,6 +72,9 @@ class Placement:
     board_only: bool = False  # no schematic symbol; schematic parity skips it
     in_bom: bool | None = None  # override the library's exclude_from_bom to match the symbol
     solid_pads: bool = False  # pads join copper pours directly, without thermal reliefs
+    # What its UUIDs are derived from when the reference is not its own: board-only
+    # footprints such as mounting holes share REF**.
+    uid: str | None = None
 
 
 def _flip(node: Node) -> None:
@@ -118,16 +121,24 @@ def _toggle_mirror(text: Node) -> None:
             effects.remove(justify)
 
 
-def place(library_footprint: Path | str, p: Placement) -> Node:
-    """Return a board ``(footprint ...)`` node for placement *p*."""
-    text = (
-        library_footprint.read_text() if isinstance(library_footprint, Path) else library_footprint
-    )
-    lib = parse(text)
+def footprint_path(name: str) -> Path:
+    """Where a footprint library keeps the footprint *name*, KiCad's own layout:
+    ``<library>.pretty/<footprint>.kicad_mod``; a name with no library sits at the top."""
+    lib, _, fp = name.rpartition(":")
+    return Path(f"{lib}.pretty" if lib else "", f"{fp}.kicad_mod")
+
+
+def place(library_footprint: Path | str | Node, p: Placement) -> Node:
+    """Return a board ``(footprint ...)`` node for placement *p* of a library footprint:
+    its file, its text, or the footprint parsed, which is left as it was."""
+    if isinstance(library_footprint, Path):
+        library_footprint = library_footprint.read_text()
+    lib = parse(library_footprint) if isinstance(library_footprint, str) else library_footprint
+    key = p.uid or p.ref
 
     out: Node = [Sym("footprint"), p.lib_id]
     out.append([Sym("layer"), "B.Cu" if p.back else "F.Cu"])
-    out.append([Sym("uuid"), gen_uuid("fp", p.ref)])
+    out.append([Sym("uuid"), gen_uuid("fp", key)])
     at = [Sym("at"), num(p.x), num(p.y)]
     if p.rot:
         at.append(num(p.rot))
@@ -170,7 +181,7 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
                 else:
                     item.append(solid)
             if find(item, "uuid") is None:
-                item.append([Sym("uuid"), gen_uuid("pad", p.ref, number, str(len(out)))])
+                item.append([Sym("uuid"), gen_uuid("pad", key, number, str(len(out)))])
         elif kind in _TEXT_KEYS:
             _set_angle(item, _upright(local + p.rot))
             if kind == "property" and item[1] == "Reference":
@@ -195,7 +206,7 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
                 out.append(
                     [Sym("property"), name, p.fields[name], [Sym("at"), num(0), num(0), num(0)],
                      [Sym("layer"), fab], [Sym("hide"), Sym("yes")],
-                     [Sym("uuid"), gen_uuid("field", p.ref, name)], effects]
+                     [Sym("uuid"), gen_uuid("field", key, name)], effects]
                 )  # fmt: skip
             if p.path:
                 out.append([Sym("path"), p.path])
@@ -204,7 +215,7 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
                 out.append([Sym("sheetfile"), p.sheetfile])
             meta_done = True
         out.append(item)
-    _own_uuids(out, p.ref)
+    _own_uuids(out, key)
     return out
 
 

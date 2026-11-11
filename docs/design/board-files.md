@@ -22,7 +22,7 @@ breadboard."""
 
 from pkidl import Board, Edge, inch, mm
 
-board = Board.from_inputs("corpus/t0/esp12-breakout_ESP12Breakout")  # circuit + outline
+board = Board.from_inputs(__file__)  # the circuit, outline, holes and footprints beside it
 
 u1, p1, p2 = board.parts("U1", "P1", "P2")
 straps = board.parts("R1..R5")
@@ -53,7 +53,7 @@ Twenty lines, fourteen of them code; no coordinates except the outline's (from
 
 | Line | Feature | Exists today |
 |---|---|---|
-| `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name from `footprints/` | importer writes them; nothing loads them into a board |
+| `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name from `footprints/` | yes: the outline drawn, the holes placed, the parts loaded and waiting for placement; takes the directory or a file in it (`__file__`) |
 | `board.parts("R1..R5")` | typed part handles, range selectors | no |
 | `place(against=Edge.LEFT, inset=)` | placement relative to the outline | no: absolute only |
 | `align(p1, p2, grid=)` | grid alignment across parts | no |

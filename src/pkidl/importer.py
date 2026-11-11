@@ -20,9 +20,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from pathlib import Path
 
-from pkidl.footprint import library_form, pad_xy
+from pkidl.footprint import board_xy, library_form
 from pkidl.sexpr import Node, dumps, find, find_all
 
 EDGE_ITEMS = ("gr_line", "gr_arc", "gr_rect", "gr_circle", "gr_poly")
@@ -34,6 +33,14 @@ def _property(fp: Node, name: str) -> str:
 
 def _xy(node: Node | None) -> list[float] | None:
     return None if node is None else [float(node[1]), float(node[2])]
+
+
+def _drill(fp: Node, pad: Node) -> list[float]:
+    """``[x, y, diameter]`` of a drilled pad, on the board. By the pad's own position, not
+    its number: a hole's pads are often unnumbered."""
+    at, drill = find(pad, "at"), find(pad, "drill")
+    assert at is not None and drill is not None
+    return [*board_xy(fp, float(at[1]), float(at[2])), float(drill[1])]
 
 
 def circuit(board: Node) -> dict:
@@ -64,7 +71,7 @@ def circuit(board: Node) -> dict:
 def mechanical(board: Node) -> dict:
     """``{"outline": [...], "holes": [...], "fixed": {}}``: the Edge.Cuts items as drawn
     (type and points), and each footprint whose pads are all on no net and drilled (a
-    mounting hole), at its position, with each hole's drill."""
+    mounting hole), at its position, rotation and side, with each hole's drill."""
     outline = []
     for kind in EDGE_ITEMS:
         for g in find_all(board, kind):
@@ -86,22 +93,15 @@ def mechanical(board: Node) -> dict:
             continue
         if any((n := find(p, "net")) is not None and str(n[-1]) for p in pads):
             continue
-        at = find(fp, "at")
-        assert at is not None
+        at, layer = find(fp, "at"), find(fp, "layer")
+        assert at is not None and layer is not None
         holes.append({"ref": _property(fp, "Reference"), "footprint": str(fp[1]),
                       "at": [float(at[1]), float(at[2])],
-                      "drills": [[*pad_xy(fp, str(p[1])), float(find(p, "drill")[1])]  # type: ignore[index]
-                                 for p in drilled]})  # fmt: skip
+                      "rot": float(at[3]) if len(at) > 3 else 0.0,
+                      "back": str(layer[1]).startswith("B."),
+                      "drills": [_drill(fp, p) for p in drilled]})  # fmt: skip
     outline.sort(key=lambda i: (i["type"], str(i)))
     return {"outline": outline, "holes": sorted(holes, key=lambda h: h["ref"]), "fixed": {}}
-
-
-def footprint_path(name: str) -> Path:
-    """Where a footprint name's library footprint is kept under a board's ``footprints/``:
-    KiCad's own library layout, ``<library>.pretty/<footprint>.kicad_mod``; a name with no
-    library sits at the top."""
-    lib, _, fp = name.rpartition(":")
-    return Path(f"{lib}.pretty" if lib else "", f"{fp}.kicad_mod")
 
 
 def _natural(ref: str) -> tuple:

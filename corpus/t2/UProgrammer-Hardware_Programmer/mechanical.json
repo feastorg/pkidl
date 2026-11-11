@@ -6,6 +6,7 @@
     53.8,
     39.3
    ],
+   "back": false,
    "drills": [
     [
      53.8,
@@ -14,13 +15,15 @@
     ]
    ],
    "footprint": "Mounting_Holes:MountingHole_2-5mm",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 90.0
   },
   {
    "at": [
     53.7,
     84.0
    ],
+   "back": false,
    "drills": [
     [
      53.7,
@@ -29,13 +32,15 @@
     ]
    ],
    "footprint": "Mounting_Holes:MountingHole_2-5mm",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 90.0
   },
   {
    "at": [
     123.9,
     84.1
    ],
+   "back": false,
    "drills": [
     [
      123.9,
@@ -44,13 +49,15 @@
     ]
    ],
    "footprint": "Mounting_Holes:MountingHole_2-5mm",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 90.0
   },
   {
    "at": [
     124.0,
     39.1
    ],
+   "back": false,
    "drills": [
     [
      124.0,
@@ -59,7 +66,8 @@
     ]
    ],
    "footprint": "Mounting_Holes:MountingHole_2-5mm",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 90.0
   }
  ],
  "outline": [

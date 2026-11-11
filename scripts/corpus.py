@@ -19,7 +19,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from pkidl.importer import circuit, footprint_path, footprints, mechanical
+from pkidl.footprint import footprint_path
+from pkidl.importer import circuit, footprints, mechanical
 from pkidl.measure import regions
 from pkidl.sexpr import Node, dumps, find, find_all, parse
 

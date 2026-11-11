@@ -21,7 +21,8 @@ whose source repository carries a permissive licence are here; each keeps its `L
 <tier>/<board_id>/
     reference.kicad_pcb   the original, upgraded to KiCad 10: compared against only
     circuit.json          parts, values, footprints and pad -> net: the circuit
-    mechanical.json       outline and mounting holes; fixed connectors are added per
+    mechanical.json       outline and mounting holes, each hole footprint with its
+                          position, rotation and side; fixed connectors are added per
                           board, with a reason, when its board file is written
     footprints/           the library footprint behind each footprint name, laid out as
                           KiCad libraries: <library>.pretty/<footprint>.kicad_mod

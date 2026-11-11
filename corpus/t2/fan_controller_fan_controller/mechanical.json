@@ -6,6 +6,7 @@
     164.966,
     57.932
    ],
+   "back": false,
    "drills": [
     [
      164.966,
@@ -14,13 +15,15 @@
     ]
    ],
    "footprint": "lib_pcb:MountingHole_0.13in",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 0.0
   },
   {
    "at": [
     164.966,
     86.932
    ],
+   "back": false,
    "drills": [
     [
      164.966,
@@ -29,13 +32,15 @@
     ]
    ],
    "footprint": "lib_pcb:MountingHole_0.13in",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 0.0
   },
   {
    "at": [
     112.966,
     86.932
    ],
+   "back": false,
    "drills": [
     [
      112.966,
@@ -44,13 +49,15 @@
     ]
    ],
    "footprint": "lib_pcb:MountingHole_0.13in",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 0.0
   },
   {
    "at": [
     112.966,
     57.932
    ],
+   "back": false,
    "drills": [
     [
      112.966,
@@ -59,7 +66,8 @@
     ]
    ],
    "footprint": "lib_pcb:MountingHole_0.13in",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 0.0
   }
  ],
  "outline": [

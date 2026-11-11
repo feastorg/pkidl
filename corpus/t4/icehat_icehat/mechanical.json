@@ -6,6 +6,7 @@
     164.1,
     83.74
    ],
+   "back": false,
    "drills": [
     [
      164.1,
@@ -14,13 +15,15 @@
     ]
    ],
    "footprint": "RPi_Hat:RPi_Hat_Mounting_Hole",
-   "ref": ""
+   "ref": "",
+   "rot": 0.0
   },
   {
    "at": [
     106.1,
     83.74
    ],
+   "back": false,
    "drills": [
     [
      106.1,
@@ -29,13 +32,15 @@
     ]
    ],
    "footprint": "RPi_Hat:RPi_Hat_Mounting_Hole",
-   "ref": ""
+   "ref": "",
+   "rot": 0.0
   },
   {
    "at": [
     106.1,
     106.74
    ],
+   "back": false,
    "drills": [
     [
      106.1,
@@ -44,13 +49,15 @@
     ]
    ],
    "footprint": "RPi_Hat:RPi_Hat_Mounting_Hole",
-   "ref": ""
+   "ref": "",
+   "rot": 0.0
   },
   {
    "at": [
     164.1,
     106.74
    ],
+   "back": false,
    "drills": [
     [
      164.1,
@@ -59,7 +66,8 @@
     ]
    ],
    "footprint": "RPi_Hat:RPi_Hat_Mounting_Hole",
-   "ref": ""
+   "ref": "",
+   "rot": 0.0
   }
  ],
  "outline": [

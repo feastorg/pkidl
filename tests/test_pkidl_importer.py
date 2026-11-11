@@ -53,9 +53,19 @@ def test_mechanical_is_the_outline_and_the_holes():
         {"type": "gr_arc", "start": [40.0, 0.0], "mid": [41.0, 1.0], "end": [42.0, 2.0]},
         {"type": "gr_line", "start": [0.0, 0.0], "end": [40.0, 0.0]},
     ]
-    assert m["holes"] == [{"ref": "H1", "footprint": "Hole:M3", "at": [3.0, 3.0],
-                           "drills": [[3.0, 3.0, 3.2]]}]  # fmt: skip
+    assert m["holes"] == [{"ref": "H1", "footprint": "Hole:M3", "at": [3.0, 3.0], "rot": 0.0,
+                           "back": False, "drills": [[3.0, 3.0, 3.2]]}]  # fmt: skip
     assert m["fixed"] == {}
+
+
+def test_unnumbered_drills_are_each_where_they_are():
+    bracket = """(kicad_pcb (footprint "Mech:Bracket" (layer "B.Cu") (at 20 15 90)
+      (property "Reference" "H1")
+      (pad "" np_thru_hole circle (at 0 0) (size 3 3) (drill 3) (layers "*.Cu"))
+      (pad "" np_thru_hole circle (at 6 2) (size 2 2) (drill 2) (layers "*.Cu"))))"""
+    (hole,) = mechanical(parse(bracket))["holes"]
+    assert hole["drills"] == [[20.0, 15.0, 3.0], [22.0, 9.0, 2.0]]
+    assert (hole["rot"], hole["back"]) == (90.0, True)
 
 
 def _part(ref: str, at: str, size: str = "1 1", pad_first: bool = True) -> str:

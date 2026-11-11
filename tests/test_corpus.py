@@ -11,8 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from pkidl.footprint import Placement, library_form, place
-from pkidl.importer import _property, circuit, footprint_path, footprints, mechanical
+from pkidl import Board
+from pkidl.footprint import Placement, footprint_path, library_form, place
+from pkidl.importer import _property, circuit, footprints, mechanical
 from pkidl.sexpr import Node, dumps, find, find_all, parse
 
 CORPUS = Path(__file__).parents[1] / "corpus"
@@ -98,3 +99,27 @@ def test_library_form_placed_again_is_the_footprint_kicad_saved(d):
         again = place(dumps(lib), where)
         assert _body(again) == _body(fp), where.ref
         assert dumps(library_form(again)) == dumps(lib), where.ref
+
+
+def _uuids(node: Node) -> list[str]:
+    found = [str(node[1])] if node and node[0] == "uuid" else []
+    for child in node[1:]:
+        if isinstance(child, list) and child:
+            found += _uuids(child)
+    return found
+
+
+@each_board
+def test_a_board_from_the_inputs_has_the_references_outline_and_holes(d):
+    board = Board.from_inputs(d)
+    assert board.circuit == json.loads((d / "circuit.json").read_text())
+    written = parse(dumps(board.sexpr()))
+    assert mechanical(written) == json.loads((d / "mechanical.json").read_text())
+    assert circuit(written) == {"parts": [], "nets": []}  # no part is placed yet
+    uuids = _uuids(written)
+    assert len(set(uuids)) == len(uuids)
+    assert board.extent is not None
+    x0, y0, x1, y1 = board.extent
+    points = [p for item in mechanical(reference(d))["outline"]
+              for key in ("start", "mid", "end") if (p := item.get(key))]  # fmt: skip
+    assert all(x0 <= x <= x1 and y0 <= y <= y1 for x, y in points)

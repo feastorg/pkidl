@@ -113,6 +113,22 @@ def test_library_form_is_the_same_however_the_part_was_placed(rot, back):
     assert dumps(again) == dumps(lib)
 
 
+def test_a_parsed_footprint_places_as_its_text_does_and_is_left_as_it_was():
+    lib = parse(LIB)
+    where = Placement("Lib:R_Test", "R7", "10k", 1, 2, 90, True, nets={"1": "VCC"})
+    assert dumps(place(lib, where)) == dumps(place(LIB, where))
+    assert dumps(lib) == dumps(parse(LIB))
+
+
+def test_footprints_sharing_a_reference_can_have_uuids_of_their_own():
+    def uuids(x: float, uid: str | None) -> set[str]:
+        hole = place(LIB, Placement("Lib:R_Test", "REF**", "", x, 0, uid=uid))
+        return {str(u[1]) for u in _all(hole, "uuid")}
+
+    assert uuids(1, None) == uuids(2, None)  # what the reference alone gives
+    assert not uuids(1, "hole:1") & uuids(2, "hole:2")
+
+
 def _all(node: Node, head: str) -> list[Node]:
     found = [node] if node and node[0] == head else []
     for child in node[1:]:

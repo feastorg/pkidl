@@ -6,6 +6,7 @@
     186.055,
     149.225
    ],
+   "back": false,
    "drills": [
     [
      186.055,
@@ -19,13 +20,15 @@
     ]
    ],
    "footprint": "530002B02500G",
-   "ref": "H***"
+   "ref": "H***",
+   "rot": 90.0
   },
   {
    "at": [
     139.7,
     211.455
    ],
+   "back": false,
    "drills": [
     [
      139.7,
@@ -34,13 +37,15 @@
     ]
    ],
    "footprint": "hole_M3",
-   "ref": "H101"
+   "ref": "H101",
+   "rot": 0.0
   },
   {
    "at": [
     139.7,
     118.11
    ],
+   "back": false,
    "drills": [
     [
      139.7,
@@ -49,13 +54,15 @@
     ]
    ],
    "footprint": "hole_M3",
-   "ref": "H102"
+   "ref": "H102",
+   "rot": 0.0
   },
   {
    "at": [
     232.41,
     118.11
    ],
+   "back": false,
    "drills": [
     [
      232.41,
@@ -64,13 +71,15 @@
     ]
    ],
    "footprint": "hole_M3",
-   "ref": "H103"
+   "ref": "H103",
+   "rot": 0.0
   },
   {
    "at": [
     232.41,
     211.455
    ],
+   "back": false,
    "drills": [
     [
      232.41,
@@ -79,7 +88,8 @@
     ]
    ],
    "footprint": "hole_M3",
-   "ref": "H104"
+   "ref": "H104",
+   "rot": 0.0
   }
  ],
  "outline": [

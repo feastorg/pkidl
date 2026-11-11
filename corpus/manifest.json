@@ -31,7 +31,7 @@
     "footprints/TO-220_V_069B.kicad_mod": "71608cc53ef8512d328306141ae93bd42ec2e7e0bfb0b68d6ebc180e4e38aa8b",
     "footprints/WXD3-13-2W_A.kicad_mod": "430b9cd00489dac42ac79546868d4868ec06619aee0ac779db5f9ed608c3deac",
     "footprints/hole_M3.kicad_mod": "7c1e809f56c6b005ff50e3c8d1eb6b8bfc5465dc59914658a16903aadf9be1e8",
-    "mechanical.json": "71c3a8125c5034d956004901f34575e15a638bc23013262ea955be09db60c4f1",
+    "mechanical.json": "916cf1bad6013432b3bf960572a8dc6df717a076e3f253dcc13fd80ce91e1149",
     "reference.kicad_pcb": "f19dd2f4761020243575d1caa22295671229c65688de2aa4000f98749d930abb"
    },
    "source": "https://github.com/pepaslabs/DualLM317BenchSupply",
@@ -125,7 +125,7 @@
     "footprints/TO_SOT_Packages_SMD.pretty/SOT-23.kicad_mod": "3e49854e4aadd6b0802862c7db1c00f790630f29e6a790cb28a20e445148c21f",
     "footprints/Uprogrammer FPs.pretty/ESP-12E.kicad_mod": "09cbbfbdb69fab61ae97167a3d0867a2cd9b3339fd32b8d1ce3c8c659f4f9454",
     "footprints/UprogrammerFPs.pretty/DFN-14-1EP_3x3mm_Pitch0.4mm.kicad_mod": "e8b5caf298884cbfcfe6e3132f15ef51d965b8e479da84a19513f12ae52e4669",
-    "mechanical.json": "1463851ec224997ef5769e3d31c007f90023b890e5a62da4b2da16dbe0c0b908",
+    "mechanical.json": "433eb234ebd74f5ff3d82a4bf833dc720ae19807e8d48afee308730ed514af49",
     "reference.kicad_pcb": "8a8cc6d9eb88815c50747c3b7417ac523f2b328980fdd018425d5704b20e6677"
    },
    "source": "https://github.com/MackPI/UProgrammer-Hardware",
@@ -182,7 +182,7 @@
     "footprints/Resistors_SMD.pretty/R_0805_HandSoldering.kicad_mod": "ff9c4e92d16d21870cc09690aa273c1466523759ddfe7a7eb7670af79451604b",
     "footprints/gimbal-board.pretty/TSSOP-24_4.4x7.8mm_Pitch0.65mm_EP.kicad_mod": "5c54b3564eac277656bca2366bd6d4681d87d1da6e89603af2960c5db3638a69",
     "footprints/gimbal-board.pretty/TantalC_SizeA_EIA-3216_HandSoldering.kicad_mod": "b79f54db38b42743eae90c9921c9eb228e84cd38c4605707369081703dbbaa27",
-    "mechanical.json": "77ae440b9e6928ef5faadad901b469c9b985d353bf4dc09e194f654308256412",
+    "mechanical.json": "546ebd4f824586e5a5af7ea7c179305a92b441f4376821bfc555001013a05276",
     "reference.kicad_pcb": "7248ed101c351dcd0f734582d0d9449d5bb452f606f8c8c9ffb1eb11c79b1f3c"
    },
    "source": "https://github.com/swedishhat/bldc-gimbal-1d",
@@ -222,7 +222,7 @@
     "footprints/lib_pcb.pretty/SM_0603.kicad_mod": "9698db312d92fdde6c85c400f955b6ee8ab3ece1a520ec5da8f247db18bb1024",
     "footprints/lib_pcb.pretty/SOT-23.kicad_mod": "4ee9affeb593e442d693812ab59922ced4d9806c9eb87fb39323504c6d9cd50d",
     "footprints/lib_pcb.pretty/encoder_EN12-HS.kicad_mod": "30f639822b949cd8e5cbd98a98f823997a574efb5cdf1ccf1b8fc814cd22f17e",
-    "mechanical.json": "9dc4e19f6b732fe8e34cd92bbf318a9344b6d09f290e23678f239afe3c93a465",
+    "mechanical.json": "5d99b31eabd5490b074ad21ec29e27f460ba74cc9f645e3ee2d44884ed4a1b0d",
     "reference.kicad_pcb": "992d6cc927d29e29632404ea4dfc120a6d88bf157aa196469a2cbaeeb23353a4"
    },
    "source": "https://github.com/slightlynybbled/fan_controller",
@@ -281,7 +281,7 @@
     "footprints/TO_SOT_Packages_SMD.pretty/SOT-23-5.kicad_mod": "d8a5dfa928d37e2a15a93d4d81aeafe3484509cdc2ec27e126ad017429381370",
     "footprints/emeb.pretty/Pin_Header_Straight_2x20.kicad_mod": "d63940e8c4dc80432fc828a56df5080fbc656532de15a8ca3fa7a8f56db9f3b3",
     "footprints/emeb.pretty/QFN-48-1EP_7x7mm_Pitch0.5mm_DIY_PADS.kicad_mod": "26e920ae95065163dd9eaab10a28019783366f73bf26125bcf02543c8959fb79",
-    "mechanical.json": "4799eb6bb80d58a00c7158be18dcb39b9e26151a4a837fbe4b1c906be023979b",
+    "mechanical.json": "3e34125cfadb9713238f7e8e5a63ec6bc32e04f11cc4b50bc7541f407e23c9e4",
     "reference.kicad_pcb": "01e2a55836a41eb20c71a3b7f1828b54db00313e80de38f59b95eabb79056ec7"
    },
    "source": "https://github.com/emeb/icehat",
@@ -355,7 +355,7 @@
     "footprints/custom_kicad_footprints.pretty/Tumbler_SW.kicad_mod": "1882df57016438acda11247810bc0f6ebe9b80c8026fcc2122c93febd75c1d76",
     "footprints/custom_kicad_footprints.pretty/Tumbler_SW_x2.kicad_mod": "e21b675ee3a2522b0520ab502bbfa650adb1543bb3a50836f1dadabdbee3bf0d",
     "footprints/swr_meter_rev_a_custom_lib.pretty/Capacitor_Disc_D6_P5.kicad_mod": "ee36abaf8cbe2ec5761aea5ff8a01572a9a3276c557e7eedb880795cec054ee7",
-    "mechanical.json": "79f77ea0b7804a454e1bcb5ef096119a11f6e5c189151241fb82efdb758a8b16",
+    "mechanical.json": "0ecbc94babb8ab5deceb759cc71d105591fd3a0717c8fab13d5180d9d5f0e898",
     "reference.kicad_pcb": "577dbad6cd6aeb87546b8f932d68b54748522e261ce4d4d4a047ddae682734d2"
    },
    "source": "https://github.com/4x1md/qrp_swr_meter",
@@ -380,7 +380,7 @@
     "footprints/footprints.pretty/QFN-32-1EP_5x5mm_Pitch0.5mm_extended_pad.kicad_mod": "f63d9329652c176f1a551282c91dd55d769f60ceac7f63eae7ad1ad4bbaeb930",
     "footprints/footprints.pretty/R_Array_EXB2HV.kicad_mod": "b63e9b54676118bff88cbc7e51a140c54f69e5ffc64f963a2ecab15eb063a15a",
     "footprints/footprints.pretty/SMA_END.kicad_mod": "ae8213e0129cbbba16beb301929e40444e4ad04abdf8e84e8e34f25ebbd30cfc",
-    "mechanical.json": "72e6ffcc3c872a76d42d9b8366ebba534928364772990da8fd1cc45edd45cf76",
+    "mechanical.json": "fd7443952b5316e8ecbee40655dc2639f3ce75ad72356c1769329f5285c741d3",
     "reference.kicad_pcb": "eb0fb12ca77a08849a058cc19c35ba08710be6b208728b72e39ff89561d47aec"
    },
    "source": "https://github.com/emeb/rxadc_14",

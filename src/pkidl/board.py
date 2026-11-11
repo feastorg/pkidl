@@ -8,14 +8,15 @@ serialises to the same bytes.
 
 from __future__ import annotations
 
+import json
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pkidl.footprint import VERSION, gen_uuid, pad_xy
-from pkidl.sexpr import Node, Sym, dumps, find, find_all, num
+from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
+from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 
 # The two-layer stack, as KiCad 10 writes it: (id, name, type, user name).
 _LAYERS = [
@@ -82,6 +83,26 @@ def _hull(pts: list[Point]) -> list[Point]:
     return [(round(x, 6), round(y, 6)) for x, y in lower[:-1] + upper[:-1]]
 
 
+def _arc_bounds(start: Point, mid: Point, end: Point) -> list[Point]:
+    """The points that bound the arc from *start* through *mid* to *end*: its ends, and
+    where it passes the left, right, top and bottom of its circle."""
+    (ax, ay), (bx, by), (cx, cy) = start, mid, end
+    d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
+    a2, b2, c2 = ax * ax + ay * ay, bx * bx + by * by, cx * cx + cy * cy
+    ox = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d
+    oy = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d
+    r = math.hypot(ax - ox, ay - oy)
+    a0, am, a1 = (math.degrees(math.atan2(y - oy, x - ox)) for x, y in (start, mid, end))
+    span = (a1 - a0) % 360
+    rising = (am - a0) % 360 <= span  # the angle grows from start to end, by way of mid
+    pts = [start, end]
+    for t in (0, 90, 180, 270):
+        along = (t - a0) % 360
+        if (along <= span) if rising else (along >= span):
+            pts.append((ox + r * math.cos(math.radians(t)), oy + r * math.sin(math.radians(t))))
+    return pts
+
+
 def _xy(p: Point, key: str = "xy") -> Node:
     return [Sym(key), num(p[0]), num(p[1])]
 
@@ -96,6 +117,45 @@ class Board:
     items: list[Node] = field(default_factory=list)
     _uuids: set[str] = field(default_factory=set, repr=False)
     extent: tuple[float, float, float, float] | None = None  # the outline's box, once drawn
+    # What from_inputs loads: the circuit as circuit.json holds it, and the library
+    # footprint behind each footprint name it uses.
+    circuit: dict[str, Any] = field(default_factory=lambda: {"parts": [], "nets": []})
+    library: dict[str, Node] = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_inputs(cls, where: Path | str) -> Board:
+        """A board from its inputs: the directory holding ``circuit.json`` (the parts, their
+        footprints and pad nets), ``mechanical.json`` (the outline and the mounting holes)
+        and ``footprints/`` (laid out as KiCad libraries), or a file in that directory, so
+        a board file passes ``__file__``.
+
+        The outline is drawn and the holes are placed where ``mechanical.json`` puts them.
+        The parts are not placed: where they go is the board file's to say.
+        """
+        d = Path(where)
+        if not d.is_dir():
+            d = d.parent
+        board = cls(circuit=json.loads((d / "circuit.json").read_text()))
+        mech = json.loads((d / "mechanical.json").read_text())
+        uses = [(p["ref"], p["footprint"]) for p in board.circuit["parts"]]
+        uses += [(f"the hole at {h['at']}", h["footprint"]) for h in mech["holes"]]
+        for user, name in uses:
+            path = d / "footprints" / footprint_path(name)
+            if not path.is_file():
+                raise ValueError(f"{user}: no footprint {name!r} at {path}")
+            board.library.setdefault(name, parse(path.read_text()))
+        for part in board.circuit["parts"]:
+            has = {str(pad[1]) for pad in find_all(board.library[part["footprint"]], "pad")}
+            if missing := sorted(set(part["pads"]) - has):
+                raise ValueError(f"{part['ref']}: its footprint {part['footprint']!r} has no "
+                                 f"pad {', '.join(missing)}")  # fmt: skip
+        board.outline(mech["outline"])
+        for hole in mech["holes"]:
+            name, (x, y) = hole["footprint"], hole["at"]
+            at = Placement(name, hole["ref"], name.rpartition(":")[2], x, y, hole["rot"],
+                           hole["back"], board_only=True, uid=f"hole:{x},{y}")  # fmt: skip
+            board.footprint(place(board.library[name], at))
+        return board
 
     def _uuid(self, *parts: str) -> str:
         """A UUID from what the item is; repeats of the same item are numbered."""
@@ -107,6 +167,41 @@ class Board:
 
     def footprint(self, node: Node) -> None:
         self.items.append(node)
+
+    def outline(self, items: Iterable[dict[str, Any]]) -> None:
+        """Board edge on Edge.Cuts from drawn items, as ``mechanical.json`` lists them:
+        each a ``type`` (``gr_line``, ``gr_arc``, ``gr_rect``, ``gr_circle`` or ``gr_poly``)
+        with the points that type has (``start`` and ``end``; ``mid`` for an arc; ``center``
+        and a point on it, ``end``, for a circle; ``pts`` for a polygon)."""
+        box: list[Point] = []
+        for item in items:
+            kind = item["type"]
+            if kind not in ("gr_line", "gr_arc", "gr_rect", "gr_circle", "gr_poly"):
+                raise ValueError(f"outline: {kind!r} is not something Edge.Cuts is drawn with")
+            pts = {k: (float(item[k][0]), float(item[k][1]))
+                   for k in ("start", "mid", "end", "center") if k in item}  # fmt: skip
+            node: Node = [Sym(kind), *(_xy(p, k) for k, p in pts.items())]
+            if kind == "gr_poly":
+                corners = [(float(x), float(y)) for x, y in item["pts"]]
+                node.append([Sym("pts"), *(_xy(p) for p in corners)])
+                box += corners
+            elif kind == "gr_arc":
+                box += _arc_bounds(pts["start"], pts["mid"], pts["end"])
+            elif kind == "gr_circle":
+                (cx, cy), r = pts["center"], math.dist(pts["center"], pts["end"])
+                box += [(cx - r, cy - r), (cx + r, cy + r)]
+            else:
+                box += [pts["start"], pts["end"]]
+            node.append(_stroke(0.05))
+            if kind in ("gr_rect", "gr_circle", "gr_poly"):
+                node.append([Sym("fill"), Sym("no")])
+            uid = self._uuid("edge", kind, str(sorted(item.items())))
+            node += [[Sym("layer"), "Edge.Cuts"], [Sym("uuid"), uid]]
+            self.items.append(node)
+        if self.extent is not None:
+            box += [self.extent[:2], self.extent[2:]]
+        xs, ys = [round(x, 6) for x, _ in box], [round(y, 6) for _, y in box]
+        self.extent = (min(xs), min(ys), max(xs), max(ys))
 
     def outline_rounded_rect(self, x0: float, y0: float, x1: float, y1: float, r: float) -> None:
         """Board edge: a rectangle with radius-*r* corners, on Edge.Cuts."""

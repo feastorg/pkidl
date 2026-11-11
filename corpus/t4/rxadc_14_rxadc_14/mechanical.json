@@ -6,6 +6,7 @@
     153.0985,
     112.649
    ],
+   "back": false,
    "drills": [
     [
      153.0985,
@@ -14,7 +15,8 @@
     ]
    ],
    "footprint": "Mounting_Holes:MountingHole_2.2mm_M2",
-   "ref": "REF**"
+   "ref": "REF**",
+   "rot": 0.0
   }
  ],
  "outline": [
