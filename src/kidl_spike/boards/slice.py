@@ -132,6 +132,7 @@ def route(
     vias: list[Via] | None = None,
     keepouts: list[tuple[str, list[tuple[float, float]]]] | None = None,
     planes: list[tuple[str, str, list[tuple[float, float]]]] | None = None,
+    wires: list[Wire] | None = None,
 ) -> None:
     """Route *board* with Freerouting and add its tracks and vias.
 
@@ -143,7 +144,10 @@ def route(
     first stage's copper. *vias* are placed before routing and kept: thermal vias
     under a part, say. *keepouts* (layer, polygon) hold every track and via out, in
     both stages. *planes* (``pkidl.fill.prefill``) are pours the router connects
-    through and every other net keeps out of (``plane_as_obstacle``), in both stages.
+    through and every other net keeps out of (``plane_as_obstacle``), in both stages;
+    a third stage then routes whatever is left, crossing signal nets' pours if it must.
+    *wires* are tracks placed before routing and kept, as *vias* are: a block's
+    power copper, say. Each ends up on the board once.
     Writes ``<name>-power.dsn``/``.ses``, ``<name>.dsn``/``.ses`` and the router's
     logs into *outdir*.
     """
@@ -152,28 +156,67 @@ def route(
     power = {n for c in netclasses[1:] for n in members.get(c.name, [])}
     vias = vias or []
     obstacle = ["--router.plane_as_obstacle=true"] if planes else []
+    # Against planes, two of Freerouting 2.5.0's stages cost minutes for nothing: on DCMT
+    # the optimizer's every pass was rejected (its output is byte-identical without it,
+    # 2026-11-11) and fanout spent 220 s in one pass, oscillating on GND. Off for the
+    # stages with planes; the result is checked on the filled board.
+    quick = ["--router.fanout.enabled=false", "--router.optimizer.enabled=false"] if planes else []
     # Every fixed via is an obstacle in both stages, whichever net it is on.
-    fixed: tuple[list[Wire], list[Via]] = ([], list(vias))
+    authored = list(wires or [])
+    fixed: tuple[list[Wire], list[Via]] = (list(authored), list(vias))
     if power:
+        # Only the power nets' pours are planes here: a plane makes its net one the router
+        # connects, and the signal nets wait for the second stage. Their pours are plain
+        # keepouts meanwhile, so the power routes still keep out of them.
+        own = [p for p in planes or [] if p[0] in power]
+        others = [(layer, poly) for n, layer, poly in planes or [] if n not in power]
         dsn = write_dsn(outdir / f"{name}-power.dsn", footprints, outline, netclasses, members,
                         edge_clearance=edge, only=power, fixed=fixed,
-                        areas=keepouts, planes=planes)  # fmt: skip
+                        areas=[*(keepouts or []), *others], planes=own)  # fmt: skip
         ses = freerouting(dsn, outdir / f"{name}-power.ses", log=outdir / "freerouting-power.log",
                           options=["--router.automatic_neckdown=false", *obstacle])  # fmt: skip
         wires, out_vias = read_ses(ses)
         # A fixed via on a net this stage does not route may not come back: keep each once.
         kept = {(v.net, v.at) for v in out_vias}
-        fixed = (wires, out_vias + [v for v in vias if (v.net, v.at) not in kept])
+        fixed = (_with(wires, authored), out_vias + [v for v in vias if (v.net, v.at) not in kept])
     dsn = write_dsn(outdir / f"{name}.dsn", footprints, outline, netclasses, members,
                     edge_clearance=edge, fixed=fixed,
                     class_clearances=signal_clearances, areas=keepouts, planes=planes)  # fmt: skip
-    ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log", options=obstacle)
+    ses = freerouting(dsn, outdir / f"{name}.ses", log=outdir / "freerouting.log",
+                      options=[*obstacle, *quick])  # fmt: skip
     wires, routed_vias = read_ses(ses)
-    for w in wires:
+    if planes:
+        # What could not reach its pins through the corridors may cross a signal net's pour
+        # (logic ground), never a power pour: everything routed so far is fixed, so only the
+        # missing connections are routed, and the pours they cut show in the filled
+        # board's regions. The power nets are complete by now, so their pours are plain
+        # keepouts here.
+        power_pours = [(layer, poly) for n, layer, poly in planes if n in power]
+        signal_nets = {str(n[-1]) for fp in footprints for pad in find_all(fp, "pad")
+                       if (n := find(pad, "net")) is not None and str(n[-1])} - power  # fmt: skip
+        dsn = write_dsn(outdir / f"{name}-cross.dsn", footprints, outline, netclasses, members,
+                        edge_clearance=edge, only=signal_nets,
+                        fixed=(_with(wires, authored), routed_vias),
+                        class_clearances=signal_clearances,
+                        areas=[*(keepouts or []), *power_pours],
+                        planes=[p for p in planes if p[0] not in power])  # fmt: skip
+        ses = freerouting(dsn, outdir / f"{name}-cross.ses", log=outdir / "freerouting-cross.log",
+                          options=quick)  # fmt: skip
+        cross_wires, cross_vias = read_ses(ses)
+        # The session holds only the nets this stage routes: the rest carry forward.
+        wires = cross_wires + [w for w in wires if w.net not in signal_nets]
+        routed_vias = cross_vias + [v for v in routed_vias if v.net not in signal_nets]
+    for w in _with(wires, authored):
         for a, b in zip(w.points, w.points[1:], strict=False):
             board.track(a, b, w.width, w.net, w.layer)
     for v in routed_vias:
         board.via(v.at, *via_size(v.padstack), v.net)
+
+
+def _with(wires: list[Wire], authored: list[Wire]) -> list[Wire]:
+    """*wires* plus each *authored* wire the router did not hand back."""
+    have = {(w.net, w.layer, tuple(w.points)) for w in wires}
+    return wires + [w for w in authored if (w.net, w.layer, tuple(w.points)) not in have]
 
 
 def pour_outline(placed: dict[str, Node], net: str, margin: float) -> list[tuple[float, float]]:

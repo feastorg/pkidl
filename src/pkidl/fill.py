@@ -19,7 +19,8 @@ from shapely import affinity
 from shapely.geometry import LineString, Polygon, box
 from shapely.geometry import Point as SPoint
 from shapely.geometry.base import BaseGeometry
-from shapely.ops import split, unary_union
+from shapely.geometry.polygon import orient
+from shapely.ops import unary_union
 
 from pkidl.board import Point
 from pkidl.footprint import pad_xy
@@ -112,26 +113,50 @@ def _no_pour(zone: Node) -> bool:
     return pour is not None and str(pour[1]) == "not_allowed"
 
 
-def _fracture(poly: Polygon) -> list[Polygon]:
-    """Split a polygon with holes into hole-free pieces: a DSN plane can't have holes."""
-    if not poly.interiors:
-        return [poly]
-    x = poly.interiors[0].centroid.x
-    y0, y1 = poly.bounds[1] - 1, poly.bounds[3] + 1
-    out: list[Polygon] = []
-    for part in split(poly, LineString([(x, y0), (x, y1)])).geoms:
-        if isinstance(part, Polygon) and not part.is_empty:
-            out.extend(_fracture(part))
-    return out
+def _slit(poly: Polygon) -> list[Point]:
+    """*poly* as one outline that reaches each hole along a zero-width slit, as KiCad
+    writes a fill: a DSN plane can't have holes, and the router has to connect every
+    plane of a net to the others, so a fill split into pieces would be routed between.
+
+    Holes are joined in order of their topmost point (least y), each by a vertical slit
+    from that point up to the outline built so far: whatever lies above it on that line
+    has already been joined, so a slit never crosses a hole.
+    """
+    poly = orient(poly, sign=1.0)  # exterior one way round, holes the other
+    ring: list[Point] = [(x, y) for x, y in poly.exterior.coords[:-1]]
+    holes = sorted(
+        ([(x, y) for x, y in h.coords[:-1]] for h in poly.interiors),
+        key=lambda h: min(y for _, y in h),
+    )
+    for hole in holes:
+        k = min(range(len(hole)), key=lambda i: (hole[i][1], hole[i][0]))
+        px, py = hole[k]
+        best: tuple[float, int, Point] | None = None
+        for i, (a, b) in enumerate(zip(ring, ring[1:] + ring[:1], strict=True)):
+            if (a[0] - px) * (b[0] - px) > 0 or a[0] == b[0]:
+                continue  # the slit's line x = px doesn't cross this edge (or runs along it)
+            y = a[1] + (px - a[0]) * (b[1] - a[1]) / (b[0] - a[0])
+            if y <= py and (best is None or y > best[0]):
+                best = (y, i, (px, y))
+        assert best is not None, "a hole with no outline above it"
+        _, i, x = best
+        loop = hole[k:] + hole[:k] + [hole[k]]
+        ring = ring[: i + 1] + [x, *loop, x] + ring[i + 1 :]
+    return ring
 
 
-def prefill(items: list[Node], outline: list[Point], edge: float) -> list[Plane]:
+def prefill(
+    items: list[Node], outline: list[Point], edge: float, clearances: dict[str, float] | None = None
+) -> list[Plane]:
     """Each pour's fill before routing, as hole-free planes: (net, layer, polygon).
 
     *items* are the board's nodes (footprints, tracks, vias, zones); *outline* the board
     edge, kept *edge* away from. Zones are filled highest priority first; a pour of
-    another net already filled is copper to keep clear of.
+    another net already filled is copper to keep clear of. *clearances* (net: mm) are
+    the nets' class clearances: a pour keeps the larger of its own and the other net's,
+    as KiCad does.
     """
+    cl = clearances or {}
     board = Polygon(outline).buffer(-edge)
     zones = [z for z in items if str(z[0]) == "zone"]
     nopour = {
@@ -150,8 +175,8 @@ def prefill(items: list[Node], outline: list[Point], edge: float) -> list[Plane]
             if layer not in filled:
                 continue
             area = _outline(zone).intersection(board).difference(nopour[layer])
-            foreign = [_grow(s, gap) for n, s in copper[layer] if n != net]
-            foreign += [_grow(s, gap) for n, s in filled[layer] if n != net]
+            foreign = [_grow(s, max(gap, cl.get(n, 0.0))) for n, s in copper[layer] if n != net]
+            foreign += [_grow(s, max(gap, cl.get(n, 0.0))) for n, s in filled[layer] if n != net]
             if foreign:
                 area = area.difference(unary_union(foreign))
             area = area.buffer(-thick / 2).buffer(thick / 2)  # nothing thinner than min_thickness
@@ -164,7 +189,5 @@ def prefill(items: list[Node], outline: list[Point], edge: float) -> list[Plane]
             kept = [p for p in pieces if p.intersects(own)]
             filled[layer].extend((net, p) for p in kept)
             for p in kept:
-                for q in _fracture(p):
-                    coords = [(round(x, 4), round(y, 4)) for x, y in q.exterior.coords[:-1]]
-                    planes.append((net, layer, coords))
+                planes.append((net, layer, [(round(x, 4), round(y, 4)) for x, y in _slit(p)]))
     return planes

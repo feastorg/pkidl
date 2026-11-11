@@ -5,6 +5,8 @@
 name: dcmt
 title: Slice_DCMT
 root: dcmt
+# Power copper as the original draws it, signals crossing where it does (phase 6).
+authored_copper: true
 power_nets: ["+12V", GNDPWR]
 buck: AP63205
 ground: GNDPWR

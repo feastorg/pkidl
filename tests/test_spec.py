@@ -80,3 +80,9 @@ def test_loaf_interface_and_its_errors(tmp_path):
     )
     with pytest.raises(SpecError, match=r"^bad\.yaml: outline: expected 4 numbers"):
         load_loaf("bad", tmp_path)
+
+
+def test_authored_copper_is_opt_in():
+    """DCMT routes against its root's authored copper; HBTC, on the same root, does not."""
+    assert load("dcmt").authored_copper
+    assert not load("hbtc").authored_copper

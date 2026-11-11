@@ -61,6 +61,8 @@ class BoardSpec:
     root: str = ""  # whose root-part layout it uses: "rlht" or "dcmt" (slice_build.ROOTS)
     power_nets: tuple[str, ...] = ()  # the Power netclass: supply and return
     stitch: bool = False  # GND stitching vias between whole-board GND pours
+    # Route against the root's authored power copper (Root.authored), not hull pours.
+    authored_copper: bool = False
 
     def channels(self, kind: str) -> list[dict[str, Any]]:
         """The parameters of every channel of *kind*, in board order."""
@@ -171,6 +173,7 @@ def parse(data: Any, where: str) -> BoardSpec:
         root=str(data.get("root", "")),
         power_nets=tuple(power),
         stitch=bool(data.get("stitch", False)),
+        authored_copper=bool(data.get("authored_copper", False)),
     )
 
 

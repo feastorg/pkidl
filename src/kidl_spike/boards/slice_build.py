@@ -56,7 +56,9 @@ from kidl_spike.boards.slice import (
 )
 from kidl_spike.boards.spec import BoardSpec
 from pkidl.board import Board
-from pkidl.dsn import Via, via_padstack
+from pkidl.dsn import Via, Wire, via_padstack
+from pkidl.dsn import via_size as _via_size
+from pkidl.fill import prefill
 from pkidl.footprint import Placement, place
 from pkidl.project import (
     PARITY_ERRORS,
@@ -67,7 +69,7 @@ from pkidl.project import (
     write_project,
     write_rules,
 )
-from pkidl.sexpr import Node
+from pkidl.sexpr import Node, parse
 from pkidl.silk import nearest_clear_spot, place_references
 from pkidl.stitch import stitch_points
 
@@ -92,6 +94,24 @@ class Root:
     solid_pads: frozenset[str]  # parts whose pads join the pours without thermals
     # The board-level pours: (board, placed, outline box, block pours first) -> None.
     pours: Callable[[Board, dict[str, Node], tuple[float, float, float, float], list], None]
+    # Power copper drawn as data, placed before routing: (placed, bridge channels) ->
+    # Authored. A board whose spec asks for it (``authored_copper``) gets these pours
+    # instead of the hull pours and bridge zones, and routes against them
+    # (``pkidl.fill.prefill``, planes).
+    authored: Callable[[dict[str, Node], list[dict]], Authored] | None = None
+    authored_solid_pads: frozenset[str] = frozenset()  # more solid pads, with ``authored``
+
+
+@dataclass(frozen=True)
+class Authored:
+    """Power copper as a designer draws it, in board millimetres."""
+
+    zones: list[tuple[str, list[str], int, list[tuple[float, float]]]]  # net, layers, priority
+    wires: list[Wire]  # fixed tracks the pours can't stand in for
+    vias: list[Via]
+    corridors: list[
+        tuple[str, list[tuple[float, float]]]
+    ]  # layer, polygon: no pour, signals may cross
 
 
 def root(spec: BoardSpec) -> Root:
@@ -152,7 +172,9 @@ def build_pcb(
     hv_nets = members.get("HV Relay", [])
 
     board, placed = place_board(outdir, name, placement(spec), pad_nets, fields,
-                                solid_pads=r.solid_pads)  # fmt: skip
+                                solid_pads=r.solid_pads | (r.authored_solid_pads
+                                                           if spec.authored_copper
+                                                           else frozenset()))  # fmt: skip
     hx, hy = at_offset(placed["HS1"], 0, 0)
     vias = [Via("GND", via_padstack(d, h), (round(hx + dx, 6), round(hy + dy, 6)))
             for dx, dy, d, h in r.hs1_vias]  # fmt: skip
@@ -166,8 +188,22 @@ def build_pcb(
     # bus ground is a power ground, none under the whole block, which gets logic ground.
     box = TC_GROUND if spec.circuit.ground != "GND" else TC_INPUT_KEEPOUT
     inputs = [("B.Cu", thermocouple_region(t, a, box)) for t, a in thermocouples]
+    authored = r.authored(placed, bridges) if r.authored and spec.authored_copper else None
+    planes, wires = None, None
+    if authored:
+        for net, layers, priority, poly in authored.zones:
+            for layer in layers:
+                board.zone(net, layer, poly, clearance=0.5, min_thickness=POUR_MIN_WIDTH,
+                           priority=priority)  # fmt: skip
+        for i, (layer, poly) in enumerate(authored.corridors):
+            board.keepout(f"corridor {i}", layer, poly, tracks=True, vias=True)
+        vias += authored.vias
+        wires = authored.wires
+        edge = float(RULES["min_copper_edge_clearance"])
+        class_gap = {n: c.clearance for c in classes for n in members.get(c.name, [])}
+        planes = prefill(board.items + _nodes(wires, vias), outline_polygon(), edge, class_gap)
     route(board, placed, outdir, name, classes, members, signal_clearances=clearances,
-          vias=vias, keepouts=inputs)  # fmt: skip
+          vias=vias, keepouts=inputs, planes=planes, wires=wires)  # fmt: skip
     if spec.stitch:
         keep = {net: MAINS_LV_CREEPAGE for net in hv_nets} | {"": MOUNTING_HOLE_RULE.min_mm}
         edge = float(RULES["min_copper_edge_clearance"])
@@ -188,11 +224,12 @@ def build_pcb(
         elif c.kind == "encoder":
             terminal_labels(board, placed, encoder_terminals(c.params))
 
-    block_pours = [*[(f"{b['ch']}_VDC", "F.Cu", 5) for b in bridges],
-                   *[(f"{b['ch']}_VS", "F.Cu", 4) for b in bridges]]  # fmt: skip
-    r.pours(board, placed, outline, block_pours)
-    for b in bridges:
-        bridge_zones(board, placed, b)
+    if not authored:
+        block_pours = [*[(f"{b['ch']}_VDC", "F.Cu", 5) for b in bridges],
+                       *[(f"{b['ch']}_VS", "F.Cu", 4) for b in bridges]]  # fmt: skip
+        r.pours(board, placed, outline, block_pours)
+        for b in bridges:
+            bridge_zones(board, placed, b)
     for t, a in thermocouples:
         # The router's keepout, as a rule area DRC holds the board to.
         board.keepout(f"{t['ch']} inputs", "B.Cu", thermocouple_region(t, a, box), pours=True)
@@ -203,7 +240,7 @@ def build_pcb(
             board.zone("GND", "B.Cu", thermocouple_region(t, a, TC_GROUND), clearance=0.5,
                        min_thickness=POUR_MIN_WIDTH, priority=4, solid=True)  # fmt: skip
     x0, y0, x1, y1 = outline
-    if spec.circuit.ground != "GND":
+    if spec.circuit.ground != "GND" and not authored:
         # The power ground fills the back. On the front it is only under the bridges'
         # bodies: elsewhere it would cover the logic area, where its one connection is a
         # bulk capacitor's pad: the GND/GNDPWR split would not exist.
@@ -221,6 +258,17 @@ def build_pcb(
     at = nearest_clear_spot(board.items, label, r.label_at, outline, size=0.8, thickness=0.12)
     board.text(label, at or r.label_at, size=0.8, thickness=0.12)
     return board.write(outdir / f"{name}.kicad_pcb")
+
+
+def _nodes(wires: list[Wire], vias: list[Via]) -> list[Node]:
+    """Fixed tracks and vias as board nodes, for ``prefill`` to keep pours clear of."""
+    out = [parse(f'(segment (start {a[0]} {a[1]}) (end {b[0]} {b[1]}) (width {w.width}) '
+                 f'(layer "{w.layer}") (net "{w.net}"))')
+           for w in wires for a, b in zip(w.points, w.points[1:], strict=False)]  # fmt: skip
+    for v in vias:
+        d, _ = _via_size(v.padstack)
+        out.append(parse(f'(via (at {v.at[0]} {v.at[1]}) (size {d}) (net "{v.net}"))'))
+    return out
 
 
 def hull_pours(margin: float) -> Callable[..., None]:
