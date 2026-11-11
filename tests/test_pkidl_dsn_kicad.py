@@ -151,12 +151,8 @@ def test_nets_join_the_pins_kicads_do(pair):
     assert {n: v for n, v in k.items() if len(v) > 1} == p
 
 
-def test_pads_put_copper_where_kicads_do(pair, request):
+def test_pads_put_copper_where_kicads_do(pair):
     board_id, kicad, ours = pair
-    if board_id == "DualLM317BenchSupply_DualLM317BenchSupply":
-        request.applymarker(
-            pytest.mark.xfail(strict=True, reason="pkidl ignores a drill's (offset)")
-        )
     k, p = _copper(kicad), _copper(ours)
     holes = HOLES_AS_PINS.get(board_id, set())
     assert {key for key in set(p) - set(k) if key[0] not in holes} == set()

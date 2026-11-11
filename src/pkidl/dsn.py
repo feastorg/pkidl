@@ -74,9 +74,20 @@ class _Pin:
     y: float
 
 
+def _pad_offset(pad: Node, angle: float) -> tuple[float, float]:
+    """Where *pad*'s copper sits from its hole, in um, y up: a drill's (offset)."""
+    drill = find(pad, "drill")
+    off = find(drill, "offset") if drill is not None else None
+    if off is None:
+        return 0.0, 0.0
+    x, y = _rot(float(off[1]) * 1000, float(off[2]) * 1000, angle)
+    return x, -y
+
+
 def _pad_shapes(pad: Node, angle: float) -> list[str]:
-    """DSN shape primitives for *pad*, in um about the pad centre, y up."""
+    """DSN shape primitives for *pad*, in um about the pad's hole (its centre), y up."""
     kind, shape = str(pad[2]), str(pad[3])
+    cx, cy = _pad_offset(pad, angle)
     size = find(pad, "size")
     assert size is not None
     w, h = float(size[1]) * 1000, float(size[2]) * 1000
@@ -92,13 +103,14 @@ def _pad_shapes(pad: Node, angle: float) -> list[str]:
         out = []
         for x, y in pts:
             rx, ry = _rot(x, y, angle)
-            out.append(f"{_n(rx)} {_n(-ry)}")
+            out.append(f"{_n(rx + cx)} {_n(-ry + cy)}")
         return "  ".join(out)
 
     shapes = []
     for layer in layers:
         if shape == "circle":
-            shapes.append(f"(circle {layer} {_n(w)})")
+            at = f" {_n(cx)} {_n(cy)}" if (cx, cy) != (0.0, 0.0) else ""
+            shapes.append(f"(circle {layer} {_n(w)}{at})")
         elif shape == "oval":
             d = min(w, h)
             half = (max(w, h) - d) / 2
@@ -106,7 +118,8 @@ def _pad_shapes(pad: Node, angle: float) -> list[str]:
             shapes.append(f"(path {layer} {_n(d)}  {poly([a, b])})")
         elif shape == "rect" and angle % 90 == 0:
             ww, hh = (w, h) if angle % 180 == 0 else (h, w)
-            shapes.append(f"(rect {layer} {_n(-ww / 2)} {_n(-hh / 2)} {_n(ww / 2)} {_n(hh / 2)})")
+            x0, y0, x1, y1 = cx - ww / 2, cy - hh / 2, cx + ww / 2, cy + hh / 2
+            shapes.append(f"(rect {layer} {_n(x0)} {_n(y0)} {_n(x1)} {_n(y1)})")
         elif shape in ("rect", "roundrect"):
             ratio = find(pad, "roundrect_rratio")
             r = float(ratio[1]) * min(w, h) if shape == "roundrect" and ratio is not None else 0
@@ -228,7 +241,8 @@ def write_dsn(
             w, h = float(size[1]) * 1000, float(size[2]) * 1000
             if round(angle) % 180 == 90:
                 w, h = h, w
-            pad_boxes.append((x - w / 2, y - h / 2, x + w / 2, y + h / 2))
+            ox, oy = _pad_offset(pad, angle)
+            pad_boxes.append((x + ox - w / 2, y + oy - h / 2, x + ox + w / 2, y + oy + h / 2))
             shapes = _pad_shapes(pad, angle)
             key = "|".join(shapes)
             name = next((n for n, s in padstacks.items() if "|".join(s) == key), None)
