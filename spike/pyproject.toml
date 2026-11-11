@@ -29,7 +29,7 @@ dev = [
 # CI), so the pin is an exact commit and patches can be carried if needed. Swap
 # for the PyPI release once the boundary is proven.
 [tool.uv.sources]
-skidl = { path = "../skidl", editable = true }
+skidl = { path = "../../skidl", editable = true }
 
 [tool.ruff]
 line-length = 100

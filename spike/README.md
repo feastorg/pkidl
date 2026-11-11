@@ -29,8 +29,8 @@ entries proves nothing; resolving a part proves the toolchain works.
 - KiCad 10 (flatpak by default; set `KICAD_CLI` to override the invocation). The exact
   version is pinned in `src/kidl_spike/doctor.py`; a bump is a reviewed event
 - A [KiCad-Master-Lib](https://github.com/feastorg/KiCad-Master-Lib) checkout, found via
-  `$KICAD_MASTER_LIB` (defaults to `../KiCad-Master-Lib`)
-- A sibling `../skidl` checkout — SKiDL is pinned to a local clone, not taken from PyPI
+  `$KICAD_MASTER_LIB` (defaults to `../../KiCad-Master-Lib`)
+- A `../../skidl` checkout, beside the pkidl repo — SKiDL is pinned to a local clone, not taken from PyPI
 - [Freerouting](https://github.com/freerouting/freerouting) for the boards that are
   autorouted (the Slices): a `freerouting` command, or `$FREEROUTING` set to one. The version
   is pinned in `src/kidl_spike/doctor.py`; it needs Java 25

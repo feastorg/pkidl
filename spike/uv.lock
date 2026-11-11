@@ -300,7 +300,7 @@ dev = [
 requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "shapely", specifier = ">=2.2.0" },
-    { name = "skidl", editable = "../skidl" },
+    { name = "skidl", editable = "../../skidl" },
 ]
 
 [package.metadata.requires-dev]
@@ -812,7 +812,7 @@ wheels = [
 [[package]]
 name = "skidl"
 version = "2.3.0"
-source = { editable = "../skidl" }
+source = { editable = "../../skidl" }
 dependencies = [
     { name = "deprecation" },
     { name = "graphviz" },

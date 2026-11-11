@@ -17,7 +17,7 @@ Planning lives in `_planning/`; evidence and analysis in `_working/`. Read
 ## Stack
 
 - **Python 3.13**, managed with `uv` (`.python-version` pins it)
-- **SKiDL** — consumed from the sibling `../skidl` checkout, **pinned**, not from PyPI.
+- **SKiDL** — consumed from the sibling `../../skidl` checkout, **pinned**, not from PyPI.
   Pinned to release 2.3.0 and its `kicad10` backend (`SKIDL_REF` in CI; the sibling
   checkout is detached at that tag). A bump is a reviewed PR, gated by `tests/test_loaf.py`.
 - **KiCad 10** — flatpak locally; `KICAD_CLI` overrides the invocation. The exact version is
@@ -78,7 +78,7 @@ its tool call; `just erc`/`drc`/`verify`/`fab` cannot start it there. Call
 
 ## Constraints
 
-- **Never modify `../Loaf_x004`, `../Slice_DCMT`, `../Slice_RLHT`.** They are read-only
+- **Never modify `../../Loaf_x004`, `../../Slice_DCMT`, `../../Slice_RLHT`.** They are read-only
   reference. Generated output is *compared* against them; the originals are never touched.
 - **Never hand-edit anything under `build/`.** It is generated. Fix the generator.
 - Do not resolve libraries through the global KiCad config, or by hardcoding paths.

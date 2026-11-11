@@ -6,7 +6,7 @@ import pytest
 
 from kidl_spike import libs
 
-MASTER_LIB = Path(__file__).resolve().parents[2] / "KiCad-Master-Lib"
+MASTER_LIB = Path(__file__).resolve().parents[3] / "KiCad-Master-Lib"
 
 pytestmark = pytest.mark.skipif(
     not MASTER_LIB.is_dir(), reason="KiCad-Master-Lib checkout not present"

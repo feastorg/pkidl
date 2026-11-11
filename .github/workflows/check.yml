@@ -60,9 +60,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          path: kidl-spike
+          path: pkidl
 
-      # uv resolves skidl from ../skidl (see [tool.uv.sources]), so it must exist
+      # uv resolves skidl from ../../skidl (see [tool.uv.sources]), so it must exist
       # even for a lint/typecheck run.
       - name: Checkout skidl
         uses: actions/checkout@v4
@@ -79,11 +79,11 @@ jobs:
           python-version: "3.13"
 
       - name: Setup
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: just setup
 
       - name: Check (fmt + lint + typecheck)
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: just check
 
   test:
@@ -94,7 +94,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          path: kidl-spike
+          path: pkidl
 
       # SKiDL is consumed from a local checkout (uv.sources), not PyPI, so the
       # pin is an exact commit and patches can be carried if needed.
@@ -127,7 +127,7 @@ jobs:
       # byte-identical to the installed 10.0.6 flatpak's.
       - name: Read the pinned KiCad version
         run: |
-          ver=$(sed -n 's/^WANT_KICAD = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          ver=$(sed -n 's/^WANT_KICAD = "\(.*\)"$/\1/p' pkidl/spike/src/kidl_spike/doctor.py)
           test -n "$ver" || { echo "WANT_KICAD not found in doctor.py"; exit 1; }
           echo "KICAD_VER=$ver" >> "$GITHUB_ENV"
 
@@ -164,7 +164,7 @@ jobs:
 
       - name: Freerouting (pinned version, checked jar)
         run: |
-          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' pkidl/spike/src/kidl_spike/doctor.py)
           test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
           curl -fsSL --retry 3 -o freerouting.jar \
             "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
@@ -181,11 +181,11 @@ jobs:
           python-version: "3.13"
 
       - name: Setup
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: just setup
 
       - name: Test
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         env:
           KICAD_MASTER_LIB: ${{ github.workspace }}/KiCad-Master-Lib
           KICAD_STOCK_SYMBOL_DIR: ${{ github.workspace }}/kicad-symbols
@@ -215,7 +215,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          path: kidl-spike
+          path: pkidl
 
       - name: Checkout skidl
         uses: actions/checkout@v4
@@ -248,7 +248,7 @@ jobs:
 
       - name: Freerouting (pinned version, checked jar)
         run: |
-          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' pkidl/spike/src/kidl_spike/doctor.py)
           test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
           curl -fsSL --retry 3 -o freerouting.jar \
             "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
@@ -257,15 +257,15 @@ jobs:
             "--gui.enabled=false --usage_and_diagnostic_data.disable_analytics=true" >> "$GITHUB_ENV"
 
       - name: Setup
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: just setup
 
       - name: Doctor (KiCad and Freerouting versions, library resolution)
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: just doctor
 
       - name: Generate, ERC, DRC
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: |
           just verify loaf
           just verify rlht
@@ -274,11 +274,11 @@ jobs:
           just verify tc4
 
       - name: Pour regions (pkidl.measure on the refilled board)
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: just measure loaf GND=1 +12V=1
 
       - name: Fab outputs
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: |
           just fab loaf
           just fab rlht
@@ -288,7 +288,7 @@ jobs:
 
       - name: Reports
         if: always()
-        working-directory: kidl-spike
+        working-directory: pkidl/spike
         run: tail -n +1 build/*/erc.rpt build/*/drc.rpt || true
 
       - uses: actions/upload-artifact@v4
@@ -296,57 +296,57 @@ jobs:
         with:
           name: loaf
           path: |
-            kidl-spike/build/loaf/*.kicad_*
-            kidl-spike/build/loaf/*.rpt
-            kidl-spike/build/loaf/fab/
+            pkidl/spike/build/loaf/*.kicad_*
+            pkidl/spike/build/loaf/*.rpt
+            pkidl/spike/build/loaf/fab/
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: rlht
           path: |
-            kidl-spike/build/rlht/*.kicad_*
-            kidl-spike/build/rlht/*.rpt
-            kidl-spike/build/rlht/*.dsn
-            kidl-spike/build/rlht/*.ses
-            kidl-spike/build/rlht/freerouting.log
-            kidl-spike/build/rlht/fab/
+            pkidl/spike/build/rlht/*.kicad_*
+            pkidl/spike/build/rlht/*.rpt
+            pkidl/spike/build/rlht/*.dsn
+            pkidl/spike/build/rlht/*.ses
+            pkidl/spike/build/rlht/freerouting.log
+            pkidl/spike/build/rlht/fab/
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: dcmt
           path: |
-            kidl-spike/build/dcmt/*.kicad_*
-            kidl-spike/build/dcmt/*.rpt
-            kidl-spike/build/dcmt/*.dsn
-            kidl-spike/build/dcmt/*.ses
-            kidl-spike/build/dcmt/freerouting.log
-            kidl-spike/build/dcmt/fab/
+            pkidl/spike/build/dcmt/*.kicad_*
+            pkidl/spike/build/dcmt/*.rpt
+            pkidl/spike/build/dcmt/*.dsn
+            pkidl/spike/build/dcmt/*.ses
+            pkidl/spike/build/dcmt/freerouting.log
+            pkidl/spike/build/dcmt/fab/
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: hbtc
           path: |
-            kidl-spike/build/hbtc/*.kicad_*
-            kidl-spike/build/hbtc/*.rpt
-            kidl-spike/build/hbtc/*.dsn
-            kidl-spike/build/hbtc/*.ses
-            kidl-spike/build/hbtc/freerouting*.log
-            kidl-spike/build/hbtc/fab/
+            pkidl/spike/build/hbtc/*.kicad_*
+            pkidl/spike/build/hbtc/*.rpt
+            pkidl/spike/build/hbtc/*.dsn
+            pkidl/spike/build/hbtc/*.ses
+            pkidl/spike/build/hbtc/freerouting*.log
+            pkidl/spike/build/hbtc/fab/
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: tc4
           path: |
-            kidl-spike/build/tc4/*.kicad_*
-            kidl-spike/build/tc4/*.rpt
-            kidl-spike/build/tc4/*.dsn
-            kidl-spike/build/tc4/*.ses
-            kidl-spike/build/tc4/freerouting*.log
-            kidl-spike/build/tc4/fab/
+            pkidl/spike/build/tc4/*.kicad_*
+            pkidl/spike/build/tc4/*.rpt
+            pkidl/spike/build/tc4/*.dsn
+            pkidl/spike/build/tc4/*.ses
+            pkidl/spike/build/tc4/freerouting*.log
+            pkidl/spike/build/tc4/fab/
 
   # ─── Unified gate ─────────────────────────────────────────────────────
   # The ONLY job required by branch protection. Add every job to `needs:`.

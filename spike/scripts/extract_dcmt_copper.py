@@ -1,6 +1,6 @@
 """Extract the original DCMT's power copper and signal crossings into dcmt_copper.py.
 
-usage: uv run python scripts/extract_dcmt_copper.py ../Slice_DCMT/hardware/BREAD_Slice.kicad_pcb
+usage: uv run python scripts/extract_dcmt_copper.py ../../Slice_DCMT/hardware/BREAD_Slice.kicad_pcb
 
 Writes src/kidl_spike/boards/dcmt_copper.py: data, not code to edit by hand.
 
