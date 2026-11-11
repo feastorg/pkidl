@@ -1,0 +1,185 @@
+{
+ "boards": {
+  "DualLM317BenchSupply_DualLM317BenchSupply": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/DualLM317BenchSupply_DualLM317BenchSupply/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "c0216d743872f4fe73fcc852d9f84d9089e4483019d39fda64b6e8a478a8dc28",
+    "circuit.json": "dca8e2254a103be4b8fd59f7f90166e556ca0081b69ff83ddb5ff359598ee0b9",
+    "mechanical.json": "71c3a8125c5034d956004901f34575e15a638bc23013262ea955be09db60c4f1",
+    "reference.kicad_pcb": "f19dd2f4761020243575d1caa22295671229c65688de2aa4000f98749d930abb"
+   },
+   "source": "https://github.com/pepaslabs/DualLM317BenchSupply",
+   "tier": "t1"
+  },
+  "NRC2016_usb_sio": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/NRC2016_usb_sio/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "73cba4e68957002aed67369f0668bbab636adaa94deff8443e476082ebea925d",
+    "circuit.json": "f74fda475b94469e7aad926e3a04ee50905f10f4b09bb5b980a25f9a21a5633d",
+    "mechanical.json": "99a35de362a49009ae9a489ae1b259e30077ed3f3985b99505b068d1751efb94",
+    "reference.kicad_pcb": "0ff96fe0537896181abe6cacfe1edffd90f115f42d660dffbb530a5513b5c177"
+   },
+   "source": "https://github.com/alangarf/NRC2016",
+   "tier": "t3"
+  },
+  "OpenMPPT_OpenMPPT": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/OpenMPPT_OpenMPPT/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "bf9e701d3cb5b4e7cb6e2544f0e606416225a1cd4dcdffd0793f4fb3c084fd6a",
+    "circuit.json": "37caf9c9925b7ac069ef67b5bcd2ab055a7f09571dc9eaed695889ccc3f71471",
+    "mechanical.json": "3273d0969c9dd67d88b79948317ae879f2a403cb59f72723984578f386f67b6b",
+    "reference.kicad_pcb": "8ad1e7f1b1c1c9c9b00da99f5e2f805186b0cbdc1b31dedf614a462b9930680c"
+   },
+   "source": "https://github.com/Ralim/OpenMPPT",
+   "tier": "t1"
+  },
+  "UProgrammer-Hardware_Programmer": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/UProgrammer-Hardware_Programmer/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "274bd4c7e0f39897d5308aba376b9657b7db1178b5217d41d537bd4d369516c3",
+    "circuit.json": "f07840cc880ecf7839191083e7dade6448973f6f6b6085a5bcea40faf0b6ae5a",
+    "mechanical.json": "1463851ec224997ef5769e3d31c007f90023b890e5a62da4b2da16dbe0c0b908",
+    "reference.kicad_pcb": "8a8cc6d9eb88815c50747c3b7417ac523f2b328980fdd018425d5704b20e6677"
+   },
+   "source": "https://github.com/MackPI/UProgrammer-Hardware",
+   "tier": "t2"
+  },
+  "a123-battery-integration_BCM": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/a123-battery-integration_BCM/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "99c5f56600f41e40c9cfae8d476d640cfe519bcc71d016f94ff85e91ca5b0f97",
+    "circuit.json": "3a129a18b8504dd483b00a9f5eb8b102ed718b5a54fd170dc79ef9b598db810f",
+    "mechanical.json": "1d67855b94d17af3a890b0f3756ca961fd16e5729b548cb0f07371af8278f280",
+    "reference.kicad_pcb": "9833cc008729d6e79e146ea20b3b3e2baff9bda2bbc213d19fc4c70c36d86920"
+   },
+   "source": "https://github.com/MITEVT/a123-battery-integration",
+   "tier": "t4"
+  },
+  "bldc-gimbal-1d_gimbal-board": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/bldc-gimbal-1d_gimbal-board/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "49fae371e90b78d46147e2d736531060373f5d020a1e2f5b5cd67e9e3454caf5",
+    "circuit.json": "4e1fdb7c615f29ce128f040b44505cc964bc35527c63c5eba0e7a1de84d9011d",
+    "mechanical.json": "77ae440b9e6928ef5faadad901b469c9b985d353bf4dc09e194f654308256412",
+    "reference.kicad_pcb": "7248ed101c351dcd0f734582d0d9449d5bb452f606f8c8c9ffb1eb11c79b1f3c"
+   },
+   "source": "https://github.com/swedishhat/bldc-gimbal-1d",
+   "tier": "t2"
+  },
+  "esp12-breakout_ESP12Breakout": {
+   "licence": "Apache-2.0",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/esp12-breakout_ESP12Breakout/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "circuit.json": "47635ef2175e5808c7d93fdfbea38acc10e16a01b0154fb71f377452fd9d8430",
+    "mechanical.json": "d770ec5c5d2bb29baddf2c46a1f50be4f9a56089211dc6f44724847a5c5c09a6",
+    "reference.kicad_pcb": "9a8ad33d676fb711eb9448f6a5b17fc2e78410ade194367e91050d5459f34352"
+   },
+   "source": "https://github.com/itmarshall/esp12-breakout",
+   "tier": "t0"
+  },
+  "fan_controller_fan_controller": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/fan_controller_fan_controller/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "30664642e6013eb9c811fef2b8f1d7ed6066c31f3d9e3162ff9540771516078c",
+    "circuit.json": "11b8332bbb339b1de1b2931a5cedee218cab615e251d40c4056a9ed388996977",
+    "mechanical.json": "9dc4e19f6b732fe8e34cd92bbf318a9344b6d09f290e23678f239afe3c93a465",
+    "reference.kicad_pcb": "992d6cc927d29e29632404ea4dfc120a6d88bf157aa196469a2cbaeeb23353a4"
+   },
+   "source": "https://github.com/slightlynybbled/fan_controller",
+   "tier": "t2"
+  },
+  "free-of-charge_BMS": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/free-of-charge_BMS/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "089fa3779525b716e7b86385206ddb7a807a4ba3b6fe850f23a213ab49ced2dd",
+    "circuit.json": "925a0dc8cba7abf9d01ef5ac7f0853f4d8913486684c54ac6c8f2f09ce8701d6",
+    "mechanical.json": "1637fae187fd78092fc513d301c627c431e7d81f6c025962e8a96ac07d21b70e",
+    "reference.kicad_pcb": "e62569c91ee1ea7fb71e4655d33b573abd198129b20eee733c5e1cda701e0f77"
+   },
+   "source": "https://github.com/hosier/free-of-charge",
+   "tier": "t1"
+  },
+  "icehat_icehat": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/icehat_icehat/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "0a9d03e031a9a9c9b540846ee725ca375d7f9bd307ba88b3e10fd0eb5dc2b5e3",
+    "circuit.json": "5b27a497109dbb0b2d18e0d000a960885559b61aa115981fd4d7910fecc4a960",
+    "mechanical.json": "4799eb6bb80d58a00c7158be18dcb39b9e26151a4a837fbe4b1c906be023979b",
+    "reference.kicad_pcb": "01e2a55836a41eb20c71a3b7f1828b54db00313e80de38f59b95eabb79056ec7"
+   },
+   "source": "https://github.com/emeb/icehat",
+   "tier": "t4"
+  },
+  "nextbusclock_NextBusClockV1": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/nextbusclock_NextBusClockV1/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "2aa6232bc367cb237fbba7beef31319e3279013e4683bd4d2c0a773b4bfae379",
+    "circuit.json": "4d9a6b2aeab0f30c769fe205c316910d8b3f07e3e55c78a6521a324445fcbb68",
+    "mechanical.json": "5e9ba9003f6c32b595047e6cfbe1f11b69089102c96d4f3b418d7a61e5c6c224",
+    "reference.kicad_pcb": "951bf60f0465f7cbe92d5eaf0fa45c05e0ec12a7a99898d9a0247fc9b94a5741"
+   },
+   "source": "https://github.com/chrisgillis/nextbusclock",
+   "tier": "t0"
+  },
+  "pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/pcb-usb-ft245r-parallel-adapter_pcb-usb-ft245r-parallel-adapter/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "d8f08421b663f76cfe20fcf7011fe20ba416a95659d9532d3d0539166e4766cc",
+    "circuit.json": "f1d0fbc970353c4977994c19c34cab2c03bc8bfc55f4d9e60b5e2167359704e8",
+    "mechanical.json": "0e890a34abe9a445f76149632ca0f1e8de8e0b5f406dd13db3da00e246a6b8e4",
+    "reference.kicad_pcb": "963c6e5967e11496d5ca88262a884ee36f438acbe08cfd1681626211a710e75e"
+   },
+   "source": "https://github.com/yeokm1/pcb-usb-ft245r-parallel-adapter",
+   "tier": "t3"
+  },
+  "qrp_swr_meter_swr_meter_rev_a": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/qrp_swr_meter_swr_meter_rev_a/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "f56bbda51c1953478d21381fb9d7ee62845d11c59ba27e364d874c2d5548bd11",
+    "circuit.json": "14f349dee5e6ff5423f3e0db2783be38805c84a20a3da865509f217ad83759d6",
+    "mechanical.json": "79f77ea0b7804a454e1bcb5ef096119a11f6e5c189151241fb82efdb758a8b16",
+    "reference.kicad_pcb": "577dbad6cd6aeb87546b8f932d68b54748522e261ce4d4d4a047ddae682734d2"
+   },
+   "source": "https://github.com/4x1md/qrp_swr_meter",
+   "tier": "t0"
+  },
+  "rxadc_14_rxadc_14": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/rxadc_14_rxadc_14/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "d5b7eaee900a13c96cbc2e1c620a3e62048ae9d5f6a63a8d2705a84d642c743e",
+    "circuit.json": "6f4a7a169814acd01779c896a4a206f3e1d124e6ae6b11dd95b6f938681eb91f",
+    "mechanical.json": "72e6ffcc3c872a76d42d9b8366ebba534928364772990da8fd1cc45edd45cf76",
+    "reference.kicad_pcb": "eb0fb12ca77a08849a058cc19c35ba08710be6b208728b72e39ff89561d47aec"
+   },
+   "source": "https://github.com/emeb/rxadc_14",
+   "tier": "t4"
+  },
+  "usb2serial-CH340G_USB2TTL-CH340G": {
+   "licence": "MIT",
+   "pcbench": "scripts/benchmark/fixtures/PCBench/usb2serial-CH340G_USB2TTL-CH340G/raw.kicad_pcb",
+   "sha256": {
+    "LICENSE": "a647f380a95719f94063d0713610914be90d531991abf87114029f36f0bcc59c",
+    "circuit.json": "145267abd63d4e1fc186999af02dcdb1c525f149cb6aacc5a610554311f9ac77",
+    "mechanical.json": "d92dfbdceecb699f11600bf91da6010433ba836d0bf600ce07d0a00df0dd516c",
+    "reference.kicad_pcb": "c82a97d494db78552f7abc61ddae96e57400baee07f55fb1271669c97311d2a4"
+   },
+   "source": "https://github.com/smslit/usb2serial-CH340G",
+   "tier": "t3"
+  }
+ },
+ "source": "PCBench via freerouting/freerouting@842ad83"
+}

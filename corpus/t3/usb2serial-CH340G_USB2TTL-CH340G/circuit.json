@@ -1,0 +1,222 @@
+{
+ "nets": [
+  "+3.3V",
+  "+5V",
+  "/CTS",
+  "/DTR",
+  "/RXD",
+  "/TXD",
+  "GND",
+  "Net-(C6-Pad1)",
+  "Net-(C7-Pad1)",
+  "Net-(C8-Pad1)",
+  "Net-(D1-Pad2)",
+  "Net-(D2-Pad2)",
+  "Net-(D3-Pad2)",
+  "Net-(P1-Pad2)",
+  "Net-(P1-Pad3)",
+  "Net-(P1-Pad6)",
+  "VCC"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C1",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C2",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C3",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+3.3V",
+    "2": "GND"
+   },
+   "ref": "C4",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+3.3V",
+    "2": "GND"
+   },
+   "ref": "C5",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "Net-(C6-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C6",
+   "value": "22pF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "Net-(C7-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C7",
+   "value": "0.01uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "Net-(C8-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C8",
+   "value": "22pF"
+  },
+  {
+   "footprint": "LEDs:LED_0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D1-Pad2)"
+   },
+   "ref": "D1",
+   "value": "PWR"
+  },
+  {
+   "footprint": "LEDs:LED_0603",
+   "pads": {
+    "1": "/TXD",
+    "2": "Net-(D2-Pad2)"
+   },
+   "ref": "D2",
+   "value": "TXD"
+  },
+  {
+   "footprint": "LEDs:LED_0603",
+   "pads": {
+    "1": "/RXD",
+    "2": "Net-(D3-Pad2)"
+   },
+   "ref": "D3",
+   "value": "RXD"
+  },
+  {
+   "footprint": "myFootprints:USB_Micro-B-MK5",
+   "pads": {
+    "1": "+5V",
+    "2": "Net-(P1-Pad2)",
+    "3": "Net-(P1-Pad3)",
+    "5": "GND",
+    "6": "Net-(P1-Pad6)"
+   },
+   "ref": "P1",
+   "value": "USB_OTG"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x03",
+   "pads": {
+    "1": "+5V",
+    "2": "VCC",
+    "3": "+3.3V"
+   },
+   "ref": "P2",
+   "value": "PWR_SEL"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x06",
+   "pads": {
+    "1": "/DTR",
+    "2": "/RXD",
+    "3": "/TXD",
+    "4": "VCC",
+    "5": "/CTS",
+    "6": "GND"
+   },
+   "ref": "P3",
+   "value": "CONN_01X06"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(D1-Pad2)",
+    "2": "+5V"
+   },
+   "ref": "R1",
+   "value": "4.7K"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(D2-Pad2)"
+   },
+   "ref": "R2",
+   "value": "4.7K"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(D3-Pad2)"
+   },
+   "ref": "R3",
+   "value": "4.7K"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:SOT-23",
+   "pads": {
+    "1": "GND",
+    "2": "+3.3V",
+    "3": "+5V"
+   },
+   "ref": "U1",
+   "value": "XC6206P332MR"
+  },
+  {
+   "footprint": "SMD_Packages:SO-16-N",
+   "pads": {
+    "1": "GND",
+    "13": "/DTR",
+    "16": "VCC",
+    "2": "/TXD",
+    "3": "/RXD",
+    "4": "Net-(C7-Pad1)",
+    "5": "Net-(P1-Pad3)",
+    "6": "Net-(P1-Pad2)",
+    "7": "Net-(C6-Pad1)",
+    "8": "Net-(C8-Pad1)",
+    "9": "/CTS"
+   },
+   "ref": "U2",
+   "value": "CH340G"
+  },
+  {
+   "footprint": "myFootprints:Resonator_3.2x1.5mm",
+   "pads": {
+    "1": "Net-(C6-Pad1)",
+    "2": "Net-(C8-Pad1)",
+    "3": "GND"
+   },
+   "ref": "X1",
+   "value": "CRYSTAL_SMD"
+  }
+ ]
+}

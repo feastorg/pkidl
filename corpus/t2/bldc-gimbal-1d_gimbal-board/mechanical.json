@@ -1,0 +1,111 @@
+{
+ "fixed": {},
+ "holes": [
+  {
+   "at": [
+    97.4,
+    64.6
+   ],
+   "drills": [
+    [
+     97.4,
+     64.6,
+     3.0
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_3mm",
+   "ref": "H1"
+  },
+  {
+   "at": [
+    171.6,
+    64.6
+   ],
+   "drills": [
+    [
+     171.6,
+     64.6,
+     3.0
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_3mm",
+   "ref": "H2"
+  },
+  {
+   "at": [
+    97.4,
+    46.4
+   ],
+   "drills": [
+    [
+     97.4,
+     46.4,
+     3.0
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_3mm",
+   "ref": "H3"
+  },
+  {
+   "at": [
+    171.6,
+    46.4
+   ],
+   "drills": [
+    [
+     171.6,
+     46.4,
+     3.0
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_3mm",
+   "ref": "H4"
+  }
+ ],
+ "outline": [
+  {
+   "end": [
+    175.0,
+    68.0
+   ],
+   "start": [
+    175.0,
+    43.0
+   ],
+   "type": "gr_line"
+  },
+  {
+   "end": [
+    94.0,
+    68.0
+   ],
+   "start": [
+    175.0,
+    68.0
+   ],
+   "type": "gr_line"
+  },
+  {
+   "end": [
+    175.0,
+    43.0
+   ],
+   "start": [
+    94.0,
+    43.0
+   ],
+   "type": "gr_line"
+  },
+  {
+   "end": [
+    94.0,
+    43.0
+   ],
+   "start": [
+    94.0,
+    68.0
+   ],
+   "type": "gr_line"
+  }
+ ]
+}

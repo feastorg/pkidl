@@ -1,0 +1,366 @@
+{
+ "nets": [
+  "+3V3",
+  "+BATT",
+  "/ICSP_MISO",
+  "/ICSP_MOSI",
+  "/ICSP_SCK",
+  "/IMU_INT",
+  "/M_DIR",
+  "/M_FG",
+  "/M_PHASE_U",
+  "/M_PHASE_V",
+  "/M_PHASE_W",
+  "/M_SPEED",
+  "/REG_OUT",
+  "/RESET",
+  "/SCL",
+  "/SDA",
+  "/USART_DTR",
+  "/USART_RX",
+  "/USART_TX",
+  "/V3P3",
+  "GND",
+  "Net-(C2-Pad1)",
+  "Net-(C6-Pad1)",
+  "Net-(C6-Pad2)",
+  "Net-(C7-Pad1)",
+  "Net-(C8-Pad1)",
+  "Net-(D1-Pad2)",
+  "Net-(D2-Pad2)",
+  "Net-(IC1-Pad2)",
+  "Net-(IC1-Pad7)",
+  "Net-(IC1-Pad8)",
+  "Net-(IC1-Pad9)",
+  "Net-(L1-Pad1)"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C1",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "/RESET",
+    "2": "/USART_DTR"
+   },
+   "ref": "C10",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "gimbal-board:TantalC_SizeA_EIA-3216_HandSoldering",
+   "pads": {
+    "1": "/REG_OUT",
+    "2": "GND"
+   },
+   "ref": "C11",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(C2-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C2",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "gimbal-board:TantalC_SizeA_EIA-3216_HandSoldering",
+   "pads": {
+    "1": "+BATT",
+    "2": "GND"
+   },
+   "ref": "C5",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(C6-Pad1)",
+    "2": "Net-(C6-Pad2)"
+   },
+   "ref": "C6",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(C7-Pad1)",
+    "2": "+BATT"
+   },
+   "ref": "C7",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(C8-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C8",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "/V3P3",
+    "2": "GND"
+   },
+   "ref": "C9",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D1-Pad2)"
+   },
+   "ref": "D1",
+   "value": "RED"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D2-Pad2)"
+   },
+   "ref": "D2",
+   "value": "GRN"
+  },
+  {
+   "footprint": "Housings_QFP:TQFP-32_7x7mm_Pitch0.8mm",
+   "pads": {
+    "1": "/M_FG",
+    "12": "/M_DIR",
+    "13": "/M_SPEED",
+    "15": "/ICSP_MOSI",
+    "16": "/ICSP_MISO",
+    "17": "/ICSP_SCK",
+    "18": "+3V3",
+    "2": "Net-(IC1-Pad2)",
+    "20": "Net-(C2-Pad1)",
+    "21": "GND",
+    "27": "/SDA",
+    "28": "/SCL",
+    "29": "/RESET",
+    "3": "GND",
+    "30": "/USART_RX",
+    "31": "/USART_TX",
+    "32": "/IMU_INT",
+    "4": "+3V3",
+    "5": "GND",
+    "6": "+3V3",
+    "7": "Net-(IC1-Pad7)",
+    "8": "Net-(IC1-Pad8)",
+    "9": "Net-(IC1-Pad9)"
+   },
+   "ref": "IC1",
+   "value": "ATMEGA328P-A"
+  },
+  {
+   "footprint": "Inductors:Inductor_1212",
+   "pads": {
+    "1": "Net-(L1-Pad1)",
+    "2": "/REG_OUT"
+   },
+   "ref": "L1",
+   "value": "47uH"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x06",
+   "pads": {
+    "1": "+3V3",
+    "2": "/ICSP_MOSI",
+    "3": "/ICSP_MISO",
+    "4": "/ICSP_SCK",
+    "5": "/RESET",
+    "6": "GND"
+   },
+   "ref": "P1",
+   "value": "ICSP"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "+BATT",
+    "2": "GND"
+   },
+   "ref": "P2",
+   "value": "BATT"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x03",
+   "pads": {
+    "1": "/M_PHASE_U",
+    "2": "/M_PHASE_V",
+    "3": "/M_PHASE_W"
+   },
+   "ref": "P3",
+   "value": "MOTOR"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x08",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND",
+    "3": "/SCL",
+    "4": "/SDA",
+    "8": "/IMU_INT"
+   },
+   "ref": "P4",
+   "value": "IMU"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x06",
+   "pads": {
+    "1": "/USART_DTR",
+    "2": "/USART_TX",
+    "3": "/USART_RX",
+    "4": "+3V3",
+    "5": "GND",
+    "6": "GND"
+   },
+   "ref": "P5",
+   "value": "FTDI"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "+3V3",
+    "2": "/REG_OUT"
+   },
+   "ref": "P6",
+   "value": "3V3_CONN"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "Net-(D1-Pad2)"
+   },
+   "ref": "R1",
+   "value": "330"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "/RESET",
+    "2": "+3V3"
+   },
+   "ref": "R2",
+   "value": "10K"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(IC1-Pad2)",
+    "2": "+3V3"
+   },
+   "ref": "R3",
+   "value": "10K"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "/SCL"
+   },
+   "ref": "R4",
+   "value": "DNP"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "/SDA"
+   },
+   "ref": "R5",
+   "value": "DNP"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "/M_FG"
+   },
+   "ref": "R6",
+   "value": "DNP"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(IC1-Pad9)",
+    "2": "Net-(D2-Pad2)"
+   },
+   "ref": "R7",
+   "value": "330"
+  },
+  {
+   "footprint": "Buttons_Switches_SMD:SW_SPST_FSMSM",
+   "pads": {
+    "1": "/RESET",
+    "2": "GND"
+   },
+   "ref": "SW1",
+   "value": "SW_PUSH"
+  },
+  {
+   "footprint": "Buttons_Switches_SMD:SW_SPST_FSMSM",
+   "pads": {
+    "1": "Net-(IC1-Pad2)",
+    "2": "GND"
+   },
+   "ref": "SW2",
+   "value": "SW_PUSH"
+  },
+  {
+   "footprint": "gimbal-board:TSSOP-24_4.4x7.8mm_Pitch0.65mm_EP",
+   "pads": {
+    "1": "Net-(C7-Pad1)",
+    "10": "/SCL",
+    "11": "/SDA",
+    "12": "/M_FG",
+    "13": "/M_SPEED",
+    "14": "/M_DIR",
+    "15": "GND",
+    "16": "GND",
+    "17": "/M_PHASE_U",
+    "18": "/M_PHASE_U",
+    "19": "/M_PHASE_V",
+    "2": "Net-(C6-Pad2)",
+    "20": "/M_PHASE_V",
+    "21": "/M_PHASE_W",
+    "22": "/M_PHASE_W",
+    "23": "+BATT",
+    "24": "+BATT",
+    "3": "Net-(C6-Pad1)",
+    "4": "Net-(L1-Pad1)",
+    "5": "GND",
+    "6": "/REG_OUT",
+    "7": "Net-(C8-Pad1)",
+    "8": "GND",
+    "9": "/V3P3",
+    "EP": "GND"
+   },
+   "ref": "U1",
+   "value": "DRV10975"
+  },
+  {
+   "footprint": "Crystals:Resonator_7.2x3mm",
+   "pads": {
+    "1": "Net-(IC1-Pad8)",
+    "2": "GND",
+    "3": "Net-(IC1-Pad7)"
+   },
+   "ref": "Y1",
+   "value": "Resonator"
+  }
+ ]
+}

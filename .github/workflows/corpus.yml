@@ -1,0 +1,51 @@
+# The corpus scorecard: every corpus board refilled and checked by KiCad, then scored.
+# Needs KiCad, so it runs on demand and weekly, not on every push (see the Check
+# workflow for pkidl's own gate). The scorecard is uploaded as an artifact.
+
+name: Corpus
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"  # Mondays
+
+permissions:
+  contents: read
+
+jobs:
+  scorecard:
+    name: Scorecard
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      # The same pinned KiCad as the Check workflow's KiCad job.
+      image: kicad/kicad:10.0.6@sha256:18693567392b80da435f9fa952ce3a3e534c66eb5a6033f5b9c80aa3b19dd3ec
+      options: --user root
+    env:
+      KICAD_CLI: kicad-cli
+    steps:
+      - name: Install git
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl
+
+      - uses: actions/checkout@v4
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup
+        run: just setup
+
+      - name: Scorecard
+        run: just corpus
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scorecard
+          path: |
+            build/corpus/scorecard.json
+            build/corpus/*/drc.json

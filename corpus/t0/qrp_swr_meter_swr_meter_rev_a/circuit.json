@@ -1,0 +1,216 @@
+{
+ "nets": [
+  "GNDREF",
+  "Net-(C1-Pad2)",
+  "Net-(C2-Pad2)",
+  "Net-(C3-Pad1)",
+  "Net-(C3-Pad2)",
+  "Net-(C4-Pad2)",
+  "Net-(D2-Pad2)",
+  "Net-(P1-Pad1)",
+  "Net-(P2-Pad1)",
+  "Net-(PA1-Pad1)",
+  "Net-(R10-Pad1)",
+  "Net-(R2-Pad1)",
+  "Net-(R9-Pad1)",
+  "Net-(SW1-Pad1)"
+ ],
+ "parts": [
+  {
+   "footprint": "swr_meter_rev_a_custom_lib:Capacitor_Disc_D6_P5",
+   "pads": {
+    "1": "GNDREF",
+    "2": "Net-(C1-Pad2)"
+   },
+   "ref": "C1",
+   "value": "2200pF"
+  },
+  {
+   "footprint": "swr_meter_rev_a_custom_lib:Capacitor_Disc_D6_P5",
+   "pads": {
+    "1": "GNDREF",
+    "2": "Net-(C2-Pad2)"
+   },
+   "ref": "C2",
+   "value": "0.01uF"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Capacitor_Disc_D6_P7.5",
+   "pads": {
+    "1": "Net-(C3-Pad1)",
+    "2": "Net-(C3-Pad2)"
+   },
+   "ref": "C3",
+   "value": "2200pF"
+  },
+  {
+   "footprint": "swr_meter_rev_a_custom_lib:Capacitor_Disc_D6_P5",
+   "pads": {
+    "1": "GNDREF",
+    "2": "Net-(C4-Pad2)"
+   },
+   "ref": "C4",
+   "value": "0.01uF"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Diode_DO-35_SOD27_Horizontal_RM10",
+   "pads": {
+    "1": "Net-(C1-Pad2)",
+    "2": "Net-(C3-Pad1)"
+   },
+   "ref": "D1",
+   "value": "1N60P"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Diode_DO-35_SOD27_Horizontal_RM10",
+   "pads": {
+    "1": "Net-(C3-Pad2)",
+    "2": "Net-(D2-Pad2)"
+   },
+   "ref": "D2",
+   "value": "1N60P"
+  },
+  {
+   "footprint": "Connect:SMB_Straight",
+   "pads": {
+    "1": "Net-(P1-Pad1)",
+    "2": "GNDREF"
+   },
+   "ref": "P1",
+   "value": "BNC"
+  },
+  {
+   "footprint": "Connect:SMB_Straight",
+   "pads": {
+    "1": "Net-(P2-Pad1)",
+    "2": "GNDREF"
+   },
+   "ref": "P2",
+   "value": "BNC"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Microampermeter",
+   "pads": {
+    "1": "Net-(PA1-Pad1)",
+    "2": "GNDREF"
+   },
+   "ref": "PA1",
+   "value": "250uA, 1.2K"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "Net-(C1-Pad2)",
+    "2": "Net-(C2-Pad2)"
+   },
+   "ref": "R1",
+   "value": "10K"
+  },
+  {
+   "footprint": "Potentiometers:Potentiometer_Triwood_RM-065",
+   "pads": {
+    "1": "Net-(R10-Pad1)",
+    "2": "Net-(C2-Pad2)",
+    "3": "Net-(C2-Pad2)"
+   },
+   "ref": "R10",
+   "value": "47K"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Resistor_Horizontal_2W",
+   "pads": {
+    "1": "Net-(R2-Pad1)",
+    "2": "Net-(C3-Pad1)"
+   },
+   "ref": "R2",
+   "value": "100"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Resistor_Horizontal_2W",
+   "pads": {
+    "1": "Net-(C3-Pad1)",
+    "2": "GNDREF"
+   },
+   "ref": "R3",
+   "value": "100"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Resistor_Horizontal_2W",
+   "pads": {
+    "1": "Net-(R2-Pad1)",
+    "2": "Net-(C3-Pad1)"
+   },
+   "ref": "R4",
+   "value": "100"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Resistor_Horizontal_2W",
+   "pads": {
+    "1": "Net-(C3-Pad1)",
+    "2": "GNDREF"
+   },
+   "ref": "R5",
+   "value": "100"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Resistor_Horizontal_2W",
+   "pads": {
+    "1": "Net-(D2-Pad2)",
+    "2": "Net-(R2-Pad1)"
+   },
+   "ref": "R6",
+   "value": "100"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Resistor_Horizontal_2W",
+   "pads": {
+    "1": "Net-(D2-Pad2)",
+    "2": "Net-(R2-Pad1)"
+   },
+   "ref": "R7",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "Net-(C3-Pad2)",
+    "2": "Net-(C4-Pad2)"
+   },
+   "ref": "R8",
+   "value": "10K"
+  },
+  {
+   "footprint": "Potentiometers:Potentiometer_Triwood_RM-065",
+   "pads": {
+    "1": "Net-(R9-Pad1)",
+    "2": "Net-(C4-Pad2)",
+    "3": "Net-(C4-Pad2)"
+   },
+   "ref": "R9",
+   "value": "47K"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Tumbler_SW_x2",
+   "pads": {
+    "1": "Net-(SW1-Pad1)",
+    "2": "Net-(P1-Pad1)",
+    "3": "Net-(R2-Pad1)",
+    "4": "Net-(SW1-Pad1)",
+    "5": "Net-(P2-Pad1)",
+    "6": "Net-(D2-Pad2)"
+   },
+   "ref": "SW1",
+   "value": "Double switch"
+  },
+  {
+   "footprint": "custom_kicad_footprints:Tumbler_SW",
+   "pads": {
+    "1": "Net-(R9-Pad1)",
+    "2": "Net-(PA1-Pad1)",
+    "3": "Net-(R10-Pad1)"
+   },
+   "ref": "SW2",
+   "value": "2 pos. switch"
+  }
+ ]
+}

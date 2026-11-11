@@ -1,0 +1,525 @@
+{
+ "nets": [
+  "+1V2",
+  "+3V3",
+  "+5V",
+  "GND",
+  "GPIO23_CDN",
+  "GPIO24_CRS",
+  "GPIO25_SS",
+  "I2S_BCLK",
+  "I2S_DI",
+  "I2S_DO",
+  "I2S_LRCK",
+  "Net-(C403-Pad1)",
+  "Net-(C405-Pad1)",
+  "Net-(D402-Pad1)",
+  "Net-(D402-Pad2)",
+  "Net-(D403-Pad1)",
+  "Net-(D403-Pad2)",
+  "Net-(D404-Pad1)",
+  "Net-(D404-Pad2)",
+  "Net-(J2-Pad1)",
+  "Net-(J2-Pad10)",
+  "Net-(J2-Pad11)",
+  "Net-(J2-Pad13)",
+  "Net-(J2-Pad15)",
+  "Net-(J2-Pad17)",
+  "Net-(J2-Pad26)",
+  "Net-(J2-Pad27)",
+  "Net-(J2-Pad28)",
+  "Net-(J2-Pad29)",
+  "Net-(J2-Pad3)",
+  "Net-(J2-Pad31)",
+  "Net-(J2-Pad32)",
+  "Net-(J2-Pad33)",
+  "Net-(J2-Pad36)",
+  "Net-(J2-Pad37)",
+  "Net-(J2-Pad5)",
+  "Net-(J2-Pad7)",
+  "Net-(J2-Pad8)",
+  "Net-(P401-Pad1)",
+  "Net-(P401-Pad11)",
+  "Net-(P401-Pad2)",
+  "Net-(P401-Pad3)",
+  "Net-(P401-Pad4)",
+  "Net-(P401-Pad5)",
+  "Net-(P401-Pad6)",
+  "Net-(P401-Pad7)",
+  "Net-(P401-Pad8)",
+  "Net-(P403-Pad1)",
+  "Net-(P403-Pad11)",
+  "Net-(P403-Pad2)",
+  "Net-(P403-Pad3)",
+  "Net-(P403-Pad4)",
+  "Net-(P403-Pad5)",
+  "Net-(P403-Pad6)",
+  "Net-(P403-Pad7)",
+  "Net-(P403-Pad8)",
+  "Net-(P404-Pad1)",
+  "Net-(P404-Pad11)",
+  "Net-(P404-Pad2)",
+  "Net-(P404-Pad3)",
+  "Net-(P404-Pad4)",
+  "Net-(P404-Pad5)",
+  "Net-(P404-Pad6)",
+  "Net-(P404-Pad7)",
+  "Net-(P404-Pad8)",
+  "Net-(TP401-Pad1)",
+  "Net-(TP402-Pad1)",
+  "Net-(TP403-Pad1)",
+  "Net-(U301-Pad4)",
+  "Net-(U302-Pad4)",
+  "SPI_CE0",
+  "SPI_CLK",
+  "SPI_MISO",
+  "SPI_MOSI"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C301",
+   "value": "1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C302",
+   "value": "1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C303",
+   "value": "10uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "+1V2",
+    "2": "GND"
+   },
+   "ref": "C304",
+   "value": "10uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C401",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+1V2",
+    "2": "GND"
+   },
+   "ref": "C402",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "Net-(C403-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C403",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C404",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "Net-(C405-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C405",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805",
+   "pads": {
+    "1": "Net-(C405-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C406",
+   "value": "10uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+1V2",
+    "2": "GND"
+   },
+   "ref": "C407",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C408",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "LEDs:LED_0805",
+   "pads": {
+    "1": "GND",
+    "2": "GPIO23_CDN"
+   },
+   "ref": "D401",
+   "value": "LED"
+  },
+  {
+   "footprint": "LEDs:LED_0805",
+   "pads": {
+    "1": "Net-(D402-Pad1)",
+    "2": "Net-(D402-Pad2)"
+   },
+   "ref": "D402",
+   "value": "LED"
+  },
+  {
+   "footprint": "LEDs:LED_0805",
+   "pads": {
+    "1": "Net-(D403-Pad1)",
+    "2": "Net-(D403-Pad2)"
+   },
+   "ref": "D403",
+   "value": "LED"
+  },
+  {
+   "footprint": "LEDs:LED_0805",
+   "pads": {
+    "1": "Net-(D404-Pad1)",
+    "2": "Net-(D404-Pad2)"
+   },
+   "ref": "D404",
+   "value": "LED"
+  },
+  {
+   "footprint": "Diodes_SMD:D_0603",
+   "pads": {
+    "1": "Net-(C403-Pad1)",
+    "2": "+3V3"
+   },
+   "ref": "D405",
+   "value": "D"
+  },
+  {
+   "footprint": "emeb:Pin_Header_Straight_2x20",
+   "pads": {
+    "1": "Net-(J2-Pad1)",
+    "10": "Net-(J2-Pad10)",
+    "11": "Net-(J2-Pad11)",
+    "12": "I2S_BCLK",
+    "13": "Net-(J2-Pad13)",
+    "14": "GND",
+    "15": "Net-(J2-Pad15)",
+    "16": "GPIO23_CDN",
+    "17": "Net-(J2-Pad17)",
+    "18": "GPIO24_CRS",
+    "19": "SPI_MOSI",
+    "2": "+5V",
+    "20": "GND",
+    "21": "SPI_MISO",
+    "22": "GPIO25_SS",
+    "23": "SPI_CLK",
+    "24": "SPI_CE0",
+    "25": "GND",
+    "26": "Net-(J2-Pad26)",
+    "27": "Net-(J2-Pad27)",
+    "28": "Net-(J2-Pad28)",
+    "29": "Net-(J2-Pad29)",
+    "3": "Net-(J2-Pad3)",
+    "30": "GND",
+    "31": "Net-(J2-Pad31)",
+    "32": "Net-(J2-Pad32)",
+    "33": "Net-(J2-Pad33)",
+    "34": "GND",
+    "35": "I2S_LRCK",
+    "36": "Net-(J2-Pad36)",
+    "37": "Net-(J2-Pad37)",
+    "38": "I2S_DI",
+    "39": "GND",
+    "4": "+5V",
+    "40": "I2S_DO",
+    "5": "Net-(J2-Pad5)",
+    "6": "GND",
+    "7": "Net-(J2-Pad7)",
+    "8": "Net-(J2-Pad8)",
+    "9": "GND"
+   },
+   "ref": "J2",
+   "value": "RPi_GPIO"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_2x06",
+   "pads": {
+    "1": "Net-(P401-Pad1)",
+    "10": "GND",
+    "11": "Net-(P401-Pad11)",
+    "12": "Net-(P401-Pad11)",
+    "2": "Net-(P401-Pad2)",
+    "3": "Net-(P401-Pad3)",
+    "4": "Net-(P401-Pad4)",
+    "5": "Net-(P401-Pad5)",
+    "6": "Net-(P401-Pad6)",
+    "7": "Net-(P401-Pad7)",
+    "8": "Net-(P401-Pad8)",
+    "9": "GND"
+   },
+   "ref": "P401",
+   "value": "CONN_02X06"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x03",
+   "pads": {
+    "1": "+3V3",
+    "2": "Net-(P401-Pad11)",
+    "3": "+5V"
+   },
+   "ref": "P402",
+   "value": "CONN_01X03"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_2x06",
+   "pads": {
+    "1": "Net-(P403-Pad1)",
+    "10": "GND",
+    "11": "Net-(P403-Pad11)",
+    "12": "Net-(P403-Pad11)",
+    "2": "Net-(P403-Pad2)",
+    "3": "Net-(P403-Pad3)",
+    "4": "Net-(P403-Pad4)",
+    "5": "Net-(P403-Pad5)",
+    "6": "Net-(P403-Pad6)",
+    "7": "Net-(P403-Pad7)",
+    "8": "Net-(P403-Pad8)",
+    "9": "GND"
+   },
+   "ref": "P403",
+   "value": "CONN_02X06"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_2x06",
+   "pads": {
+    "1": "Net-(P404-Pad1)",
+    "10": "GND",
+    "11": "Net-(P404-Pad11)",
+    "12": "Net-(P404-Pad11)",
+    "2": "Net-(P404-Pad2)",
+    "3": "Net-(P404-Pad3)",
+    "4": "Net-(P404-Pad4)",
+    "5": "Net-(P404-Pad5)",
+    "6": "Net-(P404-Pad6)",
+    "7": "Net-(P404-Pad7)",
+    "8": "Net-(P404-Pad8)",
+    "9": "GND"
+   },
+   "ref": "P404",
+   "value": "CONN_02X06"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x03",
+   "pads": {
+    "1": "+3V3",
+    "2": "Net-(P403-Pad11)",
+    "3": "+5V"
+   },
+   "ref": "P405",
+   "value": "CONN_01X03"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x03",
+   "pads": {
+    "1": "+3V3",
+    "2": "Net-(P404-Pad11)",
+    "3": "+5V"
+   },
+   "ref": "P406",
+   "value": "CONN_01X03"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "GPIO24_CRS"
+   },
+   "ref": "R401",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "GPIO23_CDN"
+   },
+   "ref": "R402",
+   "value": "2.2k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "Net-(D402-Pad2)"
+   },
+   "ref": "R403",
+   "value": "2.2k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "Net-(D403-Pad2)"
+   },
+   "ref": "R404",
+   "value": "2.2k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+3V3",
+    "2": "Net-(D404-Pad2)"
+   },
+   "ref": "R405",
+   "value": "2.2k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C405-Pad1)",
+    "2": "+1V2"
+   },
+   "ref": "R406",
+   "value": "10k"
+  },
+  {
+   "footprint": "Connect:PINTST",
+   "pads": {
+    "1": "Net-(TP401-Pad1)"
+   },
+   "ref": "TP401",
+   "value": "CONN_01X01"
+  },
+  {
+   "footprint": "Connect:PINTST",
+   "pads": {
+    "1": "Net-(TP402-Pad1)"
+   },
+   "ref": "TP402",
+   "value": "CONN_01X01"
+  },
+  {
+   "footprint": "Connect:PINTST",
+   "pads": {
+    "1": "Net-(TP403-Pad1)"
+   },
+   "ref": "TP403",
+   "value": "CONN_01X01"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:SOT-23-5",
+   "pads": {
+    "1": "+5V",
+    "2": "GND",
+    "3": "+5V",
+    "4": "Net-(U301-Pad4)",
+    "5": "+3V3"
+   },
+   "ref": "U301",
+   "value": "MCP1802-3.3"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:SOT-23-5",
+   "pads": {
+    "1": "+5V",
+    "2": "GND",
+    "3": "+5V",
+    "4": "Net-(U302-Pad4)",
+    "5": "+1V2"
+   },
+   "ref": "U302",
+   "value": "MCP1802-1.2"
+  },
+  {
+   "footprint": "emeb:QFN-48-1EP_7x7mm_Pitch0.5mm_DIY_PADS",
+   "pads": {
+    "1": "+3V3",
+    "10": "I2S_BCLK",
+    "11": "I2S_DI",
+    "12": "I2S_DO",
+    "13": "SPI_CE0",
+    "14": "SPI_MISO",
+    "15": "SPI_CLK",
+    "16": "GPIO25_SS",
+    "17": "SPI_MOSI",
+    "18": "Net-(TP403-Pad1)",
+    "19": "Net-(P403-Pad7)",
+    "2": "Net-(P401-Pad2)",
+    "20": "Net-(P403-Pad8)",
+    "21": "Net-(P403-Pad5)",
+    "22": "+3V3",
+    "23": "Net-(P403-Pad6)",
+    "24": "Net-(C403-Pad1)",
+    "25": "Net-(P403-Pad3)",
+    "26": "Net-(P403-Pad4)",
+    "27": "Net-(P403-Pad1)",
+    "28": "Net-(P403-Pad2)",
+    "29": "Net-(C405-Pad1)",
+    "3": "Net-(P401-Pad1)",
+    "30": "+1V2",
+    "31": "Net-(P404-Pad7)",
+    "32": "Net-(P404-Pad8)",
+    "33": "+3V3",
+    "34": "Net-(P404-Pad5)",
+    "35": "Net-(P404-Pad6)",
+    "36": "Net-(P404-Pad3)",
+    "37": "Net-(P404-Pad4)",
+    "38": "Net-(P404-Pad1)",
+    "39": "Net-(D404-Pad1)",
+    "4": "Net-(TP401-Pad1)",
+    "40": "Net-(D403-Pad1)",
+    "41": "Net-(D402-Pad1)",
+    "42": "Net-(P404-Pad2)",
+    "43": "Net-(P401-Pad8)",
+    "44": "Net-(P401-Pad7)",
+    "45": "Net-(P401-Pad6)",
+    "46": "Net-(P401-Pad5)",
+    "47": "Net-(P401-Pad4)",
+    "48": "Net-(P401-Pad3)",
+    "49": "GND",
+    "5": "+1V2",
+    "6": "Net-(TP402-Pad1)",
+    "7": "GPIO23_CDN",
+    "8": "GPIO24_CRS",
+    "9": "I2S_LRCK"
+   },
+   "ref": "U401",
+   "value": "ice5lp4k_sg48"
+  }
+ ]
+}

@@ -1,0 +1,371 @@
+{
+ "nets": [
+  "/A0",
+  "/D0",
+  "/D1",
+  "/D2",
+  "/D3",
+  "/D4",
+  "/D5",
+  "/D6",
+  "/D7",
+  "/ENA",
+  "/GP0",
+  "/GP2",
+  "/GP3",
+  "/GP4",
+  "/GP5",
+  "/RX",
+  "/S1",
+  "/S2",
+  "/S3",
+  "/S4",
+  "/TX",
+  "/~{BUSRQ}",
+  "/~{CLK}",
+  "/~{INT}",
+  "/~{IORQ}",
+  "/~{IOSEL}",
+  "/~{M1}",
+  "/~{WR}",
+  "GND",
+  "Net-(C1-Pad1)",
+  "Net-(C2-Pad1)",
+  "Net-(C3-Pad1)",
+  "Net-(CON1-Pad1)",
+  "Net-(CON1-Pad2)",
+  "Net-(D1-Pad1)",
+  "Net-(D1-Pad2)",
+  "Net-(D2-Pad1)",
+  "Net-(D2-Pad2)",
+  "Net-(D3-Pad1)",
+  "Net-(D3-Pad2)",
+  "Net-(JP1-Pad2)",
+  "Net-(JP1-Pad3)",
+  "Net-(P2-Pad1)",
+  "Net-(P2-Pad2)",
+  "Net-(P2-Pad3)",
+  "Net-(P2-Pad4)",
+  "Net-(Q1-Pad2)",
+  "Net-(R1-Pad2)",
+  "Net-(U1-Pad11)",
+  "Net-(U1-Pad13)",
+  "VCC"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_ThroughHole:C_Radial_D5_L6_P2.5",
+   "pads": {
+    "1": "Net-(C1-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C1",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Disc_D3_P2.5",
+   "pads": {
+    "1": "Net-(C2-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C2",
+   "value": "22pF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Disc_D3_P2.5",
+   "pads": {
+    "1": "Net-(C3-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C3",
+   "value": "22pF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Radial_D6.3_L11.2_P2.5",
+   "pads": {
+    "1": "VCC",
+    "2": "GND"
+   },
+   "ref": "C4",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Disc_D3_P2.5",
+   "pads": {
+    "1": "VCC",
+    "2": "GND"
+   },
+   "ref": "C5",
+   "value": "100nF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Disc_D3_P2.5",
+   "pads": {
+    "1": "VCC",
+    "2": "GND"
+   },
+   "ref": "C6",
+   "value": "100nF"
+  },
+  {
+   "footprint": "Pin_Header_Angled_1x02_nrc2016",
+   "pads": {
+    "1": "Net-(CON1-Pad1)",
+    "2": "Net-(CON1-Pad2)"
+   },
+   "ref": "CON1",
+   "value": "USB"
+  },
+  {
+   "footprint": "LEDs:LED-3MM",
+   "pads": {
+    "1": "Net-(D1-Pad1)",
+    "2": "Net-(D1-Pad2)"
+   },
+   "ref": "D1",
+   "value": "TX LED"
+  },
+  {
+   "footprint": "LEDs:LED-3MM",
+   "pads": {
+    "1": "Net-(D2-Pad1)",
+    "2": "Net-(D2-Pad2)"
+   },
+   "ref": "D2",
+   "value": "RX LED"
+  },
+  {
+   "footprint": "LEDs:LED-3MM",
+   "pads": {
+    "1": "Net-(D3-Pad1)",
+    "2": "Net-(D3-Pad2)"
+   },
+   "ref": "D3",
+   "value": "USB RDY"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x03",
+   "pads": {
+    "1": "/~{CLK}",
+    "2": "Net-(JP1-Pad2)",
+    "3": "Net-(JP1-Pad3)"
+   },
+   "ref": "JP1",
+   "value": "JUMPER3"
+  },
+  {
+   "footprint": "nrc2016:Pin_Header_Angled_1x40_nrc2016",
+   "pads": {
+    "16": "/A0",
+    "17": "GND",
+    "18": "VCC",
+    "19": "/~{M1}",
+    "21": "/~{CLK}",
+    "22": "/~{INT}",
+    "24": "/~{WR}",
+    "26": "/~{IORQ}",
+    "27": "/D0",
+    "28": "/D1",
+    "29": "/D2",
+    "30": "/D3",
+    "31": "/D4",
+    "32": "/D5",
+    "33": "/D6",
+    "34": "/D7",
+    "35": "/TX",
+    "36": "/RX",
+    "37": "/S1",
+    "38": "/S2",
+    "39": "/S3",
+    "40": "/S4"
+   },
+   "ref": "P1",
+   "value": "Z80_BUS_PINS"
+  },
+  {
+   "footprint": "Pin_Header_Angled_1x10_nrc2016",
+   "pads": {
+    "1": "Net-(P2-Pad1)",
+    "2": "Net-(P2-Pad2)",
+    "3": "Net-(P2-Pad3)",
+    "4": "Net-(P2-Pad4)",
+    "5": "/~{BUSRQ}"
+   },
+   "ref": "P2",
+   "value": "IO_BUS_PINS"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_2x05",
+   "pads": {
+    "1": "/GP0",
+    "10": "/~{BUSRQ}",
+    "2": "/S4",
+    "3": "/GP2",
+    "4": "/S3",
+    "5": "/GP3",
+    "6": "/S2",
+    "7": "/GP4",
+    "8": "/S1",
+    "9": "/GP5"
+   },
+   "ref": "P3",
+   "value": "CONN_02X05"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_2x04",
+   "pads": {
+    "1": "/~{IOSEL}",
+    "2": "Net-(P2-Pad4)",
+    "3": "/~{IOSEL}",
+    "4": "Net-(P2-Pad3)",
+    "5": "/~{IOSEL}",
+    "6": "Net-(P2-Pad2)",
+    "7": "/~{IOSEL}",
+    "8": "Net-(P2-Pad1)"
+   },
+   "ref": "P4",
+   "value": "CONN_02X04"
+  },
+  {
+   "footprint": "TO_SOT_Packages_THT:TO-92_Molded_Narrow",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(Q1-Pad2)",
+    "3": "/ENA"
+   },
+   "ref": "Q1",
+   "value": "Q_NPN_EBC"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(R1-Pad2)"
+   },
+   "ref": "R1",
+   "value": "10K"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D1-Pad1)"
+   },
+   "ref": "R2",
+   "value": "220"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D2-Pad1)"
+   },
+   "ref": "R3",
+   "value": "220"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D3-Pad1)"
+   },
+   "ref": "R4",
+   "value": "220"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "Net-(Q1-Pad2)",
+    "2": "/~{IORQ}"
+   },
+   "ref": "R5",
+   "value": "10K"
+  },
+  {
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "pads": {
+    "1": "VCC",
+    "2": "/ENA"
+   },
+   "ref": "R6",
+   "value": "2K2"
+  },
+  {
+   "footprint": "Housings_SOIC:SOIC-20W_7.5x12.8mm_Pitch1.27mm",
+   "pads": {
+    "1": "VCC",
+    "10": "/RX",
+    "11": "Net-(U1-Pad11)",
+    "12": "/TX",
+    "13": "Net-(U1-Pad13)",
+    "14": "/GP2",
+    "15": "Net-(D3-Pad2)",
+    "16": "/GP0",
+    "17": "Net-(C1-Pad1)",
+    "18": "Net-(CON1-Pad2)",
+    "19": "Net-(CON1-Pad1)",
+    "2": "Net-(C2-Pad1)",
+    "20": "GND",
+    "3": "Net-(C3-Pad1)",
+    "4": "Net-(R1-Pad2)",
+    "5": "Net-(D1-Pad2)",
+    "6": "Net-(D2-Pad2)",
+    "7": "/GP5",
+    "8": "/GP4",
+    "9": "/GP3"
+   },
+   "ref": "U1",
+   "value": "MCP2200"
+  },
+  {
+   "footprint": "Housings_DIP:DIP-24_W15.24mm_LongPads",
+   "pads": {
+    "1": "GND",
+    "10": "/~{M1}",
+    "11": "/A0",
+    "12": "VCC",
+    "13": "/~{WR}",
+    "14": "/ENA",
+    "15": "/D7",
+    "16": "/D6",
+    "17": "/D5",
+    "18": "/D4",
+    "19": "/D3",
+    "2": "/RX",
+    "20": "/D2",
+    "21": "/D1",
+    "22": "/D0",
+    "23": "GND",
+    "24": "Net-(U1-Pad11)",
+    "3": "Net-(JP1-Pad2)",
+    "4": "Net-(JP1-Pad2)",
+    "5": "Net-(U1-Pad13)",
+    "6": "/TX",
+    "7": "/~{INT}",
+    "8": "VCC",
+    "9": "/~{IOSEL}"
+   },
+   "ref": "U2",
+   "value": "68B50"
+  },
+  {
+   "footprint": "nrc2016:OSC_MULTIPACKAGE_DIP",
+   "pads": {
+    "GND": "GND",
+    "OUT": "Net-(JP1-Pad3)",
+    "VCC": "VCC"
+   },
+   "ref": "U4",
+   "value": "1.8432MHz"
+  },
+  {
+   "footprint": "Crystals:Crystal_HC49-U_Vertical",
+   "pads": {
+    "1": "Net-(C2-Pad1)",
+    "2": "Net-(C3-Pad1)"
+   },
+   "ref": "Y1",
+   "value": "12MHz"
+  }
+ ]
+}

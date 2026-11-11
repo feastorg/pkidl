@@ -1,0 +1,1228 @@
+{
+ "nets": [
+  "+5V",
+  "+BATT",
+  "/CellBallance/C0",
+  "/CellBallance/C1",
+  "/CellBallance/C2",
+  "/CellBallance/C3",
+  "/CellBallance/C4",
+  "/CellBallance/C5",
+  "/CellBallance/C6",
+  "/CellBallance/CB1",
+  "/CellBallance/CB2",
+  "/CellBallance/CB3",
+  "/CellBallance/CB4",
+  "/CellBallance/CB5",
+  "/CellBallance/CB6",
+  "/CellBallance/VC1",
+  "/CellBallance/VC2",
+  "/CellBallance/VC3",
+  "/CellBallance/VC4",
+  "/CellBallance/VC5",
+  "/CellBallance/VC6",
+  "/LDOA",
+  "/LDOD",
+  "/REG50",
+  "/VREF",
+  "/atmega32u4/A0",
+  "/atmega32u4/A1",
+  "/atmega32u4/A2",
+  "/atmega32u4/A3",
+  "/atmega32u4/A4",
+  "/atmega32u4/A5",
+  "/atmega32u4/ALERT_H",
+  "/atmega32u4/AREF",
+  "/atmega32u4/CONV_H",
+  "/atmega32u4/CS_H",
+  "/atmega32u4/D0/RX",
+  "/atmega32u4/D1/TX",
+  "/atmega32u4/D2/SDA",
+  "/atmega32u4/D3/SCL",
+  "/atmega32u4/D4",
+  "/atmega32u4/DRDY_H",
+  "/atmega32u4/FAULT_H",
+  "/atmega32u4/HWB",
+  "/atmega32u4/IO11*",
+  "/atmega32u4/IO12",
+  "/atmega32u4/IO13*",
+  "/atmega32u4/IO8",
+  "/atmega32u4/RST",
+  "/atmega32u4/RXLED",
+  "/atmega32u4/SCLK_H",
+  "/atmega32u4/SDI_H",
+  "/atmega32u4/SDO_H",
+  "/atmega32u4/TXLED",
+  "/atmega32u4/UCAP",
+  "GND",
+  "N-00000108",
+  "N-0000011",
+  "N-00000120",
+  "N-00000121",
+  "N-00000123",
+  "N-00000124",
+  "N-00000125",
+  "N-00000127",
+  "N-00000128",
+  "N-0000013",
+  "N-0000014",
+  "N-0000015",
+  "N-0000023",
+  "N-0000024",
+  "N-0000025",
+  "N-0000026",
+  "N-0000027",
+  "N-0000028",
+  "N-0000029",
+  "N-0000030",
+  "N-0000031",
+  "N-0000032",
+  "N-0000033",
+  "N-0000034",
+  "N-0000035",
+  "N-0000036",
+  "N-0000037",
+  "N-0000038",
+  "N-0000039",
+  "N-000004",
+  "N-0000040",
+  "N-0000041",
+  "N-0000042",
+  "N-0000043",
+  "N-0000044",
+  "N-0000045",
+  "N-0000046",
+  "N-0000047",
+  "N-0000048",
+  "N-0000049",
+  "N-000005",
+  "N-0000050",
+  "N-0000051",
+  "N-0000052",
+  "N-0000053",
+  "N-000006",
+  "N-000007",
+  "N-0000078",
+  "N-0000079",
+  "N-000008",
+  "N-0000080",
+  "N-0000081",
+  "N-0000082",
+  "N-0000083",
+  "N-0000084",
+  "N-0000085",
+  "N-0000086",
+  "N-0000087",
+  "N-0000088",
+  "N-0000089",
+  "N-0000090",
+  "N-0000091",
+  "N-0000092",
+  "N-0000093",
+  "N-0000094",
+  "VSS"
+ ],
+ "parts": [
+  {
+   "footprint": "SM1206",
+   "pads": {
+    "1": "/VREF",
+    "2": "VSS"
+   },
+   "ref": "C1",
+   "value": "10uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "/CellBallance/VC5"
+   },
+   "ref": "C10",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000092",
+    "2": "N-0000091"
+   },
+   "ref": "C11",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "/CellBallance/VC4"
+   },
+   "ref": "C12",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000091",
+    "2": "N-0000086"
+   },
+   "ref": "C13",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "/CellBallance/VC3"
+   },
+   "ref": "C14",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000086",
+    "2": "N-0000088"
+   },
+   "ref": "C15",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "/CellBallance/VC2"
+   },
+   "ref": "C16",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000088",
+    "2": "N-0000089"
+   },
+   "ref": "C17",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "/CellBallance/VC1"
+   },
+   "ref": "C18",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000089",
+    "2": "VSS"
+   },
+   "ref": "C19",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "+BATT",
+    "2": "VSS"
+   },
+   "ref": "C2",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM1206POL",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C20",
+   "value": "10uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C21",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C22",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "/atmega32u4/UCAP",
+    "2": "GND"
+   },
+   "ref": "C23",
+   "value": "1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "/atmega32u4/AREF",
+    "2": "GND"
+   },
+   "ref": "C24",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-00000125",
+    "2": "GND"
+   },
+   "ref": "C25",
+   "value": "20pf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-00000124",
+    "2": "GND"
+   },
+   "ref": "C26",
+   "value": "20pf"
+  },
+  {
+   "footprint": "SM1206",
+   "pads": {
+    "2": "GND"
+   },
+   "ref": "C27",
+   "value": "10uf"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/LDOA",
+    "2": "VSS"
+   },
+   "ref": "C3",
+   "value": "2.2uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "/LDOA",
+    "2": "VSS"
+   },
+   "ref": "C4",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/LDOD",
+    "2": "VSS"
+   },
+   "ref": "C5",
+   "value": "2.2uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "/LDOD",
+    "2": "VSS"
+   },
+   "ref": "C6",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/REG50",
+    "2": "VSS"
+   },
+   "ref": "C7",
+   "value": "2.2uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "/CellBallance/VC6"
+   },
+   "ref": "C8",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "+BATT",
+    "2": "N-0000092"
+   },
+   "ref": "C9",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "USB_MINI_B",
+   "pads": {
+    "1": "N-00000108",
+    "2": "N-00000123",
+    "3": "N-00000128",
+    "5": "GND",
+    "6": "GND",
+    "7": "GND",
+    "8": "GND",
+    "9": "GND"
+   },
+   "ref": "CON1",
+   "value": "USB-MINI-B"
+  },
+  {
+   "footprint": "LED-0603",
+   "pads": {
+    "1": "N-00000127",
+    "2": "GND"
+   },
+   "ref": "D1",
+   "value": "Power LED"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "+5V",
+    "2": "+BATT"
+   },
+   "ref": "D2",
+   "value": "DIODE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/CellBallance/C6",
+    "2": "+BATT"
+   },
+   "ref": "F1",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/CellBallance/C5",
+    "2": "N-0000092"
+   },
+   "ref": "F2",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/CellBallance/C4",
+    "2": "N-0000091"
+   },
+   "ref": "F3",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/CellBallance/C3",
+    "2": "N-0000086"
+   },
+   "ref": "F4",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/CellBallance/C2",
+    "2": "N-0000088"
+   },
+   "ref": "F5",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/CellBallance/C1",
+    "2": "N-0000089"
+   },
+   "ref": "F6",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "/CellBallance/C0",
+    "2": "VSS"
+   },
+   "ref": "F7",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0805",
+   "pads": {
+    "1": "N-00000108",
+    "2": "+5V"
+   },
+   "ref": "F8",
+   "value": "FUSE"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "+BATT",
+    "2": "N-0000092"
+   },
+   "ref": "JP1",
+   "value": "JUMPER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000092",
+    "2": "N-0000091"
+   },
+   "ref": "JP2",
+   "value": "JUMPER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000091",
+    "2": "N-0000086"
+   },
+   "ref": "JP3",
+   "value": "JUMPER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000086",
+    "2": "N-0000088"
+   },
+   "ref": "JP4",
+   "value": "JUMPER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000088",
+    "2": "N-0000089"
+   },
+   "ref": "JP5",
+   "value": "JUMPER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "/atmega32u4/HWB",
+    "2": "GND"
+   },
+   "ref": "JP6",
+   "value": "JUMPER"
+  },
+  {
+   "footprint": "SIL-8",
+   "pads": {
+    "1": "N-0000015",
+    "2": "N-0000014",
+    "3": "N-0000013",
+    "4": "N-0000023",
+    "5": "N-0000026",
+    "6": "N-0000027",
+    "7": "N-0000028",
+    "8": "N-0000029"
+   },
+   "ref": "P1",
+   "value": "CONN_01X08"
+  },
+  {
+   "footprint": "SIL-8",
+   "pads": {
+    "1": "N-000004",
+    "2": "N-000005",
+    "3": "N-000006",
+    "4": "N-000007",
+    "5": "N-000008",
+    "6": "N-0000011",
+    "7": "N-0000024",
+    "8": "N-0000025"
+   },
+   "ref": "P2",
+   "value": "CONN_01X08"
+  },
+  {
+   "footprint": "SIL-3",
+   "pads": {
+    "1": "N-0000036",
+    "2": "N-0000030",
+    "3": "N-0000035"
+   },
+   "ref": "P3",
+   "value": "CONN_01X03"
+  },
+  {
+   "footprint": "SIL-4",
+   "pads": {
+    "1": "N-0000044",
+    "2": "N-0000039",
+    "3": "N-0000038",
+    "4": "N-0000037"
+   },
+   "ref": "P4",
+   "value": "CONN_01X04"
+  },
+  {
+   "footprint": "SIL-7",
+   "pads": {
+    "1": "/CellBallance/C6",
+    "2": "/CellBallance/C5",
+    "3": "/CellBallance/C4",
+    "4": "/CellBallance/C3",
+    "5": "/CellBallance/C2",
+    "6": "/CellBallance/C1",
+    "7": "/CellBallance/C0"
+   },
+   "ref": "P5",
+   "value": "CONN_01X07"
+  },
+  {
+   "footprint": "SIL-12",
+   "pads": {
+    "1": "+5V",
+    "10": "/atmega32u4/TXLED",
+    "11": "/atmega32u4/IO12",
+    "12": "/atmega32u4/DRDY_H",
+    "2": "GND",
+    "3": "+5V",
+    "4": "GND",
+    "5": "/atmega32u4/D3/SCL",
+    "6": "/atmega32u4/D2/SDA",
+    "7": "/atmega32u4/D0/RX",
+    "8": "/atmega32u4/D1/TX",
+    "9": "/atmega32u4/D4"
+   },
+   "ref": "P6",
+   "value": "CONN_01X12"
+  },
+  {
+   "footprint": "SIL-12",
+   "pads": {
+    "1": "+5V",
+    "10": "/atmega32u4/A0",
+    "11": "/atmega32u4/CONV_H",
+    "12": "/atmega32u4/IO13*",
+    "2": "GND",
+    "3": "+5V",
+    "4": "GND",
+    "5": "/atmega32u4/A5",
+    "6": "/atmega32u4/A4",
+    "7": "/atmega32u4/A3",
+    "8": "/atmega32u4/A2",
+    "9": "/atmega32u4/A1"
+   },
+   "ref": "P7",
+   "value": "CONN_01X12"
+  },
+  {
+   "footprint": "pin_array_3x2",
+   "pads": {
+    "1": "/atmega32u4/SDO_H",
+    "2": "+5V",
+    "3": "/atmega32u4/SCLK_H",
+    "4": "/atmega32u4/SDI_H",
+    "5": "/atmega32u4/RST",
+    "6": "GND"
+   },
+   "ref": "P8",
+   "value": "CONN_02X03"
+  },
+  {
+   "footprint": "SOT23GDS",
+   "pads": {
+    "D": "N-0000079",
+    "G": "N-0000078",
+    "S": "N-0000092"
+   },
+   "ref": "Q1",
+   "value": "FDN359AN"
+  },
+  {
+   "footprint": "SOT23GDS",
+   "pads": {
+    "D": "N-0000080",
+    "G": "N-0000087",
+    "S": "N-0000091"
+   },
+   "ref": "Q2",
+   "value": "FDN359AN"
+  },
+  {
+   "footprint": "SOT23GDS",
+   "pads": {
+    "D": "N-0000094",
+    "G": "N-0000085",
+    "S": "N-0000086"
+   },
+   "ref": "Q3",
+   "value": "FDN359AN"
+  },
+  {
+   "footprint": "SOT23GDS",
+   "pads": {
+    "D": "N-0000093",
+    "G": "N-0000082",
+    "S": "N-0000088"
+   },
+   "ref": "Q4",
+   "value": "FDN359AN"
+  },
+  {
+   "footprint": "SOT23GDS",
+   "pads": {
+    "D": "N-0000083",
+    "G": "N-0000084",
+    "S": "N-0000089"
+   },
+   "ref": "Q5",
+   "value": "FDN359AN"
+  },
+  {
+   "footprint": "SOT23GDS",
+   "pads": {
+    "D": "N-0000090",
+    "G": "N-0000081",
+    "S": "VSS"
+   },
+   "ref": "Q6",
+   "value": "FDN359AN"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000053",
+    "2": "/LDOD"
+   },
+   "ref": "R1",
+   "value": "100k"
+  },
+  {
+   "footprint": "SM2512",
+   "pads": {
+    "1": "N-0000088",
+    "2": "N-0000083"
+   },
+   "ref": "R10",
+   "value": "47"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000084",
+    "2": "N-0000089"
+   },
+   "ref": "R11",
+   "value": "1M 1%"
+  },
+  {
+   "footprint": "SM2512",
+   "pads": {
+    "1": "N-0000089",
+    "2": "N-0000090"
+   },
+   "ref": "R12",
+   "value": "47"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000081",
+    "2": "VSS"
+   },
+   "ref": "R13",
+   "value": "1M 1%"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-00000128",
+    "2": "N-00000121"
+   },
+   "ref": "R14",
+   "value": "22"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-00000123",
+    "2": "N-00000120"
+   },
+   "ref": "R15",
+   "value": "22"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "+5V",
+    "2": "/atmega32u4/RST"
+   },
+   "ref": "R16",
+   "value": "10k"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-00000125",
+    "2": "N-00000124"
+   },
+   "ref": "R17",
+   "value": "1M"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-00000127",
+    "2": "+5V"
+   },
+   "ref": "R18",
+   "value": "1k"
+  },
+  {
+   "footprint": "SM2512",
+   "pads": {
+    "1": "+BATT",
+    "2": "N-0000079"
+   },
+   "ref": "R2",
+   "value": "47"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000078",
+    "2": "N-0000092"
+   },
+   "ref": "R3",
+   "value": "1M 1%"
+  },
+  {
+   "footprint": "SM2512",
+   "pads": {
+    "1": "N-0000092",
+    "2": "N-0000080"
+   },
+   "ref": "R4",
+   "value": "47"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000087",
+    "2": "N-0000091"
+   },
+   "ref": "R5",
+   "value": "1M 1%"
+  },
+  {
+   "footprint": "SM2512",
+   "pads": {
+    "1": "N-0000091",
+    "2": "N-0000094"
+   },
+   "ref": "R6",
+   "value": "47"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000085",
+    "2": "N-0000086"
+   },
+   "ref": "R7",
+   "value": "1M 1%"
+  },
+  {
+   "footprint": "SM2512",
+   "pads": {
+    "1": "N-0000086",
+    "2": "N-0000093"
+   },
+   "ref": "R8",
+   "value": "47"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000082",
+    "2": "N-0000088"
+   },
+   "ref": "R9",
+   "value": "1M 1%"
+  },
+  {
+   "footprint": "r_cat16-4",
+   "pads": {
+    "1": "N-0000029",
+    "2": "N-0000028",
+    "3": "N-0000027",
+    "4": "N-0000026",
+    "5": "N-0000034",
+    "6": "N-0000033",
+    "7": "N-0000032",
+    "8": "N-0000031"
+   },
+   "ref": "RP1",
+   "value": "R_PACK4"
+  },
+  {
+   "footprint": "r_cat16-4",
+   "pads": {
+    "1": "N-0000023",
+    "2": "N-0000013",
+    "3": "N-0000014",
+    "4": "N-0000015",
+    "5": "N-0000052",
+    "6": "N-0000051",
+    "7": "N-0000050",
+    "8": "N-0000049"
+   },
+   "ref": "RP2",
+   "value": "R_PACK4"
+  },
+  {
+   "footprint": "r_cat16-4",
+   "pads": {
+    "1": "N-0000043",
+    "2": "N-0000042",
+    "3": "N-0000041",
+    "4": "N-0000040",
+    "5": "/atmega32u4/SCLK_H",
+    "6": "/atmega32u4/SDO_H",
+    "7": "/atmega32u4/SDI_H",
+    "8": "/atmega32u4/CS_H"
+   },
+   "ref": "RP3",
+   "value": "R_PACK4"
+  },
+  {
+   "footprint": "r_cat16-4",
+   "pads": {
+    "1": "N-0000048",
+    "2": "N-0000047",
+    "3": "N-0000046",
+    "4": "N-0000045",
+    "5": "/atmega32u4/CONV_H",
+    "6": "/atmega32u4/DRDY_H",
+    "7": "/atmega32u4/ALERT_H",
+    "8": "/atmega32u4/FAULT_H"
+   },
+   "ref": "RP4",
+   "value": "R_PACK4"
+  },
+  {
+   "footprint": "r_cat16-4",
+   "pads": {
+    "1": "+BATT",
+    "2": "N-0000078",
+    "3": "N-0000092",
+    "4": "N-0000087",
+    "5": "/CellBallance/CB5",
+    "6": "/CellBallance/VC5",
+    "7": "/CellBallance/CB6",
+    "8": "/CellBallance/VC6"
+   },
+   "ref": "RP5",
+   "value": "1k"
+  },
+  {
+   "footprint": "r_cat16-4",
+   "pads": {
+    "1": "N-0000091",
+    "2": "N-0000085",
+    "3": "N-0000086",
+    "4": "N-0000082",
+    "5": "/CellBallance/CB3",
+    "6": "/CellBallance/VC3",
+    "7": "/CellBallance/CB4",
+    "8": "/CellBallance/VC4"
+   },
+   "ref": "RP6",
+   "value": "1k"
+  },
+  {
+   "footprint": "r_cat16-4",
+   "pads": {
+    "1": "N-0000088",
+    "2": "N-0000084",
+    "3": "N-0000089",
+    "4": "N-0000081",
+    "5": "/CellBallance/CB1",
+    "6": "/CellBallance/VC1",
+    "7": "/CellBallance/CB2",
+    "8": "/CellBallance/VC2"
+   },
+   "ref": "RP7",
+   "value": "1k"
+  },
+  {
+   "footprint": "SW",
+   "pads": {
+    "1": "GND",
+    "2": "/atmega32u4/RST"
+   },
+   "ref": "SW1",
+   "value": "SW_PUSH"
+  },
+  {
+   "footprint": "HTQFP_64",
+   "pads": {
+    "0": "VSS",
+    "1": "/CellBallance/VC6",
+    "10": "/CellBallance/CB2",
+    "11": "/CellBallance/VC1",
+    "12": "/CellBallance/CB1",
+    "13": "VSS",
+    "14": "VSS",
+    "15": "VSS",
+    "16": "/VREF",
+    "17": "/LDOA",
+    "18": "/LDOD",
+    "19": "N-0000039",
+    "2": "/CellBallance/CB6",
+    "20": "N-0000044",
+    "21": "N-000004",
+    "22": "N-000005",
+    "23": "N-000006",
+    "24": "N-000007",
+    "25": "VSS",
+    "26": "N-000008",
+    "27": "N-0000011",
+    "28": "N-0000024",
+    "29": "N-0000025",
+    "3": "/CellBallance/VC5",
+    "32": "/REG50",
+    "33": "VSS",
+    "34": "VSS",
+    "35": "VSS",
+    "36": "N-0000045",
+    "37": "N-0000046",
+    "38": "N-0000047",
+    "39": "N-0000048",
+    "4": "/CellBallance/CB5",
+    "40": "N-0000040",
+    "41": "N-0000041",
+    "42": "N-0000042",
+    "43": "N-0000043",
+    "44": "N-0000053",
+    "45": "N-0000035",
+    "46": "/LDOD",
+    "47": "N-0000030",
+    "48": "N-0000036",
+    "49": "VSS",
+    "5": "/CellBallance/VC4",
+    "50": "VSS",
+    "52": "N-0000031",
+    "53": "N-0000032",
+    "54": "N-0000033",
+    "55": "N-0000034",
+    "56": "N-0000049",
+    "57": "N-0000050",
+    "58": "N-0000051",
+    "59": "N-0000052",
+    "6": "/CellBallance/CB4",
+    "60": "N-0000037",
+    "61": "N-0000038",
+    "63": "+BATT",
+    "64": "+BATT",
+    "7": "/CellBallance/VC3",
+    "8": "/CellBallance/CB3",
+    "9": "/CellBallance/VC2"
+   },
+   "ref": "U1",
+   "value": "BQ76PL536A"
+  },
+  {
+   "footprint": "TQFP44",
+   "pads": {
+    "1": "/atmega32u4/ALERT_H",
+    "10": "/atmega32u4/SDI_H",
+    "11": "/atmega32u4/SDO_H",
+    "12": "/atmega32u4/IO11*",
+    "13": "/atmega32u4/RST",
+    "14": "+5V",
+    "15": "GND",
+    "16": "N-00000124",
+    "17": "N-00000125",
+    "18": "/atmega32u4/D3/SCL",
+    "19": "/atmega32u4/D2/SDA",
+    "2": "+5V",
+    "20": "/atmega32u4/D0/RX",
+    "21": "/atmega32u4/D1/TX",
+    "22": "/atmega32u4/TXLED",
+    "23": "GND",
+    "24": "+5V",
+    "25": "/atmega32u4/D4",
+    "26": "/atmega32u4/IO12",
+    "27": "/atmega32u4/DRDY_H",
+    "28": "/atmega32u4/IO8",
+    "29": "/atmega32u4/FAULT_H",
+    "3": "N-00000121",
+    "30": "/atmega32u4/CS_H",
+    "31": "/atmega32u4/CONV_H",
+    "32": "/atmega32u4/IO13*",
+    "33": "/atmega32u4/HWB",
+    "34": "+5V",
+    "35": "GND",
+    "36": "/atmega32u4/A0",
+    "37": "/atmega32u4/A1",
+    "38": "/atmega32u4/A2",
+    "39": "/atmega32u4/A3",
+    "4": "N-00000120",
+    "40": "/atmega32u4/A4",
+    "41": "/atmega32u4/A5",
+    "42": "/atmega32u4/AREF",
+    "43": "GND",
+    "44": "+5V",
+    "5": "GND",
+    "6": "/atmega32u4/UCAP",
+    "7": "+5V",
+    "8": "/atmega32u4/RXLED",
+    "9": "/atmega32u4/SCLK_H"
+   },
+   "ref": "U2",
+   "value": "ATMEGA32U4"
+  },
+  {
+   "footprint": "SOT223",
+   "pads": {
+    "1": "+BATT",
+    "2": "GND",
+    "3": "+5V",
+    "4": "GND"
+   },
+   "ref": "U3",
+   "value": "MIC5329"
+  },
+  {
+   "footprint": "crystal_FA238-TSX3225",
+   "pads": {
+    "1": "N-00000125",
+    "2": "N-00000124",
+    "3": "GND"
+   },
+   "ref": "X1",
+   "value": "16MHz"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000092",
+    "2": "+BATT"
+   },
+   "ref": "Z1",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000089",
+    "2": "N-0000084"
+   },
+   "ref": "Z10",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "N-0000089"
+   },
+   "ref": "Z11",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "VSS",
+    "2": "N-0000081"
+   },
+   "ref": "Z12",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000092",
+    "2": "N-0000078"
+   },
+   "ref": "Z2",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000091",
+    "2": "N-0000092"
+   },
+   "ref": "Z3",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000091",
+    "2": "N-0000087"
+   },
+   "ref": "Z4",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000086",
+    "2": "N-0000091"
+   },
+   "ref": "Z5",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000086",
+    "2": "N-0000085"
+   },
+   "ref": "Z6",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000088",
+    "2": "N-0000086"
+   },
+   "ref": "Z7",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000088",
+    "2": "N-0000082"
+   },
+   "ref": "Z8",
+   "value": "ZENER"
+  },
+  {
+   "footprint": "SM0603",
+   "pads": {
+    "1": "N-0000089",
+    "2": "N-0000088"
+   },
+   "ref": "Z9",
+   "value": "ZENER"
+  }
+ ]
+}

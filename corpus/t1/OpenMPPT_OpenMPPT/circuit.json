@@ -1,0 +1,431 @@
+{
+ "nets": [
+  "/HIGH_DRIVE",
+  "/LOW_DRIVE",
+  "/MPPTSET",
+  "/STAT1",
+  "/STAT2",
+  "/VREF",
+  "GND",
+  "Net-(C101-Pad1)",
+  "Net-(C102-Pad2)",
+  "Net-(C104-Pad1)",
+  "Net-(C105-Pad1)",
+  "Net-(C105-Pad2)",
+  "Net-(C106-Pad1)",
+  "Net-(C109-Pad1)",
+  "Net-(C109-Pad2)",
+  "Net-(C112-Pad1)",
+  "Net-(D101-Pad1)",
+  "Net-(D103-Pad2)",
+  "Net-(D104-Pad2)"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C101-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C101",
+   "value": "-"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C102-Pad2)"
+   },
+   "ref": "C102",
+   "value": "1.0uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "/VREF",
+    "2": "GND"
+   },
+   "ref": "C103",
+   "value": "1.0uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C104-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C104",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C105-Pad1)",
+    "2": "Net-(C105-Pad2)"
+   },
+   "ref": "C105",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C106-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C106",
+   "value": "1.0uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C104-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C107",
+   "value": "1.0uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:CP_Elec_6.3x7.7",
+   "pads": {
+    "1": "Net-(C106-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C108",
+   "value": "CP"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C109-Pad1)",
+    "2": "Net-(C109-Pad2)"
+   },
+   "ref": "C109",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C109-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C110",
+   "value": "1.0uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:CP_Elec_6.3x7.7",
+   "pads": {
+    "1": "Net-(C109-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C111",
+   "value": "CP"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C112-Pad1)",
+    "2": "Net-(C109-Pad1)"
+   },
+   "ref": "C112",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C112-Pad1)"
+   },
+   "ref": "C113",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:CP_Elec_6.3x7.7",
+   "pads": {
+    "1": "Net-(C106-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C114",
+   "value": "CP"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "Net-(C106-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C115",
+   "value": "1.0uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:CP_Elec_6.3x7.7",
+   "pads": {
+    "1": "Net-(C109-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C116",
+   "value": "CP"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:TO-252-2_Rectifier",
+   "pads": {
+    "1": "Net-(D101-Pad1)",
+    "2": "Net-(C106-Pad1)",
+    "3": "Net-(D101-Pad1)"
+   },
+   "ref": "D101",
+   "value": "MBRD10100CT"
+  },
+  {
+   "footprint": "Diodes_SMD:D_SOD-523",
+   "pads": {
+    "1": "Net-(C105-Pad2)",
+    "2": "Net-(C104-Pad1)"
+   },
+   "ref": "D102",
+   "value": "D_Schottky"
+  },
+  {
+   "footprint": "LEDs:LED_0805",
+   "pads": {
+    "1": "/STAT1",
+    "2": "Net-(D103-Pad2)"
+   },
+   "ref": "D103",
+   "value": "LED"
+  },
+  {
+   "footprint": "LEDs:LED_0805",
+   "pads": {
+    "1": "/STAT2",
+    "2": "Net-(D104-Pad2)"
+   },
+   "ref": "D104",
+   "value": "LED"
+  },
+  {
+   "footprint": "Connectors_Terminal_Blocks:TerminalBlock_Pheonix_MPT-2.54mm_2pol",
+   "pads": {
+    "1": "Net-(C101-Pad1)",
+    "2": "GND"
+   },
+   "ref": "J101",
+   "value": "THERM"
+  },
+  {
+   "footprint": "xt60:XT30PW_Male",
+   "pads": {
+    "1": "Net-(D101-Pad1)",
+    "2": "GND"
+   },
+   "ref": "J103",
+   "value": "XT60"
+  },
+  {
+   "footprint": "xt60:XT30PW_Male",
+   "pads": {
+    "1": "Net-(C109-Pad1)",
+    "2": "GND"
+   },
+   "ref": "J104",
+   "value": "XT60"
+  },
+  {
+   "footprint": "Inductors:Inductor_Wurth_HCI-1890",
+   "pads": {
+    "1": "Net-(C105-Pad1)",
+    "2": "Net-(C109-Pad2)"
+   },
+   "ref": "L101",
+   "value": "3.3uH"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:TDSON-8-1",
+   "pads": {
+    "1": "Net-(C105-Pad1)",
+    "2": "Net-(C105-Pad1)",
+    "3": "Net-(C105-Pad1)",
+    "4": "/HIGH_DRIVE",
+    "5": "Net-(C106-Pad1)"
+   },
+   "ref": "Q101",
+   "value": "FDMS8050"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:TDSON-8-1",
+   "pads": {
+    "1": "GND",
+    "2": "GND",
+    "3": "GND",
+    "4": "/LOW_DRIVE",
+    "5": "Net-(C105-Pad1)"
+   },
+   "ref": "Q102",
+   "value": "FDMS8050"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:TDSON-8-1",
+   "pads": {
+    "1": "Net-(C105-Pad1)",
+    "2": "Net-(C105-Pad1)",
+    "3": "Net-(C105-Pad1)",
+    "4": "/HIGH_DRIVE",
+    "5": "Net-(C106-Pad1)"
+   },
+   "ref": "Q103",
+   "value": "FDMS8050"
+  },
+  {
+   "footprint": "TO_SOT_Packages_SMD:TDSON-8-1",
+   "pads": {
+    "1": "GND",
+    "2": "GND",
+    "3": "GND",
+    "4": "/LOW_DRIVE",
+    "5": "Net-(C105-Pad1)"
+   },
+   "ref": "Q104",
+   "value": "FDMS8050"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C101-Pad1)",
+    "2": "GND"
+   },
+   "ref": "R101",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "/VREF",
+    "2": "Net-(C101-Pad1)"
+   },
+   "ref": "R102",
+   "value": "5.23k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C101-Pad1)",
+    "2": "GND"
+   },
+   "ref": "R103",
+   "value": "30.1k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C106-Pad1)",
+    "2": "Net-(C102-Pad2)"
+   },
+   "ref": "R105",
+   "value": "-"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C106-Pad1)",
+    "2": "Net-(C102-Pad2)"
+   },
+   "ref": "R106",
+   "value": "10"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "/VREF",
+    "2": "Net-(D103-Pad2)"
+   },
+   "ref": "R108",
+   "value": "5.23k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "/VREF",
+    "2": "Net-(D104-Pad2)"
+   },
+   "ref": "R109",
+   "value": "5.23k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_2512",
+   "pads": {
+    "1": "Net-(C109-Pad1)",
+    "2": "Net-(C109-Pad2)"
+   },
+   "ref": "R110",
+   "value": "0.010"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C109-Pad1)",
+    "2": "Net-(C112-Pad1)"
+   },
+   "ref": "R111",
+   "value": "499k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C112-Pad1)",
+    "2": "GND"
+   },
+   "ref": "R112",
+   "value": "100k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_2512",
+   "pads": {
+    "1": "Net-(C109-Pad2)",
+    "2": "Net-(C109-Pad1)"
+   },
+   "ref": "R113",
+   "value": "0.010"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(D101-Pad1)",
+    "2": "/MPPTSET"
+   },
+   "ref": "R114",
+   "value": "499k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "/MPPTSET",
+    "2": "GND"
+   },
+   "ref": "R115",
+   "value": "36k"
+  },
+  {
+   "footprint": "Housings_DFN_QFN:QFN-16-1EP_3x3mm_Pitch0.5mm",
+   "pads": {
+    "1": "Net-(C102-Pad2)",
+    "10": "Net-(C109-Pad2)",
+    "11": "GND",
+    "12": "Net-(C104-Pad1)",
+    "13": "/LOW_DRIVE",
+    "14": "Net-(C105-Pad1)",
+    "15": "/HIGH_DRIVE",
+    "16": "Net-(C105-Pad2)",
+    "17": "GND",
+    "2": "/MPPTSET",
+    "3": "/STAT1",
+    "4": "Net-(C101-Pad1)",
+    "5": "/STAT2",
+    "6": "/VREF",
+    "7": "/VREF",
+    "8": "Net-(C112-Pad1)",
+    "9": "Net-(C109-Pad1)"
+   },
+   "ref": "U101",
+   "value": "BQ24650"
+  }
+ ]
+}

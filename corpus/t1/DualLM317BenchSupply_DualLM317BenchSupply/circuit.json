@@ -1,0 +1,447 @@
+{
+ "nets": [
+  "/current_limit_r/R_LIM+",
+  "/current_limit_r/R_LIM-",
+  "12V",
+  "5V",
+  "GND",
+  "N-0000010",
+  "N-0000014",
+  "N-0000015",
+  "N-0000017",
+  "N-0000018",
+  "N-0000020",
+  "N-0000021",
+  "N-0000022",
+  "N-0000023",
+  "N-0000024",
+  "N-0000029",
+  "N-0000030",
+  "N-000006",
+  "N-000007"
+ ],
+ "parts": [
+  {
+   "footprint": "ELCAP_20_52_V",
+   "pads": {
+    "1": "N-0000018",
+    "2": "GND"
+   },
+   "ref": "C101",
+   "value": "1000uF"
+  },
+  {
+   "footprint": "ELCAP_10_20_V",
+   "pads": {
+    "1": "N-0000018",
+    "2": "GND"
+   },
+   "ref": "C102",
+   "value": "1uF"
+  },
+  {
+   "footprint": "C2",
+   "pads": {
+    "1": "N-0000018",
+    "2": "GND"
+   },
+   "ref": "C103",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "ELCAP_10_20_V",
+   "pads": {
+    "1": "5V",
+    "2": "GND"
+   },
+   "ref": "C104",
+   "value": "10uF"
+  },
+  {
+   "footprint": "ELCAP_10_20_V",
+   "pads": {
+    "1": "/current_limit_r/R_LIM-",
+    "2": "GND"
+   },
+   "ref": "C105",
+   "value": "1uF"
+  },
+  {
+   "footprint": "ELCAP_10_20_V",
+   "pads": {
+    "1": "N-000007",
+    "2": "GND"
+   },
+   "ref": "C106",
+   "value": "10uF"
+  },
+  {
+   "footprint": "ELCAP_10_20_V",
+   "pads": {
+    "1": "N-000006",
+    "2": "GND"
+   },
+   "ref": "C107",
+   "value": "1uF"
+  },
+  {
+   "footprint": "C2",
+   "pads": {
+    "1": "5V",
+    "2": "GND"
+   },
+   "ref": "C108",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "C2",
+   "pads": {
+    "1": "5V",
+    "2": "GND"
+   },
+   "ref": "C109",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "ELCAP_10_20_V",
+   "pads": {
+    "1": "12V",
+    "2": "GND"
+   },
+   "ref": "C110",
+   "value": "1uF"
+  },
+  {
+   "footprint": "BARREL_JACK_21x55",
+   "pads": {
+    "1": "N-0000017",
+    "2": "GND",
+    "3": "GND"
+   },
+   "ref": "CON101",
+   "value": "BARREL_JACK"
+  },
+  {
+   "footprint": "BARREL_JACK_25x55",
+   "pads": {
+    "1": "N-0000017",
+    "2": "GND",
+    "3": "GND"
+   },
+   "ref": "CON102",
+   "value": "BARREL_JACK"
+  },
+  {
+   "footprint": "DIODE_3",
+   "pads": {
+    "1": "/current_limit_r/R_LIM+",
+    "2": "N-0000018"
+   },
+   "ref": "D101",
+   "value": "1N4148"
+  },
+  {
+   "footprint": "DIODE_3",
+   "pads": {
+    "1": "/current_limit_r/R_LIM-",
+    "2": "/current_limit_r/R_LIM+"
+   },
+   "ref": "D102",
+   "value": "1N4148"
+  },
+  {
+   "footprint": "LED_5MM",
+   "pads": {
+    "1": "5V",
+    "2": "N-0000015"
+   },
+   "ref": "D103",
+   "value": "LED"
+  },
+  {
+   "footprint": "DIODE_3",
+   "pads": {
+    "1": "N-000006",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "D104",
+   "value": "1N4148"
+  },
+  {
+   "footprint": "DIODE_3",
+   "pads": {
+    "1": "N-000007",
+    "2": "N-000006"
+   },
+   "ref": "D105",
+   "value": "1N4148"
+  },
+  {
+   "footprint": "DVM036A",
+   "pads": {
+    "1": "N-000006",
+    "2": "5V",
+    "3": "GND"
+   },
+   "ref": "DS101",
+   "value": "VOLTMETER"
+  },
+  {
+   "footprint": "EBAY_AMMETER",
+   "pads": {
+    "1": "N-0000014",
+    "2": "GND",
+    "3": "5V",
+    "4": "GND"
+   },
+   "ref": "DS102",
+   "value": "AMMETER_V"
+  },
+  {
+   "footprint": "Banana_A",
+   "pads": {
+    "1": "N-0000010"
+   },
+   "ref": "P101",
+   "value": "Vout+"
+  },
+  {
+   "footprint": "Banana_A",
+   "pads": {
+    "1": "N-0000014"
+   },
+   "ref": "P102",
+   "value": "Vout-"
+  },
+  {
+   "footprint": "R_AXIAL_0W25",
+   "pads": {
+    "1": "N-0000015",
+    "2": "GND"
+   },
+   "ref": "R101",
+   "value": "150"
+  },
+  {
+   "footprint": "R_AXIAL_0W25",
+   "pads": {
+    "1": "N-000006",
+    "2": "N-000007"
+   },
+   "ref": "R102",
+   "value": "330"
+  },
+  {
+   "footprint": "R_AXIAL_0W25",
+   "pads": {
+    "1": "N-0000029",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R201",
+   "value": "100"
+  },
+  {
+   "footprint": "R_AXIAL_0W25",
+   "pads": {
+    "1": "N-0000030",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R202",
+   "value": "100"
+  },
+  {
+   "footprint": "R_AXIAL_0W25",
+   "pads": {
+    "1": "N-0000030",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R203",
+   "value": "100"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000021",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R204",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000021",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R205",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000021",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R206",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000021",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R207",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000024",
+    "2": "N-0000022"
+   },
+   "ref": "R208",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000020",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R209",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000020",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R210",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000022",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R211",
+   "value": "10"
+  },
+  {
+   "footprint": "R_AXIAL_0W5",
+   "pads": {
+    "1": "N-0000023",
+    "2": "/current_limit_r/R_LIM-"
+   },
+   "ref": "R212",
+   "value": "10"
+  },
+  {
+   "footprint": "WXD3-13-2W_A",
+   "pads": {
+    "1": "GND",
+    "2": "N-000007",
+    "3": "N-000007"
+   },
+   "ref": "RV101",
+   "value": "4.7k"
+  },
+  {
+   "footprint": "3296W",
+   "pads": {
+    "1": "N-0000014",
+    "2": "GND",
+    "3": "GND"
+   },
+   "ref": "RV102",
+   "value": "10"
+  },
+  {
+   "footprint": "M2012SS1W01",
+   "pads": {
+    "1": "N-0000018",
+    "2": "N-0000017"
+   },
+   "ref": "SW101",
+   "value": "SPDT"
+  },
+  {
+   "footprint": "M2012SS1W01",
+   "pads": {
+    "1": "/current_limit_r/R_LIM-",
+    "2": "N-0000018"
+   },
+   "ref": "SW102",
+   "value": "SPDT"
+  },
+  {
+   "footprint": "M2012SS1W01",
+   "pads": {
+    "1": "N-0000010",
+    "2": "N-000006"
+   },
+   "ref": "SW103",
+   "value": "SPDT"
+  },
+  {
+   "footprint": "G3SR022-R",
+   "pads": {
+    "1": "/current_limit_r/R_LIM+",
+    "13": "N-0000020",
+    "14": "N-0000021",
+    "2": "N-0000029",
+    "3": "N-0000030",
+    "4": "N-0000024",
+    "5": "N-0000023",
+    "6": "N-0000020",
+    "7": "N-0000021",
+    "8": "/current_limit_r/R_LIM+"
+   },
+   "ref": "SW201",
+   "value": "DP6T"
+  },
+  {
+   "footprint": "TO-220_V_069B",
+   "pads": {
+    "1": "N-0000018",
+    "2": "GND",
+    "3": "12V"
+   },
+   "ref": "U101",
+   "value": "7812"
+  },
+  {
+   "footprint": "TO-220_V_069B",
+   "pads": {
+    "1": "/current_limit_r/R_LIM-",
+    "2": "/current_limit_r/R_LIM+",
+    "3": "N-0000018"
+   },
+   "ref": "U102",
+   "value": "LM317"
+  },
+  {
+   "footprint": "TO-220_V_069B",
+   "pads": {
+    "1": "N-000007",
+    "2": "N-000006",
+    "3": "/current_limit_r/R_LIM-"
+   },
+   "ref": "U103",
+   "value": "LM317"
+  },
+  {
+   "footprint": "TO-220_V_069B",
+   "pads": {
+    "1": "12V",
+    "2": "GND",
+    "3": "5V"
+   },
+   "ref": "U104",
+   "value": "7805"
+  }
+ ]
+}

@@ -1,0 +1,459 @@
+{
+ "nets": [
+  "+3.3VADC",
+  "+3V3",
+  "+5V",
+  "GND",
+  "Net-(C105-Pad2)",
+  "Net-(C107-Pad1)",
+  "Net-(C107-Pad2)",
+  "Net-(C108-Pad2)",
+  "Net-(C109-Pad2)",
+  "Net-(C115-Pad2)",
+  "Net-(J101-Pad1)",
+  "Net-(P101-Pad1)",
+  "Net-(P101-Pad11)",
+  "Net-(P101-Pad12)",
+  "Net-(P101-Pad2)",
+  "Net-(P101-Pad3)",
+  "Net-(P101-Pad4)",
+  "Net-(P101-Pad5)",
+  "Net-(P101-Pad6)",
+  "Net-(P101-Pad7)",
+  "Net-(P101-Pad8)",
+  "Net-(P102-Pad1)",
+  "Net-(P102-Pad11)",
+  "Net-(P102-Pad2)",
+  "Net-(P102-Pad3)",
+  "Net-(P102-Pad4)",
+  "Net-(P102-Pad5)",
+  "Net-(P102-Pad6)",
+  "Net-(P102-Pad7)",
+  "Net-(P102-Pad8)",
+  "Net-(R102-Pad1)",
+  "Net-(R103-Pad1)",
+  "Net-(R104-Pad2)",
+  "Net-(R106-Pad1)",
+  "Net-(R106-Pad2)",
+  "Net-(RP101-Pad1)",
+  "Net-(RP101-Pad2)",
+  "Net-(RP101-Pad3)",
+  "Net-(RP101-Pad4)",
+  "Net-(RP101-Pad5)",
+  "Net-(RP101-Pad6)",
+  "Net-(RP101-Pad7)",
+  "Net-(RP101-Pad8)",
+  "Net-(RP102-Pad1)",
+  "Net-(RP102-Pad2)",
+  "Net-(RP102-Pad3)",
+  "Net-(RP102-Pad4)",
+  "Net-(RP102-Pad5)",
+  "Net-(RP102-Pad6)",
+  "Net-(RP102-Pad7)",
+  "Net-(RP102-Pad8)"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C101",
+   "value": "10uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C102",
+   "value": "10uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C103",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3.3VADC",
+    "2": "GND"
+   },
+   "ref": "C104",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C105-Pad2)"
+   },
+   "ref": "C105",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+3.3VADC",
+    "2": "GND"
+   },
+   "ref": "C106",
+   "value": "10uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(C107-Pad1)",
+    "2": "Net-(C107-Pad2)"
+   },
+   "ref": "C107",
+   "value": "18pf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C108-Pad2)"
+   },
+   "ref": "C108",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C109-Pad2)"
+   },
+   "ref": "C109",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3.3VADC",
+    "2": "GND"
+   },
+   "ref": "C110",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C111",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(C108-Pad2)",
+    "2": "Net-(C109-Pad2)"
+   },
+   "ref": "C112",
+   "value": "1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3.3VADC",
+    "2": "GND"
+   },
+   "ref": "C113",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C105-Pad2)"
+   },
+   "ref": "C114",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C115-Pad2)"
+   },
+   "ref": "C115",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C115-Pad2)"
+   },
+   "ref": "C116",
+   "value": "1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3.3VADC",
+    "2": "GND"
+   },
+   "ref": "C117",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "+3V3"
+   },
+   "ref": "C118",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "+3.3VADC"
+   },
+   "ref": "FB101",
+   "value": "FILTER"
+  },
+  {
+   "footprint": "footprints:SMA_END",
+   "pads": {
+    "1": "Net-(J101-Pad1)",
+    "2": "GND"
+   },
+   "ref": "J101",
+   "value": "SMA"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_2x06_Pitch2.54mm",
+   "pads": {
+    "1": "Net-(P101-Pad1)",
+    "10": "GND",
+    "11": "Net-(P101-Pad11)",
+    "12": "Net-(P101-Pad12)",
+    "2": "Net-(P101-Pad2)",
+    "3": "Net-(P101-Pad3)",
+    "4": "Net-(P101-Pad4)",
+    "5": "Net-(P101-Pad5)",
+    "6": "Net-(P101-Pad6)",
+    "7": "Net-(P101-Pad7)",
+    "8": "Net-(P101-Pad8)",
+    "9": "GND"
+   },
+   "ref": "P101",
+   "value": "CONN_02X06"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_2x06_Pitch2.54mm",
+   "pads": {
+    "1": "Net-(P102-Pad1)",
+    "10": "GND",
+    "11": "Net-(P102-Pad11)",
+    "12": "Net-(P102-Pad11)",
+    "2": "Net-(P102-Pad2)",
+    "3": "Net-(P102-Pad3)",
+    "4": "Net-(P102-Pad4)",
+    "5": "Net-(P102-Pad5)",
+    "6": "Net-(P102-Pad6)",
+    "7": "Net-(P102-Pad7)",
+    "8": "Net-(P102-Pad8)",
+    "9": "GND"
+   },
+   "ref": "P102",
+   "value": "CONN_02X06"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x03_Pitch2.54mm",
+   "pads": {
+    "1": "Net-(P102-Pad11)",
+    "2": "+5V",
+    "3": "GND"
+   },
+   "ref": "P103",
+   "value": "CONN_01X03"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(J101-Pad1)"
+   },
+   "ref": "R101",
+   "value": "50"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(R102-Pad1)",
+    "2": "Net-(C107-Pad1)"
+   },
+   "ref": "R102",
+   "value": "20"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(R103-Pad1)",
+    "2": "Net-(C107-Pad2)"
+   },
+   "ref": "R103",
+   "value": "20"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "+3.3VADC",
+    "2": "Net-(R104-Pad2)"
+   },
+   "ref": "R104",
+   "value": "4k7"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(R104-Pad2)",
+    "2": "GND"
+   },
+   "ref": "R105",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(R106-Pad1)",
+    "2": "Net-(R106-Pad2)"
+   },
+   "ref": "R106",
+   "value": "50"
+  },
+  {
+   "footprint": "footprints:R_Array_EXB2HV",
+   "pads": {
+    "1": "Net-(RP101-Pad1)",
+    "10": "Net-(P102-Pad1)",
+    "11": "Net-(P102-Pad2)",
+    "12": "Net-(P102-Pad3)",
+    "13": "Net-(P102-Pad4)",
+    "14": "Net-(P102-Pad5)",
+    "15": "Net-(P102-Pad6)",
+    "16": "Net-(P102-Pad7)",
+    "2": "Net-(RP101-Pad2)",
+    "3": "Net-(RP101-Pad3)",
+    "4": "Net-(RP101-Pad4)",
+    "5": "Net-(RP101-Pad5)",
+    "6": "Net-(RP101-Pad6)",
+    "7": "Net-(RP101-Pad7)",
+    "8": "Net-(RP101-Pad8)",
+    "9": "Net-(P101-Pad7)"
+   },
+   "ref": "RP101",
+   "value": "100"
+  },
+  {
+   "footprint": "footprints:R_Array_EXB2HV",
+   "pads": {
+    "1": "Net-(RP102-Pad1)",
+    "10": "Net-(P101-Pad1)",
+    "11": "Net-(P101-Pad4)",
+    "12": "Net-(P101-Pad3)",
+    "13": "Net-(P101-Pad6)",
+    "14": "Net-(P101-Pad5)",
+    "15": "Net-(P101-Pad8)",
+    "16": "Net-(P102-Pad8)",
+    "2": "Net-(RP102-Pad2)",
+    "3": "Net-(RP102-Pad3)",
+    "4": "Net-(RP102-Pad4)",
+    "5": "Net-(RP102-Pad5)",
+    "6": "Net-(RP102-Pad6)",
+    "7": "Net-(RP102-Pad7)",
+    "8": "Net-(RP102-Pad8)",
+    "9": "Net-(P101-Pad2)"
+   },
+   "ref": "RP102",
+   "value": "100"
+  },
+  {
+   "footprint": "footprints:Pulse_SMD_Balun",
+   "pads": {
+    "1": "Net-(R103-Pad1)",
+    "2": "Net-(C105-Pad2)",
+    "3": "Net-(R102-Pad1)",
+    "4": "Net-(J101-Pad1)",
+    "5": "GND"
+   },
+   "ref": "T101",
+   "value": "TRANSFO4"
+  },
+  {
+   "footprint": "SOT-223",
+   "pads": {
+    "1": "GND",
+    "2": "+3V3",
+    "3": "+5V",
+    "4": "+3V3"
+   },
+   "ref": "U101",
+   "value": "LD1117S33CTR"
+  },
+  {
+   "footprint": "footprints:Crystal_SMD_Abracon_ASFL1-4pin_5.0x3.2mm",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND",
+    "3": "Net-(R106-Pad2)",
+    "4": "+3V3"
+   },
+   "ref": "U102",
+   "value": "ASFL1-80.000MHZ-EC-T"
+  },
+  {
+   "footprint": "footprints:QFN-32-1EP_5x5mm_Pitch0.5mm_extended_pad",
+   "pads": {
+    "1": "Net-(C108-Pad2)",
+    "10": "+3.3VADC",
+    "11": "Net-(R106-Pad1)",
+    "12": "Net-(R104-Pad2)",
+    "13": "Net-(RP102-Pad8)",
+    "14": "Net-(RP102-Pad7)",
+    "15": "Net-(RP102-Pad6)",
+    "16": "Net-(RP102-Pad5)",
+    "17": "Net-(RP102-Pad4)",
+    "18": "Net-(RP102-Pad3)",
+    "19": "Net-(RP102-Pad2)",
+    "2": "Net-(C109-Pad2)",
+    "20": "+3V3",
+    "21": "Net-(RP102-Pad1)",
+    "22": "GND",
+    "23": "Net-(RP101-Pad8)",
+    "24": "Net-(RP101-Pad7)",
+    "25": "Net-(RP101-Pad6)",
+    "26": "Net-(RP101-Pad5)",
+    "27": "Net-(RP101-Pad4)",
+    "28": "Net-(RP101-Pad3)",
+    "29": "Net-(RP101-Pad2)",
+    "3": "+3.3VADC",
+    "30": "Net-(RP101-Pad1)",
+    "31": "Net-(C115-Pad2)",
+    "32": "Net-(C105-Pad2)",
+    "33": "GND",
+    "4": "GND",
+    "5": "Net-(C107-Pad1)",
+    "6": "Net-(C107-Pad2)",
+    "7": "GND",
+    "8": "+3.3VADC",
+    "9": "GND"
+   },
+   "ref": "U103",
+   "value": "ADC14C105"
+  }
+ ]
+}

@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# KiCad per-user view state, written by kicad-cli as a side effect
+*.kicad_prl

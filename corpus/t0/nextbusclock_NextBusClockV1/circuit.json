@@ -1,0 +1,373 @@
+{
+ "nets": [
+  "/33V_PWR",
+  "/5V_PWR",
+  "/ESP_RX",
+  "/ESP_TX",
+  "/SR_CLOCK",
+  "/SR_DATA",
+  "/SR_LATCH",
+  "GND",
+  "Net-(C5-Pad2)",
+  "Net-(C6-Pad2)",
+  "Net-(D1-Pad2)",
+  "Net-(DIG1-Pad1)",
+  "Net-(DIG1-Pad10)",
+  "Net-(DIG1-Pad2)",
+  "Net-(DIG1-Pad3)",
+  "Net-(DIG1-Pad4)",
+  "Net-(DIG1-Pad5)",
+  "Net-(DIG1-Pad6)",
+  "Net-(DIG1-Pad7)",
+  "Net-(DIG1-Pad8)",
+  "Net-(DIG1-Pad9)",
+  "Net-(DIG2-Pad1)",
+  "Net-(DIG2-Pad10)",
+  "Net-(DIG2-Pad2)",
+  "Net-(DIG2-Pad3)",
+  "Net-(DIG2-Pad4)",
+  "Net-(DIG2-Pad5)",
+  "Net-(DIG2-Pad6)",
+  "Net-(DIG2-Pad7)",
+  "Net-(DIG2-Pad8)",
+  "Net-(DIG2-Pad9)",
+  "Net-(ESP1-Pad4)",
+  "Net-(ESP1-Pad5)",
+  "Net-(ESP1-Pad6)",
+  "Net-(IC1-Pad1)",
+  "Net-(IC1-Pad11)",
+  "Net-(IC1-Pad12)",
+  "Net-(IC1-Pad13)",
+  "Net-(IC1-Pad15)",
+  "Net-(IC1-Pad16)",
+  "Net-(IC1-Pad19)",
+  "Net-(IC1-Pad23)",
+  "Net-(IC1-Pad24)",
+  "Net-(IC1-Pad25)",
+  "Net-(IC1-Pad26)",
+  "Net-(IC1-Pad27)",
+  "Net-(IC1-Pad28)",
+  "Net-(IC1-Pad4)",
+  "Net-(IC1-Pad5)",
+  "Net-(IC1-Pad6)",
+  "Net-(SR1-Pad7)",
+  "Net-(SR2-Pad7)",
+  "Net-(SR2-Pad9)",
+  "VCC"
+ ],
+ "parts": [
+  {
+   "footprint": "TO_SOT_Packages_THT:TO-220_Neutral123_Vertical",
+   "pads": {
+    "1": "GND",
+    "2": "/33V_PWR",
+    "3": "/5V_PWR"
+   },
+   "ref": "33V_REG1",
+   "value": "LD1117V33"
+  },
+  {
+   "footprint": "TO_SOT_Packages_THT:TO-220_Neutral123_Vertical",
+   "pads": {
+    "1": "VCC",
+    "2": "GND",
+    "3": "/5V_PWR"
+   },
+   "ref": "5V_REG1",
+   "value": "LM7805"
+  },
+  {
+   "footprint": "Connect:BARREL_JACK",
+   "pads": {
+    "1": "VCC",
+    "2": "GND",
+    "3": "GND"
+   },
+   "ref": "BJ1",
+   "value": "BARREL_JACK"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Radial_D7.5_L11.2_P2.5",
+   "pads": {
+    "1": "VCC",
+    "2": "GND"
+   },
+   "ref": "C1",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Radial_D7.5_L11.2_P2.5",
+   "pads": {
+    "1": "/5V_PWR",
+    "2": "GND"
+   },
+   "ref": "C2",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Rect_L4_W2.5_P2.5",
+   "pads": {
+    "1": "/5V_PWR",
+    "2": "GND"
+   },
+   "ref": "C3",
+   "value": "0.1uf"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Radial_D7.5_L11.2_P2.5",
+   "pads": {
+    "1": "/33V_PWR",
+    "2": "GND"
+   },
+   "ref": "C4",
+   "value": "10uf"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Rect_L4_W2.5_P2.5",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C5-Pad2)"
+   },
+   "ref": "C5",
+   "value": "22pF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Rect_L4_W2.5_P2.5",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C6-Pad2)"
+   },
+   "ref": "C6",
+   "value": "22pF"
+  },
+  {
+   "footprint": "LEDs:LED-5MM",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D1-Pad2)"
+   },
+   "ref": "D1",
+   "value": "PWR_LED"
+  },
+  {
+   "footprint": "Displays_7-Segment:7SegmentLED_LTS6760_LTS6780",
+   "pads": {
+    "1": "Net-(DIG1-Pad1)",
+    "10": "Net-(DIG1-Pad10)",
+    "2": "Net-(DIG1-Pad2)",
+    "3": "Net-(DIG1-Pad3)",
+    "4": "Net-(DIG1-Pad4)",
+    "5": "Net-(DIG1-Pad5)",
+    "6": "Net-(DIG1-Pad6)",
+    "7": "Net-(DIG1-Pad7)",
+    "8": "Net-(DIG1-Pad8)",
+    "9": "Net-(DIG1-Pad9)"
+   },
+   "ref": "DIG1",
+   "value": "LTS-6980HR"
+  },
+  {
+   "footprint": "Displays_7-Segment:7SegmentLED_LTS6760_LTS6780",
+   "pads": {
+    "1": "Net-(DIG2-Pad1)",
+    "10": "Net-(DIG2-Pad10)",
+    "2": "Net-(DIG2-Pad2)",
+    "3": "Net-(DIG2-Pad3)",
+    "4": "Net-(DIG2-Pad4)",
+    "5": "Net-(DIG2-Pad5)",
+    "6": "Net-(DIG2-Pad6)",
+    "7": "Net-(DIG2-Pad7)",
+    "8": "Net-(DIG2-Pad8)",
+    "9": "Net-(DIG2-Pad9)"
+   },
+   "ref": "DIG2",
+   "value": "LTS-6980HR"
+  },
+  {
+   "footprint": "ESPLIB:ESP-01",
+   "pads": {
+    "1": "/ESP_TX",
+    "2": "GND",
+    "3": "/33V_PWR",
+    "4": "Net-(ESP1-Pad4)",
+    "5": "Net-(ESP1-Pad5)",
+    "6": "Net-(ESP1-Pad6)",
+    "7": "/33V_PWR",
+    "8": "/ESP_RX"
+   },
+   "ref": "ESP1",
+   "value": "ESP-01"
+  },
+  {
+   "footprint": "Housings_DIP:DIP-28_W7.62mm",
+   "pads": {
+    "1": "Net-(IC1-Pad1)",
+    "10": "Net-(C5-Pad2)",
+    "11": "Net-(IC1-Pad11)",
+    "12": "Net-(IC1-Pad12)",
+    "13": "Net-(IC1-Pad13)",
+    "14": "/SR_LATCH",
+    "15": "Net-(IC1-Pad15)",
+    "16": "Net-(IC1-Pad16)",
+    "17": "/SR_DATA",
+    "18": "/SR_CLOCK",
+    "19": "Net-(IC1-Pad19)",
+    "2": "/ESP_TX",
+    "20": "/5V_PWR",
+    "21": "/5V_PWR",
+    "22": "GND",
+    "23": "Net-(IC1-Pad23)",
+    "24": "Net-(IC1-Pad24)",
+    "25": "Net-(IC1-Pad25)",
+    "26": "Net-(IC1-Pad26)",
+    "27": "Net-(IC1-Pad27)",
+    "28": "Net-(IC1-Pad28)",
+    "3": "/ESP_RX",
+    "4": "Net-(IC1-Pad4)",
+    "5": "Net-(IC1-Pad5)",
+    "6": "Net-(IC1-Pad6)",
+    "7": "/5V_PWR",
+    "8": "GND",
+    "9": "Net-(C6-Pad2)"
+   },
+   "ref": "IC1",
+   "value": "ATMEGA328-P"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "Net-(D1-Pad2)",
+    "2": "/5V_PWR"
+   },
+   "ref": "R1",
+   "value": "1k"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "/5V_PWR",
+    "2": "Net-(IC1-Pad1)"
+   },
+   "ref": "R2",
+   "value": "10k"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(DIG1-Pad8)"
+   },
+   "ref": "R3",
+   "value": "470"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(DIG1-Pad3)"
+   },
+   "ref": "R4",
+   "value": "470"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(DIG2-Pad8)"
+   },
+   "ref": "R5",
+   "value": "470"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(DIG2-Pad3)"
+   },
+   "ref": "R6",
+   "value": "470"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "/33V_PWR",
+    "2": "Net-(ESP1-Pad6)"
+   },
+   "ref": "R7",
+   "value": "10k"
+  },
+  {
+   "footprint": "Discret:R3-5",
+   "pads": {
+    "1": "Net-(ESP1-Pad5)",
+    "2": "/33V_PWR"
+   },
+   "ref": "R8",
+   "value": "10k"
+  },
+  {
+   "footprint": "Housings_DIP:DIP-16_W7.62mm",
+   "pads": {
+    "1": "Net-(DIG1-Pad6)",
+    "10": "/5V_PWR",
+    "11": "/SR_CLOCK",
+    "12": "/SR_LATCH",
+    "13": "GND",
+    "14": "/SR_DATA",
+    "15": "Net-(DIG1-Pad7)",
+    "16": "VCC",
+    "2": "Net-(DIG1-Pad4)",
+    "3": "Net-(DIG1-Pad2)",
+    "4": "Net-(DIG1-Pad1)",
+    "5": "Net-(DIG1-Pad9)",
+    "6": "Net-(DIG1-Pad10)",
+    "7": "Net-(SR1-Pad7)",
+    "8": "GND",
+    "9": "/SR_DATA"
+   },
+   "ref": "SR1",
+   "value": "74HC595"
+  },
+  {
+   "footprint": "Housings_DIP:DIP-16_W7.62mm",
+   "pads": {
+    "1": "Net-(DIG2-Pad6)",
+    "10": "/5V_PWR",
+    "11": "/SR_CLOCK",
+    "12": "/SR_LATCH",
+    "13": "GND",
+    "14": "/SR_DATA",
+    "15": "Net-(DIG2-Pad7)",
+    "16": "VCC",
+    "2": "Net-(DIG2-Pad4)",
+    "3": "Net-(DIG2-Pad2)",
+    "4": "Net-(DIG2-Pad1)",
+    "5": "Net-(DIG2-Pad9)",
+    "6": "Net-(DIG2-Pad10)",
+    "7": "Net-(SR2-Pad7)",
+    "8": "GND",
+    "9": "Net-(SR2-Pad9)"
+   },
+   "ref": "SR2",
+   "value": "74HC595"
+  },
+  {
+   "footprint": "Buttons_Switches_ThroughHole:SW_PUSH",
+   "pads": {
+    "1": "Net-(IC1-Pad1)",
+    "2": "GND"
+   },
+   "ref": "SW1",
+   "value": "SW_PUSH"
+  },
+  {
+   "footprint": "Crystals:Crystal_HC49-U_Vertical",
+   "pads": {
+    "1": "Net-(C6-Pad2)",
+    "2": "Net-(C5-Pad2)"
+   },
+   "ref": "Y1",
+   "value": "16MHz"
+  }
+ ]
+}

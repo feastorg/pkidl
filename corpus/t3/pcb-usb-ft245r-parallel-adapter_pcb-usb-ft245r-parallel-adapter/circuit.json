@@ -1,0 +1,280 @@
+{
+ "nets": [
+  "+5V",
+  "Data0",
+  "Data1",
+  "Data2",
+  "Data3",
+  "Data4",
+  "Data5",
+  "Data6",
+  "Data7",
+  "GND",
+  "Net-(C1-Pad2)",
+  "Net-(C2-Pad1)",
+  "Net-(C5-Pad1)",
+  "Net-(D1-Pad2)",
+  "Net-(MH1-Pad1)",
+  "Net-(MH2-Pad1)",
+  "Net-(R10-Pad2)",
+  "Net-(R2-Pad2)",
+  "Net-(R3-Pad2)",
+  "Net-(R4-Pad2)",
+  "Net-(R5-Pad2)",
+  "Net-(R6-Pad2)",
+  "Net-(R7-Pad2)",
+  "Net-(R8-Pad2)",
+  "Net-(R9-Pad2)",
+  "USB_D+",
+  "USB_D-"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(C1-Pad2)"
+   },
+   "ref": "C1",
+   "value": "100nF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(C2-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C2",
+   "value": "10nF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C3",
+   "value": "4.7uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C4",
+   "value": "100nF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(C5-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C5",
+   "value": "100nF"
+  },
+  {
+   "footprint": "LEDs:LED_0805",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D1-Pad2)"
+   },
+   "ref": "D1",
+   "value": "LED"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Net-(C2-Pad1)",
+    "2": "+5V"
+   },
+   "ref": "FB1",
+   "value": "FERRITE"
+  },
+  {
+   "footprint": "db25:DB25FC",
+   "pads": {
+    "18": "GND",
+    "19": "GND",
+    "2": "Data0",
+    "20": "GND",
+    "21": "GND",
+    "22": "GND",
+    "23": "GND",
+    "24": "GND",
+    "25": "GND",
+    "3": "Data1",
+    "4": "Data2",
+    "5": "Data3",
+    "6": "Data4",
+    "7": "Data5",
+    "8": "Data6",
+    "9": "Data7"
+   },
+   "ref": "J1",
+   "value": "DB25"
+  },
+  {
+   "footprint": "hole:HOLE-M3-COND",
+   "pads": {
+    "1": "Net-(MH1-Pad1)"
+   },
+   "ref": "MH1",
+   "value": "MOUNTHOLE"
+  },
+  {
+   "footprint": "hole:HOLE-M3-COND",
+   "pads": {
+    "1": "Net-(MH2-Pad1)"
+   },
+   "ref": "MH2",
+   "value": "MOUNTHOLE"
+  },
+  {
+   "footprint": "Connect:USB_A",
+   "pads": {
+    "1": "Net-(C2-Pad1)",
+    "2": "USB_D-",
+    "3": "USB_D+",
+    "4": "GND",
+    "5": "Net-(C1-Pad2)"
+   },
+   "ref": "P1",
+   "value": "USB_A"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x10",
+   "pads": {
+    "1": "Data0",
+    "10": "+5V",
+    "2": "Data1",
+    "3": "Data2",
+    "4": "Data3",
+    "5": "Data4",
+    "6": "Data5",
+    "7": "Data6",
+    "8": "Data7",
+    "9": "GND"
+   },
+   "ref": "P2",
+   "value": "CONN_01X10"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "Net-(D1-Pad2)"
+   },
+   "ref": "R1",
+   "value": "1500"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data7",
+    "2": "Net-(R10-Pad2)"
+   },
+   "ref": "R10",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "Net-(R2-Pad2)"
+   },
+   "ref": "R2",
+   "value": "10K"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data0",
+    "2": "Net-(R3-Pad2)"
+   },
+   "ref": "R3",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data1",
+    "2": "Net-(R4-Pad2)"
+   },
+   "ref": "R4",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data2",
+    "2": "Net-(R5-Pad2)"
+   },
+   "ref": "R5",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data3",
+    "2": "Net-(R6-Pad2)"
+   },
+   "ref": "R6",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data4",
+    "2": "Net-(R7-Pad2)"
+   },
+   "ref": "R7",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data5",
+    "2": "Net-(R8-Pad2)"
+   },
+   "ref": "R8",
+   "value": "100"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "Data6",
+    "2": "Net-(R9-Pad2)"
+   },
+   "ref": "R9",
+   "value": "100"
+  },
+  {
+   "footprint": "Housings_SSOP:SSOP-28_5.3x10.2mm_Pitch0.65mm",
+   "pads": {
+    "1": "Net-(R3-Pad2)",
+    "10": "Net-(R9-Pad2)",
+    "11": "Net-(R6-Pad2)",
+    "12": "Net-(R2-Pad2)",
+    "15": "USB_D+",
+    "16": "USB_D-",
+    "17": "Net-(C5-Pad1)",
+    "18": "GND",
+    "2": "Net-(R7-Pad2)",
+    "20": "+5V",
+    "21": "GND",
+    "25": "GND",
+    "26": "GND",
+    "3": "Net-(R5-Pad2)",
+    "4": "+5V",
+    "5": "Net-(R4-Pad2)",
+    "6": "Net-(R10-Pad2)",
+    "7": "GND",
+    "9": "Net-(R8-Pad2)"
+   },
+   "ref": "U1",
+   "value": "FT245RL"
+  }
+ ]
+}

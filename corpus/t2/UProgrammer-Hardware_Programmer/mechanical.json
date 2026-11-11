@@ -1,0 +1,111 @@
+{
+ "fixed": {},
+ "holes": [
+  {
+   "at": [
+    53.8,
+    39.3
+   ],
+   "drills": [
+    [
+     53.8,
+     39.3,
+     2.15
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_2-5mm",
+   "ref": "REF**"
+  },
+  {
+   "at": [
+    53.7,
+    84.0
+   ],
+   "drills": [
+    [
+     53.7,
+     84.0,
+     2.15
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_2-5mm",
+   "ref": "REF**"
+  },
+  {
+   "at": [
+    123.9,
+    84.1
+   ],
+   "drills": [
+    [
+     123.9,
+     84.1,
+     2.15
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_2-5mm",
+   "ref": "REF**"
+  },
+  {
+   "at": [
+    124.0,
+    39.1
+   ],
+   "drills": [
+    [
+     124.0,
+     39.1,
+     2.15
+    ]
+   ],
+   "footprint": "Mounting_Holes:MountingHole_2-5mm",
+   "ref": "REF**"
+  }
+ ],
+ "outline": [
+  {
+   "end": [
+    50.81,
+    36.32
+   ],
+   "start": [
+    127.01,
+    36.32
+   ],
+   "type": "gr_line"
+  },
+  {
+   "end": [
+    127.01,
+    36.32
+   ],
+   "start": [
+    127.01,
+    87.12
+   ],
+   "type": "gr_line"
+  },
+  {
+   "end": [
+    50.81,
+    87.12
+   ],
+   "start": [
+    50.81,
+    36.32
+   ],
+   "type": "gr_line"
+  },
+  {
+   "end": [
+    127.01,
+    87.12
+   ],
+   "start": [
+    50.81,
+    87.12
+   ],
+   "type": "gr_line"
+  }
+ ]
+}

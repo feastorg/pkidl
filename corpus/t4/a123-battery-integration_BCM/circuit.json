@@ -1,0 +1,811 @@
+{
+ "nets": [
+  "+12V",
+  "+15V",
+  "+3V3",
+  "+5V",
+  "/Can transceiver/CAN1_H_I",
+  "/Can transceiver/CAN1_L_I",
+  "/Can transceiver/CAN1_RS",
+  "/Can transceiver/CAN1_RX",
+  "/Can transceiver/CAN1_TX",
+  "/Can transceiver/CAN2_H_I",
+  "/Can transceiver/CAN2_L_I",
+  "/Can transceiver/CAN2_RS",
+  "/Can transceiver/CAN2_RX",
+  "/Can transceiver/CAN2_TX",
+  "/Contactor Driver/CON+",
+  "/Contactor Driver/CON+_LOW",
+  "/Contactor Driver/CON-",
+  "/Contactor Driver/CON-_LOW",
+  "/Contactor Driver/CONPRE",
+  "/Contactor Driver/CONPRE_LOW",
+  "/Input Connectors/CHARGESWITCH_R",
+  "/Input Connectors/CHARGESWITCH_RC",
+  "/Input Connectors/KEYSKWITCH_RC",
+  "/Input Connectors/KEYSWITCH_R",
+  "/Power/12V0_FB",
+  "/Power/12V0_SS",
+  "/Power/5V0_BOOST",
+  "/Power/5V0_FB",
+  "/Power/5V0_L",
+  "/Power/EN12V0",
+  "/microController/CAN1_INT",
+  "/microController/CAN1_MISO",
+  "/microController/CAN1_MOSI",
+  "/microController/CAN1_SCK",
+  "/microController/CAN1_SSEL",
+  "/microController/CAN_OSC2",
+  "/microController/CHARGESWITCH_IN",
+  "/microController/CLKOUT",
+  "/microController/IO_LED0",
+  "/microController/IO_LED1",
+  "/microController/IO_LED2",
+  "/microController/IO_LED3",
+  "/microController/IO_LED4",
+  "/microController/IO_LED5",
+  "/microController/KEYSWITCH_IN",
+  "/microController/MCU_RESET",
+  "/microController/MCU_RXD",
+  "/microController/MCU_TXD",
+  "/microController/PROM_MISO",
+  "/microController/PROM_MOSI",
+  "/microController/PROM_SCK",
+  "/microController/PROM_SSEL",
+  "/outputConnectors/14V0_BRUSA",
+  "GND",
+  "Net-(D701-Pad2)",
+  "Net-(D702-Pad2)",
+  "Net-(D703-Pad2)",
+  "Net-(D704-Pad2)",
+  "Net-(D705-Pad2)",
+  "Net-(D706-Pad2)",
+  "Net-(U202-Pad7)",
+  "Net-(U301-Pad5)",
+  "Net-(U302-Pad5)",
+  "Net-(U701-Pad1)",
+  "Net-(U701-Pad10)",
+  "Net-(U701-Pad21)",
+  "Net-(U701-Pad24)",
+  "Net-(U701-Pad29)",
+  "Net-(U701-Pad30)",
+  "Net-(U701-Pad32)",
+  "Net-(U701-Pad33)",
+  "Net-(U701-Pad34)",
+  "Net-(U701-Pad35)",
+  "Net-(U701-Pad42)",
+  "Net-(U701-Pad43)",
+  "Net-(U701-Pad48)",
+  "Net-(U701-Pad6)",
+  "Net-(U701-Pad7)",
+  "Net-(U701-Pad9)",
+  "Net-(U702-Pad11)",
+  "Net-(U702-Pad12)",
+  "Net-(U702-Pad15)",
+  "Net-(U702-Pad3)",
+  "Net-(U702-Pad4)",
+  "Net-(U702-Pad5)",
+  "Net-(U702-Pad6)",
+  "Net-(U702-Pad7)"
+ ],
+ "parts": [
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+15V",
+    "2": "GND"
+   },
+   "ref": "C201",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "/Power/12V0_SS",
+    "2": "GND"
+   },
+   "ref": "C202",
+   "value": "10nF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "/Power/5V0_BOOST",
+    "2": "/Power/5V0_L"
+   },
+   "ref": "C203",
+   "value": "0.22pF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "/Power/5V0_FB"
+   },
+   "ref": "C204",
+   "value": "10pF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_1206_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C205",
+   "value": "100uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+12V",
+    "2": "GND"
+   },
+   "ref": "C206",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C207",
+   "value": "10u"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C208",
+   "value": "100n"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C209",
+   "value": "100n"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C210",
+   "value": "10u"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C301",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C302",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "/Input Connectors/KEYSKWITCH_RC",
+    "2": "GND"
+   },
+   "ref": "C401",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "/Input Connectors/CHARGESWITCH_RC",
+    "2": "GND"
+   },
+   "ref": "C402",
+   "value": "1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C701",
+   "value": "100n"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C702",
+   "value": "100n"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0603_HandSoldering",
+   "pads": {
+    "1": "+3V3",
+    "2": "GND"
+   },
+   "ref": "C705",
+   "value": "0.1uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "+15V",
+    "2": "GND"
+   },
+   "ref": "C801",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "+15V",
+    "2": "GND"
+   },
+   "ref": "C802",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_0805",
+   "pads": {
+    "1": "+15V",
+    "2": "GND"
+   },
+   "ref": "C803",
+   "value": "10uF"
+  },
+  {
+   "footprint": "Diodes_SMD:SOD-123",
+   "pads": {
+    "1": "/Power/5V0_L",
+    "2": "GND"
+   },
+   "ref": "D201",
+   "value": "MBR0540"
+  },
+  {
+   "footprint": "Diodes_SMD:SOD-323",
+   "pads": {
+    "1": "/Power/5V0_BOOST",
+    "2": "+5V"
+   },
+   "ref": "D202",
+   "value": "CMDSH-3"
+  },
+  {
+   "footprint": "LEDs:LED-0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D701-Pad2)"
+   },
+   "ref": "D701",
+   "value": "RED"
+  },
+  {
+   "footprint": "LEDs:LED-0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D702-Pad2)"
+   },
+   "ref": "D702",
+   "value": "RED"
+  },
+  {
+   "footprint": "LEDs:LED-0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D703-Pad2)"
+   },
+   "ref": "D703",
+   "value": "RED"
+  },
+  {
+   "footprint": "LEDs:LED-0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D704-Pad2)"
+   },
+   "ref": "D704",
+   "value": "RED"
+  },
+  {
+   "footprint": "LEDs:LED-0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D705-Pad2)"
+   },
+   "ref": "D705",
+   "value": "RED"
+  },
+  {
+   "footprint": "LEDs:LED-0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D706-Pad2)"
+   },
+   "ref": "D706",
+   "value": "RED"
+  },
+  {
+   "footprint": "Capacitors_SMD:C_1206_HandSoldering",
+   "pads": {
+    "1": "/Power/5V0_L",
+    "2": "+5V"
+   },
+   "ref": "L201",
+   "value": "47uH"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "GND",
+    "2": "+15V"
+   },
+   "ref": "P401",
+   "value": "POWERCON"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "GND",
+    "2": "/Input Connectors/KEYSWITCH_R"
+   },
+   "ref": "P402",
+   "value": "KEYSWITCH"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "GND",
+    "2": "/Input Connectors/CHARGESWITCH_R"
+   },
+   "ref": "P403",
+   "value": "CHARGESW"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x04",
+   "pads": {
+    "1": "/outputConnectors/14V0_BRUSA",
+    "2": "/Can transceiver/CAN1_H_I",
+    "3": "/Can transceiver/CAN1_L_I",
+    "4": "GND"
+   },
+   "ref": "P601",
+   "value": "BRUSA_CANCON"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x04",
+   "pads": {
+    "1": "+12V",
+    "2": "/Can transceiver/CAN2_H_I",
+    "3": "/Can transceiver/CAN2_L_I",
+    "4": "GND"
+   },
+   "ref": "P602",
+   "value": "A123_CANCON"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "+15V",
+    "2": "/Contactor Driver/CON+_LOW"
+   },
+   "ref": "P603",
+   "value": "CON+"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "+15V",
+    "2": "/Contactor Driver/CON-_LOW"
+   },
+   "ref": "P604",
+   "value": "CON-"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "+15V",
+    "2": "/Contactor Driver/CONPRE_LOW"
+   },
+   "ref": "P605",
+   "value": "CONPRE"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x04",
+   "pads": {
+    "1": "GND",
+    "2": "/microController/MCU_RXD",
+    "3": "/microController/MCU_TXD",
+    "4": "+5V"
+   },
+   "ref": "P606",
+   "value": "UART"
+  },
+  {
+   "footprint": "Housings_SOIC:SOIC-8_3.9x4.9mm_Pitch1.27mm",
+   "pads": {
+    "1": "GND",
+    "2": "/Contactor Driver/CON-",
+    "3": "GND",
+    "4": "/Contactor Driver/CONPRE",
+    "5": "/Contactor Driver/CONPRE_LOW",
+    "6": "/Contactor Driver/CONPRE_LOW",
+    "7": "/Contactor Driver/CON-_LOW",
+    "8": "/Contactor Driver/CON-_LOW"
+   },
+   "ref": "Q1",
+   "value": "IRF7101PbF"
+  },
+  {
+   "footprint": "Housings_SOIC:SOIC-8_3.9x4.9mm_Pitch1.27mm",
+   "pads": {
+    "1": "GND",
+    "2": "/Contactor Driver/CON+",
+    "7": "/Contactor Driver/CON+_LOW",
+    "8": "/Contactor Driver/CON+_LOW"
+   },
+   "ref": "Q2",
+   "value": "IRF7101PbF"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "+5V",
+    "2": "/Power/5V0_FB"
+   },
+   "ref": "R201",
+   "value": "1M"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Power/5V0_FB",
+    "2": "GND"
+   },
+   "ref": "R202",
+   "value": "604K"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "+12V",
+    "2": "/Power/12V0_FB"
+   },
+   "ref": "R203",
+   "value": "88.7k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Power/12V0_FB",
+    "2": "GND"
+   },
+   "ref": "R204",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Can transceiver/CAN1_RS",
+    "2": "GND"
+   },
+   "ref": "R301",
+   "value": "33k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Can transceiver/CAN2_RS",
+    "2": "GND"
+   },
+   "ref": "R302",
+   "value": "33k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Input Connectors/KEYSWITCH_R",
+    "2": "+3V3"
+   },
+   "ref": "R401",
+   "value": "20k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Input Connectors/CHARGESWITCH_R",
+    "2": "+3V3"
+   },
+   "ref": "R402",
+   "value": "20k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Input Connectors/CHARGESWITCH_RC",
+    "2": "/Input Connectors/CHARGESWITCH_R"
+   },
+   "ref": "R403",
+   "value": "20k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/Input Connectors/KEYSKWITCH_RC",
+    "2": "/Input Connectors/KEYSWITCH_R"
+   },
+   "ref": "R404",
+   "value": "20k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(D701-Pad2)",
+    "2": "/microController/IO_LED0"
+   },
+   "ref": "R701",
+   "value": "1k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(D702-Pad2)",
+    "2": "/microController/IO_LED1"
+   },
+   "ref": "R702",
+   "value": "1k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(D703-Pad2)",
+    "2": "/microController/IO_LED2"
+   },
+   "ref": "R703",
+   "value": "1k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "Net-(D704-Pad2)",
+    "2": "/microController/IO_LED3"
+   },
+   "ref": "R704",
+   "value": "1k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/microController/IO_LED4",
+    "2": "Net-(D705-Pad2)"
+   },
+   "ref": "R705",
+   "value": "1k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603_HandSoldering",
+   "pads": {
+    "1": "/microController/IO_LED5",
+    "2": "Net-(D706-Pad2)"
+   },
+   "ref": "R706",
+   "value": "1k"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "GND",
+    "2": "/microController/CLKOUT"
+   },
+   "ref": "SW701",
+   "value": "ISP"
+  },
+  {
+   "footprint": "Pin_Headers:Pin_Header_Straight_1x02",
+   "pads": {
+    "1": "GND",
+    "2": "/microController/MCU_RESET"
+   },
+   "ref": "SW702",
+   "value": "RESET"
+  },
+  {
+   "footprint": "Housings_SOT-23_SOT-143_TSOT-6:SOT-23-6",
+   "pads": {
+    "1": "/Power/5V0_BOOST",
+    "2": "GND",
+    "3": "/Power/5V0_FB",
+    "4": "GND",
+    "5": "+15V",
+    "6": "/Power/5V0_L"
+   },
+   "ref": "U201",
+   "value": "LT1934"
+  },
+  {
+   "footprint": "Housings_SOIC:SOIC-8-1EP_3.9x4.9mm_Pitch1.27mm",
+   "pads": {
+    "1": "+12V",
+    "2": "/Power/12V0_FB",
+    "3": "GND",
+    "4": "/Power/12V0_SS",
+    "5": "/Power/EN12V0",
+    "6": "GND",
+    "7": "Net-(U202-Pad7)",
+    "8": "+15V",
+    "9": "GND"
+   },
+   "ref": "U202",
+   "value": "ADP7105"
+  },
+  {
+   "footprint": "SMD_Packages:SOT-223",
+   "pads": {
+    "1": "+5V",
+    "2": "GND",
+    "3": "+3V3",
+    "4": "GND"
+   },
+   "ref": "U203",
+   "value": "SPX2920M3-3.3"
+  },
+  {
+   "footprint": "Housings_SOIC:SOIC-8_3.9x4.9mm_Pitch1.27mm",
+   "pads": {
+    "1": "/Can transceiver/CAN1_TX",
+    "2": "GND",
+    "3": "+5V",
+    "4": "/Can transceiver/CAN1_RX",
+    "5": "Net-(U301-Pad5)",
+    "6": "/Can transceiver/CAN1_H_I",
+    "7": "/Can transceiver/CAN1_L_I",
+    "8": "/Can transceiver/CAN1_RS"
+   },
+   "ref": "U301",
+   "value": "MCP2551-I/SN"
+  },
+  {
+   "footprint": "Housings_SOIC:SOIC-8_3.9x4.9mm_Pitch1.27mm",
+   "pads": {
+    "1": "/Can transceiver/CAN2_TX",
+    "2": "GND",
+    "3": "+5V",
+    "4": "/Can transceiver/CAN2_RX",
+    "5": "Net-(U302-Pad5)",
+    "6": "/Can transceiver/CAN2_H_I",
+    "7": "/Can transceiver/CAN2_L_I",
+    "8": "/Can transceiver/CAN2_RS"
+   },
+   "ref": "U302",
+   "value": "MCP2551-I/SN"
+  },
+  {
+   "footprint": "Housings_SSOP:TSSOP-14_4.4x5mm_Pitch0.65mm",
+   "pads": {
+    "10": "/microController/KEYSWITCH_IN",
+    "11": "/Input Connectors/KEYSKWITCH_RC",
+    "12": "/microController/CAN_OSC2",
+    "13": "/microController/CLKOUT",
+    "14": "+3V3",
+    "7": "GND",
+    "8": "/microController/CHARGESWITCH_IN",
+    "9": "/Input Connectors/CHARGESWITCH_RC"
+   },
+   "ref": "U401",
+   "value": "74LS14"
+  },
+  {
+   "footprint": "Housings_QFP:LQFP-48_7x7mm_Pitch0.5mm",
+   "pads": {
+    "1": "Net-(U701-Pad1)",
+    "10": "Net-(U701-Pad10)",
+    "11": "/microController/IO_LED0",
+    "12": "/microController/IO_LED1",
+    "13": "/microController/PROM_SCK",
+    "14": "+3V3",
+    "15": "/microController/IO_LED2",
+    "16": "/microController/IO_LED3",
+    "17": "/microController/IO_LED4",
+    "18": "/microController/IO_LED5",
+    "19": "/Can transceiver/CAN2_RX",
+    "2": "/microController/PROM_SSEL",
+    "20": "/Can transceiver/CAN2_TX",
+    "21": "Net-(U701-Pad21)",
+    "22": "/microController/CHARGESWITCH_IN",
+    "23": "/microController/KEYSWITCH_IN",
+    "24": "Net-(U701-Pad24)",
+    "25": "/microController/CAN1_SSEL",
+    "26": "/microController/PROM_MISO",
+    "27": "/microController/CAN1_MISO",
+    "28": "/microController/CAN1_MOSI",
+    "29": "Net-(U701-Pad29)",
+    "3": "/microController/MCU_RESET",
+    "30": "Net-(U701-Pad30)",
+    "31": "/microController/CAN1_SCK",
+    "32": "Net-(U701-Pad32)",
+    "33": "Net-(U701-Pad33)",
+    "34": "Net-(U701-Pad34)",
+    "35": "Net-(U701-Pad35)",
+    "36": "/microController/CAN1_INT",
+    "37": "/Contactor Driver/CONPRE",
+    "38": "/microController/PROM_MOSI",
+    "39": "/Contactor Driver/CON-",
+    "4": "/microController/CLKOUT",
+    "40": "/Contactor Driver/CON+",
+    "41": "GND",
+    "42": "Net-(U701-Pad42)",
+    "43": "Net-(U701-Pad43)",
+    "44": "+3V3",
+    "45": "/Power/EN12V0",
+    "46": "/microController/MCU_RXD",
+    "47": "/microController/MCU_TXD",
+    "48": "Net-(U701-Pad48)",
+    "5": "GND",
+    "6": "Net-(U701-Pad6)",
+    "7": "Net-(U701-Pad7)",
+    "8": "+3V3",
+    "9": "Net-(U701-Pad9)"
+   },
+   "ref": "U701",
+   "value": "LPC11C14"
+  },
+  {
+   "footprint": "SMD_Packages:SSOP-20",
+   "pads": {
+    "1": "/Can transceiver/CAN1_TX",
+    "10": "GND",
+    "11": "Net-(U702-Pad11)",
+    "12": "Net-(U702-Pad12)",
+    "13": "/microController/CAN1_INT",
+    "14": "/microController/CAN1_SCK",
+    "15": "Net-(U702-Pad15)",
+    "16": "/microController/CAN1_MOSI",
+    "17": "/microController/CAN1_MISO",
+    "18": "/microController/CAN1_SSEL",
+    "19": "+3V3",
+    "2": "/Can transceiver/CAN1_RX",
+    "20": "+3V3",
+    "3": "Net-(U702-Pad3)",
+    "4": "Net-(U702-Pad4)",
+    "5": "Net-(U702-Pad5)",
+    "6": "Net-(U702-Pad6)",
+    "7": "Net-(U702-Pad7)",
+    "8": "/microController/CAN_OSC2",
+    "9": "GND"
+   },
+   "ref": "U702",
+   "value": "MCP2515_TSSOP"
+  },
+  {
+   "footprint": "SMD_Packages:SOIC-8-N",
+   "pads": {
+    "1": "/microController/PROM_SSEL",
+    "2": "/microController/PROM_MISO",
+    "3": "+3V3",
+    "4": "GND",
+    "5": "/microController/PROM_MOSI",
+    "6": "/microController/PROM_SCK",
+    "7": "+3V3",
+    "8": "+3V3"
+   },
+   "ref": "U703",
+   "value": "AT25XX"
+  }
+ ]
+}

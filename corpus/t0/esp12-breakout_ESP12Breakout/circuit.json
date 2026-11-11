@@ -1,0 +1,132 @@
+{
+ "nets": [
+  "GND",
+  "Net-(P1-Pad2)",
+  "Net-(P1-Pad3)",
+  "Net-(P1-Pad4)",
+  "Net-(P1-Pad5)",
+  "Net-(P1-Pad6)",
+  "Net-(P1-Pad7)",
+  "Net-(P1-Pad8)",
+  "Net-(P2-Pad2)",
+  "Net-(P2-Pad3)",
+  "Net-(P2-Pad4)",
+  "Net-(P2-Pad5)",
+  "Net-(P2-Pad6)",
+  "Net-(P2-Pad7)",
+  "Net-(P2-Pad8)",
+  "Net-(U1-Pad10)",
+  "Net-(U1-Pad11)",
+  "Net-(U1-Pad12)",
+  "Net-(U1-Pad13)",
+  "Net-(U1-Pad14)",
+  "Net-(U1-Pad9)",
+  "VCC"
+ ],
+ "parts": [
+  {
+   "footprint": "Customised:Socket_Strip_Straight_1x08",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(P1-Pad2)",
+    "3": "Net-(P1-Pad3)",
+    "4": "Net-(P1-Pad4)",
+    "5": "Net-(P1-Pad5)",
+    "6": "Net-(P1-Pad6)",
+    "7": "Net-(P1-Pad7)",
+    "8": "Net-(P1-Pad8)"
+   },
+   "ref": "P1",
+   "value": "CONN_01X08"
+  },
+  {
+   "footprint": "Customised:Socket_Strip_Straight_1x08",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(P2-Pad2)",
+    "3": "Net-(P2-Pad3)",
+    "4": "Net-(P2-Pad4)",
+    "5": "Net-(P2-Pad5)",
+    "6": "Net-(P2-Pad6)",
+    "7": "Net-(P2-Pad7)",
+    "8": "Net-(P2-Pad8)"
+   },
+   "ref": "P2",
+   "value": "CONN_01X08"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(P1-Pad8)"
+   },
+   "ref": "R1",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(P1-Pad6)"
+   },
+   "ref": "R2",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(P2-Pad4)"
+   },
+   "ref": "R3",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "VCC",
+    "2": "Net-(P2-Pad3)"
+   },
+   "ref": "R4",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0805_HandSoldering",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(P2-Pad2)"
+   },
+   "ref": "R5",
+   "value": "10k"
+  },
+  {
+   "footprint": "ESP8266:ESP-12E",
+   "pads": {
+    "1": "Net-(P1-Pad8)",
+    "10": "Net-(U1-Pad10)",
+    "11": "Net-(U1-Pad11)",
+    "12": "Net-(U1-Pad12)",
+    "13": "Net-(U1-Pad13)",
+    "14": "Net-(U1-Pad14)",
+    "15": "GND",
+    "16": "Net-(P2-Pad2)",
+    "17": "Net-(P2-Pad3)",
+    "18": "Net-(P2-Pad4)",
+    "19": "Net-(P2-Pad5)",
+    "2": "Net-(P1-Pad7)",
+    "20": "Net-(P2-Pad6)",
+    "21": "Net-(P2-Pad7)",
+    "22": "Net-(P2-Pad8)",
+    "3": "Net-(P1-Pad6)",
+    "4": "Net-(P1-Pad5)",
+    "5": "Net-(P1-Pad4)",
+    "6": "Net-(P1-Pad3)",
+    "7": "Net-(P1-Pad2)",
+    "8": "VCC",
+    "9": "Net-(U1-Pad9)"
+   },
+   "ref": "U1",
+   "value": "ESP-12E"
+  }
+ ]
+}

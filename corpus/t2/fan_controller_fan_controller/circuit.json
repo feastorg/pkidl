@@ -1,0 +1,538 @@
+{
+ "nets": [
+  "+12V",
+  "+5V",
+  "/ENC_A(CN2)",
+  "/ENC_B(CN6)",
+  "/SW(CN7)",
+  "/pwm0(OC2B)",
+  "/pwm1(OC5)",
+  "/pwm2(OC4)",
+  "/pwm3(OC1E)",
+  "/pwm_in",
+  "/sense0(CN13)",
+  "/sense1",
+  "/sense2",
+  "/sense3",
+  "/sense_out",
+  "GND",
+  "Net-(C10-Pad1)",
+  "Net-(C12-Pad1)",
+  "Net-(D1-Pad1)",
+  "Net-(D2-Pad1)",
+  "Net-(D3-Pad1)",
+  "Net-(D4-Pad1)",
+  "Net-(P3-Pad4)",
+  "Net-(P4-Pad4)",
+  "Net-(P5-Pad4)",
+  "Net-(P6-Pad4)",
+  "Net-(Q1-Pad1)",
+  "Net-(Q2-Pad1)",
+  "Net-(Q3-Pad1)",
+  "Net-(Q4-Pad1)",
+  "Net-(Q5-Pad1)",
+  "Net-(R14-Pad1)",
+  "Net-(R5-Pad2)",
+  "Net-(U1-Pad11)",
+  "Net-(U1-Pad12)",
+  "Net-(U1-Pad16)",
+  "Net-(U1-Pad22)",
+  "Net-(U1-Pad26)",
+  "Net-(U1-Pad9)",
+  "PGEC",
+  "PGED",
+  "analog_cmd",
+  "~{MCLR}"
+ ],
+ "parts": [
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+12V",
+    "2": "GND"
+   },
+   "ref": "C1",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "Net-(C10-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C10",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "analog_cmd",
+    "2": "GND"
+   },
+   "ref": "C11",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "Net-(C12-Pad1)",
+    "2": "GND"
+   },
+   "ref": "C12",
+   "value": "1uF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C2",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+12V",
+    "2": "GND"
+   },
+   "ref": "C3",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+12V",
+    "2": "GND"
+   },
+   "ref": "C4",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+12V",
+    "2": "GND"
+   },
+   "ref": "C5",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+12V",
+    "2": "GND"
+   },
+   "ref": "C6",
+   "value": "100nF"
+  },
+  {
+   "footprint": "Capacitors_ThroughHole:C_Radial_D5_L11_P2",
+   "pads": {
+    "1": "+12V",
+    "2": "GND"
+   },
+   "ref": "C7",
+   "value": "47uF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C8",
+   "value": "100nF"
+  },
+  {
+   "footprint": "lib_pcb:SM_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "GND"
+   },
+   "ref": "C9",
+   "value": "100nF"
+  },
+  {
+   "footprint": "Diodes_SMD:D_0805",
+   "pads": {
+    "1": "Net-(D1-Pad1)",
+    "2": "/pwm0(OC2B)"
+   },
+   "ref": "D1",
+   "value": "LED"
+  },
+  {
+   "footprint": "Diodes_SMD:D_0805",
+   "pads": {
+    "1": "Net-(D2-Pad1)",
+    "2": "/pwm1(OC5)"
+   },
+   "ref": "D2",
+   "value": "LED"
+  },
+  {
+   "footprint": "Diodes_SMD:D_0805",
+   "pads": {
+    "1": "Net-(D3-Pad1)",
+    "2": "/pwm2(OC4)"
+   },
+   "ref": "D3",
+   "value": "LED"
+  },
+  {
+   "footprint": "Diodes_SMD:D_0805",
+   "pads": {
+    "1": "Net-(D4-Pad1)",
+    "2": "/pwm3(OC1E)"
+   },
+   "ref": "D4",
+   "value": "LED"
+  },
+  {
+   "footprint": "lib_pcb:CONN_1x4_PC_FAN",
+   "pads": {
+    "1": "GND",
+    "2": "+12V",
+    "3": "/sense_out",
+    "4": "/pwm_in"
+   },
+   "ref": "P1",
+   "value": "CONN_01X04"
+  },
+  {
+   "footprint": "kicad_pcb:CON_1x5_0.1in",
+   "pads": {
+    "1": "~{MCLR}",
+    "2": "+5V",
+    "3": "GND",
+    "4": "PGED",
+    "5": "PGEC"
+   },
+   "ref": "P2",
+   "value": "CONN_01X05"
+  },
+  {
+   "footprint": "lib_pcb:CONN_1x4_PC_FAN",
+   "pads": {
+    "1": "GND",
+    "2": "+12V",
+    "3": "/sense0(CN13)",
+    "4": "Net-(P3-Pad4)"
+   },
+   "ref": "P3",
+   "value": "CONN_01X04"
+  },
+  {
+   "footprint": "lib_pcb:CONN_1x4_PC_FAN",
+   "pads": {
+    "1": "GND",
+    "2": "+12V",
+    "3": "/sense1",
+    "4": "Net-(P4-Pad4)"
+   },
+   "ref": "P4",
+   "value": "CONN_01X04"
+  },
+  {
+   "footprint": "lib_pcb:CONN_1x4_PC_FAN",
+   "pads": {
+    "1": "GND",
+    "2": "+12V",
+    "3": "/sense2",
+    "4": "Net-(P5-Pad4)"
+   },
+   "ref": "P5",
+   "value": "CONN_01X04"
+  },
+  {
+   "footprint": "lib_pcb:CONN_1x4_PC_FAN",
+   "pads": {
+    "1": "GND",
+    "2": "+12V",
+    "3": "/sense3",
+    "4": "Net-(P6-Pad4)"
+   },
+   "ref": "P6",
+   "value": "CONN_01X04"
+  },
+  {
+   "footprint": "lib_pcb:SOT-23",
+   "pads": {
+    "1": "Net-(Q1-Pad1)",
+    "2": "GND",
+    "3": "/sense_out"
+   },
+   "ref": "Q1",
+   "value": "Q_NPN_BEC"
+  },
+  {
+   "footprint": "lib_pcb:SOT-23",
+   "pads": {
+    "1": "Net-(Q2-Pad1)",
+    "2": "GND",
+    "3": "Net-(P3-Pad4)"
+   },
+   "ref": "Q2",
+   "value": "Q_NPN_BEC"
+  },
+  {
+   "footprint": "lib_pcb:SOT-23",
+   "pads": {
+    "1": "Net-(Q3-Pad1)",
+    "2": "GND",
+    "3": "Net-(P4-Pad4)"
+   },
+   "ref": "Q3",
+   "value": "Q_NPN_BEC"
+  },
+  {
+   "footprint": "lib_pcb:SOT-23",
+   "pads": {
+    "1": "Net-(Q4-Pad1)",
+    "2": "GND",
+    "3": "Net-(P5-Pad4)"
+   },
+   "ref": "Q4",
+   "value": "Q_NPN_BEC"
+  },
+  {
+   "footprint": "lib_pcb:SOT-23",
+   "pads": {
+    "1": "Net-(Q5-Pad1)",
+    "2": "GND",
+    "3": "Net-(P6-Pad4)"
+   },
+   "ref": "Q5",
+   "value": "Q_NPN_BEC"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "~{MCLR}"
+   },
+   "ref": "R1",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "/sense0(CN13)"
+   },
+   "ref": "R10",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "/sense1"
+   },
+   "ref": "R11",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "/sense2"
+   },
+   "ref": "R12",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "/sense3"
+   },
+   "ref": "R13",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(R14-Pad1)",
+    "2": "Net-(Q1-Pad1)"
+   },
+   "ref": "R14",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(Q2-Pad1)",
+    "2": "/pwm0(OC2B)"
+   },
+   "ref": "R15",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(Q3-Pad1)",
+    "2": "/pwm1(OC5)"
+   },
+   "ref": "R16",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(Q4-Pad1)",
+    "2": "/pwm2(OC4)"
+   },
+   "ref": "R17",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(Q5-Pad1)",
+    "2": "/pwm3(OC1E)"
+   },
+   "ref": "R18",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D4-Pad1)"
+   },
+   "ref": "R19",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "+5V",
+    "2": "/pwm_in"
+   },
+   "ref": "R2",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(C10-Pad1)",
+    "2": "/pwm_in"
+   },
+   "ref": "R3",
+   "value": "10k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "analog_cmd",
+    "2": "Net-(C10-Pad1)"
+   },
+   "ref": "R4",
+   "value": "10k"
+  },
+  {
+   "footprint": "Diodes_SMD:D_0805",
+   "pads": {
+    "1": "+5V",
+    "2": "Net-(R5-Pad2)"
+   },
+   "ref": "R5",
+   "value": "1k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "Net-(R5-Pad2)",
+    "2": "GND"
+   },
+   "ref": "R6",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D1-Pad1)"
+   },
+   "ref": "R7",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D2-Pad1)"
+   },
+   "ref": "R8",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "Resistors_SMD:R_0603",
+   "pads": {
+    "1": "GND",
+    "2": "Net-(D3-Pad1)"
+   },
+   "ref": "R9",
+   "value": "1.0k"
+  },
+  {
+   "footprint": "lib_pcb:encoder_EN12-HS",
+   "pads": {
+    "1": "/ENC_A(CN2)",
+    "2": "+5V",
+    "3": "/ENC_B(CN6)",
+    "4": "+5V",
+    "5": "/SW(CN7)"
+   },
+   "ref": "SW1",
+   "value": "encoder_rotary_with_switch"
+  },
+  {
+   "footprint": "kicad_pcb:SSOP-28",
+   "pads": {
+    "1": "~{MCLR}",
+    "10": "Net-(R5-Pad2)",
+    "11": "Net-(U1-Pad11)",
+    "12": "Net-(U1-Pad12)",
+    "13": "+5V",
+    "14": "/pwm3(OC1E)",
+    "15": "/sense3",
+    "16": "Net-(U1-Pad16)",
+    "17": "/sense2",
+    "18": "/pwm2(OC4)",
+    "19": "/pwm1(OC5)",
+    "2": "/ENC_A(CN2)",
+    "20": "Net-(C12-Pad1)",
+    "21": "/sense1",
+    "22": "Net-(U1-Pad22)",
+    "23": "/pwm0(OC2B)",
+    "24": "/sense0(CN13)",
+    "25": "Net-(R14-Pad1)",
+    "26": "Net-(U1-Pad26)",
+    "27": "GND",
+    "28": "+5V",
+    "3": "analog_cmd",
+    "4": "PGED",
+    "5": "PGEC",
+    "6": "/ENC_B(CN6)",
+    "7": "/SW(CN7)",
+    "8": "GND",
+    "9": "Net-(U1-Pad9)"
+   },
+   "ref": "U1",
+   "value": "pic24fv08km202"
+  },
+  {
+   "footprint": "lib_pcb:DPAK_TO-252",
+   "pads": {
+    "1": "+12V",
+    "2": "GND",
+    "3": "+5V"
+   },
+   "ref": "U2",
+   "value": "L78M05"
+  }
+ ]
+}
