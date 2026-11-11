@@ -1,0 +1,50 @@
+[project]
+name = "kidl-spike"
+version = "0.1.0"
+description = "Generate BREAD KiCad boards from Python: SKiDL (electrical), pkidl (physical)"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "GPL-3.0-or-later"
+dependencies = [
+    "skidl>=2.3.0",
+    "pyyaml>=6.0",
+    "shapely>=2.2.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kidl_spike", "src/pkidl"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.11",
+    "pyright>=1.1",
+]
+
+# SKiDL is consumed from a local checkout, pinned to release 2.3.0 (SKIDL_REF in
+# CI), so the pin is an exact commit and patches can be carried if needed. Swap
+# for the PyPI release once the boundary is proven.
+[tool.uv.sources]
+skidl = { path = "../../skidl", editable = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+# build/ is generated output (gitignored, which ruff honours and pyright does not).
+exclude = ["build", "**/node_modules", "**/__pycache__", "**/.*"]
+# SKiDL ships no type stubs and uses dynamic attribute injection heavily.
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

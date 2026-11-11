@@ -1,0 +1,85 @@
+{
+  "_provenance": {
+    "source": "feastorg/Loaf_x004@ebf47df4ade9420ada2dbf45438047a26dd4bf81:hardware/BREAD_Loaf.kicad_sch",
+    "exported_with": "kicad-cli 10.0.6 sch export netlist --format kicadxml",
+    "transform": "net names lose KiCad's root-sheet '/' prefix; nodes are REF.PIN, sorted"
+  },
+  "nets": {
+    "+12V": [
+      "J1.1",
+      "J2.2",
+      "J2.9",
+      "J3.2",
+      "J3.9",
+      "J4.2",
+      "J4.9",
+      "J5.2",
+      "J5.9",
+      "J6.2",
+      "J6.9",
+      "J7.2",
+      "J7.9"
+    ],
+    "E_STOP_5V": [
+      "J2.6",
+      "J3.6",
+      "J4.6",
+      "J5.6",
+      "J6.6",
+      "J7.6"
+    ],
+    "GND": [
+      "J1.2",
+      "J2.1",
+      "J2.5",
+      "J2.10",
+      "J3.1",
+      "J3.5",
+      "J3.10",
+      "J4.1",
+      "J4.5",
+      "J4.10",
+      "J5.1",
+      "J5.5",
+      "J5.10",
+      "J6.1",
+      "J6.5",
+      "J6.10",
+      "J7.1",
+      "J7.5",
+      "J7.10"
+    ],
+    "INT_5V": [
+      "J2.7",
+      "J3.7",
+      "J4.7",
+      "J5.7",
+      "J6.7",
+      "J7.7"
+    ],
+    "SCL_5V": [
+      "J2.3",
+      "J3.3",
+      "J4.3",
+      "J5.3",
+      "J6.3",
+      "J7.3"
+    ],
+    "SDA_5V": [
+      "J2.4",
+      "J3.4",
+      "J4.4",
+      "J5.4",
+      "J6.4",
+      "J7.4"
+    ],
+    "SYNC_5V": [
+      "J2.8",
+      "J3.8",
+      "J4.8",
+      "J5.8",
+      "J6.8",
+      "J7.8"
+    ]
+  }
+}

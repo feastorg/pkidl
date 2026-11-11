@@ -1,0 +1,50 @@
+# Slice_DCMT: two encoder terminals, then two LMD18200 H-bridge channels. The bus
+# ground is the power ground, tied to logic ground at NT1. References are the
+# original's (feastorg/Slice_DCMT), so it compares part for part. Anchors: each
+# encoder terminal's and each bridge's LMD18200's position, board mm.
+name: dcmt
+title: Slice_DCMT
+root: dcmt
+# Power copper as the original draws it, signals crossing where it does (phase 6).
+authored_copper: true
+power_nets: ["+12V", GNDPWR]
+buck: AP63205
+ground: GNDPWR
+net_tie: true
+# ERC treats the two sides of the net tie as separate nets, so GND needs one too.
+pwr_flags: ["+12V", GNDPWR, GND]
+nano:
+  pins:
+    4: "GND"
+    29: "GND"
+    27: "+5V"
+    24: "SCL_5V"
+    23: "SDA_5V"
+    5: "E_STOP_5V"
+    6: "INT_5V"
+    7: "SYNC_5V"
+    8: "LED"
+  unused: [1, 2, 3, 17, 18, 28, 30]
+channels:
+  - kind: encoder
+    ch: ENC1
+    a: 20
+    b: 19
+    refs: {J: J2}
+    anchor: [188.75, 119.68]
+  - kind: encoder
+    ch: ENC2
+    a: 22
+    b: 21
+    refs: {J: J3}
+    anchor: [188.76, 108.04]
+  - kind: bridge
+    ch: CH1
+    pins: {DIR: 14, BRAKE: 15, PWM: 13, CSENS: 26, THRM: 16}
+    refs: {U: U2, CBULK: C5, CVS: C7, CSNS: C6, CB1: C8, CB2: C9, R: R1, S: S1, JVDC: J4, JOUT: J5}
+    anchor: [155.570692, 74.2]
+  - kind: bridge
+    ch: CH2
+    pins: {DIR: 10, BRAKE: 11, PWM: 9, CSENS: 25, THRM: 12}
+    refs: {U: U3, CBULK: C10, CVS: C12, CSNS: C11, CB1: C13, CB2: C14, R: R2, S: S2, JVDC: J6, JOUT: J7}
+    anchor: [155.570692, 42.15]
