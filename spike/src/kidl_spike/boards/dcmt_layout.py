@@ -25,6 +25,9 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+from pkidl.dsn import Via, Wire, via_padstack
+from pkidl.footprint import pad_xy
+from pkidl.sexpr import Node, find, find_all
 from shapely.geometry import Polygon, box
 
 from kidl_spike.boards import dcmt_copper as cu
@@ -34,9 +37,6 @@ from kidl_spike.boards.dcmt import SPEC
 from kidl_spike.boards.slice import ORIGIN, Spot
 from kidl_spike.boards.slice_build import Authored, Root, dru_rules, hull_pours, netclasses
 from kidl_spike.boards.slice_build import build_pcb as _build_pcb
-from pkidl.dsn import Via, Wire, via_padstack
-from pkidl.footprint import pad_xy
-from pkidl.sexpr import Node, find, find_all
 
 # Fixed, by the format or by the original.
 FIXED = {

@@ -58,6 +58,31 @@ jobs:
               - '!**/*.md'
               - '!docs/**'
 
+  library:
+    name: Library
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      # pkidl itself: no KiCad, SKiDL or router needed.
+      - name: Setup
+        run: just setup
+
+      - name: Check (fmt + lint + typecheck)
+        run: just check
+
+      - name: Test
+        run: just test
+
   check:
     name: Check
     needs: [changes]
@@ -359,7 +384,7 @@ jobs:
   ok:
     name: ok
     if: always()
-    needs: [changes, check, test, kicad]
+    needs: [changes, library, check, test, kicad]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

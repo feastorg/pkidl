@@ -16,12 +16,12 @@ import re
 from pathlib import Path
 
 import pytest
+from pkidl.route import RouterError, router_command
+from pkidl.sexpr import find, find_all, parse
 
 from kidl_spike import libs
 from kidl_spike.boards import rlht, rlht_layout
 from kidl_spike.boards.common import default_circuit
-from pkidl.route import RouterError, router_command
-from pkidl.sexpr import find, find_all, parse
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "slice_rlht_nets.json").read_text())
 

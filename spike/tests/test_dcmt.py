@@ -16,16 +16,16 @@ import re
 from pathlib import Path
 
 import pytest
+from pkidl.dsn import Via, Wire, via_padstack
+from pkidl.footprint import board_xy
+from pkidl.route import RouterError, router_command
+from pkidl.sexpr import find, find_all, parse
 
 from kidl_spike import libs
 from kidl_spike.boards import dcmt, dcmt_layout
 from kidl_spike.boards.common import default_circuit
 from kidl_spike.boards.slice import _with
 from kidl_spike.boards.slice_build import _joins_both
-from pkidl.dsn import Via, Wire, via_padstack
-from pkidl.footprint import board_xy
-from pkidl.route import RouterError, router_command
-from pkidl.sexpr import find, find_all, parse
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "slice_dcmt_nets.json").read_text())
 

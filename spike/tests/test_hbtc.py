@@ -10,11 +10,11 @@ import re
 from pathlib import Path
 
 import pytest
+from pkidl.route import RouterError, router_command
+from pkidl.sexpr import find, find_all, parse
 
 from kidl_spike import libs
 from kidl_spike.boards import hbtc
-from pkidl.route import RouterError, router_command
-from pkidl.sexpr import find, find_all, parse
 
 
 def _require() -> None:

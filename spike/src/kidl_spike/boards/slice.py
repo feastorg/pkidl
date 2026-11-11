@@ -12,14 +12,15 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
-from kidl_spike import libs
-from kidl_spike.boards.common import SLICE_S, symbols
 from pkidl.board import Board
 from pkidl.dsn import Via, Wire, read_ses, via_size, write_dsn
 from pkidl.footprint import Placement, place
 from pkidl.project import DruRule, NetClass
 from pkidl.route import freerouting
 from pkidl.sexpr import Node, find, find_all
+
+from kidl_spike import libs
+from kidl_spike.boards.common import SLICE_S, symbols
 
 ORIGIN = (122.6, 39.8)  # top-left corner of the board edge, as on the originals
 

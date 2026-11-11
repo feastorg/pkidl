@@ -7,13 +7,14 @@ from __future__ import annotations
 
 import math
 
-from kidl_spike.boards.slice import POUR_MIN_WIDTH, Spot
 from pkidl.board import Board
 from pkidl.dsn import Via, via_padstack
 from pkidl.footprint import pad_xy
 from pkidl.project import DruRule, NetClass
 from pkidl.sexpr import Node, find
 from pkidl.silk import nearest_clear_spot, silk_box, text_box
+
+from kidl_spike.boards.slice import POUR_MIN_WIDTH, Spot
 
 # Relay block, relative to the relay. The original's first channel, with the
 # terminal 3.7 mm closer, so the second channel's relay clears the Nano, and the

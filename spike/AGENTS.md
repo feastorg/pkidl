@@ -11,6 +11,12 @@ layer and **pkidl** (new, under development) for the physical layer.
 The end state: **KiCad files are build artifacts, not source.** Python is committed;
 `.kicad_sch` / `.kicad_pcb` are generated in CI or on demand.
 
+pkidl lives at the repository root (`../src/pkidl`), and its rules in `../AGENTS.md`
+apply here too. In particular, a board is written from its circuit and mechanical
+requirements, never from a reference board's layout. DCMT's `dcmt_copper.py` and
+`scripts/extract_dcmt_copper.py` predate that rule: they copy the original's copper and
+are to be replaced by pkidl intent (`../docs/charter.md`), not extended.
+
 Planning lives in `_planning/`; evidence and analysis in `_working/`. Read
 `_planning/01-kidl-spike.md` first.
 
@@ -37,8 +43,6 @@ src/kidl_spike/
     boards/      # one module per board (+ <board>_layout.py for the physical layer);
                  # common.py: the bus pinout, the Slice format, shared parts, the build;
                  # slice.py: Slice placement, routing and pours
-src/pkidl/       # physical layer: writes .kicad_pcb / .kicad_pro, routes via DSN/SES.
-                 # Imports nothing from kidl_spike
 tests/
 build/           # GENERATED. Gitignored. Never hand-edit.
 ```

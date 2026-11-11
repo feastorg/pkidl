@@ -1,7 +1,7 @@
 # kidl-spike
 
 Generate BREAD KiCad boards from Python — [SKiDL](https://github.com/devbisme/skidl) for
-the electrical layer, `pkidl` (under development, in `src/pkidl/`) for the physical layer.
+the electrical layer, `pkidl` (this repository's library, `../src/pkidl/`) for the physical layer.
 
 A spike to prove that `Loaf_x004`, `Slice_DCMT` and `Slice_RLHT` — three real boards from
 the BREAD thesis platform, currently hand-drawn in KiCad — can be regenerated from
@@ -35,9 +35,9 @@ entries proves nothing; resolving a part proves the toolchain works.
   autorouted (the Slices): a `freerouting` command, or `$FREEROUTING` set to one. The version
   is pinned in `src/kidl_spike/doctor.py`; it needs Java 25
 
-`pkidl` (the physical layer) is developed inside this repo, in `src/pkidl/`. It
-imports nothing from `kidl_spike`, so it can move to the `pkidl` repo once its
-primitives settle.
+`pkidl` (the physical layer) lives at this repository's root, in `../src/pkidl/`.
+The spike takes it as a dependency from `..`, as an outside project would take a
+release, and uses only its public API.
 
 ## Generating a board
 

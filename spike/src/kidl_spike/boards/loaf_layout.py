@@ -17,9 +17,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from kidl_spike import libs
-from kidl_spike.boards.common import symbols
-from kidl_spike.boards.spec import load_loaf
 from pkidl.board import Board
 from pkidl.footprint import Placement, pad_xy, place
 from pkidl.project import (
@@ -32,6 +29,10 @@ from pkidl.project import (
     write_rules,
 )
 from pkidl.silk import nearest_clear_spot, place_references, silk_box, text_box
+
+from kidl_spike import libs
+from kidl_spike.boards.common import symbols
+from kidl_spike.boards.spec import load_loaf
 
 # The interface, from loaf.yaml: edge, corner radius, connectors as
 # reference -> (x, y, rotation, on the back), and the logo and label spots.

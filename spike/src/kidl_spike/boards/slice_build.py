@@ -17,6 +17,23 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from pkidl.board import Board
+from pkidl.dsn import Via, Wire, via_padstack
+from pkidl.dsn import via_size as _via_size
+from pkidl.fill import prefill
+from pkidl.footprint import Placement, place
+from pkidl.project import (
+    PARITY_ERRORS,
+    SILK_ERRORS,
+    DruRule,
+    NetClass,
+    width_rules,
+    write_project,
+    write_rules,
+)
+from pkidl.sexpr import Node, parse
+from pkidl.silk import nearest_clear_spot, place_references
+from pkidl.stitch import stitch_points
 from shapely.geometry import LineString, Polygon
 from shapely.geometry import Point as SPoint
 
@@ -57,23 +74,6 @@ from kidl_spike.boards.slice import (
     route,
 )
 from kidl_spike.boards.spec import BoardSpec
-from pkidl.board import Board
-from pkidl.dsn import Via, Wire, via_padstack
-from pkidl.dsn import via_size as _via_size
-from pkidl.fill import prefill
-from pkidl.footprint import Placement, place
-from pkidl.project import (
-    PARITY_ERRORS,
-    SILK_ERRORS,
-    DruRule,
-    NetClass,
-    width_rules,
-    write_project,
-    write_rules,
-)
-from pkidl.sexpr import Node, parse
-from pkidl.silk import nearest_clear_spot, place_references
-from pkidl.stitch import stitch_points
 
 LOGO_FOOTPRINT = "KMLib_Aesthetic:OSHW_Logo_10mm"
 DEFAULT = NetClass("Default", clearance=0.2, track_width=0.5, via_diameter=1.0, via_drill=0.5)

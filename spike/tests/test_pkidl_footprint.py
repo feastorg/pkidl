@@ -11,10 +11,10 @@ are not covered here.
 from pathlib import Path
 
 import pytest
-
-from kidl_spike import libs
 from pkidl.footprint import Placement, place
 from pkidl.sexpr import Node, find, find_all, parse
+
+from kidl_spike import libs
 
 FIXTURE = Path(__file__).parent / "fixtures" / "loaf_x004_footprints.kicad_pcb"
 GRAPHICS = ("fp_line", "fp_rect", "fp_circle", "fp_arc", "fp_poly")

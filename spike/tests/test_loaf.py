@@ -12,11 +12,11 @@ import json
 from pathlib import Path
 
 import pytest
+from pkidl.footprint import pad_xy
+from pkidl.sexpr import find, find_all, parse
 
 from kidl_spike import libs
 from kidl_spike.boards import loaf_layout
-from pkidl.footprint import pad_xy
-from pkidl.sexpr import find, find_all, parse
 
 FIXTURES = Path(__file__).parent / "fixtures"
 NETS = FIXTURES / "loaf_x004_nets.json"
