@@ -1,0 +1,161 @@
+# Changelog
+
+All notable changes to pkidl are documented here, in
+[Keep a Changelog](https://keepachangelog.com) format: what someone using the library,
+or building on it, would notice. Nothing has been released yet, so every entry is under
+Unreleased. History before this file was reconstructed from the git log.
+
+## [Unreleased]
+
+### Added
+
+- `pkidl.annotations`: what a footprint does not say about its part, held as named
+  areas. An annotation is a TOML file written against two of the part's pads, not the
+  footprint's origin. `fit()` turns it through right angles until those two pads are
+  where the footprint has them, and refuses a footprint where they are not. Annotations
+  ship in `pkidl/parts` and are found by the footprint's name, whichever library it is
+  in; `Board.from_inputs()` fits them. The first is the ESP-12E's antenna: the box its
+  footprint marks "No Copper", not checked against a datasheet. (#14)
+- `Part.area(name)` gives one of a part's areas. `Board.annotate(part, name=(corner,
+  corner))` gives the areas of a part that ships with none, in its footprint's
+  coordinates. An area is said once: a different box for a name already there is
+  refused. (#14)
+- `keepout(area, copper=True, both_sides=True)` and `Board.keepout()`: a statement that
+  an area of a part is kept clear. It says nothing of where the part goes, so keepouts
+  never conflict. `Board.solve()` keeps every other part out of the area, on the part's
+  face or on both, and `Solution.keepouts` says where each area is. A part given a
+  place inside one is reported and stays where it was put. `keepout` is exported from
+  `pkidl`. (#14)
+- `Board.solve()` and `pkidl.placement`: where each part goes, worked out from what the
+  board's statements say. It gives a `Solution`: a `Pose` for each part placed
+  (`poses`), the parts nothing places (`free`), what was said that does not hold, with
+  the statements that said it (`problems`), and what it decided where nothing said
+  (`chosen`). It moves nothing on the board and drops no statement to make the others
+  fit. Parts are turned in right angles only, the board is taken as the box around its
+  outline, and the same statements give the same placement whatever order they were
+  added in. (#13)
+- `place()` takes `side=`: `Side.BACK` or `"back"` puts a part on the back of the board.
+  (#13)
+- `pkidl.intent`: `place()` and `align()` make statements about where parts go. A part
+  is placed `against=` an `Edge` with an `inset=`, `between=` two parts, `facing=` an
+  edge, or `near=` a pin or part `within=` a distance; aligned parts sit a whole number
+  of `grid=` steps apart. A statement is an immutable value that records the line of
+  the board file that made it, and making one moves nothing. (#12)
+- `Board.place()`, `Board.align()` and `Board.add()` add statements to a board and give
+  them back; `Board.statements()` lists them, for one part with `about=`. The order
+  they are added in means nothing, and a statement added twice is kept once. (#12)
+- `Board.conflicts()`: each aspect of a part that two statements give differently, with
+  the line each was written on. Neither wins. (#12)
+- `pkidl.units`: `mm`, `mil` and `inch`, so a length is written with its unit, as
+  `1.27 * mm` or `"50mil"`. A `Length` is a whole number of nanometres. A bare number
+  has no unit and is refused. (#12)
+- `pkidl.circuit`: a board's parts, pins and nets as objects (`Part`, `Pin`, `Net`),
+  reached through the board with `board["U1"]`, `board.parts()`, `board.net()` and
+  `board.nets()`. `board.parts()` takes references, runs such as `"R1..R5"`, and the
+  selectors `on_net()` and `where()`; with nothing asked for it gives every part. (#11)
+- `Board.rails()` declares the supplies and grounds, the nets `Part.signal_net` leaves
+  out. `Board.name_nets()` gives nets the schematic left anonymous a name to use in the
+  board file: the net is found by either name, and its `name` stays the circuit's. (#11)
+- `Board.from_inputs(where)`: a board from a directory holding `circuit.json`,
+  `mechanical.json` and `footprints/`. The outline is drawn and the mounting holes are
+  placed where `mechanical.json` puts them; the parts are loaded and not placed. A
+  missing footprint file, or a part connected on a pad its footprint lacks, is reported
+  by name. (#10)
+- `Board.outline(items)`: the board edge from lines, arcs, rectangles, circles and
+  polygons, as `mechanical.json` lists them. (#10)
+- `pkidl.footprint.place()` takes a parsed footprint as well as a footprint file or its
+  text, and `Placement.uid` derives a footprint's UUIDs from a key other than its
+  reference. (#10)
+- `Board` is exported from `pkidl`, with `Edge`, `Side`, `place`, `align`, `mm`, `mil`,
+  `inch`, `on_net` and `where`. (#10, #11, #12, #13)
+- `pkidl.footprint.library_form(placed)`: the library footprint a placed one was placed
+  from, with nothing of its placement left. (#9)
+- `pkidl.footprint.footprint_path(name)`: where a footprint library keeps a footprint,
+  `<library>.pretty/<footprint>.kicad_mod`. (#9, #10)
+- `pkidl.importer`: reads the inputs a board is designed from out of an existing
+  `.kicad_pcb`. `circuit(board)` gives the parts, their values, footprints and pad nets;
+  `mechanical(board)` gives the outline and the mounting holes; `footprints(board)`
+  gives the library footprint behind each footprint name. Nothing else of the board's
+  layout is read. (#7, #9)
+- `corpus/`: public boards under permissive licences, in tiers of difficulty. Each has
+  its reference board, its `LICENSE`, and the inputs a board file reads: `circuit.json`,
+  `mechanical.json` and `footprints/`. `corpus/manifest.json` records each board's tier,
+  licence, source and file hashes. (#7, #9)
+- `just corpus` has KiCad refill and check each corpus reference and prints the
+  scorecard. `python scripts/corpus.py extract` rewrites the corpus inputs from the
+  references. (#7, #9)
+- `docs/design/board-files.md`: a board file for one corpus board of each tier, written
+  before the library could build them, with what each asks of pkidl. It fixes the API
+  style: a board is added to with statements that are immutable and solved together
+  whatever their order, there is no `remove()`, and a variant is a function that builds
+  a board. `docs/roadmap.md` says where pkidl stands and what comes next. (#8)
+- `docs/charter.md`: what pkidl is and is not, its layers, its design principles and the
+  order of work. `docs/survey/` holds the prior-art survey behind it. (#4, #5)
+- `pkidl.sexpr`: reads and writes KiCad's s-expression files (`parse`, `dumps`, `find`,
+  `find_all`). Numbers are kept as the file wrote them, a tree written and read back is
+  the same tree, and the same tree always gives the same bytes. (#2)
+- `pkidl.footprint.place()`: a library footprint placed on a board the way KiCad stores
+  it, from a `Placement`: its position, rotation and side, its pad nets and its link to
+  the schematic. `board_only`, `in_bom` and `solid_pads` set what the library footprint
+  does not. (#2)
+- `pkidl.board.Board`: assembles a board file in the format KiCad 10 saves
+  (`version 20260206`) from `footprint()`, `track()`, `via()`, `zone()`, `rule_area()`,
+  `text()` and `outline_rounded_rect()`, and writes it with `write()`. Zones are
+  written with their outline only, for KiCad to fill. Every UUID is derived from what
+  the item is, so the same board is written as the same bytes. (#2)
+- `Board.pour()`: a net poured over the whole board, or around its pads on the parts
+  given with `around=`, so the pour follows the placement. (#2)
+- `pkidl.project`: `write_project()` writes a `.kicad_pro` with its net classes, rules
+  and severities stated, not left to KiCad's defaults. `PARITY_ERRORS` and
+  `SILK_ERRORS` are severities that make schematic parity findings and silkscreen over
+  copper errors. `width_rules()` and `write_rules()` write a `.kicad_dru` that holds
+  each net class to a minimum track width. (#2)
+- `pkidl.dsn`: `write_dsn()` writes a Specctra DSN file for an autorouter from the
+  board, and `read_ses()` reads the routes back. `only=` leaves every other net out of
+  the network to route, `fixed=` writes routes already made as protected wiring,
+  `class_clearances=` writes the clearance between two net classes, `areas=` are
+  written as keepouts and `planes=` as planes. A footprint's copper polygons are
+  written as keepouts, and a pad's copper is written at its offset from its drill. (#2)
+- `pkidl.route.freerouting()`: runs Freerouting on a DSN file, with one router thread
+  and one optimizer thread. `$FREEROUTING` overrides the command. A command that is not
+  found, exits with an error or writes no session file raises `RouterError`. (#2)
+- `pkidl.fill.prefill()`: each pour's fill worked out before routing, to give to
+  `write_dsn(planes=...)`. It leaves the board's zones as they are. (#2)
+- `pkidl.stitch.stitch_points()`: grid points where a stitching via on a net fits: clear
+  of every pad, of other nets' tracks and vias, of the areas given with `avoid=` and of
+  the board edge, and where its model of the net's pour reaches the via on both
+  layers. (#2)
+- `pkidl.silk`: `place_references()` moves each footprint's reference to a spot clear of
+  pads, other silkscreen and the board edge, or to the fab layer when there is none.
+  `nearest_clear_spot()` finds a clear place for a board text. (#2)
+- `pkidl.measure`: `regions()` counts each net's pour regions on a board KiCad has
+  filled. `python -m pkidl.measure BOARD [NET ...] [NET=REGIONS ...]` prints them and
+  exits 1 when a net named with `=` has another count. (#2)
+- pkidl depends on shapely, which `pkidl.fill` and `pkidl.measure` use. (#2)
+- `spike/`: the earlier spike and its history. Its boards are written with pkidl, and it
+  stays a separate project. (#2)
+
+### Changed
+
+- pkidl is licensed under Apache-2.0, where it was MIT. `spike/` is GPL-3.0-or-later.
+  (#3)
+- The library, its tests and their fixtures moved from `spike/` to the repository root,
+  as a project of its own: Python 3.13 or later, depending on shapely only, with tests
+  that need no KiCad, SKiDL or router. `spike/` uses pkidl's public API as an outside
+  project would. (#6)
+- `pkidl.importer.mechanical()` records each mounting hole's rotation and side (`rot`,
+  `back`), and `Board.from_inputs()` places the hole with them. (#10)
+- The call that draws a rule area from an outline is `Board.rule_area()`. It was
+  `Board.keepout()`, which is now the statement about a part's area. (#14)
+- `Board.solve()` places the parts given a place before the parts that look for one
+  (`near=`), then by reference, so a part that looks sees every area kept clear. (#14)
+- `place(between=, against=)` with an edge: the edge says how far the part is from it,
+  and `between=` where it is along it. The two were reported as two places. (#14)
+
+### Fixed
+
+- `pkidl.footprint.place()` flips a text's mirror flag when a footprint goes to the
+  back. A text the library already mirrored was left mirrored. (#9)
+- `pkidl.importer.mechanical()` reads each drill of a hole where it is. Drills were
+  found by pad number, so every drill of a hole with unnumbered pads read as the first
+  one's position. (#10)

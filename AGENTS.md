@@ -34,6 +34,8 @@ Freerouting; pkidl's own tests need none of them.
 
 - Run `just check && just test` before every commit; in `spike/` too when it changes.
 - Conventional Commits: `type(scope): description`.
+- A change a user of the library would notice adds its entry to `CHANGELOG.md`, under
+  Unreleased, in the same PR.
 - **A board is written from its circuit and its mechanical requirements, never from a
   reference board's layout.** Reference and corpus boards are compared against, not
   copied from: no extracting or transcribing their copper, positions or vias into a
