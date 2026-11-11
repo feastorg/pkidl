@@ -1,0 +1,364 @@
+# Calls the `just` recipes so CI and local share one gate definition.
+#
+# Path-aware: docs-only changes skip the heavy check/test jobs via
+# dorny/paths-filter, while the always-running `ok` aggregator still reports a
+# green required status — so a docs PR merges without running the full matrix.
+#
+# Branch protection: require ONLY the `ok` context (not `check`/`test`). Skipped
+# jobs don't block; only failures and cancellations do.
+#
+# See https://github.com/CameronBrooks11/dev-toolbox/blob/main/docs/just-conventions.md
+
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # SKiDL is pinned to an exact commit: release 2.3.0, whose kicad10 backend the
+  # generators use. An unpinned library silently changing the netlist we generate
+  # is exactly the failure this project exists to eliminate; a bump is a reviewed
+  # PR, gated by tests/test_loaf.py.
+  SKIDL_REF: b94f04d436b5012f09ca103d8830e6705874a6f4
+  # The autorouter's jar, for the version doctor.py pins (WANT_FREEROUTING): the
+  # release asset's sha256 digest. A bump changes both, in one reviewed PR.
+  FREEROUTING_SHA256: f6f51bb02245e8e717f9359bd260cc9c5c0b1bc0acc8b7cb2cd5b8ffeb5de3c7
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # A file counts as code only if it matches every pattern. The default,
+          # 'some', matches everything through '**' and ignores the exclusions.
+          predicate-quantifier: 'every'
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+
+  check:
+    name: Check
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: kidl-spike
+
+      # uv resolves skidl from ../skidl (see [tool.uv.sources]), so it must exist
+      # even for a lint/typecheck run.
+      - name: Checkout skidl
+        uses: actions/checkout@v4
+        with:
+          repository: devbisme/skidl
+          ref: ${{ env.SKIDL_REF }}
+          path: skidl
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup
+        working-directory: kidl-spike
+        run: just setup
+
+      - name: Check (fmt + lint + typecheck)
+        working-directory: kidl-spike
+        run: just check
+
+  test:
+    name: Test
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: kidl-spike
+
+      # SKiDL is consumed from a local checkout (uv.sources), not PyPI, so the
+      # pin is an exact commit and patches can be carried if needed.
+      - name: Checkout skidl
+        uses: actions/checkout@v4
+        with:
+          repository: devbisme/skidl
+          ref: ${{ env.SKIDL_REF }}
+          path: skidl
+
+      # Library resolution must come from committed tables, never a global KiCad
+      # config -- that was risk R1. 3D models are excluded: nothing in ERC, DRC,
+      # netlist or schematic generation reads one, and they are ~206MB of ~269MB.
+      - name: Checkout KiCad-Master-Lib (no 3D models)
+        run: |
+          git clone --filter=blob:none --sparse --depth 1 \
+            https://github.com/feastorg/KiCad-Master-Lib.git KiCad-Master-Lib
+          git -C KiCad-Master-Lib sparse-checkout set --no-cone '/*' \
+            '!*.step' '!*.STEP' '!*.stp' '!*.STP' '!*.wrl' '!*.WRL'
+
+      # Stock KiCad symbols, at the exact version doctor.py pins (the single
+      # source of truth), so board tests that resolve stock parts run here
+      # instead of skipping. Only the libraries the boards and tests use: the
+      # whole library is ~220MB.
+      #
+      # The source repo stores each library as a sharded .kicad_symdir, which
+      # the pinned SKiDL cannot read. KiCad's install packs them into single
+      # .kicad_sym files with the tag's own tools/kicad_lib_pack.py; we run the
+      # same step. Its output for Connector, Device and power was checked
+      # byte-identical to the installed 10.0.6 flatpak's.
+      - name: Read the pinned KiCad version
+        run: |
+          ver=$(sed -n 's/^WANT_KICAD = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_KICAD not found in doctor.py"; exit 1; }
+          echo "KICAD_VER=$ver" >> "$GITHUB_ENV"
+
+      - name: Pack stock KiCad symbols (pinned version)
+        run: |
+          git clone --filter=blob:none --sparse --depth 1 --branch "$KICAD_VER" \
+            https://gitlab.com/kicad/libraries/kicad-symbols.git kicad-symbols-src
+          libs="Connector Device Driver_Motor Isolator MCU_Module Mechanical Relay
+                Sensor_Temperature power"
+          git -C kicad-symbols-src sparse-checkout set --no-cone /tools/ \
+            $(for l in $libs; do echo "/$l.kicad_symdir/"; done)
+          python3 kicad-symbols-src/tools/kicad_lib_pack.py -v -o kicad-symbols \
+            -i $(for l in $libs; do echo "kicad-symbols-src/$l.kicad_symdir"; done)
+          for l in $libs; do ls "kicad-symbols/$l.kicad_sym"; done
+
+      # Stock footprints the boards place, from the same tag, for the board and
+      # footprint-placement tests.
+      - name: Checkout stock KiCad footprints (pinned version)
+        run: |
+          git clone --filter=blob:none --sparse --depth 1 --branch "$KICAD_VER" \
+            https://gitlab.com/kicad/libraries/kicad-footprints.git kicad-footprints
+          libs="Capacitor_SMD Capacitor_THT Connector_BarrelJack Connector_PinHeader_2.54mm
+                Connector_PinSocket_2.54mm Diode_THT Fuse Inductor_SMD Module MountingHole
+                NetTie Package_SO Relay_THT Resistor_SMD TerminalBlock_4Ucon
+                TerminalBlock_Phoenix TerminalBlock_TE-Connectivity"
+          git -C kicad-footprints sparse-checkout set --no-cone \
+            $(for l in $libs; do echo "/$l.pretty/"; done)
+          for l in $libs; do ls -d "kicad-footprints/$l.pretty"; done
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Freerouting (pinned version, checked jar)
+        run: |
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
+          curl -fsSL --retry 3 -o freerouting.jar \
+            "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
+          echo "$FREEROUTING_SHA256  freerouting.jar" | sha256sum -c -
+          # Headless, and without the analytics it otherwise posts on every start.
+          echo "FREEROUTING=java -Djava.awt.headless=true -jar $GITHUB_WORKSPACE/freerouting.jar" \
+            "--gui.enabled=false --usage_and_diagnostic_data.disable_analytics=true" >> "$GITHUB_ENV"
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      - name: Setup
+        working-directory: kidl-spike
+        run: just setup
+
+      - name: Test
+        working-directory: kidl-spike
+        env:
+          KICAD_MASTER_LIB: ${{ github.workspace }}/KiCad-Master-Lib
+          KICAD_STOCK_SYMBOL_DIR: ${{ github.workspace }}/kicad-symbols
+          KICAD_STOCK_FOOTPRINT_DIR: ${{ github.workspace }}/kicad-footprints
+        run: just test
+
+  # KiCad itself judges the generated boards: ERC, DRC (zones refilled,
+  # schematic parity, severities from the generated .kicad_pro), then fab
+  # outputs, uploaded as an artifact. Nothing is ordered or published.
+  kicad:
+    name: KiCad
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    container:
+      # Pinned by digest. The tag must equal doctor.py's WANT_KICAD, which
+      # `just doctor` checks below; a bump is a reviewed event (P4).
+      image: kicad/kicad:10.0.6@sha256:18693567392b80da435f9fa952ce3a3e534c66eb5a6033f5b9c80aa3b19dd3ec
+      options: --user root
+    env:
+      KICAD_CLI: kicad-cli
+      KICAD_STOCK_SYMBOL_DIR: /usr/share/kicad/symbols
+      KICAD_STOCK_FOOTPRINT_DIR: /usr/share/kicad/footprints
+    steps:
+      - name: Install git
+        run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl
+
+      - uses: actions/checkout@v4
+        with:
+          path: kidl-spike
+
+      - name: Checkout skidl
+        uses: actions/checkout@v4
+        with:
+          repository: devbisme/skidl
+          ref: ${{ env.SKIDL_REF }}
+          path: skidl
+
+      # In a container job ${{ github.workspace }} is the host path; the shell's
+      # $GITHUB_WORKSPACE is the one mounted here.
+      - name: Checkout KiCad-Master-Lib (no 3D models)
+        run: |
+          git clone --filter=blob:none --sparse --depth 1 \
+            https://github.com/feastorg/KiCad-Master-Lib.git KiCad-Master-Lib
+          git -C KiCad-Master-Lib sparse-checkout set --no-cone '/*' \
+            '!*.step' '!*.STEP' '!*.stp' '!*.STP' '!*.wrl' '!*.WRL'
+          echo "KICAD_MASTER_LIB=$GITHUB_WORKSPACE/KiCad-Master-Lib" >> "$GITHUB_ENV"
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Freerouting (pinned version, checked jar)
+        run: |
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' kidl-spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
+          curl -fsSL --retry 3 -o freerouting.jar \
+            "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
+          echo "$FREEROUTING_SHA256  freerouting.jar" | sha256sum -c -
+          echo "FREEROUTING=java -Djava.awt.headless=true -jar $GITHUB_WORKSPACE/freerouting.jar" \
+            "--gui.enabled=false --usage_and_diagnostic_data.disable_analytics=true" >> "$GITHUB_ENV"
+
+      - name: Setup
+        working-directory: kidl-spike
+        run: just setup
+
+      - name: Doctor (KiCad and Freerouting versions, library resolution)
+        working-directory: kidl-spike
+        run: just doctor
+
+      - name: Generate, ERC, DRC
+        working-directory: kidl-spike
+        run: |
+          just verify loaf
+          just verify rlht
+          just verify dcmt
+          just verify hbtc
+          just verify tc4
+
+      - name: Pour regions (pkidl.measure on the refilled board)
+        working-directory: kidl-spike
+        run: just measure loaf GND=1 +12V=1
+
+      - name: Fab outputs
+        working-directory: kidl-spike
+        run: |
+          just fab loaf
+          just fab rlht
+          just fab dcmt
+          just fab hbtc
+          just fab tc4
+
+      - name: Reports
+        if: always()
+        working-directory: kidl-spike
+        run: tail -n +1 build/*/erc.rpt build/*/drc.rpt || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: loaf
+          path: |
+            kidl-spike/build/loaf/*.kicad_*
+            kidl-spike/build/loaf/*.rpt
+            kidl-spike/build/loaf/fab/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlht
+          path: |
+            kidl-spike/build/rlht/*.kicad_*
+            kidl-spike/build/rlht/*.rpt
+            kidl-spike/build/rlht/*.dsn
+            kidl-spike/build/rlht/*.ses
+            kidl-spike/build/rlht/freerouting.log
+            kidl-spike/build/rlht/fab/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dcmt
+          path: |
+            kidl-spike/build/dcmt/*.kicad_*
+            kidl-spike/build/dcmt/*.rpt
+            kidl-spike/build/dcmt/*.dsn
+            kidl-spike/build/dcmt/*.ses
+            kidl-spike/build/dcmt/freerouting.log
+            kidl-spike/build/dcmt/fab/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hbtc
+          path: |
+            kidl-spike/build/hbtc/*.kicad_*
+            kidl-spike/build/hbtc/*.rpt
+            kidl-spike/build/hbtc/*.dsn
+            kidl-spike/build/hbtc/*.ses
+            kidl-spike/build/hbtc/freerouting*.log
+            kidl-spike/build/hbtc/fab/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tc4
+          path: |
+            kidl-spike/build/tc4/*.kicad_*
+            kidl-spike/build/tc4/*.rpt
+            kidl-spike/build/tc4/*.dsn
+            kidl-spike/build/tc4/*.ses
+            kidl-spike/build/tc4/freerouting*.log
+            kidl-spike/build/tc4/fab/
+
+  # ─── Unified gate ─────────────────────────────────────────────────────
+  # The ONLY job required by branch protection. Add every job to `needs:`.
+  ok:
+    name: ok
+    if: always()
+    needs: [changes, check, test, kicad]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any upstream job failed or was cancelled
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: Pass
+        run: echo 'All checks passed or were skipped'
