@@ -54,7 +54,6 @@ from kidl_spike.boards.slice import (
     Spot,
     outline_polygon,
     place_board,
-    pour_outline,
     route,
 )
 from kidl_spike.boards.spec import BoardSpec
@@ -249,13 +248,11 @@ def build_pcb(
             # pour where the two overlap at the converter.
             board.zone("GND", "B.Cu", thermocouple_region(t, a, TC_GROUND), clearance=0.5,
                        min_thickness=POUR_MIN_WIDTH, priority=4, solid=True)  # fmt: skip
-    x0, y0, x1, y1 = outline
     if spec.circuit.ground != "GND" and not authored:
         # The power ground fills the back. On the front it is only under the bridges'
         # bodies: elsewhere it would cover the logic area, where its one connection is a
         # bulk capacitor's pad: the GND/GNDPWR split would not exist.
-        board.zone(spec.circuit.ground, "B.Cu", [(x0, y0), (x1, y0), (x1, y1), (x0, y1)],
-                   clearance=0.5, min_thickness=POUR_MIN_WIDTH)  # fmt: skip
+        board.pour(spec.circuit.ground, "B.Cu", clearance=0.5, min_thickness=POUR_MIN_WIDTH)
 
     libs.write_project_lib_tables(outdir)
     write_project(outdir / f"{name}.kicad_pro", netclasses=classes, members=members,
@@ -295,12 +292,12 @@ def _nodes(wires: list[Wire], vias: list[Via]) -> list[Node]:
 
 
 def hull_pours(margin: float) -> Callable[..., None]:
-    """Pours around each net's pads (``slice.pour_outline``): the blocks', then
+    """Pours around each net's pads (``Board.pour`` around the parts): the blocks', then
     ``+12V`` on the front and ``GND`` on the back, as on DCMT."""
 
     def pours(board: Board, placed: dict[str, Node], outline: tuple, block: list) -> None:
         for net, layer, priority in [*block, ("+12V", "F.Cu", 3), ("GND", "B.Cu", 1)]:
-            board.zone(net, layer, pour_outline(placed, net, margin), clearance=0.5,
+            board.pour(net, layer, around=placed.values(), margin=margin, clearance=0.5,
                        min_thickness=POUR_MIN_WIDTH, priority=priority, solid=True)  # fmt: skip
 
     return pours
@@ -309,12 +306,11 @@ def hull_pours(margin: float) -> Callable[..., None]:
 def ground_both_layers(board: Board, placed: dict[str, Node], outline: tuple, block: list) -> None:
     """GND over the whole board on both layers, as on RLHT, after any block pours."""
     for net, layer, priority in block:
-        board.zone(net, layer, pour_outline(placed, net, 1.5), clearance=0.5,
+        board.pour(net, layer, around=placed.values(), margin=1.5, clearance=0.5,
                    min_thickness=POUR_MIN_WIDTH, priority=priority, solid=True)  # fmt: skip
-    x0, y0, x1, y1 = outline
     for layer in ("F.Cu", "B.Cu"):
         # Not POUR_MIN_WIDTH yet: at 0.5 mm, U1.4 and U5.3 keep one thermal spoke of two.
-        board.zone("GND", layer, [(x0, y0), (x1, y0), (x1, y1), (x0, y1)], clearance=0.5)
+        board.pour("GND", layer, clearance=0.5)
 
 
 def build(name: str, outdir: Path | None = None, source: str | None = None) -> Path:

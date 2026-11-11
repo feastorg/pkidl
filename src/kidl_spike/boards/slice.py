@@ -16,7 +16,7 @@ from kidl_spike import libs
 from kidl_spike.boards.common import SLICE_S, symbols
 from pkidl.board import Board
 from pkidl.dsn import Via, Wire, read_ses, via_size, write_dsn
-from pkidl.footprint import Placement, pad_xy, place
+from pkidl.footprint import Placement, place
 from pkidl.project import DruRule, NetClass
 from pkidl.route import freerouting
 from pkidl.sexpr import Node, find, find_all
@@ -223,45 +223,3 @@ def _with(wires: list[Wire], authored: list[Wire]) -> list[Wire]:
 def _segments(w: Wire) -> set[tuple]:
     pts = [(round(x, 3), round(y, 3)) for x, y in w.points]
     return {(w.net, w.layer, frozenset((a, b))) for a, b in zip(pts, pts[1:], strict=False)}
-
-
-def pour_outline(placed: dict[str, Node], net: str, margin: float) -> list[tuple[float, float]]:
-    """A pour outline for *net*: the convex hull of its pads, each grown by *margin*.
-
-    The pour follows the placement, so a block placed twice gets the same pour
-    twice. Where it overlaps other copper, the zone fill keeps its clearance; where
-    it overlaps another pour, the zones' priorities decide.
-    """
-    pts: list[tuple[float, float]] = []
-    for fp in placed.values():
-        for pad in find_all(fp, "pad"):
-            pad_net = find(pad, "net")
-            if pad_net is None or pad_net[1] != net:
-                continue
-            size = find(pad, "size")
-            assert size is not None
-            r = max(float(size[1]), float(size[2])) / 2 + margin
-            cx, cy = pad_xy(fp, str(pad[1]))
-            pts += [(cx - r, cy - r), (cx + r, cy - r), (cx + r, cy + r), (cx - r, cy + r)]
-    if not pts:
-        raise ValueError(f"no pad on net {net!r}")
-    return _hull(sorted(set(pts)))
-
-
-def _hull(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    """Convex hull of sorted points (Andrew's monotone chain), counter-clockwise."""
-
-    def cross(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
-        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-
-    lower: list[tuple[float, float]] = []
-    upper: list[tuple[float, float]] = []
-    for p in pts:
-        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
-            lower.pop()
-        lower.append(p)
-    for p in reversed(pts):
-        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
-            upper.pop()
-        upper.append(p)
-    return [(round(x, 6), round(y, 6)) for x, y in lower[:-1] + upper[:-1]]

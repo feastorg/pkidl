@@ -273,6 +273,10 @@ jobs:
           just verify hbtc
           just verify tc4
 
+      - name: Pour regions (pkidl.measure on the refilled board)
+        working-directory: kidl-spike
+        run: just measure loaf GND=1 +12V=1
+
       - name: Fab outputs
         working-directory: kidl-spike
         run: |

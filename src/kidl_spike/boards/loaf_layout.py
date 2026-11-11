@@ -156,12 +156,10 @@ def build_pcb(
         at = nearest_clear_spot(board.items, title, want, OUTLINE, size=2.5, thickness=0.375)
         board.text(title, at or want, size=2.5, thickness=0.375)
 
-    x0, y0, x1, y1 = OUTLINE
-    edge = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
     # Solid pad connections: thermal spokes limit a slice pin to about 2.9 A, under
     # the 5 A budget (decided 2026-11-08). Above 5 A, see _working/05-board-review.md.
-    board.zone("GND", "B.Cu", edge, solid=True)
-    board.zone("+12V", "F.Cu", edge, solid=True)
+    board.pour("GND", "B.Cu", solid=True)
+    board.pour("+12V", "F.Cu", solid=True)
 
     libs.write_project_lib_tables(outdir)
     write_project(

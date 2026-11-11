@@ -73,6 +73,16 @@ drc board:
         --exit-code-violations \
         -o build/{{ board }}/drc-errors.rpt build/{{ board }}/{{ board }}.kicad_pcb
 
+# Refill a copy of a generated board and measure its pours; NET=N fails on another count
+measure board *expect:
+    rm -rf build/{{ board }}/filled && mkdir -p build/{{ board }}/filled
+    cp build/{{ board }}/{{ board }}.kicad_pcb build/{{ board }}/{{ board }}.kicad_pro \
+        build/{{ board }}/{{ board }}.kicad_dru build/{{ board }}/fp-lib-table \
+        build/{{ board }}/sym-lib-table build/{{ board }}/filled/
+    {{ kicad_cli }} pcb drc --refill-zones --save-board \
+        -o build/{{ board }}/filled/drc.rpt build/{{ board }}/filled/{{ board }}.kicad_pcb
+    uv run python -m pkidl.measure build/{{ board }}/filled/{{ board }}.kicad_pcb {{ expect }}
+
 # Export Gerbers, drill files and a PDF render into build/<board>/fab
 fab board:
     {{ kicad_cli }} pcb export gerbers --check-zones \

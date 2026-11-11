@@ -9,11 +9,13 @@ serialises to the same bytes.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
-from pkidl.footprint import gen_uuid
-from pkidl.sexpr import Node, Sym, dumps, num
+from pkidl.footprint import gen_uuid, pad_xy
+from pkidl.sexpr import Node, Sym, dumps, find, find_all, num
 
 VERSION = "20260206"  # KiCad 10 board format
 
@@ -44,6 +46,44 @@ _LAYERS = [
 Point = tuple[float, float]
 
 
+def pad_hull(parts: Iterable[Node], net: str, margin: float) -> list[Point]:
+    """The convex hull of *net*'s pads on *parts* (placed footprints), each pad's square of
+    side its larger dimension grown by *margin*, counter-clockwise."""
+    pts: list[Point] = []
+    for fp in parts:
+        for pad in find_all(fp, "pad"):
+            pad_net = find(pad, "net")
+            if pad_net is None or pad_net[1] != net:
+                continue
+            size = find(pad, "size")
+            assert size is not None
+            r = max(float(size[1]), float(size[2])) / 2 + margin
+            cx, cy = pad_xy(fp, str(pad[1]))
+            pts += [(cx - r, cy - r), (cx + r, cy - r), (cx + r, cy + r), (cx - r, cy + r)]
+    if not pts:
+        raise ValueError(f"no pad on net {net!r}")
+    return _hull(sorted(set(pts)))
+
+
+def _hull(pts: list[Point]) -> list[Point]:
+    """Convex hull of sorted points (Andrew's monotone chain), counter-clockwise."""
+
+    def cross(o: Point, a: Point, b: Point) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[Point] = []
+    upper: list[Point] = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return [(round(x, 6), round(y, 6)) for x, y in lower[:-1] + upper[:-1]]
+
+
 def _xy(p: Point, key: str = "xy") -> Node:
     return [Sym(key), num(p[0]), num(p[1])]
 
@@ -57,6 +97,7 @@ class Board:
     thickness: float = 1.6
     items: list[Node] = field(default_factory=list)
     _uuids: set[str] = field(default_factory=set, repr=False)
+    extent: tuple[float, float, float, float] | None = None  # the outline's box, once drawn
 
     def _uuid(self, *parts: str) -> str:
         """A UUID from what the item is; repeats of the same item are numbered."""
@@ -71,6 +112,7 @@ class Board:
 
     def outline_rounded_rect(self, x0: float, y0: float, x1: float, y1: float, r: float) -> None:
         """Board edge: a rectangle with radius-*r* corners, on Edge.Cuts."""
+        self.extent = (x0, y0, x1, y1)
         w = 0.05
         for a, b in [
             ((x0 + r, y0), (x1 - r, y0)),
@@ -144,6 +186,29 @@ class Board:
             [Sym("polygon"), [Sym("pts"), *(_xy(p) for p in outline)]],
         ]  # fmt: skip
         self.items.append(node)
+
+    def pour(
+        self,
+        net: str,
+        layer: str,
+        *,
+        around: Iterable[Node] | None = None,
+        margin: float = 0.0,
+        **zone: Any,
+    ) -> None:
+        """Pour *net* on *layer*: over the whole board, or around its pads on the parts
+        *around* (their convex hull, each pad grown by *margin*), which follows the
+        placement, so a block placed twice gets its pour twice. Where the pour meets other
+        copper the fill keeps its clearance; where it meets another pour, priorities
+        decide. *zone* is as for ``zone``."""
+        if around is None:
+            if self.extent is None:
+                raise ValueError("pour over the whole board before its outline is drawn")
+            x0, y0, x1, y1 = self.extent
+            outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        else:
+            outline = pad_hull(around, net, margin)
+        self.zone(net, layer, outline, **zone)
 
     def keepout(
         self,
