@@ -214,9 +214,15 @@ def route(
 
 
 def _with(wires: list[Wire], authored: list[Wire]) -> list[Wire]:
-    """*wires* plus each *authored* wire the router did not hand back."""
-    have = {(w.net, w.layer, tuple(w.points)) for w in wires}
-    return wires + [w for w in authored if (w.net, w.layer, tuple(w.points)) not in have]
+    """*wires* plus each *authored* wire the router did not hand back. The router rounds
+    what it hands back and may reverse it, so segments are compared to the micrometre."""
+    have = {s for w in wires for s in _segments(w)}
+    return wires + [w for w in authored if not _segments(w) <= have]
+
+
+def _segments(w: Wire) -> set[tuple]:
+    pts = [(round(x, 3), round(y, 3)) for x, y in w.points]
+    return {(w.net, w.layer, frozenset((a, b))) for a, b in zip(pts, pts[1:], strict=False)}
 
 
 def pour_outline(placed: dict[str, Node], net: str, margin: float) -> list[tuple[float, float]]:

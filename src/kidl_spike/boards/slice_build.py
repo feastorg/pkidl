@@ -17,6 +17,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from shapely.geometry import LineString, Polygon
+from shapely.geometry import Point as SPoint
+
 from kidl_spike import libs
 from kidl_spike.boards.block_layout import (
     HV_RELAY,
@@ -202,6 +205,13 @@ def build_pcb(
         edge = float(RULES["min_copper_edge_clearance"])
         class_gap = {n: c.clearance for c in classes for n in members.get(c.name, [])}
         planes = prefill(board.items + _nodes(wires, vias), outline_polygon(), edge, class_gap)
+        # A copied via joins its net only where both layers have that net's copper there;
+        # one that doesn't is dropped, and the pours are filled again without it.
+        joined = [v for v in vias if v not in authored.vias or _joins_both(v, planes, wires)]
+        if len(joined) < len(vias):
+            vias = joined
+            planes = prefill(board.items + _nodes(wires, vias), outline_polygon(), edge,
+                             class_gap)  # fmt: skip
     route(board, placed, outdir, name, classes, members, signal_clearances=clearances,
           vias=vias, keepouts=inputs, planes=planes, wires=wires)  # fmt: skip
     if spec.stitch:
@@ -258,6 +268,19 @@ def build_pcb(
     at = nearest_clear_spot(board.items, label, r.label_at, outline, size=0.8, thickness=0.12)
     board.text(label, at or r.label_at, size=0.8, thickness=0.12)
     return board.write(outdir / f"{name}.kicad_pcb")
+
+
+def _joins_both(via: Via, planes: list, wires: list[Wire]) -> bool:
+    """Whether *via* touches its net's copper, a plane or a wire, on F.Cu and on B.Cu."""
+    ring = SPoint(via.at).buffer(_via_size(via.padstack)[0] / 2)
+    copper = {"F.Cu": [], "B.Cu": []}
+    for net, layer, poly in planes:
+        if net == via.net and layer in copper:
+            copper[layer].append(Polygon(poly))
+    for w in wires:
+        if w.net == via.net and w.layer in copper:
+            copper[w.layer].append(LineString(w.points).buffer(w.width / 2))
+    return all(any(g.intersects(ring) for g in gs) for gs in copper.values())
 
 
 def _nodes(wires: list[Wire], vias: list[Via]) -> list[Node]:

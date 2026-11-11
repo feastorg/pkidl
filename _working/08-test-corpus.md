@@ -83,7 +83,7 @@ All from `scripts/benchmark/fixtures/PCBench/catalog.json` in freerouting/freero
 
 - 15 two-layer zoned boards drawn at random (seed 20261110): `unrouted.dsn` has a `plane` in 0 of 15, and `unrouted.kicad_pcb` has a zone in 0 of 15. `reference-routed.dsn` has planes in 7 of 15.
 - 4 hand-picked power boards: 0 planes in `unrouted.dsn` in all 4.
-- Freerouting's `scripts/pcbench/README.md` says the strip "remove[s] segments, vias, and zone fills" and keeps outlines. The committed files don't match that. I haven't found the cause.
+- Freerouting's `scripts/pcbench/README.md` says the strip "remove[s] segments, vias, and zone fills" and keeps outlines. The committed files don't match that. I haven't found the cause. (Found 2026-11-11: the pipeline strips PCBench's `processed.kicad_pcb`, which has no zones, while `raw.kicad_pcb` has them, in 25 of 25 boards checked. Filed as freerouting/freerouting#1122.)
 - **Consequence for the bake-off:** choosing boards "by layer count and zones" (`04-router-bakeoff.md`) picks boards whose zones never reach the router. Without a fix, the crux isn't tested on any external board.
 - **The cheap fix:** copy each board's `plane` statements from `reference-routed.dsn` into `unrouted.dsn`. The bake-off did this on 3 boards; all three loaded and routed.
 

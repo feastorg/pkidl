@@ -20,6 +20,9 @@ import pytest
 from kidl_spike import libs
 from kidl_spike.boards import dcmt, dcmt_layout
 from kidl_spike.boards.common import default_circuit
+from kidl_spike.boards.slice import _with
+from kidl_spike.boards.slice_build import _joins_both
+from pkidl.dsn import Via, Wire, via_padstack
 from pkidl.footprint import board_xy
 from pkidl.route import RouterError, router_command
 from pkidl.sexpr import find, find_all, parse
@@ -248,6 +251,37 @@ def test_board_is_routed(dcmt_board):
         assert after is not None and after[1] == "0", log_name
         if adds_none:
             assert int(after[2]) == (int(before[1]) if before else 0), log_name
+
+
+def test_board_has_each_track_once(dcmt_board):
+    """Copied copper the router hands back is not placed a second time."""
+    board = parse(dcmt_board.read_text())
+
+    def ends(s):
+        return frozenset(tuple(_get(s, k)[1:3]) for k in ("start", "end"))
+
+    seen = [(_get(s, "net")[-1], _get(s, "layer")[1], ends(s)) for s in find_all(board, "segment")]
+    assert len(seen) == len(set(seen))
+
+
+def test_authored_wires_the_router_hands_back_are_kept_once():
+    """The router rounds a fixed wire to 0.1 um and may reverse it: it is still the same wire."""
+    authored = [Wire("GNDPWR", "F.Cu", 1.4, [(181.47070000001, 82.1), (191.30070000002, 82.1)]),
+                Wire("GNDPWR", "F.Cu", 1.4, [(10.0, 10.0), (20.0, 10.0)])]  # fmt: skip
+    back = [Wire("GNDPWR", "F.Cu", 1.4, [(191.3007, 82.1), (181.4707, 82.1)])]
+    assert _with(back, authored) == back + authored[1:]
+
+
+def test_a_copied_via_joins_its_net_on_both_layers_or_goes():
+    """A via kept on the board has its net's copper, a pour or a track, on F.Cu and B.Cu."""
+    square = [(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)]
+    planes = [("+12V", "F.Cu", square), ("+12V", "B.Cu", square[:2] + [(10.0, 4.0), (0.0, 4.0)])]
+    wires = [Wire("+12V", "B.Cu", 1.0, [(5.0, 8.0), (20.0, 8.0)])]
+    pad = via_padstack(0.8, 0.4)
+    assert _joins_both(Via("+12V", pad, (5.0, 2.0)), planes, wires)  # both pours
+    assert _joins_both(Via("+12V", pad, (5.0, 8.0)), planes, wires)  # F.Cu pour, B.Cu track
+    assert not _joins_both(Via("+12V", pad, (2.0, 6.0)), planes, wires)  # F.Cu only
+    assert not _joins_both(Via("GND", pad, (5.0, 2.0)), planes, wires)  # another net's
 
 
 def test_board_is_byte_stable(dcmt_board):

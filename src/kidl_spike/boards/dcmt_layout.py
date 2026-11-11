@@ -108,6 +108,12 @@ def authored(placed: dict[str, Node], bridges: list[dict]) -> Authored:
     The bridge control signals (DIR, BRAKE, PWM, THRM, CSENS) are the original's routes
     too: they cross the pours, and where they go is the designer's choice the corridors
     are made for.
+
+    Some copied power tracks are narrower than their class's 1.4 mm, as the original draws
+    them, and KiCad warns (track_width). Each is short and carries little current: the
+    0.5 mm GNDPWR joining each bridge's sense resistor and capacitor (pads 1.3 mm wide) to
+    the LMD18200's pin 7, and the 0.9-1.0 mm +12V into the buck's 0.5 mm pins. Kept as
+    drawn (decided 2026-11-11).
     """
     pads = [(str(n[-1]), pad_xy(fp, str(pad[1])))
             for fp in placed.values() for pad in find_all(fp, "pad")
@@ -140,7 +146,7 @@ def authored(placed: dict[str, Node], bridges: list[dict]) -> Authored:
     a, e = GND_TIE
     pin = pad_xy(placed["A1"], "29")
     wires.append(Wire("GND", "F.Cu", GND_TIE_WIDTH, [(round(pin[0], 6), round(pin[1], 6)), a, e]))
-    vias += [Via("GND", via_padstack(*BODY_TIE_VIA), p) for p in (a, e)]
+    vias.append(Via("GND", via_padstack(*BODY_TIE_VIA), e))
     for b in bridges:  # the body that needs it, tied to the right-edge strip (BODY_TIE)
         if b["ch"] not in BODY_TIE_CHANNELS:
             continue
@@ -164,11 +170,11 @@ BODY_TIE_WIDTH = 1.4  # the Power and Motor class width
 BODY_TIE_VIA = (0.8, 0.4)
 BODY_TIE_CHANNELS = ("CH1",)
 
-# Also deliberate (2026-11-11): the B.Cu GND around the Nano's pin 29 is fenced off by the
-# signal channel on its left and the encoder crossings below, and the pin itself reaches
-# no GND fill, so a F.Cu track from the pin, through a via into that GND and on to a via
-# into the GND between the encoder crossings, which the right-edge GND joins to the rest,
-# ties it. The line crosses no F.Cu copper.
+# Also deliberate (2026-11-11): the Nano's pin 29 reaches no GND fill, so a F.Cu track
+# from the pin, bending at the first point, ends in a via into the GND between the encoder
+# crossings, which the right-edge GND joins to the rest. The line crosses no F.Cu copper.
+# The bend had a via too, into the B.Cu GND around the pin; that fill stops 0.85 mm short
+# of it, so it joined nothing (KiCad: via_dangling) and is gone.
 GND_TIE = ((160.5, 104.5), (182.0, 114.0))
 GND_TIE_WIDTH = 0.5
 
