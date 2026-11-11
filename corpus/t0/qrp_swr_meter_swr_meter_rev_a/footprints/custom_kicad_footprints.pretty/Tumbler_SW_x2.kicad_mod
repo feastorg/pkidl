@@ -1,0 +1,229 @@
+(footprint "Tumbler_SW_x2"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Tumbler Switch x2")
+	(tags "SWITCH DEV TOGGLE ILLUM SPDT")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "e754e1d3-72b3-5b03-a870-dbd1e382c5d9")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Tumbler_SW_x2"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "feda6baa-825e-520a-9eb0-acf93b809d4e")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "5646f6aa-2af7-5111-a10c-77c30bd8d846")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "80e9accf-6da7-5721-a86c-d15e3ec2a3af")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -6.35 6)
+		(end -6.35 -6)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2f3ae859-6b79-5b0a-9ea1-0c5fc4b2c9c5")
+	)
+	(fp_line
+		(start 6.35 6)
+		(end -6.35 6)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "bac901e8-a3fd-52ff-aa42-0df22c4e72d5")
+	)
+	(fp_line
+		(start 0 0.508)
+		(end -1.27 0.508)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "363561b5-2a04-52a5-a58c-81c459a6c6a9")
+	)
+	(fp_line
+		(start -1.27 -0.508)
+		(end 0 -0.508)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "22e99455-8575-5dd7-8a27-a50108291905")
+	)
+	(fp_line
+		(start -6.35 -6)
+		(end 6.35 -6)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "82d12b3f-e354-505f-9c3d-d52a963b7d48")
+	)
+	(fp_line
+		(start 6.35 -6)
+		(end 6.35 6)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "41395406-5e0b-52d0-a239-214f6832380c")
+	)
+	(fp_arc
+		(start 0.508 0)
+		(mid 0.35921 0.35921)
+		(end 0 0.508)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "6c43a343-7c59-5bf1-af48-792a7254050c")
+	)
+	(fp_arc
+		(start 0 -0.508)
+		(mid 0.35921 -0.35921)
+		(end 0.508 0)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "b14d8296-059b-5dc0-ae3b-722d342a050f")
+	)
+	(fp_circle
+		(center -1.27 0)
+		(end -1.778 0)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "b2f8b273-a410-5a17-8bee-745eda4242b1")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 2.54 0)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "2ad6cf30-fc8a-562f-a246-53cf3b5a6727")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 2.54 -2.54)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "cf99c4d6-89c4-5b3d-8fed-86c12bd671de")
+	)
+	(pad "1" thru_hole rect
+		(at -4.7 2.54)
+		(size 2.8 3.4)
+		(drill oval 0.9 2.4)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "85dd8da6-a350-5618-875f-32e35953788c")
+	)
+	(pad "2" thru_hole rect
+		(at 0 2.54)
+		(size 2.8 3.4)
+		(drill oval 0.9 2.4)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "a0755d66-c600-59b9-9f33-655cc0a8ee1a")
+	)
+	(pad "3" thru_hole rect
+		(at 4.7 2.54)
+		(size 2.8 3.4)
+		(drill oval 0.9 2.4)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "c7e27e5d-f112-5755-ba4a-6c5f6c29861e")
+	)
+	(pad "4" thru_hole rect
+		(at -4.7 -2.54)
+		(size 2.8 3.4)
+		(drill oval 0.9 2.4)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "aa65252f-1dbb-5309-8096-0337bdfa1fc8")
+	)
+	(pad "5" thru_hole rect
+		(at 0 -2.54)
+		(size 2.8 3.4)
+		(drill oval 0.9 2.4)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "003f7e79-241b-592f-bbbc-9db0b19b8329")
+	)
+	(pad "6" thru_hole rect
+		(at 4.7 -2.54)
+		(size 2.8 3.4)
+		(drill oval 0.9 2.4)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "524e041b-556e-537d-b6d9-ea1cf111d7bb")
+	)
+	(embedded_fonts no)
+	(model "Buttons_Switches_ThroughHole.3dshapes/SW_NKK_G1xJP.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 0.63 0.77 0.55)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

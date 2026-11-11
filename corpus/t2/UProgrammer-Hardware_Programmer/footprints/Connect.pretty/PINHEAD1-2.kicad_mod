@@ -1,0 +1,131 @@
+(footprint "PINHEAD1-2"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "ca54d348-2f25-55ee-be14-12a63e99b330")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "PINHEAD1-2"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "f2393ddf-83a8-59d3-a213-58d22b3055eb")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "704519b3-dc9b-5d08-b7c9-b1651a6d0369")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "62484041-cc66-55d6-a2c1-b0fbfbd82e1c")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr exclude_from_pos_files exclude_from_bom)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 2.54 3.175)
+		(end -2.54 3.175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "7cdc9f9d-a560-5404-bafe-44377deec929")
+	)
+	(fp_line
+		(start 2.54 -1.27)
+		(end -2.54 -1.27)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "1b751b3a-45c0-54da-bbb3-354485f77dcb")
+	)
+	(fp_line
+		(start 2.54 -3.175)
+		(end 2.54 3.175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "35965e1e-9199-5770-87fc-e203dcf8611c")
+	)
+	(fp_line
+		(start -2.54 -3.175)
+		(end 2.54 -3.175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "1ed68965-9746-5f98-86da-9d7f57e206c1")
+	)
+	(fp_line
+		(start -2.54 -3.175)
+		(end -2.54 3.175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "edad7af3-b0f1-50fa-966f-17a55813e62b")
+	)
+	(pad "1" thru_hole oval
+		(at -1.27 0)
+		(size 1.50622 3.01498)
+		(drill 0.99822)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "67a47fd8-d0b2-55ff-ad49-522471ab9d40")
+	)
+	(pad "2" thru_hole oval
+		(at 1.27 0)
+		(size 1.50622 3.01498)
+		(drill 0.99822)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "4eab5086-1016-55c8-b289-8faeb73b3ff2")
+	)
+	(embedded_fonts no)
+	(model "Connectors_Molex.3dshapes/Connector_Molex_PicoBlade_53047-0210.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

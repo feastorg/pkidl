@@ -1,0 +1,309 @@
+(footprint "ESP-12E"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Module, ESP-8266, ESP-12, 16 pad, SMD")
+	(tags "Module ESP-8266 ESP8266")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "b3532710-f449-58a2-8451-f246b02fe038")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "ESP-12E"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "955f8bbd-9d57-533a-b81c-0f985b87577c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "0f57ce27-3994-5be2-86c1-22a246a118a2")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "1faf1a18-f6c2-56e9-a123-cadb4955d35a")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 0 -8.4)
+		(end 0 -2.6)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "570afff7-fb67-5e0a-81f1-1be30c3046d1")
+	)
+	(fp_line
+		(start 0 -8.4)
+		(end 16 -2.6)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "7ac6e692-af38-5500-ba63-69ce1abfc395")
+	)
+	(fp_line
+		(start 0 -2.6)
+		(end 16 -2.6)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "3c6236ca-aa06-5d4d-af28-f698744b5cb1")
+	)
+	(fp_line
+		(start 16 -8.4)
+		(end 0 -8.4)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "97a40904-978f-5584-b3af-4bc2957fb7a8")
+	)
+	(fp_line
+		(start 16 -8.4)
+		(end 0 -2.6)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "0d13ed98-9f0e-5878-b687-e0dae1e52ac0")
+	)
+	(fp_line
+		(start 16 -2.6)
+		(end 16 -8.4)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "f4b028da-5737-5011-a0bc-02f8ec5fc2fe")
+	)
+	(fp_line
+		(start 0 -8.4)
+		(end 16 -8.4)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "2fb74901-b507-5904-8f2f-9d7ba79e67cb")
+	)
+	(fp_line
+		(start 0 15.6)
+		(end 0 -8.4)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "aea430b2-d9a5-5a20-a082-d88a8182eeda")
+	)
+	(fp_line
+		(start 16 -8.4)
+		(end 16 15.6)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "cafcc310-4afb-5d01-b43a-7f99d35dc3f1")
+	)
+	(fp_line
+		(start 16 15.6)
+		(end 0 15.6)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "c72553be-40c2-5953-adbb-7887ef81ea16")
+	)
+	(fp_text user "No Copper"
+		(at 7.9 -5.4)
+		(layer "F.CrtYd")
+		(uuid "1ddacf69-b908-54f0-9376-9200d6a039fe")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" smd rect
+		(at 0 0)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "a3e49077-f19a-5842-987c-7d7baa24c5a6")
+	)
+	(pad "2" smd oval
+		(at 0 2)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "1333ed6c-b936-573c-a645-8c8ca7d84d36")
+	)
+	(pad "3" smd oval
+		(at 0 4)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "3ac7ec08-bdbb-517c-8797-dcf8cbfafc64")
+	)
+	(pad "4" smd oval
+		(at 0 6)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "37f4930e-f8d8-59d3-9aed-704539689e0c")
+	)
+	(pad "5" smd oval
+		(at 0 8)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "6999c38d-2d8c-5e4c-a30a-1099d226010c")
+	)
+	(pad "6" smd oval
+		(at 0 10)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "2c1db055-ee88-5e38-8857-98f749469145")
+	)
+	(pad "7" smd oval
+		(at 0 12)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "34f2a56a-21f7-51c5-a8b6-62819171d0b0")
+	)
+	(pad "8" smd oval
+		(at 0 14)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "92b63bc3-e12f-5c2e-9f28-822580d31445")
+	)
+	(pad "9" smd oval
+		(at 2.99 15.75 90)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "afdb64e5-d99f-53a1-aa78-c1b1df8a9e0a")
+	)
+	(pad "10" smd oval
+		(at 4.99 15.75 90)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "d5f564c4-4f27-58ee-8557-9082d8afedbb")
+	)
+	(pad "11" smd oval
+		(at 6.99 15.75 90)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "7eb969d4-7621-5fa2-9506-02de33049460")
+	)
+	(pad "12" smd oval
+		(at 8.99 15.75 90)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "00971a60-4625-5356-9880-195e4390781c")
+	)
+	(pad "13" smd oval
+		(at 10.99 15.75 90)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "2fc0bb27-3ac4-5ea5-9c72-139e486ecf8b")
+	)
+	(pad "14" smd oval
+		(at 12.99 15.75 90)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "edd6a290-875f-5190-bbce-9be1b0812029")
+	)
+	(pad "15" smd oval
+		(at 16 14)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "10e3d808-5184-5c56-b26e-7d89d45fc975")
+	)
+	(pad "16" smd oval
+		(at 16 12)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "981e634e-ac5b-5a80-bd09-d9c98f7f42fb")
+	)
+	(pad "17" smd oval
+		(at 16 10)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "e80c91bf-bb43-570a-8564-3c638e106341")
+	)
+	(pad "18" smd oval
+		(at 16 8)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "bdc8054c-a3b5-53bd-894e-95a8359591cb")
+	)
+	(pad "19" smd oval
+		(at 16 6)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "0c9c2859-b78f-5ee1-919d-615fef5edbdc")
+	)
+	(pad "20" smd oval
+		(at 16 4)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "09706b53-74d7-5ce9-a5ad-3a91f43e094a")
+	)
+	(pad "21" smd oval
+		(at 16 2)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "c5741743-b9a9-525a-853c-ff0b643c43f8")
+	)
+	(pad "22" smd oval
+		(at 16 0)
+		(size 2.4 1.1)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "f23a30d7-272f-5c4f-9cd6-79e53d9be9b6")
+	)
+	(embedded_fonts no)
+	(model "${ESPLIB}/ESP8266.3dshapes/ESP-12.wrl"
+		(offset
+			(xyz 1.015999985 0 0)
+		)
+		(scale
+			(xyz 0.3937 0.3937 0.3937)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

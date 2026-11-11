@@ -1,0 +1,141 @@
+(footprint "BARREL_JACK_21x55"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "DC Barrel Jack, 2.1x5.5mm")
+	(tags "Power Jack")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "412f20ed-968e-560a-9075-d41aee60857f")
+		(effects
+			(font
+				(size 0.762 0.762)
+				(thickness 0.1524)
+			)
+		)
+	)
+	(property "Value" "BARREL_JACK_21x55"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "88e8afd0-aa00-5965-8632-8406f703a5b6")
+		(effects
+			(font
+				(size 1.016 1.016)
+				(thickness 0.2032)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "6af2c68d-b5ce-509d-9f1b-d60e543c1bdd")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a7dfc9a1-ba61-57ad-938c-ede1f2c3cf23")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -13.69822 4.50088)
+		(end 0.80264 4.50088)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "0e385b0b-f7f5-50cf-97fe-1d944762d817")
+	)
+	(fp_line
+		(start 0.80264 4.50088)
+		(end 0.80264 -4.50088)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "cb6d738f-b403-5cbc-90ae-d84989bf4c6e")
+	)
+	(fp_line
+		(start -13.69822 -4.50088)
+		(end -13.69822 4.50088)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "9e80c593-c21d-547e-b5d1-6c9037d99bf6")
+	)
+	(fp_line
+		(start -10.1981 -4.50088)
+		(end -10.1981 4.50088)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2bb39ed7-35ce-5eb3-8dfa-a77576d5ffd9")
+	)
+	(fp_line
+		(start 0.80264 -4.50088)
+		(end -13.69822 -4.50088)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2a83d5ee-5381-5803-a03e-e8ed6107cbe4")
+	)
+	(fp_text user "2.1x5.5mm"
+		(at 3.175 0 90)
+		(layer "F.SilkS")
+		(uuid "19ab9ff3-f9a0-5ce9-aeff-6cd25134f335")
+		(effects
+			(font
+				(size 0.762 0.762)
+				(thickness 0.1524)
+			)
+		)
+	)
+	(pad "1" thru_hole rect
+		(at 0 0)
+		(size 4.064 4.064)
+		(drill 2.7432)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "1b4248d3-c658-58f9-b7bb-1e7bc8f788c7")
+	)
+	(pad "2" thru_hole circle
+		(at -5.969 0)
+		(size 4.064 4.064)
+		(drill 2.7432)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "e0038d67-5d95-5c39-9380-befc03df8a6d")
+	)
+	(pad "3" thru_hole circle
+		(at -3.048 4.699)
+		(size 4.064 4.064)
+		(drill 2.7432)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "078c3d3d-7113-566c-8585-fa39018f1492")
+	)
+	(embedded_fonts no)
+)

@@ -1,0 +1,63 @@
+(footprint "MountingHole_0.13in"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Mounting hole, Befestigungsbohrung, 2,5mm, No Annular, Kein Restring,")
+	(tags "Mounting hole, Befestigungsbohrung, 2,5mm, No Annular, Kein Restring,")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "b5f80883-a262-59f4-986f-63e696d7b404")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "MountingHole_0.13in"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "581a5209-06dd-5fc5-8280-42d0b6fc78e6")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "87ba635b-7cea-5573-8c28-138432673730")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "fe75fe1f-001d-55fd-a849-2b1bb303be74")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(pad "" np_thru_hole circle
+		(at 0 0)
+		(size 3.302 3.302)
+		(drill 3.302)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(uuid "f2750414-8720-5695-b0c5-a6b7141011bd")
+	)
+	(embedded_fonts no)
+)

@@ -23,14 +23,26 @@ whose source repository carries a permissive licence are here; each keeps its `L
     circuit.json          parts, values, footprints and pad -> net: the circuit
     mechanical.json       outline and mounting holes; fixed connectors are added per
                           board, with a reason, when its board file is written
+    footprints/           the library footprint behind each footprint name, laid out as
+                          KiCad libraries: <library>.pretty/<footprint>.kicad_mod
     board.py              the pkidl board file (step 4 of the charter)
     LICENSE               the source project's
 ```
 
-**A board file reads `circuit.json` and `mechanical.json`, and nothing else of the
-reference.** No positions, tracks, vias or pours come from it: the layout is designed.
-`python scripts/corpus.py extract` rewrites both files from the references
-(`pkidl.importer`).
+**A board file reads `circuit.json`, `mechanical.json` and `footprints/`, and nothing
+else of the reference.** No positions, tracks, vias or pours come from it: the layout is
+designed. `python scripts/corpus.py extract` rewrites all three from the references
+(`pkidl.importer`), and `tests/test_corpus.py` fails when a committed copy is not what
+the importer reads.
+
+These boards name footprints from KiCad 5 libraries and their own projects' libraries,
+which KiCad 10 doesn't ship, so each footprint is read back out of the reference, where
+every placed part carries a copy. It is the part's package, as a library would hold it:
+pads, courtyard and drawings at the origin, unrotated, on the front, with no nets, no
+link to a schematic and no label positions (`pkidl.footprint.library_form`). Where a
+reference's parts carry different versions of one footprint name, `footprints/` holds
+the version most of them carry, and `manifest.json` lists the parts that carry another
+(`other_footprint_versions`).
 
 ## The scorecard
 

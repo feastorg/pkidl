@@ -115,9 +115,11 @@ permissively licensed boards, in tiers.
 | T4 | four layers and up, fine pitch, BGA | stackup, fanout, blind and buried vias |
 
 **What a corpus board's pkidl file may use:** its netlist (the circuit, the input a
-SKiDL author has) and its mechanical requirements (outline, holes, fixed connectors),
-typed in as a person would. **Never its layout geometry:** the original is only compared
-against.
+SKiDL author has), its mechanical requirements (outline, holes, fixed connectors),
+typed in as a person would, and its parts' footprints as a footprint library holds them
+(decided 2026-11-11: these boards' libraries are not shipped any more, so each footprint
+is read out of the board, without where it sits). **Never its layout geometry:** the
+original is only compared against.
 
 **The scorecard, per board,** printed by one harness that builds every board:
 
@@ -159,7 +161,7 @@ A change to pkidl is judged by the whole scorecard, not by the board it was made
   generate or revise boards, or only the Python. The survey settled the rest (Python to
   write, one serialisable model underneath); step 4 tests this part: the same revision
   made both ways on two or three corpus boards.
-- How a netlist enters for corpus boards that have no SKiDL source: SKiDL's KiCad
-  netlist import, or pkidl reading KiCad netlists directly.
-- Which licences the corpus can commit, and which boards are fetched at test time
-  (`spike/_working/08-test-corpus.md` has the rules so far).
+
+Settled since: a corpus board's circuit enters as `circuit.json`, which `pkidl.importer`
+reads from the board; and the corpus commits only boards whose source repository carries
+a permissive licence, each with its `LICENSE` (`corpus/README.md`).

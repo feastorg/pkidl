@@ -38,7 +38,9 @@ Freerouting; pkidl's own tests need none of them.
   reference board's layout.** Reference and corpus boards are compared against, not
   copied from: no extracting or transcribing their copper, positions or vias into a
   board file. Values a designer would type in from requirements (an outline, a fixed
-  connector, a hole) are fine.
+  connector, a hole) are fine. A corpus board's `footprints/` is its parts' packages as
+  a footprint library holds them, read from the reference with nothing of where a part
+  sits (`corpus/README.md`): an input, like the circuit.
 - A change to pkidl is judged across every board and test, not by the one it was made
   for.
 - `src/pkidl` never imports from `spike/`; `spike/` uses pkidl's public API as an

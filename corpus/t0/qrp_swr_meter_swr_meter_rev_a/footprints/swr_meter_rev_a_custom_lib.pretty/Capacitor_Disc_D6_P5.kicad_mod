@@ -1,0 +1,162 @@
+(footprint "Capacitor_Disc_D6_P5"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Capacitor 6mm Disc, Pitch 5mm")
+	(tags "Capacitor")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "b71fdaf6-fb8f-5839-976a-170db40589e1")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Capacitor_Disc_D6_P5"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "a6403a17-02b7-5c86-804f-cafc22fe089d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "b4917930-fed8-5cef-a110-05dc368d686c")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "04b4e8e4-dd84-560d-abac-997726de8e18")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 2.794 0)
+		(end 4.064 0)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "de604be3-0008-54f3-99bb-9e63aeff0bee")
+	)
+	(fp_line
+		(start 2.794 -1.016)
+		(end 2.794 1.016)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "67071d66-8eba-5103-9e1c-f9f61fcc5b4a")
+	)
+	(fp_line
+		(start 2.286 -1.016)
+		(end 2.286 1.016)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "9cf56aa6-459b-5bb9-852b-c258c0c4390b")
+	)
+	(fp_line
+		(start 1.016 0)
+		(end 2.286 0)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "59fcbd7d-d5f5-5418-ac10-7837d6414b92")
+	)
+	(fp_line
+		(start 5.95 1.27)
+		(end -0.95 1.27)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "19bc54ff-0039-5e2b-ad11-9e11f4262292")
+	)
+	(fp_line
+		(start 5.95 -1.27)
+		(end 5.95 1.27)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "9b42495a-c12e-5ed2-8554-9f478ba630dc")
+	)
+	(fp_line
+		(start -0.95 1.27)
+		(end -0.95 -1.27)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "15a4ac21-a5c6-5fdf-83e1-700471c92968")
+	)
+	(fp_line
+		(start -0.95 -1.27)
+		(end 5.95 -1.27)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "ef429af7-63e9-58bb-af9d-7de14973c417")
+	)
+	(pad "1" thru_hole rect
+		(at 0 0)
+		(size 1.8 1.8)
+		(drill 0.7)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "2e61bce4-16b6-5c1c-9541-a0133de0e014")
+	)
+	(pad "2" thru_hole circle
+		(at 5.08 0)
+		(size 1.8 1.8)
+		(drill 0.7)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "10253b28-802d-53ac-8143-2429c7c29a72")
+	)
+	(embedded_fonts no)
+	(model "Capacitors_ThroughHole.3dshapes/C_Disc_D6_P5.wrl"
+		(offset
+			(xyz 2.500000042 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

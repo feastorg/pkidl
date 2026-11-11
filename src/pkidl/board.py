@@ -14,10 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pkidl.footprint import gen_uuid, pad_xy
+from pkidl.footprint import VERSION, gen_uuid, pad_xy
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num
-
-VERSION = "20260206"  # KiCad 10 board format
 
 # The two-layer stack, as KiCad 10 writes it: (id, name, type, user name).
 _LAYERS = [

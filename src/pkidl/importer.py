@@ -8,6 +8,9 @@ that exists only as a ``.kicad_pcb`` (the corpus), both are read from it here:
 - ``mechanical``: what a designer is given: the board outline and the mounting
   holes. Fixed connectors are added per board, with a reason, when its board file
   is written.
+- ``footprints``: the library footprint each footprint name stands for, which the
+  board carries a copy of in every placed part. It is the part's package, as a
+  footprint library holds it: no position, rotation or side.
 
 Nothing else of the board's layout is read: no tracks, vias, pours or positions of
 other parts.
@@ -15,8 +18,12 @@ other parts.
 
 from __future__ import annotations
 
-from pkidl.footprint import pad_xy
-from pkidl.sexpr import Node, find, find_all
+import re
+from collections import Counter
+from pathlib import Path
+
+from pkidl.footprint import library_form, pad_xy
+from pkidl.sexpr import Node, dumps, find, find_all
 
 EDGE_ITEMS = ("gr_line", "gr_arc", "gr_rect", "gr_circle", "gr_poly")
 
@@ -87,3 +94,56 @@ def mechanical(board: Node) -> dict:
                                  for p in drilled]})  # fmt: skip
     outline.sort(key=lambda i: (i["type"], str(i)))
     return {"outline": outline, "holes": sorted(holes, key=lambda h: h["ref"]), "fixed": {}}
+
+
+def footprint_path(name: str) -> Path:
+    """Where a footprint name's library footprint is kept under a board's ``footprints/``:
+    KiCad's own library layout, ``<library>.pretty/<footprint>.kicad_mod``; a name with no
+    library sits at the top."""
+    lib, _, fp = name.rpartition(":")
+    return Path(f"{lib}.pretty" if lib else "", f"{fp}.kicad_mod")
+
+
+def _natural(ref: str) -> tuple:
+    return tuple(int(t) if t.isdigit() else t for t in re.split(r"(\d+)", ref))
+
+
+def _shape(lib: Node) -> str:
+    """A library footprint's pads and graphics, whatever order or UUIDs they carry."""
+
+    def bare(n: Node) -> Node:
+        return [bare(c) if isinstance(c, list) else c
+                for c in n if not (isinstance(c, list) and c and c[0] == "uuid")]  # fmt: skip
+
+    items = [c for c in lib[2:] if isinstance(c, list) and c[0].startswith(("pad", "fp_"))]
+    return "\n".join(sorted(dumps(bare(c)) for c in items))
+
+
+def footprints(board: Node) -> tuple[dict[str, Node], dict[str, list[str]]]:
+    """``({footprint name: library footprint}, {footprint name: [refs that differ]})`` for
+    each footprint name a part of ``circuit`` or a hole of ``mechanical`` uses.
+
+    Each placed footprint is put back in library form (``pkidl.footprint.library_form``).
+    Where a board's parts carry different versions under one name, the name stands for
+    the version most of them carry (the lowest reference deciding a tie), and the parts
+    carrying another are listed.
+    """
+    # By name, not reference: board-only footprints share references such as REF**.
+    wanted = {p["footprint"] for p in circuit(board)["parts"]}
+    wanted |= {h["footprint"] for h in mechanical(board)["holes"]}
+    by_name: dict[str, list[tuple[tuple, str, Node]]] = {}
+    for fp in find_all(board, "footprint"):
+        if str(fp[1]) in wanted:
+            ref = _property(fp, "Reference")
+            by_name.setdefault(str(fp[1]), []).append((_natural(ref), ref, library_form(fp)))
+    libs: dict[str, Node] = {}
+    differ: dict[str, list[str]] = {}
+    for name, found in sorted(by_name.items()):
+        found.sort(key=lambda f: f[0])
+        shapes = [_shape(lib) for _, _, lib in found]
+        most = Counter(shapes).most_common(1)[0][0]  # ties: the first seen, the lowest ref
+        libs[name] = found[shapes.index(most)][2]
+        others = [ref for (_, ref, _), shape in zip(found, shapes, strict=True) if shape != most]
+        if others:
+            differ[name] = others
+    return libs, differ

@@ -1,0 +1,171 @@
+(footprint "Socket_Strip_Straight_1x08"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Through hole socket strip")
+	(tags "socket strip")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "83bc7152-3286-5c64-af21-10a1b08e9312")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Socket_Strip_Straight_1x08"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7a0fc47a-aaca-5fa8-9416-a4b5ce8f17d8")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d5352812-2911-5f5b-b5de-1eda74a6390c")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "107bc6c2-8321-53a9-b839-c271ebe016c0")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 19.55 -1.75)
+		(end 19.55 1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "e2db516d-3d48-5d89-9e79-8cc3ba2e074c")
+	)
+	(fp_line
+		(start -1.75 -1.75)
+		(end 19.55 -1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "a52c5751-933e-5a4b-9dd6-b5adb4456880")
+	)
+	(fp_line
+		(start -1.75 -1.75)
+		(end -1.75 1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "c46d8cd7-db01-58c6-803b-28069feb8532")
+	)
+	(fp_line
+		(start -1.75 1.75)
+		(end 19.55 1.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "9f36d472-b842-5e09-92e2-6621416d9f44")
+	)
+	(pad "1" thru_hole rect
+		(at 0 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "3bfeabed-e48e-5330-a4ff-a551a153ecdf")
+	)
+	(pad "2" thru_hole oval
+		(at 2.54 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "c7259299-3f0b-5d9b-b424-79d4dc014337")
+	)
+	(pad "3" thru_hole oval
+		(at 5.08 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "61966c23-57a1-5519-9a64-a1b82f6966f3")
+	)
+	(pad "4" thru_hole oval
+		(at 7.62 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "68867fdf-7aa0-5a17-b856-2fea4d911639")
+	)
+	(pad "5" thru_hole oval
+		(at 10.16 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "a979f20e-5807-51bc-a95f-17d937f0ea0a")
+	)
+	(pad "6" thru_hole oval
+		(at 12.7 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "a6bb7256-80d7-55d7-83e4-a0ad1a70a0b7")
+	)
+	(pad "7" thru_hole oval
+		(at 15.24 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "25112a4c-75d9-5bd2-9500-db48b823f6db")
+	)
+	(pad "8" thru_hole oval
+		(at 17.78 0)
+		(size 1.7272 2.032)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "cd61f137-5dac-5ad1-b793-b71873eb9458")
+	)
+	(embedded_fonts no)
+	(model "Socket_Strips.3dshapes/Socket_Strip_Straight_1x08.wrl"
+		(offset
+			(xyz 8.889999866 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 180)
+		)
+	)
+)

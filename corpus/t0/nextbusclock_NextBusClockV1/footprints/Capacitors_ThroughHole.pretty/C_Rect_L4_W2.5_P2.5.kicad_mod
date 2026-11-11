@@ -1,0 +1,131 @@
+(footprint "C_Rect_L4_W2.5_P2.5"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Film Capacitor Length 4mm x Width 2.5mm, Pitch 2.5mm")
+	(tags "Capacitor")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "87f4d37f-8181-53a8-b752-cf81844711b0")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "C_Rect_L4_W2.5_P2.5"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "25f92252-2bc4-5964-b262-0ecddd1d18f9")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "fb148c77-757d-5f9c-b4b2-6efd2d8a35fa")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "645d977c-66b9-54b3-acb5-18b36ae36c7d")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -0.75 -1.25)
+		(end 3.25 -1.25)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "beab3483-af87-5ffc-861e-d6e3243bd9d1")
+	)
+	(fp_line
+		(start -0.75 1.25)
+		(end 3.25 1.25)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e3400d37-74a5-5a92-b0ce-8b7f9d9712b4")
+	)
+	(fp_line
+		(start -1 -1.5)
+		(end 3.5 -1.5)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "5a8b89a3-7a46-5a8a-be0d-39e920dde88c")
+	)
+	(fp_line
+		(start -1 1.5)
+		(end -1 -1.5)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "3278c3b6-24f4-5f44-a868-8bd6eff5c3df")
+	)
+	(fp_line
+		(start 3.5 -1.5)
+		(end 3.5 1.5)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "e76a563c-4896-56b3-9057-66cf2dc10714")
+	)
+	(fp_line
+		(start 3.5 1.5)
+		(end -1 1.5)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "c56cbad0-4caf-5e85-b083-e6d903e2210a")
+	)
+	(pad "1" thru_hole rect
+		(at 0 0)
+		(size 1.2 1.2)
+		(drill 0.7)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "f8eb2a3d-13ae-5704-b147-a2241d1e67ea")
+	)
+	(pad "2" thru_hole circle
+		(at 2.5 0)
+		(size 1.2 1.2)
+		(drill 0.7)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "77ed873f-e1a0-5211-8e5e-e4623c79ed69")
+	)
+	(embedded_fonts no)
+)

@@ -1,0 +1,240 @@
+(footprint "EBAY_AMMETER"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "0-999mA eBay Ammeter")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "5c8f0b87-94fb-5dd2-864c-1391b0bad628")
+		(effects
+			(font
+				(size 0.762 0.762)
+				(thickness 0.1524)
+			)
+		)
+	)
+	(property "Value" "EBAY_AMMETER"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "0c75f0a7-337c-59c2-a7c7-5177ed533a9d")
+		(effects
+			(font
+				(size 0.762 0.762)
+				(thickness 0.1524)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "84af5482-4eae-585b-bbb9-63600062b86a")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "cccbd261-f8d3-5ff3-8f83-481861ac6e38")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -17.653 -3.048)
+		(end -17.653 3.048)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "684bee02-fae0-5c33-8de1-c973c864eabe")
+	)
+	(fp_line
+		(start -17.653 3.048)
+		(end -13.843 3.048)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "0ef0bb7d-660b-56bd-a24c-404629cfb540")
+	)
+	(fp_line
+		(start -13.843 3.048)
+		(end -13.843 15.621)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "efbc8fea-f653-55a6-928c-8aa2399dece0")
+	)
+	(fp_line
+		(start -13.843 15.621)
+		(end 13.843 15.621)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "24aae350-0fa8-52cd-bf87-faa23c77f2eb")
+	)
+	(fp_line
+		(start 13.843 15.621)
+		(end 13.843 3.048)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e55bee70-0487-5f75-8325-39cf065d5265")
+	)
+	(fp_line
+		(start 17.653 -3.048)
+		(end -17.653 -3.048)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "3e2845f7-699a-5097-b37a-196c3ad83b8c")
+	)
+	(fp_line
+		(start 17.653 -3.048)
+		(end 17.653 3.048)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "6a7eda3d-7ec9-5ae4-bbae-151ed094aca9")
+	)
+	(fp_line
+		(start 17.653 3.048)
+		(end 13.843 3.048)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "016affd2-20a7-5b74-84d6-bb8214c6531b")
+	)
+	(fp_text user "I+"
+		(at -8.5 18)
+		(layer "F.SilkS")
+		(uuid "23b72825-7d78-5c41-bfaf-23c562b6a500")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "0-999mA Ammeter"
+		(at 6.604 -1.905)
+		(layer "F.SilkS")
+		(uuid "4843f4c7-5e88-5d1a-8fbb-25aa41516ab8")
+		(effects
+			(font
+				(size 0.762 0.762)
+				(thickness 0.1524)
+			)
+		)
+	)
+	(fp_text user "I-"
+		(at 8.5 18)
+		(layer "F.SilkS")
+		(uuid "ca378af4-2368-5016-aee8-9ef428ada6db")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_text user "V-"
+		(at 12.5 6)
+		(layer "F.SilkS")
+		(uuid "3033f1de-6583-527a-a2cc-102d1b1feaf5")
+		(effects
+			(font
+				(size 0.635 0.635)
+				(thickness 0.127)
+			)
+		)
+	)
+	(fp_text user "V+"
+		(at 12.5 9)
+		(layer "F.SilkS")
+		(uuid "562ae6bd-8053-5d26-ba98-60e9f47ea4cd")
+		(effects
+			(font
+				(size 0.635 0.635)
+				(thickness 0.127)
+			)
+		)
+	)
+	(pad "" np_thru_hole circle
+		(at -14.5 0)
+		(size 3.2 3.2)
+		(drill 3.2)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(uuid "d0f3a287-d298-5446-bc70-803ae40df5d8")
+	)
+	(pad "" np_thru_hole circle
+		(at 14.5 0)
+		(size 3.2 3.2)
+		(drill 3.2)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(uuid "71b034f6-4a01-57b7-87c7-2ac3f440d673")
+	)
+	(pad "1" thru_hole circle
+		(at -11.5 18)
+		(size 3 3)
+		(drill 2)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "33b2848c-cae6-5c0f-951c-69918b3346cf")
+	)
+	(pad "2" thru_hole circle
+		(at 11.5 18)
+		(size 3 3)
+		(drill 2)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "10e06796-6387-5de7-b6b2-7066a19a1565")
+	)
+	(pad "3" thru_hole oval
+		(at 15.5 9)
+		(size 2.2479 1.4986)
+		(drill 0.8128
+			(offset 0.37465 0)
+		)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "c161782d-e952-5110-b44e-ccd55c410acd")
+	)
+	(pad "4" thru_hole oval
+		(at 15.5 6)
+		(size 2.2479 1.4986)
+		(drill 0.8128
+			(offset 0.37465 0)
+		)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "ab8dd131-d1ba-50d4-b0d9-84436fa848ab")
+	)
+	(embedded_fonts no)
+)

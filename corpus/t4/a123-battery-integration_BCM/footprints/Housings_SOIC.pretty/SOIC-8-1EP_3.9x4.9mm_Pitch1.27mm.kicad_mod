@@ -1,0 +1,252 @@
+(footprint "SOIC-8-1EP_3.9x4.9mm_Pitch1.27mm"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "8-Lead Thermally Enhanced Plastic Small Outline (SE) - Narrow, 3.90 mm Body [SOIC] (see Microchip Packaging Specification 00000049BS.pdf)")
+	(tags "SOIC 1.27")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "fb300d78-c022-5ff5-adf5-bb6ce3ad41a6")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "SOIC-8-1EP_3.9x4.9mm_Pitch1.27mm"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "9c598cff-cd4b-5e14-985e-59e046f16171")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a2cd67ce-503d-5406-9ce8-a97004d01785")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "4026716f-703e-50bd-a66a-64171eb6c3d4")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -2.075 -2.575)
+		(end -2.075 -2.43)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "1b699a48-61c3-5f97-951a-805e59343511")
+	)
+	(fp_line
+		(start -2.075 -2.575)
+		(end 2.075 -2.575)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "18464d6e-c038-55e3-9556-1b74cbcd433a")
+	)
+	(fp_line
+		(start -2.075 -2.43)
+		(end -3.475 -2.43)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "36b6d4ba-79ed-570f-bb3d-cb5988e770ad")
+	)
+	(fp_line
+		(start -2.075 2.575)
+		(end -2.075 2.43)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "7df88c0b-0e2b-55cc-9398-710e54b5bed6")
+	)
+	(fp_line
+		(start -2.075 2.575)
+		(end 2.075 2.575)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "727472d6-df5c-5440-a3e9-e12bcc0d8ed2")
+	)
+	(fp_line
+		(start 2.075 -2.575)
+		(end 2.075 -2.43)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "5060a5a8-f263-5318-bd51-a19b4c783ec0")
+	)
+	(fp_line
+		(start 2.075 2.575)
+		(end 2.075 2.43)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "ac2c2dbe-04e6-5a02-9543-93ce42fe1708")
+	)
+	(fp_line
+		(start -3.75 -2.75)
+		(end -3.75 2.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "08ee927a-e1b4-510d-85c3-13b4d4ff369a")
+	)
+	(fp_line
+		(start -3.75 -2.75)
+		(end 3.75 -2.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "52d8fbdf-7750-55df-86de-4b5cb7a7ca9e")
+	)
+	(fp_line
+		(start -3.75 2.75)
+		(end 3.75 2.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "0e37e70b-fda1-5ce8-92ea-49be84942997")
+	)
+	(fp_line
+		(start 3.75 -2.75)
+		(end 3.75 2.75)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "a9e450d4-ec41-5763-9ff5-f0f017dd17db")
+	)
+	(pad "1" smd rect
+		(at -2.7 -1.905)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "b9fc7481-38ef-5927-918c-2a4b4bec2947")
+	)
+	(pad "2" smd rect
+		(at -2.7 -0.635)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "90417781-539e-5ffe-9433-a56a75f0554e")
+	)
+	(pad "3" smd rect
+		(at -2.7 0.635)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "db724fd7-dcdd-5805-be58-40cef19025ca")
+	)
+	(pad "4" smd rect
+		(at -2.7 1.905)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "62b8806a-2709-5b2f-980c-76be012f30c5")
+	)
+	(pad "5" smd rect
+		(at 2.7 1.905)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "45d5f6a9-3008-5a63-a1a5-aabde80cee92")
+	)
+	(pad "6" smd rect
+		(at 2.7 0.635)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "f78962d8-ac9f-5feb-93cc-0680b6b9251b")
+	)
+	(pad "7" smd rect
+		(at 2.7 -0.635)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "423c6032-b412-544a-9625-d83022def366")
+	)
+	(pad "8" smd rect
+		(at 2.7 -1.905)
+		(size 1.55 0.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "b11d5777-ec93-524c-8a57-ceea4c62c304")
+	)
+	(pad "9" smd rect
+		(at -0.5875 -0.5875)
+		(size 1.175 1.175)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "1d8b1728-776a-56b0-bcab-cac13469ff94")
+	)
+	(pad "9" smd rect
+		(at -0.5875 0.5875)
+		(size 1.175 1.175)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "772629a0-b97b-54ad-8d5c-6a42e7c73a46")
+	)
+	(pad "9" smd rect
+		(at 0.5875 -0.5875)
+		(size 1.175 1.175)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "7ddc4b43-c027-59ad-9357-a04c23b97cd8")
+	)
+	(pad "9" smd rect
+		(at 0.5875 0.5875)
+		(size 1.175 1.175)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(solder_paste_margin_ratio -0.2)
+		(uuid "68b84d69-bddd-5b8c-af54-fdd55fce3ab0")
+	)
+	(embedded_fonts no)
+	(model "Housings_SOIC.3dshapes/SOIC-8-1EP_3.9x4.9mm_Pitch1.27mm.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

@@ -1,0 +1,121 @@
+(footprint "Choke_SMD_1206_Standard"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Choke, Drossel, SMD, 1206, Standard,")
+	(tags "Choke, Drossel, SMD, 1206, Standard,")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "5b0d58b7-5170-5a0d-93c1-cedb286570f1")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Choke_SMD_1206_Standard"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7d2ae6eb-4562-5611-84f9-2bc21ed88e6f")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "520c55cd-7377-5e72-9a61-e90b04f610c3")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7d13af1d-1c05-543f-b849-89d5c739c80b")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -0.55118 0.8001)
+		(end 0.50038 0.8001)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "473cfb69-0132-5f8b-b533-3c83a87f2188")
+	)
+	(fp_line
+		(start 0.55118 -0.8001)
+		(end -0.50038 -0.8001)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "20ed1938-0000-54f8-8da8-cd652b0e5f15")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 0.20066 -0.0508)
+		(stroke
+			(width 0.381)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Adhes")
+		(uuid "c8b688d7-6f10-5cb5-b7ff-fb9d3df72376")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 0.39878 0)
+		(stroke
+			(width 0.381)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Adhes")
+		(uuid "4946365b-c019-5e4b-a926-361edd13432f")
+	)
+	(pad "1" smd rect
+		(at -1.80086 0)
+		(size 1.6002 1.19888)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "ca057f03-3350-5d08-b052-ddbf06bedbd1")
+	)
+	(pad "2" smd rect
+		(at 1.80086 0)
+		(size 1.6002 1.19888)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "564d197b-cbfe-5c04-8970-86f283ce97b3")
+	)
+	(embedded_fonts no)
+	(model "Choke_SMD.3dshapes/Choke_SMD_Taiyo_NRS50XX.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

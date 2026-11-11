@@ -1,0 +1,208 @@
+(footprint "USB_Micro-B"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Micro USB Type B Receptacle")
+	(tags "USB USB_B USB_micro USB_OTG")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "710e2413-f7c1-5d35-8ad5-387449e99b4f")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "USB_Micro-B"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "426d1dce-cf39-5f11-b2fd-35efba11e280")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "272681ed-5ac7-5944-b328-d76fac9cc6d3")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a6ac7518-2bbc-5577-b60f-25537bb08848")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -4.3509 3.81746)
+		(end 4.3491 3.81746)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "34dd958a-71ac-5707-a24b-35fb23061644")
+	)
+	(fp_line
+		(start -4.3509 3.81746)
+		(end -4.3509 -2.58754)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "5e7ce873-d359-55f3-875a-292caf0191f1")
+	)
+	(fp_line
+		(start 4.3491 2.58746)
+		(end -4.3509 2.58746)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "a87eaf9e-3a22-5cfe-874f-7f14e8f46fac")
+	)
+	(fp_line
+		(start -4.3509 -2.58754)
+		(end 4.3491 -2.58754)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "b0c8d7e0-e4d3-5cfe-b4bb-efad91538c19")
+	)
+	(fp_line
+		(start 4.3491 -2.58754)
+		(end 4.3491 3.81746)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "69fc6fe6-a0d8-5337-8387-46924943dfbb")
+	)
+	(fp_line
+		(start -4.6 4.05)
+		(end -4.6 -2.8)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "4b192c2b-fe68-51b1-adbc-5e43ed90a4fe")
+	)
+	(fp_line
+		(start 4.6 4.05)
+		(end -4.6 4.05)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "024d69a7-a63e-5372-aa8d-20ac56bfdf06")
+	)
+	(fp_line
+		(start -4.6 -2.8)
+		(end 4.6 -2.8)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "f2b0c2a0-add5-52ee-92d3-a314ae077937")
+	)
+	(fp_line
+		(start 4.6 -2.8)
+		(end 4.6 4.05)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "adbeea19-916b-50d0-ba4b-faa81482fc8f")
+	)
+	(pad "1" smd rect
+		(at -1.3009 -1.56254 90)
+		(size 1.35 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "b27922ee-9a08-5853-b496-24209bc55bd7")
+	)
+	(pad "2" smd rect
+		(at -0.6509 -1.56254 90)
+		(size 1.35 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "36392e5f-0a6c-5537-b246-4aa83d9dbca2")
+	)
+	(pad "3" smd rect
+		(at -0.0009 -1.56254 90)
+		(size 1.35 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "47c14d33-f9ba-5fda-8d2b-d8f063709572")
+	)
+	(pad "4" smd rect
+		(at 0.6491 -1.56254 90)
+		(size 1.35 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "489acd44-75bd-5494-9048-3831adee9f01")
+	)
+	(pad "5" smd rect
+		(at 1.2991 -1.56254 90)
+		(size 1.35 0.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "2eae99e1-47d5-5f01-af03-dab01aae7cdc")
+	)
+	(pad "6" thru_hole circle
+		(at -3.5009 1.13746 90)
+		(size 1.55 1.55)
+		(drill 1.15)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "04ebfc80-c73b-54bc-a76f-fa8f82a7c883")
+	)
+	(pad "6" thru_hole circle
+		(at -2.5009 -1.56254 90)
+		(size 1.25 1.25)
+		(drill 0.85)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "3df3b482-4a5d-56dc-8bff-3828bab3ca6d")
+	)
+	(pad "6" thru_hole circle
+		(at 2.4991 -1.56254 90)
+		(size 1.25 1.25)
+		(drill 0.85)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "d797f58d-1441-5b86-8064-6bfb791f083a")
+	)
+	(pad "6" thru_hole circle
+		(at 3.4991 1.13746 90)
+		(size 1.55 1.55)
+		(drill 1.15)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "1f8e2822-fb4d-5760-8835-e7f2240bdbef")
+	)
+	(embedded_fonts no)
+)

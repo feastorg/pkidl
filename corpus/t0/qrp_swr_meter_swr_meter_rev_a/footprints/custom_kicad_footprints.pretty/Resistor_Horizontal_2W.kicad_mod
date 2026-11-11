@@ -1,0 +1,182 @@
+(footprint "Resistor_Horizontal_2W"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Resistor, Axial, RM 20mm,")
+	(tags "Resistor Axial RM 20mm")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "00cc935a-f70b-5bcd-83ad-e1dddc365752")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Resistor_Horizontal_2W"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "8955a21c-678d-5064-8fb5-3a0a9505510e")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "491a7325-46e7-5e69-abbc-ccacc12965e7")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "39708763-a8f2-5837-9eda-ecb2e15fea65")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 5.08 1.905)
+		(end 15.24 1.905)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "7e61548f-382b-506e-bc57-9733de805a71")
+	)
+	(fp_line
+		(start 15.24 1.905)
+		(end 15.24 -1.905)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "568279de-8295-5cec-aaed-bcfb21a0660a")
+	)
+	(fp_line
+		(start 1.27 0)
+		(end 5.08 0)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "29e2211c-8d84-5cab-9aab-0a46ab68978a")
+	)
+	(fp_line
+		(start 19.05 0)
+		(end 15.24 0)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "39a4c103-80e7-5dde-8524-b118d131267d")
+	)
+	(fp_line
+		(start 5.08 -1.905)
+		(end 5.08 1.905)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "736e01fa-b5f6-5abc-abd5-b1e3ac3b0b77")
+	)
+	(fp_line
+		(start 15.24 -1.905)
+		(end 5.08 -1.905)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "bb3011fc-de2e-544b-a8c3-550b7f6cc3af")
+	)
+	(fp_line
+		(start -1.25 2.8)
+		(end -1.25 -2.8)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "7ea9fcae-005c-5d54-a633-28d8bf33d83e")
+	)
+	(fp_line
+		(start 21.6 2.8)
+		(end -1.25 2.8)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "4c98e7e7-45d1-57f8-8dcd-06f83c93b739")
+	)
+	(fp_line
+		(start -1.25 -2.8)
+		(end 21.6 -2.8)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "a733e27f-17ad-5367-8ac2-f55fc685be01")
+	)
+	(fp_line
+		(start 21.6 -2.8)
+		(end 21.6 2.8)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "aa9cf4bc-4847-5fe8-a881-5a2ef0beb182")
+	)
+	(pad "1" thru_hole circle
+		(at 0 0)
+		(size 2.54 2.54)
+		(drill 1.00076)
+		(layers "*.Cu" "*.SilkS" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "a2ba5b5e-d091-5fff-84cd-58578dade6c3")
+	)
+	(pad "2" thru_hole circle
+		(at 20.32 0)
+		(size 2.54 2.54)
+		(drill 1.00076)
+		(layers "*.Cu" "*.SilkS" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "f4c25361-316a-590a-8e64-d1c9e85c0d3d")
+	)
+	(embedded_fonts no)
+	(model "Resistors_ThroughHole.3dshapes/Resistor_Horizontal_RM20mm.wrl"
+		(offset
+			(xyz 10.15999985 0 0)
+		)
+		(scale
+			(xyz 0.4 0.4 0.4)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

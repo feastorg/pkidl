@@ -1,0 +1,146 @@
+(footprint "LED-5MM"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "LED 5mm round vertical")
+	(tags "LED 5mm round vertical")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "7b39a821-f930-5dda-9284-a3e33846a8fb")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "LED-5MM"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "59f36889-4ae8-5448-b60e-0d7192a5318c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "25c51a9a-a863-52e9-b7fc-6c4e52454ad4")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "da012440-d9e9-5a23-9226-920b9c77812a")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -1.23 1.5)
+		(end -1.23 -1.5)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "ad00840b-2a8d-57d2-8d47-934edb97f957")
+	)
+	(fp_arc
+		(start -1.23 -1.5)
+		(mid 4.18544 -0.014565)
+		(end -1.214888 1.524904)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "f801a469-b807-5155-bcb4-6ed8da214f51")
+	)
+	(fp_circle
+		(center 1.27 0)
+		(end 0.97 -2.5)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.SilkS")
+		(uuid "30cb7014-04db-54ca-b908-ea45708b9ee3")
+	)
+	(fp_line
+		(start -1.5 -1.55)
+		(end -1.5 1.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "2950650e-c3aa-5bf2-b072-b6868385648b")
+	)
+	(fp_arc
+		(start -1.498248 -1.55316)
+		(mid 4.50039 0.001807)
+		(end -1.5 1.55)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "e4bbf9d7-d7d7-53d8-a08c-16d9438503b6")
+	)
+	(fp_text user "K"
+		(at -1.905 1.905)
+		(layer "F.SilkS")
+		(uuid "67925e17-69ba-58f7-81f4-96dd7dda7d9f")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" thru_hole rect
+		(at 0 0 90)
+		(size 2 1.9)
+		(drill 1.00076)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "3fb8dc1c-91bc-5da2-a691-872eb8687377")
+	)
+	(pad "2" thru_hole circle
+		(at 2.54 0)
+		(size 1.9 1.9)
+		(drill 1.00076)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "3db86013-c80b-5b6c-8ed3-7ec9750a0889")
+	)
+	(embedded_fonts no)
+	(model "LEDs.3dshapes/LED-5MM.wrl"
+		(offset
+			(xyz 1.269999981 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 90)
+		)
+	)
+)

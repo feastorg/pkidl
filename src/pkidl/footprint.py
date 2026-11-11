@@ -1,11 +1,12 @@
-"""Place a library footprint on a board, the way KiCad stores it.
+"""Place a library footprint on a board, the way KiCad stores it, and read one back.
 
 KiCad keeps a placed footprint's children in footprint-local coordinates. Placing
 one on the back mirrors those coordinates in Y and swaps F./B. layers; the
 footprint's own ``(at x y rot)`` carries position and rotation. Pad angles are
 stored absolute (local angle plus footprint rotation); text angles are absolute
-and kept upright. ``tests/test_pkidl_footprint.py`` checks these rules against
-every footprint of a board KiCad itself saved.
+and kept upright; a text's mirror flag flips with the side. ``tests/test_corpus.py``
+checks these rules against every footprint of the corpus references, boards KiCad
+itself saved.
 """
 
 from __future__ import annotations
@@ -17,6 +18,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from pkidl.sexpr import Node, Sym, find, find_all, num, parse
+
+VERSION = "20260206"  # KiCad 10 board and footprint format
 
 # Fixed namespace so generated UUIDs depend only on what they identify.
 NAMESPACE = uuid.UUID("5b1c0f3e-9a5d-4c4e-8a0b-6f1d2e3c4b5a")
@@ -99,6 +102,22 @@ def _local_angle(item: Node) -> float:
     return float(at[3]) if at is not None and len(at) > 3 else 0.0
 
 
+def _toggle_mirror(text: Node) -> None:
+    """Flip whether a text reads mirrored, as KiCad does when its footprint changes side."""
+    effects = find(text, "effects")
+    if effects is None:
+        return
+    justify = find(effects, "justify")
+    if justify is None:
+        effects.append([Sym("justify"), Sym("mirror")])
+    elif Sym("mirror") not in justify:
+        justify.append(Sym("mirror"))
+    else:
+        justify.remove(Sym("mirror"))
+        if len(justify) == 1:
+            effects.remove(justify)
+
+
 def place(library_footprint: Path | str, p: Placement) -> Node:
     """Return a board ``(footprint ...)`` node for placement *p*."""
     text = (
@@ -161,13 +180,7 @@ def place(library_footprint: Path | str, p: Placement) -> Node:
             elif kind == "property" and item[1] in p.fields:
                 item[2] = p.fields[item[1]]
             if p.back:
-                text_effects = find(item, "effects")
-                if text_effects is not None:
-                    justify = find(text_effects, "justify")
-                    if justify is None:
-                        text_effects.append([Sym("justify"), Sym("mirror")])
-                    elif Sym("mirror") not in justify:
-                        justify.append(Sym("mirror"))
+                _toggle_mirror(item)
 
         # Schematic linkage goes after the properties, as KiCad writes it.
         if not meta_done and kind not in ("descr", "tags", "property"):
@@ -218,6 +231,78 @@ def _own_uuids(footprint: Node, ref: str) -> None:
     for child in footprint[1:]:
         if isinstance(child, list) and child and child[0] != "uuid":
             walk(child)
+
+
+# What a placed footprint carries that belongs to its placement or its circuit, not to the
+# library footprint it was placed from.
+_PLACED_ONLY = {"layer", "uuid", "at", "path", "sheetname", "sheetfile", "locked", "placed"}
+_PAD_CIRCUIT = {"net", "pinfunction", "pintype"}
+# KiCad's own footprint fields, and the layer each sits on in a library footprint.
+_LIBRARY_FIELDS = {"Reference": "F.SilkS", "Value": "F.Fab", "Datasheet": "F.Fab",
+                   "Description": "F.Fab"}  # fmt: skip
+
+
+def library_form(placed: Node) -> Node:
+    """The library footprint a placed one was placed from: ``place`` undone.
+
+    Nothing of the placement survives: no position, rotation or side, no pad nets, no
+    schematic link, and no UUIDs of the board's. KiCad's own fields (Reference, Value,
+    Datasheet, Description) go back to the origin on their library layers, the Reference
+    shown, because where a label sits on a board is layout and the library's own position
+    can't be told from it. Other symbol fields are dropped.
+    """
+    lib_id = str(placed[1])
+    at = find(placed, "at")
+    assert at is not None
+    rot = float(at[3]) if len(at) > 3 else 0.0
+    layer = find(placed, "layer")
+    back = layer is not None and str(layer[1]).startswith("B.")
+
+    out: Node = [Sym("footprint"), lib_id.rpartition(":")[2], [Sym("version"), Sym(VERSION)],
+                 [Sym("generator"), "pkidl"], [Sym("generator_version"), "0.1"],
+                 [Sym("layer"), "F.Cu"]]  # fmt: skip
+    for child in placed[2:]:
+        if not isinstance(child, list) or child[0] in _PLACED_ONLY:
+            continue
+        kind = child[0]
+        if kind == "property":
+            if child[1] in _LIBRARY_FIELDS:
+                out.append(_library_field(child, str(out[1])))
+            continue
+        item = copy.deepcopy(child)
+        local = _local_angle(item) - rot
+        if back:
+            _flip(item)
+            local = -local
+        if kind == "pad":
+            item[:] = [c for c in item if not (isinstance(c, list) and c[0] in _PAD_CIRCUIT)]
+            _set_angle(item, _norm(local))
+        elif kind in _TEXT_KEYS:
+            _set_angle(item, _upright(local))
+            if back:
+                _toggle_mirror(item)
+        out.append(item)
+    _own_uuids(out, "lib:" + lib_id)
+    return out
+
+
+def _library_field(placed: Node, name: str) -> Node:
+    """One of KiCad's own fields, as a library footprint carries it."""
+    field_name = str(placed[1])
+    item = copy.deepcopy(placed)
+    if field_name == "Reference":
+        item[2] = "REF**"
+        item[:] = [c for c in item if not (isinstance(c, list) and c[0] == "hide")]
+    elif field_name == "Value":
+        item[2] = name
+    if (text_at := find(item, "at")) is not None:
+        text_at[1:] = [num(0), num(0)]
+    if (text_layer := find(item, "layer")) is not None:
+        text_layer[1:] = [_LIBRARY_FIELDS[field_name]]
+    effects = find(item, "effects")
+    if effects is not None and (justify := find(effects, "justify")) is not None:
+        effects.remove(justify)
+    return item
 
 
 def pads(footprint: Node) -> list[Node]:

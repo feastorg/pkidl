@@ -22,12 +22,12 @@ relation, and the board file under 30 lines.
 
 In order; each a PR with its tests:
 
-1. **Footprints for corpus boards.** The corpus uses 84 footprint libraries, mostly
-   KiCad 5 names and project-specific ones that KiCad 10 doesn't ship. Proposal: the
-   importer also writes each footprint's definition, normalised to library form (origin,
-   no rotation, front side), into `corpus/<board>/footprints/`. A footprint is the part's
-   package, an input like a library, not layout. **Needs your decision:** it reads the
-   reference board for more than the circuit and the outline.
+1. **Footprints for corpus boards.** The corpus boards name footprints from KiCad 5
+   libraries and project-specific ones that KiCad 10 doesn't ship. The importer writes
+   each footprint's definition, put back in library form (origin, no rotation, front
+   side, no nets or label positions), into `corpus/<tier>/<board>/footprints/`. A
+   footprint is the part's package, an input like a library, not layout (decided
+   2026-11-11: this reads the reference for more than the circuit and the outline).
 2. **`Board.from_inputs`**: a board from `circuit.json`, `mechanical.json` and those
    footprints; the outline from `mechanical.json`.
 3. **Parts, pins and nets as objects**: `board["U1"]`, `board.parts("R1..R5")`,
@@ -48,6 +48,11 @@ In order; each a PR with its tests:
 
 fan_controller: blocks as functions, rows, decoupling from the circuit. Then the other
 T0 and T2 boards.
+
+No corpus reference carries pin names (`pinfunction` appears in none of the 15), so
+`circuit.json` has pad numbers only. The fan_controller board file selects pins by name
+(`driver.pin("B")`); those names have to come from part annotations, as the ESP-12E's
+antenna area does in milestone 1.
 
 ## Milestone 3: T1, copper for current
 

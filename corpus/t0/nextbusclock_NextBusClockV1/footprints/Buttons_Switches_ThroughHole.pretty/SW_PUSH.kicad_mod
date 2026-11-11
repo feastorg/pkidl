@@ -1,0 +1,162 @@
+(footprint "SW_PUSH"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Bouton poussoir")
+	(tags "SWITCH DEV")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "f55864ef-1743-5733-addf-08442253b293")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "SW_PUSH"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "550ea9b9-e3ca-5980-990e-c337284c37a8")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c556f932-3c0d-505f-ad43-681719c6132c")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "266a9c19-7925-54d2-a2e9-301f6eae4f82")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 6.35 5.715)
+		(end 5.715 6.35)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "3691e9e3-e36c-5754-b36e-b63def43f7c0")
+	)
+	(fp_line
+		(start 6.35 -5.715)
+		(end 6.35 5.715)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "7a95758a-5de8-5aa3-b953-77fe50e3e1f1")
+	)
+	(fp_line
+		(start 5.715 6.35)
+		(end -5.715 6.35)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "01e9752d-c28c-5b6c-883f-6de00c5ccb16")
+	)
+	(fp_line
+		(start 5.715 -6.35)
+		(end 6.35 -5.715)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "a5711c9c-22c5-55fd-a7fc-93c2dd2dd3a4")
+	)
+	(fp_line
+		(start -5.715 6.35)
+		(end -6.35 5.715)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "4cf5a585-a67f-555d-8347-4976890a6b68")
+	)
+	(fp_line
+		(start -5.715 -6.35)
+		(end 5.715 -6.35)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e78cccea-6992-5e0d-bf61-4c9e65b20ed2")
+	)
+	(fp_line
+		(start -6.35 5.715)
+		(end -6.35 -5.715)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "d09031ba-3a5d-599e-886f-a244d4cca494")
+	)
+	(fp_line
+		(start -6.35 -5.715)
+		(end -5.715 -6.35)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2e6c18cd-8463-5350-8a35-2da5f4d05bce")
+	)
+	(pad "1" thru_hole circle
+		(at -5.08 -2.54)
+		(size 2.54 2.54)
+		(drill 1.143)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "0f8915cf-9b71-558f-8a75-6acbbe7a3dc3")
+	)
+	(pad "2" thru_hole circle
+		(at 5.08 2.54)
+		(size 2.54 2.54)
+		(drill 1.143)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "5fc8348e-82d3-5211-a8c1-4dc845ea6321")
+	)
+	(embedded_fonts no)
+	(model "Buttons_Switches_ThroughHole.3dshapes/SW_PUSH.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

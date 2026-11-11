@@ -1,0 +1,138 @@
+(footprint "C_1206_HandSoldering"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Capacitor SMD 1206, hand soldering")
+	(tags "capacitor 1206")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "07e67671-86e4-59a9-adfc-ebd7409e7b3a")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "C_1206_HandSoldering"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "f8c97dc7-11a7-5006-ad5c-34e09d2d7944")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c93301f6-7845-5d3f-a56e-31d3a7645d40")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "2bf12822-5ca7-5b3c-b4c1-faaa836643ee")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 1 -1.025)
+		(end -1 -1.025)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "d490d518-bf08-5ddc-9522-dbab53d98f2b")
+	)
+	(fp_line
+		(start -1 1.025)
+		(end 1 1.025)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "6aa921a7-38a7-57bf-ab12-9b42097de6c2")
+	)
+	(fp_line
+		(start 3.3 -1.15)
+		(end 3.3 1.15)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "cc540ac2-38b9-5904-a0fe-93c890308177")
+	)
+	(fp_line
+		(start -3.3 -1.15)
+		(end 3.3 -1.15)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "d76e43df-733d-54ec-ba98-38a2f5f9de19")
+	)
+	(fp_line
+		(start -3.3 -1.15)
+		(end -3.3 1.15)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "b35bc841-30f9-5998-947f-842db1aa1fbc")
+	)
+	(fp_line
+		(start -3.3 1.15)
+		(end 3.3 1.15)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "3093a72b-9e53-5f56-9a59-8a0083c09f98")
+	)
+	(pad "1" smd rect
+		(at -2 0)
+		(size 2 1.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "6032d306-5ff9-53e8-abdf-1f8d289d7dbd")
+	)
+	(pad "2" smd rect
+		(at 2 0)
+		(size 2 1.6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "e9ed2245-47a0-5821-ad5a-1b500242c974")
+	)
+	(embedded_fonts no)
+	(model "Capacitors_SMD.3dshapes/C_1206_HandSoldering.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

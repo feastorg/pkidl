@@ -2,8 +2,9 @@
 
 Step 4 of the charter: the pkidl files we would want to write for corpus boards, before
 pkidl can run them. They are the API design; reviewing them is reviewing the language.
-Each is written from the board's circuit (`circuit.json`) and mechanical requirements
-(`mechanical.json`) and what its purpose implies, never from the reference layout.
+Each is written from the board's circuit (`circuit.json`), mechanical requirements
+(`mechanical.json`), its parts' footprints (`footprints/`) and what its purpose implies,
+never from the reference layout.
 
 Status: a sketch for review. Names and signatures are proposals.
 
@@ -52,7 +53,7 @@ Twenty lines, fourteen of them code; no coordinates except the outline's (from
 
 | Line | Feature | Exists today |
 |---|---|---|
-| `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name | importer writes them; nothing loads them into a board |
+| `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name from `footprints/` | importer writes them; nothing loads them into a board |
 | `board.parts("R1..R5")` | typed part handles, range selectors | no |
 | `place(against=Edge.LEFT, inset=)` | placement relative to the outline | no: absolute only |
 | `align(p1, p2, grid=)` | grid alignment across parts | no |

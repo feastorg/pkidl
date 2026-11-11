@@ -1,0 +1,117 @@
+(footprint "SM0603"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "2cf1ea27-edf1-5ff0-ba99-fd9ce971c734")
+		(effects
+			(font
+				(size 0.508 0.4572)
+				(thickness 0.1143)
+			)
+		)
+	)
+	(property "Value" "SM0603"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "5769f4be-6f63-583c-a585-953487c7e715")
+		(effects
+			(font
+				(size 0.508 0.4572)
+				(thickness 0.1143)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "6257876c-7245-5f57-bd07-5a889c0fc5de")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7babbb67-f5df-5aa7-8852-b4310faf3d69")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -1.143 -0.635)
+		(end 1.143 -0.635)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "cf782318-90b7-5612-8097-d2b4142d679d")
+	)
+	(fp_line
+		(start -1.143 0.635)
+		(end -1.143 -0.635)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "30624c14-c469-5040-bf3e-87093fd24838")
+	)
+	(fp_line
+		(start 1.143 -0.635)
+		(end 1.143 0.635)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e6432a6e-fd3e-5449-9154-f522e92c267f")
+	)
+	(fp_line
+		(start 1.143 0.635)
+		(end -1.143 0.635)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "c9eecc0d-073c-5105-9a5a-3bd12b8478da")
+	)
+	(pad "1" smd rect
+		(at -0.762 0)
+		(size 0.635 1.143)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "fc8975c4-5c83-5ce7-9c6c-0ef60d012d6b")
+	)
+	(pad "2" smd rect
+		(at 0.762 0)
+		(size 0.635 1.143)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "9d72b08c-8a55-5e28-8061-b89d8dcb2c43")
+	)
+	(embedded_fonts no)
+	(model "smd\\resistors\\R0603.wrl"
+		(offset
+			(xyz 0 0 0.02539999962)
+		)
+		(scale
+			(xyz 0.5 0.5 0.5)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

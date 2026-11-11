@@ -1,0 +1,156 @@
+(footprint "R_AXIAL_0W25"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Resistor Axial 1/4W 0.4\"")
+	(tags "R")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "fe15a041-cec0-56ac-9cc9-e635ef84685f")
+		(effects
+			(font
+				(size 0.762 0.762)
+				(thickness 0.1524)
+			)
+		)
+	)
+	(property "Value" "R_AXIAL_0W25"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "bc18a9b6-1b53-5fc1-9068-d1fe1da1ff29")
+		(effects
+			(font
+				(size 0.762 0.762)
+				(thickness 0.1524)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "e8ed50fe-8d7f-5a6f-a0a2-15e899b446c1")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "37e585bb-1bdc-5b80-9549-676ee00ce4ac")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 0 0)
+		(end 1.016 0)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "013fe8e3-616c-5591-8844-bb9cdd7671ee")
+	)
+	(fp_line
+		(start 1.016 -1.016)
+		(end 9.144 -1.016)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "8040aab1-2cb1-5474-aba0-9db471c53cd6")
+	)
+	(fp_line
+		(start 1.016 0)
+		(end 1.016 -1.016)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "5b5f72da-14f2-5103-9121-55ae264a1934")
+	)
+	(fp_line
+		(start 1.016 1.016)
+		(end 1.016 0)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "6caa6de4-6d33-5636-ad39-b85f6d754d8b")
+	)
+	(fp_line
+		(start 9.144 -1.016)
+		(end 9.144 1.016)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "55169587-1cb2-5777-8bec-de535f003fc2")
+	)
+	(fp_line
+		(start 9.144 1.016)
+		(end 1.016 1.016)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e9d62bee-45ba-5180-8e26-4bf43ea144c7")
+	)
+	(fp_line
+		(start 10.16 0)
+		(end 9.144 0)
+		(stroke
+			(width 0.3048)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "d3663ffb-96de-50c9-a217-1d30ea8d4f85")
+	)
+	(pad "1" thru_hole oval
+		(at 0 0)
+		(size 2.2479 1.4986)
+		(drill 0.8128
+			(offset 0.37465 0)
+		)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "881155e0-82bb-578a-9094-9aa1adfd1404")
+	)
+	(pad "2" thru_hole oval
+		(at 10.16 0)
+		(size 2.2479 1.4986)
+		(drill 0.8128
+			(offset -0.37465 0)
+		)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "53503f03-01f1-5ce5-a4fa-0d57aff3bdbd")
+	)
+	(embedded_fonts no)
+	(model "discret/resistor.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 0.4 0.4 0.4)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

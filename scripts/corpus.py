@@ -1,8 +1,8 @@
 """The corpus: public boards pkidl must be able to express, and their scorecard.
 
 usage:
-  python scripts/corpus.py extract     write each board's circuit.json and mechanical.json
-                                       from its reference, and corpus/manifest.json
+  python scripts/corpus.py extract     write each board's circuit.json, mechanical.json and
+                                       footprints/ from its reference, and corpus/manifest.json
   python scripts/corpus.py score DIR   score the boards whose filled copies (and DRC
                                        reports) are in DIR; see the justfile's corpus recipe
 
@@ -19,14 +19,15 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from pkidl.importer import circuit, mechanical
+from pkidl.importer import circuit, footprint_path, footprints, mechanical
 from pkidl.measure import regions
-from pkidl.sexpr import Node, find, find_all, parse
+from pkidl.sexpr import Node, dumps, find, find_all, parse
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "corpus"
 FREEROUTING = "842ad83"  # freerouting/freerouting commit the PCBench boards come from
-# What each board directory holds and the manifest hashes (board.py is hashed once written).
+# What each board directory holds and the manifest hashes, beside the files under
+# footprints/ (board.py is hashed once written).
 FILES = ("LICENSE", "circuit.json", "mechanical.json", "reference.kicad_pcb")
 
 # board_id -> (tier, licence, source repository). Licences read from each source repo.
@@ -57,6 +58,22 @@ def _dump(path: Path, data: object) -> None:
     path.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n")
 
 
+def _write_footprints(d: Path, board: Node) -> tuple[list[Path], dict[str, list[str]]]:
+    """Rewrite ``d/footprints`` from *board*: the files written, and the parts carrying a
+    version of their footprint other than the one written."""
+    libs, differ = footprints(board)
+    root = d / "footprints"
+    written = []
+    for name, lib in libs.items():
+        path = root / footprint_path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(dumps(lib) + "\n")
+        written.append(path)
+    for stale in set(root.rglob("*.kicad_mod")) - set(written):
+        stale.unlink()
+    return sorted(written), differ
+
+
 def extract() -> None:
     manifest = {"source": f"PCBench via freerouting/freerouting@{FREEROUTING}",
                 "boards": {}}  # fmt: skip
@@ -65,14 +82,21 @@ def extract() -> None:
         board = parse((d / "reference.kicad_pcb").read_text())
         _dump(d / "circuit.json", circuit(board))
         _dump(d / "mechanical.json", mechanical(board))
-        files = [d / n for n in FILES]
+        written, differ = _write_footprints(d, board)
+        files = [d / n for n in FILES] + written
         manifest["boards"][board_id] = {
             "tier": tier, "licence": licence, "source": source,
             "pcbench": f"scripts/benchmark/fixtures/PCBench/{board_id}/raw.kicad_pcb",
-            "sha256": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
+            "sha256": {p.relative_to(d).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                       for p in files},
+            # Parts whose footprint on the reference is not the version footprints/ holds.
+            "other_footprint_versions": differ,
         }  # fmt: skip
         c = json.loads((d / "circuit.json").read_text())
-        print(f"{tier} {board_id}: {len(c['parts'])} parts, {len(c['nets'])} nets")
+        print(f"{tier} {board_id}: {len(c['parts'])} parts, {len(c['nets'])} nets, "
+              f"{len(written)} footprints")  # fmt: skip
+        for name, refs in differ.items():
+            print(f"     {name}: {', '.join(refs)} carry another version of it")
     _dump(CORPUS / "manifest.json", manifest)
 
 

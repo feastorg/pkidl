@@ -1,0 +1,155 @@
+(footprint "pin_array_3x2"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Double rangee de contacts 2 x 4 pins")
+	(tags "CONN")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "0834c4af-6917-565b-b355-89b94ad51542")
+		(effects
+			(font
+				(size 1.016 1.016)
+				(thickness 0.2032)
+			)
+		)
+	)
+	(property "Value" "pin_array_3x2"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "2384d4d5-ee89-55e0-8c09-98c3582657a1")
+		(effects
+			(font
+				(size 1.016 1.016)
+				(thickness 0.2032)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "086ca9fd-6551-5221-8e42-881035c4ebaa")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "71f7cb14-9628-5b9a-8bfa-e876975e60ab")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr through_hole)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 3.81 -2.54)
+		(end 3.81 2.54)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "e09decc9-6eae-5ee8-9dc1-a2b3a3b4f47d")
+	)
+	(fp_line
+		(start -3.81 -2.54)
+		(end 3.81 -2.54)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "3cf185b3-0ff7-5751-9725-91c1130b496f")
+	)
+	(fp_line
+		(start 3.81 2.54)
+		(end -3.81 2.54)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2f9a7a67-6c09-5c4b-80e6-ec526b5049c8")
+	)
+	(fp_line
+		(start -3.81 2.54)
+		(end -3.81 -2.54)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "5546f777-9139-5f87-980d-b9b50e21fbaf")
+	)
+	(pad "1" thru_hole rect
+		(at -2.54 1.27)
+		(size 1.524 1.524)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "d94efe21-e9db-5386-a984-c4d287c1a547")
+	)
+	(pad "2" thru_hole circle
+		(at -2.54 -1.27)
+		(size 1.524 1.524)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "07d4f6ef-a8ca-521b-84ac-a5d17b7a2dfd")
+	)
+	(pad "3" thru_hole circle
+		(at 0 1.27)
+		(size 1.524 1.524)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "1de28063-c19b-57e3-bd89-c7fea07cf4e5")
+	)
+	(pad "4" thru_hole circle
+		(at 0 -1.27)
+		(size 1.524 1.524)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "c7ec3088-25d4-59e2-9462-cf184b62970a")
+	)
+	(pad "5" thru_hole circle
+		(at 2.54 1.27)
+		(size 1.524 1.524)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "ad8fa35b-85a1-56c7-99cb-16bf11a594c4")
+	)
+	(pad "6" thru_hole circle
+		(at 2.54 -1.27)
+		(size 1.524 1.524)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask" "F.SilkS")
+		(remove_unused_layers no)
+		(uuid "f05373db-f62c-57e1-971f-db6a534f44a5")
+	)
+	(embedded_fonts no)
+	(model "pin_array/pins_array_3x2.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

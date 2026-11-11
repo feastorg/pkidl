@@ -1,0 +1,229 @@
+(footprint "Inductor_Wurth_HCI-1890"
+	(version 20260206)
+	(generator "pkidl")
+	(generator_version "0.1")
+	(layer "F.Cu")
+	(descr "Inductor, Wurth Elektronik, Wurth_HCI-1890, 18.2mmx18.2mm")
+	(tags "inductor wurth hci smd")
+	(property "Reference" "REF**"
+		(at 0 0)
+		(layer "F.SilkS")
+		(uuid "5a81d9f0-9199-5aa5-b749-93f27f19101c")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "Inductor_Wurth_HCI-1890"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "61286260-6a1a-5eef-b4b9-fa38da0d652d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "649b90dc-7f81-54a5-8c2b-cb57a882ae18")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7394d8b7-ebde-5507-b234-3854f8e71337")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -9.2 9.2)
+		(end 9.2 9.2)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "c6b51d09-a1e7-5109-9a90-7f02ab9a5933")
+	)
+	(fp_line
+		(start 9.2 9.2)
+		(end 9.2 3.4)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "bf2dba38-2095-5775-975a-851b72a11a66")
+	)
+	(fp_line
+		(start -9.2 3.4)
+		(end -9.2 9.2)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "1e3de85f-ea1b-5750-8e58-f959ce84c04c")
+	)
+	(fp_line
+		(start -9.2 -3.4)
+		(end -9.2 -9.2)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "7401139b-323e-58e7-bb0e-c04778275233")
+	)
+	(fp_line
+		(start -9.2 -9.2)
+		(end 9.2 -9.2)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "70241037-9e02-5ccb-8ab8-a14d3af89b6e")
+	)
+	(fp_line
+		(start 9.2 -9.2)
+		(end 9.2 -3.4)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "feddebb6-140c-5c01-868e-69a390ae267d")
+	)
+	(fp_line
+		(start -9.95 9.4)
+		(end 9.95 9.4)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "4a087d90-7f50-5a29-b1b5-18d0761ef0c7")
+	)
+	(fp_line
+		(start 9.95 9.4)
+		(end 9.95 -9.4)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "f8d1b8d3-ed2e-59dc-9468-098d7012a535")
+	)
+	(fp_line
+		(start -9.95 -9.4)
+		(end -9.95 9.4)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "9a004123-f13b-558e-a131-67b99393b5e4")
+	)
+	(fp_line
+		(start 9.95 -9.4)
+		(end -9.95 -9.4)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "98f8e0b0-ff30-5a9e-b48d-2b21e8243845")
+	)
+	(fp_line
+		(start -9.1 9.1)
+		(end 9.1 9.1)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "afbd23db-4879-511e-86ac-f79b550bdfe9")
+	)
+	(fp_line
+		(start 9.1 9.1)
+		(end 9.1 -9.1)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "cf996e9b-624e-5b24-8f63-3e188946aac3")
+	)
+	(fp_line
+		(start -9.1 -9.1)
+		(end -9.1 9.1)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "6486fbe8-d2be-5eb9-a2d0-0c90bbe436eb")
+	)
+	(fp_line
+		(start 9.1 -9.1)
+		(end -9.1 -9.1)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "7c6e9826-42b7-5332-8fa5-2ecaed9498bd")
+	)
+	(pad "1" smd rect
+		(at -6.65 0)
+		(size 6 6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "e18703f3-1e18-51d7-8f9e-06e93a2108b7")
+	)
+	(pad "2" smd rect
+		(at 6.65 0)
+		(size 6 6)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "22403e66-abd0-5457-b519-001e69a3f6d5")
+	)
+	(embedded_fonts no)
+	(model "Inductors.3dshapes/Inductor_Wurth_HCI-1890.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+	(model "C:/Users/Ralim/Documents/GitHub/OpenMPPT/PCB/SRR1210.wrl"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 0.393701 0.393701 0.393701)
+		)
+		(rotate
+			(xyz -90 0 90)
+		)
+	)
+)
