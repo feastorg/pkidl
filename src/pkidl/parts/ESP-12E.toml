@@ -1,0 +1,16 @@
+# ESP-12E: an ESP8266 module, 16 mm by 24 mm, with pads at a 2 mm pitch down both long
+# sides and along the end away from its antenna.
+
+footprint = "ESP-12E"
+
+# Pad 1 is the first pad down one long side, at the antenna end; pad 22 is straight
+# across the module from it.
+[pads]
+1 = [0, 0]
+22 = [16, 0]
+
+# The printed antenna: the whole width of the module, from its end to 2.6 mm short of
+# the row of pads 1 and 22: the box the footprint this was written from draws and
+# marks "No Copper".
+[areas]
+antenna = [[0, -8.4], [16, -2.6]]

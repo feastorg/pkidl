@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from pkidl import Board, Edge, Side, align, mm, place
+from pkidl import Board, Edge, Side, align, keepout, mm, place
 from pkidl.circuit import Circuit
 from pkidl.footprint import Placement, pad_xy, pads
 from pkidl.footprint import place as put
@@ -426,14 +426,37 @@ def test_a_part_put_in_two_places_is_reported_with_both_lines_and_not_placed():
     board.place(p2, against=Edge.RIGHT, inset=2 * mm)
     board.place(u1, between=(p1, p2), facing=Edge.TOP)
     board.place(u1, against=Edge.LEFT)
-    line = _line_no() - 1
+    board.place(u1, against=Edge.TOP)
+    line = _line_no() - 2
     solution = board.solve()
-    # Against the left edge its pad 1 is at x = 101; between the headers, at 111.
+    # In the top left corner its pad 1 is at x = 101; between the headers, at 111.
     assert _told(solution) == [
         f"U1 is put in two places 10 mm apart across the board ({HERE}:{line}, {HERE}:{line - 1})"
     ]
     assert set(solution.poses) == {"P1", "P2"} and solution.free == ()
     assert solution.problems[0].statements == (board.statements()[3], board.statements()[2])
+
+
+@pytest.mark.parametrize(
+    ("edge", "pad"),
+    # The marks' middles are at (102.5, 53.5) and (128.5, 75.5), and midway is (115.5,
+    # 64.5), off the middle of the board both ways. The module's pad 1 is 1 mm in from
+    # its left side, 4 mm down from its top and 4 mm left of its middle.
+    [(Edge.TOP, (111.5, 54.0)), (Edge.BOTTOM, (111.5, 76.0)),
+     (Edge.LEFT, (101.0, 64.5)), (Edge.RIGHT, (121.0, 64.5))],
+)  # fmt: skip
+def test_with_an_edge_the_edge_says_how_far_and_between_where_along_it(edge, pad):
+    board = _board(FID1="", FID2="", U1="J K L M GND")
+    fid1, fid2, u1 = board.parts("FID1", "FID2", "U1")
+    board.place(fid1, against=Edge.LEFT, inset=1 * mm)
+    board.place(fid1, against=Edge.TOP, inset=2 * mm)
+    board.place(fid2, against=Edge.RIGHT)
+    board.place(fid2, against=Edge.BOTTOM, inset=3 * mm)
+    board.place(u1, between=(fid1, fid2), against=edge, facing=Edge.TOP)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert _pads(board, solution, "U1")["1"] == pad
+    assert not any(note.startswith("U1: centred") for note in solution.chosen)
 
 
 def test_opposite_edges_put_a_part_in_two_places():
@@ -614,11 +637,14 @@ def test_statements_that_conflict_are_the_problems_and_nothing_is_placed():
 
 
 def _a_breakout() -> tuple[Board, list]:
-    """A module between two headers with a strap on each side of it, as statements not
-    yet added to the board."""
+    """A module between two headers with a strap on each side of it, the 3 mm of the
+    module above its pads kept clear on both faces and a mark between them on its own,
+    as statements not yet added to the board."""
     board = _board(P1="A B VCC GND", P2="C D VCC GND", U1="A B D C GND", R1="VCC A", R2="VCC C")
     board.rails("VCC", "GND")
     p1, p2, u1, r1, r2 = board.parts("P1", "P2", "U1", "R1", "R2")
+    antenna, mark = board.annotate(u1, antenna=((-1 * mm, -4 * mm), (9 * mm, -1 * mm)),
+                                   mark=((3 * mm, 0 * mm), (5 * mm, 1 * mm)))  # fmt: skip
     said = [
         place(p1, against=Edge.LEFT, inset=2 * mm),
         place(p2, against=Edge.RIGHT, inset=2 * mm),
@@ -627,6 +653,8 @@ def _a_breakout() -> tuple[Board, list]:
         place(r1, near=u1.pin_on(r1.signal_net), within=3 * mm, side="back"),
         place(r2, near=u1.pin_on(r2.signal_net), within=3 * mm),
         place(r2, side=Side.BACK),
+        keepout(antenna, copper=True, both_sides=True),
+        keepout(mark, copper=True),
     ]
     return board, said
 
@@ -656,6 +684,12 @@ def test_a_whole_board_is_placed():
         "R1: 0 mm from U1.1, turned 180 degrees",
         "R2: 0 mm from U1.4, turned 0 degrees",
     )
+    # What is kept clear, in the order it was written in: above the module's pads, the
+    # straps' courtyards 0.1 mm below it, and the mark.
+    assert _areas(solution) == [
+        ('U1.area("antenna")', (110.0, 61.0, 120.0, 64.0), True, True),
+        ('U1.area("mark")', (114.0, 65.0, 116.0, 66.0), True, False),
+    ]
 
 
 def test_the_order_statements_are_added_in_never_matters():
@@ -668,7 +702,7 @@ def test_the_order_statements_are_added_in_never_matters():
         board.add(*order)
         solution = board.solve()
         found.add((tuple(solution.poses.items()), solution.free, solution.problems,
-                   solution.chosen))  # fmt: skip
+                   solution.chosen, solution.keepouts))  # fmt: skip
     assert len(found) == 1
     # And what does not hold is told the same way, in the same order.
     told = set()
@@ -783,12 +817,16 @@ def test_one_place_given_twice_to_the_nanometre_is_one_place():
     board.place(board["FID1"], against=Edge.LEFT, inset=1 * mm)
     board.place(board["FID2"], against=Edge.RIGHT, inset=Length(1))
     # The marks' middles are an odd number of nanometres apart, so midway between them
-    # is on a half nanometre: 15.5 mm from the left edge, as near as can be said.
+    # is on a half nanometre: 15.5 mm from the left edge, as near as can be said. Two
+    # edges make a corner, which holds the resistor to between= both ways: the marks
+    # are half way down the board, and its pads 1 mm either side of that.
     board.place(board["R1"], between=(board["FID1"], board["FID2"]), against=Edge.LEFT,
-                inset=15.5 * mm)  # fmt: skip
+                inset=15.5 * mm, facing=Edge.LEFT)  # fmt: skip
+    board.place(board["R1"], against=Edge.TOP, inset=14 * mm)
     solution = board.solve()
     assert solution.ok, _told(solution)
-    assert _pads(board, solution, "R1")["1"][0] == pytest.approx(115.5, abs=1e-6)
+    assert _pads(board, solution, "R1")["1"] == pytest.approx((115.5, 66.0), abs=1e-6)
+    assert _pads(board, solution, "R1")["2"] == pytest.approx((115.5, 64.0), abs=1e-6)
 
 
 @pytest.mark.parametrize(
@@ -861,3 +899,245 @@ def test_align_is_by_first_pins():
     assert at["U1"]["1"] == (111.0, 54.0) and at["R1"]["1"] == (114.0, 78.0)
     assert at["U1"]["5"] == (115.0, 57.0) and at["R1"]["2"] == (116.0, 78.0)
     assert solution.ok, _told(solution)
+
+
+def _areas(solution: Solution) -> list[tuple[str, tuple[float, ...], bool, bool]]:
+    """Each area kept clear: which, its box on the board in millimetres, and whether it
+    is kept clear on the front and on the back."""
+    return [(str(k.statement.area), tuple(v.mm for v in k.box), k.front, k.back)
+            for k in solution.keepouts]  # fmt: skip
+
+
+@pytest.mark.parametrize("edge", list(Edge))
+@pytest.mark.parametrize("side", ["front", "back"])
+@pytest.mark.parametrize("both", [False, True])
+def test_an_area_kept_clear_goes_where_its_part_goes(edge, side, both):
+    board = _board(U1="A B D C GND")
+    u1 = board["U1"]
+    # From the middle of pad 1 to the middle of pad 5.
+    (area,) = board.annotate(u1, corner=((0 * mm, 0 * mm), (4 * mm, 3 * mm)))
+    board.place(u1, against=edge, facing=edge, side=side)
+    said = board.keepout(area, copper=True, both_sides=both)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    at = _pads(board, solution, "U1")
+    xs, ys = sorted([at["1"][0], at["5"][0]]), sorted([at["1"][1], at["5"][1]])
+    assert _areas(solution) == [('U1.area("corner")', (xs[0], ys[0], xs[1], ys[1]),
+                                 both or side == "front", both or side == "back")]  # fmt: skip
+    assert solution.keepouts[0].statement == said
+
+
+@pytest.mark.parametrize(("side", "both", "pads", "chose"), [
+    # On the module's face the nearest place is left of the area: 2 mm further than the
+    # 1.8 mm it is with nothing kept clear.
+    ("front", False, {"1": (105.2, 54.0), "2": (107.2, 54.0)}, "3.8 mm from U1.1, turned 0"),
+    # On the other face nothing is kept clear, and it is on the pin as it would be.
+    ("back", False, {"1": (109.0, 54.0), "2": (111.0, 54.0)}, "0 mm from U1.1, turned 0"),
+    # Kept clear there too, it is still on the pin, turned out of the area: the least
+    # turn that does it is a quarter, its other pad down the board.
+    ("back", True, {"1": (111.0, 56.0), "2": (111.0, 54.0)}, "0 mm from U1.1, turned 90"),
+])  # fmt: skip
+def test_a_part_looking_for_a_place_keeps_out_of_an_area_kept_clear_on_its_face(
+    side, both, pads, chose
+):
+    board = _module_at_the_top(R1="VCC A")
+    # A strip 2 mm wide down the left of the module's outline: (108, 50) to (110, 58).
+    (area,) = board.annotate(board["U1"], beside=((-3 * mm, -4 * mm), (-1 * mm, 4 * mm)))
+    board.keepout(area, copper=True, both_sides=both)
+    board.place(board["R1"], near=board["U1"].pin(1), within=5 * mm, side=side)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert _areas(solution) == [('U1.area("beside")', (108.0, 50.0, 110.0, 58.0), True, both)]
+    assert _pads(board, solution, "R1") == pads
+    assert f"R1: {chose} degrees" in solution.chosen
+
+
+def _under_the_module(within: Length, side: str) -> tuple[Board, Solution, int]:
+    """A strap looking for a place at the module's pin 1, where the top of the module is
+    kept clear on both faces down to the lower edge of that pad: (110, 50) to (120, 54.5)."""
+    board = _module_at_the_top(R1="VCC A")
+    (area,) = board.annotate(board["U1"], antenna=((-1 * mm, -4 * mm), (9 * mm, 0.5 * mm)))
+    board.keepout(area, copper=True, both_sides=True)
+    board.place(board["R1"], near=board["U1"].pin(1), within=within, side=side)
+    return board, board.solve(), _line_no() - 1
+
+
+def test_a_part_looking_for_a_place_goes_no_nearer_than_what_is_kept_clear():
+    board, solution, _ = _under_the_module(1.3 * mm, "back")
+    assert solution.ok, _told(solution)
+    assert _areas(solution) == [('U1.area("antenna")', (110.0, 50.0, 120.0, 54.5), True, True)]
+    # Below the area and touching it: its courtyard ends 0.8 mm past its pad, so the pad
+    # is 1.3 mm below the pin it would otherwise be on.
+    assert _pads(board, solution, "R1") == {"1": (111.0, 57.3), "2": (111.0, 55.3)}
+    assert "R1: 1.3 mm from U1.1, turned 90 degrees" in solution.chosen
+
+
+def test_a_part_with_no_place_out_of_what_is_kept_clear_is_reported_with_the_keepout():
+    board, solution, line = _under_the_module(1.2 * mm, "back")
+    assert _told(solution) == [
+        "R1 has no place within 1.2 mm of U1.1 that is on the back of the board and clear "
+        f"of the other parts and of what is kept clear ({HERE}:{line}, {HERE}:{line - 1})"
+    ]
+    assert solution.problems[0].parts == ("R1",) and "R1" not in solution.poses
+    near, kept = board.statements(about="R1")[0], solution.keepouts[0].statement
+    assert solution.problems[0].statements == (near, kept)
+    # On the front it is the module that leaves it no place, and the keepout is not named.
+    board, solution, line = _under_the_module(1.7 * mm, "front")
+    assert _told(solution) == [
+        "R1 has no place within 1.7 mm of U1.1 that is on the front of the board and clear "
+        f"of the other parts ({HERE}:{line})"
+    ]
+    assert solution.problems[0].statements == board.statements(about="R1")
+
+
+def test_only_what_is_kept_clear_on_the_parts_face_is_named_for_its_having_no_place():
+    board = _module_at_the_top(R1="VCC A")
+    u1 = board["U1"]
+    antenna, mark = board.annotate(u1, antenna=((-1 * mm, -4 * mm), (9 * mm, 0.5 * mm)),
+                                   mark=((3 * mm, 0 * mm), (5 * mm, 1 * mm)))  # fmt: skip
+    on_the_front = board.keepout(mark, copper=True)
+    on_both = board.keepout(antenna, copper=True, both_sides=True)
+    near = board.place(board["R1"], near=u1.pin(1), within=1.2 * mm, side="back")
+    solution = board.solve()
+    assert [k.statement for k in solution.keepouts] == [on_the_front, on_both]
+    assert solution.problems[0].statements == (near, on_both)
+
+
+def _over_a_strap(within: Length) -> tuple[Board, Solution, int]:
+    """A header, which takes both faces, looking for a place at pin 1 of a strap on the
+    back, where a strip 2 mm deep above the strap's outline is kept clear on the back
+    alone: (107, 76.2) to (123, 78.2)."""
+    board = _board(P1="A B C D", R1="E F")
+    r1 = board["R1"]
+    board.place(r1, against=Edge.BOTTOM, side="back")
+    (area,) = board.annotate(r1, above=((-8 * mm, 0.9 * mm), (8 * mm, 2.9 * mm)))
+    board.keepout(area, copper=True)
+    board.place(board["P1"], near=r1.pin(1), within=within)
+    return board, board.solve(), _line_no() - 1
+
+
+def test_a_part_with_holes_keeps_out_of_what_is_kept_clear_on_either_face():
+    board, solution, _ = _over_a_strap(5 * mm)
+    assert solution.ok, _told(solution)
+    assert _areas(solution) == [('R1.area("above")', (107.0, 76.2, 123.0, 78.2), False, True)]
+    # Above the strip and touching it, 2 mm further than the 2.7 mm it is from the strap
+    # with nothing kept clear.
+    assert _pads(board, solution, "P1")["4"] == (114.0, 74.4)
+    assert "P1: 4.7 mm from R1.1, turned 0 degrees" in solution.chosen
+
+
+def test_a_part_with_holes_with_no_place_names_what_is_kept_clear_on_the_other_face():
+    board, solution, line = _over_a_strap(4.6 * mm)
+    assert _told(solution) == [
+        "P1 has no place within 4.6 mm of R1.1 that is on the front of the board and clear "
+        f"of the other parts and of what is kept clear ({HERE}:{line}, {HERE}:{line - 1})"
+    ]
+    assert solution.problems[0].statements == (board.statements(about="P1")[0],
+                                               solution.keepouts[0].statement)  # fmt: skip
+
+
+@pytest.mark.parametrize(("ref", "side", "both", "kept_out"), [
+    ("R1", "front", False, True),
+    ("R1", "back", False, False),
+    ("R1", "back", True, True),
+    # A part with holes is on both faces.
+    ("P1", "back", False, True),
+])  # fmt: skip
+def test_a_part_given_a_place_in_an_area_kept_clear_is_reported_and_stays(
+    ref, side, both, kept_out
+):
+    board = _board(U1="A B D C GND", **{ref: "E F G H" if ref == "P1" else "E F"})
+    u1, part = board.parts("U1", ref)
+    board.place(u1, against=Edge.BOTTOM, facing=Edge.TOP)
+    # The 8 mm of board above the module's outline: (110, 64) to (120, 72).
+    (area,) = board.annotate(u1, antenna=((-1 * mm, -12 * mm), (9 * mm, -4 * mm)))
+    said = board.keepout(area, copper=True, both_sides=both)
+    line = _line_no() - 1
+    board.place(part, against=Edge.TOP, inset=15 * mm, side=side)
+    solution = board.solve()
+    assert _areas(solution) == [('U1.area("antenna")', (110.0, 64.0, 120.0, 72.0), True, both)]
+    assert {y for _, y in _pads(board, solution, ref).values()} == {65.0}
+    assert solution.ok is not kept_out
+    told = (f"{ref} is in U1's antenna area, which is kept clear of copper "
+            f"({HERE}:{line}, {HERE}:{line + 2})")  # fmt: skip
+    assert _told(solution) == ([told] if kept_out else [])
+    if kept_out:
+        assert solution.problems[0].parts == (ref, "U1")
+        assert solution.problems[0].statements == (said, *board.statements(about=ref))
+
+
+def test_an_area_of_a_part_that_is_not_placed_is_nowhere():
+    board = _board(U1="A B D C GND")
+    u1 = board["U1"]
+    (area,) = board.annotate(u1, antenna=((-1 * mm, -4 * mm), (9 * mm, -1 * mm)))
+    board.keepout(area, copper=True)
+    # Keeping an area of it clear does not say where the part goes.
+    solution = board.solve()
+    assert solution.free == ("U1",) and not solution.poses and not solution.problems
+    assert solution.keepouts == ()
+    board.place(u1, against=Edge.LEFT)
+    board.place(u1, against=Edge.RIGHT)
+    solution = board.solve()
+    assert len(solution.problems) == 1 and not solution.poses and solution.keepouts == ()
+
+
+def test_an_area_is_where_the_board_being_solved_has_it():
+    other = _board(U1="A B D C GND")
+    (theirs,) = other.annotate(other["U1"], antenna=((-1 * mm, -4 * mm), (9 * mm, -1 * mm)))
+    board = _module_at_the_top()
+    # Here the area is the box between the pads: (111, 54) to (119, 56).
+    board.annotate(board["U1"], antenna=((0 * mm, 0 * mm), (8 * mm, 2 * mm)))
+    board.add(keepout(theirs, copper=True))
+    assert _areas(board.solve()) == [('U1.area("antenna")', (111.0, 54.0, 119.0, 56.0),
+                                      True, False)]  # fmt: skip
+
+
+def _a_point_with_a_strap(**parts: str) -> Board:
+    """The module at the top, and a test point 5 mm in from the left edge beside its
+    pad 1, at (105, 54), with a strap looking for a place at it."""
+    board = _module_at_the_top(T1="X", R1="X VCC", **parts)
+    t1, r1 = board.parts("T1", "R1")
+    board.place(t1, against=Edge.LEFT, inset=5 * mm)
+    board.place(t1, against=Edge.TOP, inset=4 * mm)
+    board.place(r1, near=t1, within=3 * mm)
+    return board
+
+
+def test_a_part_that_looks_for_a_place_looks_once_those_given_one_are_placed():
+    board = _a_point_with_a_strap()
+    # With nothing kept clear the strap is right of the point, its courtyard touching
+    # it, and reaches to x = 109.1.
+    assert _pads(board, board.solve(), "R1") == {"1": (106.3, 54.0), "2": (108.3, 54.0)}
+    # The strip left of the module starts at x = 108. R1 comes before U1 by its
+    # reference and still looks after U1 is placed: it goes left of the point.
+    (area,) = board.annotate(board["U1"], beside=((-3 * mm, -4 * mm), (-1 * mm, 4 * mm)))
+    board.keepout(area, copper=True)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert _pads(board, solution, "R1") == {"1": (103.7, 54.0), "2": (101.7, 54.0)}
+    assert "R1: 1.3 mm from T1, turned 180 degrees" in solution.chosen
+
+
+def test_an_area_of_a_part_that_looks_for_its_place_is_not_kept_out_of_but_reported():
+    def tried(keep: bool) -> tuple[Solution, int]:
+        board = _board(T1="X", R1="X VCC", U1="A B D C GND")
+        t1, r1, u1 = board.parts("T1", "R1", "U1")
+        board.place(t1, against=Edge.LEFT, inset=15 * mm)
+        board.place(r1, near=t1, within=3 * mm)
+        board.place(u1, near=t1, within=12 * mm)
+        # 10 mm all round the module's outline.
+        (area,) = board.annotate(u1, around=((-11 * mm, -14 * mm), (19 * mm, 14 * mm)))
+        if keep:
+            board.keepout(area, copper=True)
+        return board.solve(), _line_no() - 1
+
+    (without, _), (solution, line) = tried(False), tried(True)
+    # R1 found its place before U1 had one, and U1 looks for room for its outline and
+    # not for its area: nothing moves, and what is in the area is said.
+    assert without.ok and solution.poses == without.poses
+    assert _told(solution) == [
+        "R1 is in U1's around area, which is kept clear of copper "
+        f"({HERE}:{line}, {HERE}:{line - 5})",
+        "T1 is in U1's around area, which is kept clear of copper "
+        f"({HERE}:{line}, {HERE}:{line - 6})",
+    ]

@@ -6,7 +6,8 @@ by its reference, a pin by its part and number, a net by its name. Two handles f
 same thing are equal, whichever board they came from.
 
 What a board file declares about the circuit is kept beside it: which nets are rails,
-and names for nets the schematic left anonymous.
+names for nets the schematic left anonymous, and the named areas of a footprint that
+its annotation marks out.
 
 Anything plural is a method that selects, and gives everything when asked for nothing
 (``board.parts()``, ``part.pins()``, ``net.pins()``); anything singular is an attribute.
@@ -20,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 Selector = Callable[["Part"], bool]
+Box = tuple[int, int, int, int]  # x0, y0, x1, y1, in nanometres
 
 
 def natural(ref: str) -> tuple:
@@ -72,6 +74,22 @@ class Pin:
 
 
 @dataclass(frozen=True)
+class Area:
+    """A named area of a part's footprint, such as a module's antenna."""
+
+    part: Part
+    name: str
+
+    def __str__(self) -> str:
+        return f'{self.part.ref}.area("{self.name}")'
+
+    @property
+    def box(self) -> Box:
+        """Its corners in the footprint's own coordinates."""
+        return self.part.circuit._areas[self.part.footprint][self.name]
+
+
+@dataclass(frozen=True)
 class Part:
     """A part, by its reference."""
 
@@ -99,6 +117,23 @@ class Part:
         """The pins numbered, in the order given; with no number, all of them, in the
         footprint's order."""
         return tuple(self.pin(n) for n in numbers or self.circuit._pins[self.ref])
+
+    def area(self, name: str) -> Area:
+        """A named area of its footprint, as the footprint's annotation marks it out:
+        ``u1.area("antenna")``."""
+        areas = self.circuit._areas.get(self.footprint, {})
+        if name not in areas:
+            if areas:
+                why = f"its footprint {self.footprint!r} has {', '.join(areas)}"
+            elif self.footprint in self.circuit.unfitted:
+                why = (f"the annotation that ships for {self.footprint.rpartition(':')[2]} "
+                       f"is not of its footprint {self.footprint!r}: "
+                       f"{self.circuit.unfitted[self.footprint]}")  # fmt: skip
+            else:
+                why = (f"its footprint {self.footprint!r} has no annotation: say where the "
+                       "area is with annotate()")  # fmt: skip
+            raise LookupError(f"{self.ref} has no area {name!r}: {why}")
+        return Area(self, name)
 
     def nets(self) -> tuple[Net, ...]:
         """The nets its pins are on, each once, in pin order."""
@@ -172,6 +207,9 @@ class Circuit:
         self._rails: set[str] = set()
         self._rails_read: str | None = None  # the first thing that asked what a rail is
         self._given: dict[str, str] = {}  # the circuit's name for a net -> the board file's
+        self._areas: dict[str, dict[str, Box]] = {}  # footprint name -> area name -> box
+        # A footprint whose shipped annotation is of some other footprint, and why.
+        self.unfitted: dict[str, str] = {}
 
     def part(self, ref: str) -> Part:
         if ref not in self._parts:
@@ -223,6 +261,16 @@ class Circuit:
                              "declare the rails first")  # fmt: skip
         self._rails |= {n.name for n in found}
         return found
+
+    def annotate(self, footprint: str, areas: Mapping[str, Box]) -> None:
+        """Give the footprint named *footprint* its named *areas*, each a box in the
+        footprint's own coordinates. An area is said once: one already there stays, and
+        a different box for it is refused, with none of *areas* kept."""
+        have = self._areas.get(footprint, {})
+        for name, box in areas.items():
+            if have.get(name, box) != box:
+                raise ValueError(f"{footprint} has an area {name} already, somewhere else")
+        self._areas[footprint] = {**have, **areas}
 
     def name_nets(self, names: Mapping[str, str]) -> tuple[Net, ...]:
         """Give nets the schematic left anonymous a name to write and read:

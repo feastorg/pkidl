@@ -14,13 +14,18 @@ What each statement means here:
 - ``facing=`` an edge: the side of the part that is up in its footprint, as a library
   draws it, is turned to that edge of the board as the front shows it, whichever face
   the part is on.
-- ``between=`` two parts: its centre is midway between theirs.
+- ``between=`` two parts: its centre is midway between theirs. With ``against=`` an
+  edge as well, the edge says how far the part is from it, and ``between=`` where it is
+  along it.
 - ``near=`` a pin or part, ``within=`` a distance: the nearest place to it that is on the
   board and clear of every other part, a pad of the part no further than the distance
   from a pad of what it is near, centre to centre.
 - ``side=``: the face of the board it is on; the front when nothing says.
 - ``align``: the parts' first pins are a whole number of grid steps apart, across and
   along. It is checked, and moves nothing.
+- ``keepout`` of an area of a part: no other part's outline reaches into the area, on
+  the part's face or on both. It goes where its part goes, and ``Solution.keepouts``
+  says where that is, for the copper drawn afterwards.
 
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest. A part's outline is the box around its pads, courtyard and fabrication
@@ -28,19 +33,20 @@ drawing; two parts on one face may touch and not overlap, and a part with holes 
 both faces. The board is taken as the box around its outline.
 
 Everything is in whole nanometres, and parts are placed in an order made from what
-depends on what and then from their references, so the same statements give the same
-placement whatever order they were added in.
+depends on what, then those that look for a place after those given one, then from
+their references, so the same statements give the same placement whatever order they
+were added in.
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
 
 from pkidl.circuit import Circuit, Pin, natural
-from pkidl.intent import Align, Edge, Place, Side, Statement, canonical, conflicts
+from pkidl.intent import Align, Edge, Keepout, Place, Side, Statement, canonical, conflicts
 from pkidl.sexpr import Node, find, find_all
 from pkidl.units import Length
 
@@ -77,13 +83,26 @@ class Problem:
 
 
 @dataclass(frozen=True)
+class Kept:
+    """An area kept clear, where it is on the board: its box (x0, y0, x1, y1) and the
+    faces it is kept clear on."""
+
+    statement: Keepout
+    box: tuple[Length, Length, Length, Length]
+    front: bool
+    back: bool
+
+
+@dataclass(frozen=True)
 class Solution:
-    """What ``solve`` found. ``chosen`` lists what it decided where nothing said."""
+    """What ``solve`` found. ``chosen`` lists what it decided where nothing said, and
+    ``keepouts`` where each area kept clear is, for those whose part is placed."""
 
     poses: Mapping[str, Pose]
     free: tuple[str, ...]
     problems: tuple[Problem, ...]
     chosen: tuple[str, ...]
+    keepouts: tuple[Kept, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -192,6 +211,10 @@ class _Solver:
         self.board: Box = (_nm(extent[0]), _nm(extent[1]), _nm(extent[2]), _nm(extent[3]))
         self.asks: dict[str, list[Place]] = {}
         self.aligns = [s for s in statements if isinstance(s, Align)]
+        # Each area kept clear, as this circuit has it, whichever board's part the
+        # statement was written with.
+        self.keeps = [(s, circuit.part(s.area.part.ref).area(s.area.name).box)
+                      for s in statements if isinstance(s, Keepout)]  # fmt: skip
         for s in statements:
             if isinstance(s, Place):
                 self.asks.setdefault(s.part.ref, []).append(s)
@@ -227,8 +250,11 @@ class _Solver:
             self._problem(tuple(order), "the placement does not settle: each pass moves a part")
         self._check()
         problems = sorted(self.problems, key=lambda p: ([natural(r) for r in p.parts], p.text))
+        kept = tuple(Kept(s, (Length(box[0]), Length(box[1]), Length(box[2]), Length(box[3])),
+                          False in faces, True in faces)
+                     for s, box, faces in self._kept(self.poses))  # fmt: skip
         return Solution(dict(sorted(self.poses.items(), key=lambda kv: natural(kv[0]))),
-                        self.free, tuple(problems), tuple(self.chosen))  # fmt: skip
+                        self.free, tuple(problems), tuple(self.chosen), kept)  # fmt: skip
 
     def _problem(self, parts: tuple[str, ...], text: str, *statements: Statement) -> None:
         self.problems.setdefault(Problem(parts, text, statements))
@@ -237,12 +263,15 @@ class _Solver:
         self.chosen.setdefault(text)
 
     def _order(self) -> list[str]:
-        """The parts that are placed, each after the parts it is placed by."""
+        """The parts that are placed, each after the parts it is placed by, and one
+        that looks for a place near something after those whose place is given: it
+        looks with them, and what they keep clear, already there."""
         needs = {ref: {p.ref for s in asks for p in s.mentions()} - {ref}
                  for ref, asks in self.asks.items()}  # fmt: skip
+        looks = {ref: any(s.near is not None for s in asks) for ref, asks in self.asks.items()}
         order: list[str] = []
         while ready := sorted((r for r in needs if r not in order and needs[r] <= set(order)),
-                              key=natural):  # fmt: skip
+                              key=lambda r: (looks[r], natural(r))):  # fmt: skip
             order.append(ready[0])
         stuck = sorted(set(needs) - set(order), key=natural)
         for ref in stuck:
@@ -314,6 +343,9 @@ class _Solver:
                 ys.append((y0 - by0 if d is None else y0 + d - min(py), s))
             else:
                 ys.append((y1 - by1 if d is None else y1 - d - max(py), s))
+        # An edge says how far from it, and between= the place along it; edges that
+        # make a corner leave between= nothing to say, so it is held to both.
+        across, along = not xs or bool(ys), not ys or bool(xs)
         for s in betweens:
             assert s.between is not None
             if missing := [p.ref for p in s.between if p.ref not in self.poses]:
@@ -321,8 +353,10 @@ class _Solver:
                               "not placed", s)  # fmt: skip
                 return None
             (ax, ay), (bx, by) = (self._centre(p.ref) for p in s.between)
-            xs.append(((ax + bx) // 2 - (bx0 + bx1) // 2, s))
-            ys.append(((ay + by) // 2 - (by0 + by1) // 2, s))
+            if across:
+                xs.append(((ax + bx) // 2 - (bx0 + bx1) // 2, s))
+            if along:
+                ys.append(((ay + by) // 2 - (by0 + by1) // 2, s))
         at = []
         for axis, fixes, lo, hi, b0, b1 in (("across", xs, x0, x1, bx0, bx1),
                                             ("along", ys, y0, y1, by0, by1)):  # fmt: skip
@@ -371,11 +405,30 @@ class _Solver:
                 total += min(abs(px + x - ox) + abs(py + y - oy) for ox, oy in on[net])
         return total
 
-    def _clear(self, ref: str, box: Box, back: bool, through: bool, of: Iterable[str]) -> bool:
-        """Inside the board, and overlapping none *of* the parts placed."""
+    def _kept(self, of: Iterable[str]) -> Iterator[tuple[Keepout, Box, set[bool]]]:
+        """Each area kept clear whose part is one *of* those placed: where it is on the
+        board, and the faces it is on (the back is True)."""
+        of = set(of)
+        for s, (x0, y0, x1, y1) in self.keeps:
+            ref = s.area.part.ref
+            if ref in of:
+                pose = self.poses[ref]
+                (ax, ay), (bx, by) = (_turn(x, y, pose.rot, pose.back)
+                                      for x, y in ((x0, y0), (x1, y1)))  # fmt: skip
+                box = (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))
+                faces = {False, True} if s.both_sides else {pose.back}
+                yield s, _moved(box, pose.x.nm, pose.y.nm), faces
+
+    def _clear(self, ref: str, box: Box, back: bool, through: bool, of: Iterable[str],
+               keeps: bool = True) -> bool:  # fmt: skip
+        """Inside the board, overlapping none *of* the parts placed and, with *keeps*, in
+        no area of theirs that is kept clear."""
         if not (self.board[0] <= box[0] and self.board[1] <= box[1]
                 and box[2] <= self.board[2] and box[3] <= self.board[3]):  # fmt: skip
             return False
+        for _, kept, faces in self._kept(of if keeps else ()):
+            if (through or back in faces) and _overlap(box, kept):
+                return False
         for other in of:
             if other == ref or other not in self.poses:
                 continue
@@ -399,30 +452,39 @@ class _Solver:
                          for dx in range(-n * step, n * step + 1, step)
                          for dy in range(-n * step, n * step + 1, step)
                          if dx * dx + dy * dy <= limit * limit)  # fmt: skip
-        best, found = None, -1
-        for d2, dy, dx in offsets:
-            if best is not None and d2 > found:
-                break
-            for rot in rots:
-                turned = _turned(shape, rot, back)
-                for _, px, py in turned.pads:
-                    for tx, ty in targets:
-                        x, y = tx + dx - px, ty + dy - py
-                        if not self._clear(
-                            ref, _moved(turned.box, x, y), back, shape.through, done
-                        ):
-                            continue
-                        key = (self._wires(ref, turned, x, y), rot, y, x)
-                        if best is None or key < best[0]:
-                            best, found = (key, Pose(Length(x), Length(y), rot, back)), d2
-        if best is None:
+
+        def nearest(keeps: bool) -> tuple[Pose | None, int]:
+            best, found = None, -1
+            for d2, dy, dx in offsets:
+                if best is not None and d2 > found:
+                    break
+                for rot in rots:
+                    turned = _turned(shape, rot, back)
+                    for _, px, py in turned.pads:
+                        for tx, ty in targets:
+                            x, y = tx + dx - px, ty + dy - py
+                            if not self._clear(ref, _moved(turned.box, x, y), back,
+                                               shape.through, done, keeps):  # fmt: skip
+                                continue
+                            key = (self._wires(ref, turned, x, y), rot, y, x)
+                            if best is None or key < best[0]:
+                                best, found = (key, Pose(Length(x), Length(y), rot, back)), d2
+            return (None if best is None else best[1]), found
+
+        pose, found = nearest(True)
+        if pose is None:
+            # What is kept clear is named only when it is what leaves the part no place.
+            kept = [k for k, _, faces in self._kept(done) if shape.through or back in faces]
+            if kept and nearest(False)[0] is None:
+                kept = []
             self._problem((ref,), f"{ref} has no place within {s.within} of {s.near} that is on "
                           f"the {'back' if back else 'front'} of the board and clear of the "
-                          "other parts", s)  # fmt: skip
+                          "other parts" + (" and of what is kept clear" if kept else ""),
+                          s, *kept)  # fmt: skip
             return None
         self._chose(f"{ref}: {Length(math.isqrt(found))} from {s.near}, turned "
-                           f"{best[1].rot} degrees")  # fmt: skip
-        return best[1]
+                           f"{pose.rot} degrees")  # fmt: skip
+        return pose
 
     def _check(self) -> None:
         """What only shows once everything is placed."""
@@ -444,6 +506,13 @@ class _Solver:
                           or self.poses[a].back == self.poses[b].back)  # fmt: skip
                 if shares and _overlap(self._box(a), self._box(b)):
                     self._problem((a, b), f"{a} and {b} overlap", *self.asks[a], *self.asks[b])
+        for s, kept, faces in self._kept(placed):
+            owner = s.area.part.ref
+            for ref in placed:
+                on = self.shapes[ref].through or self.poses[ref].back in faces
+                if ref != owner and on and _overlap(self._box(ref), kept):
+                    self._problem((ref, owner), f"{ref} is in {owner}'s {s.area.name} area, "
+                                  "which is kept clear of copper", s, *self.asks[ref])  # fmt: skip
         for s in self.aligns:
             firsts = [(p.ref, self._pads(p.ref)[0]) for p in s.parts
                       if p.ref in self.poses and self.shapes[p.ref].pads]  # fmt: skip

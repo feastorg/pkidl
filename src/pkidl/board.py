@@ -15,13 +15,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pkidl import intent
-from pkidl.circuit import Circuit, Net, Part, Pin, Selector
+from pkidl import annotations, intent
+from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
-from pkidl.intent import Align, Conflict, Edge, Place, Side, Statement
+from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Side, Statement
 from pkidl.placement import Solution, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
-from pkidl.units import Length
+from pkidl.units import Length, length
 
 # The two-layer stack, as KiCad 10 writes it: (id, name, type, user name).
 _LAYERS = [
@@ -137,7 +137,8 @@ class Board:
         a board file passes ``__file__``.
 
         The outline is drawn and the holes are placed where ``mechanical.json`` puts them.
-        The parts are not placed: where they go is the board file's to say.
+        The parts are not placed: where they go is the board file's to say. A footprint
+        that pkidl ships an annotation for has its named areas (``pkidl.annotations``).
         """
         d = Path(where)
         if not d.is_dir():
@@ -159,6 +160,12 @@ class Board:
                 raise ValueError(f"{part['ref']}: its footprint {part['footprint']!r} has no "
                                  f"pad {', '.join(missing)}")  # fmt: skip
         board.circuit = Circuit(circuit, pads)
+        for name in dict.fromkeys(p["footprint"] for p in circuit["parts"]):
+            if (note := annotations.shipped().get(name.rpartition(":")[2])) is not None:
+                try:
+                    board.circuit.annotate(name, annotations.fit(note, board.library[name]))
+                except ValueError as e:
+                    board.circuit.unfitted[name] = str(e)
         board.outline(mech["outline"])
         for hole in mech["holes"]:
             name, (x, y) = hole["footprint"], hole["at"]
@@ -232,6 +239,32 @@ class Board:
         """Say that *parts* sit a whole number of *grid* steps apart, and get the
         statement back. See ``pkidl.align``."""
         statement = intent.align(*parts, grid=grid)
+        self.add(statement)
+        return statement
+
+    def annotate(
+        self, part: Part, **areas: tuple[tuple[Length | str, Length | str],
+                                         tuple[Length | str, Length | str]]
+    ) -> tuple[Area, ...]:  # fmt: skip
+        """Say what *part*'s footprint means, where no annotation ships for it: each
+        named area by two opposite corners, in the footprint's own coordinates as a
+        footprint editor shows them, and get the areas back.
+        ``(antenna,) = board.annotate(u1, antenna=((0 * mm, -8.4 * mm), (16 * mm, -2.6 * mm)))``.
+        Every part with that footprint has them."""
+        part = self.circuit.part(part.ref)
+        boxes = {}
+        for name, corners in areas.items():
+            (x0, y0), (x1, y1) = (tuple(length(v).nm for v in corner) for corner in corners)
+            if x0 == x1 or y0 == y1:
+                raise ValueError(f"{part}: area {name} has no size")
+            boxes[name] = (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+        self.circuit.annotate(part.footprint, boxes)
+        return tuple(part.area(name) for name in areas)
+
+    def keepout(self, area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
+        """Say what stays out of an area of a part, and get the statement back. See
+        ``pkidl.keepout``."""
+        statement = intent.keepout(area, copper=copper, both_sides=both_sides)
         self.add(statement)
         return statement
 
@@ -399,7 +432,7 @@ class Board:
             outline = pad_hull(around, net, margin)
         self.zone(net, layer, outline, **zone)
 
-    def keepout(
+    def rule_area(
         self,
         name: str,
         layer: str,

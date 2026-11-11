@@ -198,7 +198,7 @@ def build_pcb(
                 board.zone(net, layer, poly, clearance=0.5, min_thickness=POUR_MIN_WIDTH,
                            priority=priority)  # fmt: skip
         for i, (layer, poly) in enumerate(authored.corridors):
-            board.keepout(f"corridor {i}", layer, poly, tracks=True, vias=True)
+            board.rule_area(f"corridor {i}", layer, poly, tracks=True, vias=True)
         vias += authored.vias
         wires = authored.wires
         edge = float(RULES["min_copper_edge_clearance"])
@@ -241,7 +241,7 @@ def build_pcb(
             bridge_zones(board, placed, b)
     for t, a in thermocouples:
         # The router's keepout, as a rule area DRC holds the board to.
-        board.keepout(f"{t['ch']} inputs", "B.Cu", thermocouple_region(t, a, box), pours=True)
+        board.rule_area(f"{t['ch']} inputs", "B.Cu", thermocouple_region(t, a, box), pours=True)
         if spec.circuit.ground != "GND":
             # Logic ground on B.Cu over the whole block, above the power-ground pour. No
             # track crosses it (below), so it fills as one piece, joined to the board's GND

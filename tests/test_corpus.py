@@ -163,7 +163,8 @@ def _t0(inset: Length, side: str | None = None) -> Board:
     board.place(p1, against=Edge.LEFT, inset=inset)
     board.place(p2, against=Edge.RIGHT, inset=inset)
     board.align(p1, p2, grid=0.1 * inch)
-    board.place(u1, between=(p1, p2), facing=Edge.TOP)
+    board.place(u1, between=(p1, p2), against=Edge.TOP, facing=Edge.TOP)
+    board.keepout(u1.area("antenna"), copper=True, both_sides=True)
     for r in board.parts("R1..R5"):
         board.place(r, near=u1.pin_on(r.signal_net), within=3 * mm, side=side)
     return board
@@ -176,7 +177,8 @@ def test_what_the_t0_board_file_says_about_placement_places_every_part():
         {"place": "P1", "against": "left", "inset": 1_905_000},
         {"place": "P2", "against": "right", "inset": 1_905_000},
         {"align": ["P1", "P2"], "grid": 2_540_000},
-        {"place": "U1", "between": ["P1", "P2"], "facing": "top"},
+        {"place": "U1", "against": "top", "between": ["P1", "P2"], "facing": "top"},
+        {"keepout": "U1", "area": "antenna", "copper": True, "both_sides": True},
         {"place": "R1", "near": "U1.1", "within": 3_000_000, "side": "back"},
         {"place": "R2", "near": "U1.3", "within": 3_000_000, "side": "back"},
         {"place": "R3", "near": "U1.18", "within": 3_000_000, "side": "back"},
@@ -197,21 +199,30 @@ def test_what_the_t0_board_file_says_about_placement_places_every_part():
         return {str(pad[1]): pad_xy(placed, str(pad[1])) for pad in find_all(placed, "pad")}
 
     p1, p2, u1 = pads("P1"), pads("P2"), pads("U1")
-    x0, _, x1, _ = board.extent or (0, 0, 0, 0)
+    x0, y0, x1, _ = board.extent or (0, 0, 0, 0)
     # The headers: every pin 0.075 inch in from its edge, so the rows are 0.9 inch apart
     # on the 1.05 inch board, with pin 1 of each level with the other's.
     assert {round(x - x0, 6) for x, _ in p1.values()} == {1.905}
     assert {round(x1 - x, 6) for x, _ in p2.values()} == {1.905}
     assert round(p2["1"][0] - p1["1"][0], 6) == 22.86 and p1["1"][1] == p2["1"][1]
-    # The module is midway between them, and each header is the way round that puts its
+    # The module is midway between them with its antenna end on the top edge, which its
+    # footprint draws 8.4 mm above pad 1, and each header is the way round that puts its
     # pins beside the module's pads on their nets: P1.8 by U1.1, P2.8 by U1.22.
     assert round(u1["1"][0] - p1["1"][0], 6) == round(p2["1"][0] - u1["22"][0], 6)
+    assert round(u1["1"][1] - y0, 6) == 8.4 and u1["1"][1] == u1["22"][1]
+    # The antenna's area is kept clear on both faces: the width of the module between
+    # its two rows of pads, from the top edge to 2.6 mm above pad 1.
+    (kept,) = solution.keepouts
+    assert kept.statement.area == board["U1"].area("antenna") and kept.front and kept.back
+    assert [round(v.mm, 6) for v in kept.box] == [
+        u1["1"][0], y0, u1["22"][0], round(u1["1"][1] - 2.6, 6)]  # fmt: skip
     assert u1["1"][1] < u1["8"][1] and p1["8"][1] < p1["1"][1] and p2["8"][1] < p2["1"][1]
     # Each strap is on the back, a pad of it within 3 mm of the pin it biases.
     for r in board.parts("R1..R5"):
         pin = u1[r.circuit.part("U1").pin_on(r.signal_net).number]
         assert solution.poses[r.ref].back
         assert min(math.dist(pad, pin) for pad in pads(r.ref).values()) <= 3.0
+        assert all(y > kept.box[3].mm for _, y in pads(r.ref).values())
 
 
 def test_what_does_not_fit_on_the_t0_board_is_said():

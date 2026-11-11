@@ -12,9 +12,9 @@ from pathlib import Path
 import pytest
 
 import pkidl
-from pkidl import Board, Edge, Side, align, inch, mil, mm, place
+from pkidl import Board, Edge, Side, align, inch, keepout, mil, mm, place
 from pkidl.circuit import Circuit
-from pkidl.intent import Align, Place, canonical, conflicts
+from pkidl.intent import Align, Keepout, Place, canonical, conflicts
 from pkidl.sexpr import dumps
 
 HERE = "test_pkidl_intent.py"
@@ -325,3 +325,73 @@ def test_two_faces_for_one_part_are_a_conflict(board):
     (found,) = board.conflicts()
     assert (found.part, found.aspect) == ("U1", "side")
     assert str(found) == f"U1: side is the front ({HERE}:{line - 3}) and the back ({HERE}:{line})"
+
+
+@pytest.fixture
+def antenna(board):
+    """The module's antenna: the 3 mm of it above its pads."""
+    (area,) = board.annotate(board["U1"], antenna=((0 * mm, -4 * mm), (8 * mm, -1 * mm)))
+    return area
+
+
+def test_a_keepout_is_a_statement_about_an_area_of_a_part(board, antenna):
+    u1 = board["U1"]
+    s, line = keepout(antenna, copper=True), _line()
+    assert isinstance(s, Keepout) and (s.area, s.copper, s.both_sides) == (antenna, True, False)
+    assert s == keepout(u1.area("antenna"), copper=1) and s.mentions() == (u1,)
+    assert s != keepout(antenna, copper=True, both_sides=True)
+    assert str(s.source) == f"{HERE}:{line}"
+    assert str(s) == 'keepout(U1.area("antenna"), copper=True)'
+    assert s.data() == {"keepout": "U1", "area": "antenna", "copper": True, "both_sides": False}
+    both = keepout(antenna, both_sides=True, copper=True)
+    assert str(both) == 'keepout(U1.area("antenna"), copper=True, both_sides=True)'
+    assert both.data() == {"keepout": "U1", "area": "antenna", "copper": True, "both_sides": True}
+    assert pkidl.keepout is keepout
+
+
+def test_a_board_keeps_an_area_clear_and_gives_the_statement_back(board, antenna):
+    before = dumps(board.sexpr())
+    s, line = board.keepout(antenna, copper=True, both_sides=True), _line()
+    assert s == keepout(antenna, copper=True, both_sides=True)
+    assert str(s.source) == f"{HERE}:{line}"
+    assert board.keepout(antenna, both_sides=True, copper=True) == s
+    assert board.statements() == board.statements(about="U1") == (s,)
+    assert board.statements(about="P1") == ()
+    assert dumps(board.sexpr()) == before and board.items == []
+
+
+def test_keepouts_add_up_and_are_never_a_conflict(board, antenna):
+    one = board.keepout(antenna, copper=True)
+    both = board.keepout(antenna, copper=True, both_sides=True)
+    board.place(board["U1"], against=Edge.TOP)
+    assert one.claims() == both.claims() == {}
+    assert board.conflicts() == () and board.statements()[:2] == (one, both)
+
+
+def test_a_keepout_that_does_not_say_what_of_or_what_is_kept_out_is_refused(board, antenna):
+    with pytest.raises(TypeError) as e:
+        keepout(board["U1"], copper=True)
+    assert str(e.value) == ('keepout() takes an area of a part, such as u1.area("antenna"), '
+                            "not Part(ref='U1')")  # fmt: skip
+    for said in ({}, {"copper": False}, {"both_sides": True}):
+        with pytest.raises(ValueError) as e:
+            board.keepout(antenna, **said)
+        assert str(e.value) == ('keepout(U1.area("antenna")) does not say what is kept out: '
+                                "give copper=True")  # fmt: skip
+    assert board.statements() == ()
+
+
+def test_a_keepout_of_an_area_the_board_has_not_got_is_refused_whole(board, antenna):
+    other = Board(circuit=Circuit(DATA))
+    (shield,) = other.annotate(other["U1"], shield=((0 * mm, 0 * mm), (8 * mm, 2 * mm)))
+    good = place(board["P1"], against=Edge.LEFT)
+    with pytest.raises(LookupError) as e:
+        board.add(good, keepout(shield, copper=True))
+    assert e.value.args == ('keepout(U1.area("shield"), copper=True): U1 has no area '
+                            "'shield': its footprint 'RF:M' has antenna",)  # fmt: skip
+    assert board.statements() == ()
+    # The same area on another board that has it is that board's to keep clear, and an
+    # area is the same area whichever board's part it was asked of.
+    assert other.add(keepout(shield, copper=True)) == other.statements()
+    (theirs,) = other.annotate(other["U1"], antenna=((0 * mm, 0 * mm), (1 * mm, 1 * mm)))
+    assert board.add(keepout(theirs, copper=True)) == (keepout(antenna, copper=True),)

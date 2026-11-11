@@ -17,6 +17,8 @@ eggs/
 lib/
 lib64/
 parts/
+# pkidl's part annotations are source, not Buildout's parts/
+!/src/pkidl/parts/
 sdist/
 var/
 wheels/

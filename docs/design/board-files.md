@@ -34,8 +34,8 @@ board.place(p1, against=Edge.LEFT, inset=0.075 * inch)
 board.place(p2, against=Edge.RIGHT, inset=0.075 * inch)
 board.align(p1, p2, grid=0.1 * inch)
 
-# The module between them, its antenna end towards the top edge with no copper under it.
-board.place(u1, between=(p1, p2), facing=Edge.TOP)
+# The module between them, its antenna end on the top edge with no copper under it.
+board.place(u1, between=(p1, p2), against=Edge.TOP, facing=Edge.TOP)
 board.keepout(u1.area("antenna"), copper=True, both_sides=True)
 
 # Each strap sits by the module pin it biases, on the back: the module and the headers
@@ -59,8 +59,9 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `board.parts("R1..R5")` | typed part handles, range selectors | yes (`pkidl.circuit`): references, runs, `on_net(...)`, `where(value=...)` |
 | `place(against=Edge.LEFT, inset=)` | placement relative to the outline | yes (`pkidl.placement`): `board.solve()` works out a pose for each part; putting it on the board is the build's |
 | `align(p1, p2, grid=)` | grid alignment across parts | yes: checked, and reported when it does not hold |
-| `place(between=, facing=)` | relative placement, orientation by intent | yes |
-| `u1.area("antenna")` | named regions on a footprint | no: KiCad footprints don't carry it; see below |
+| `place(between=, against=, facing=)` | relative placement, orientation by intent | yes |
+| `u1.area("antenna")` | named regions on a footprint | yes (`pkidl.annotations`): shipped for the ESP-12E, or said in the board file with `board.annotate` |
+| `keepout(area, copper=True)` | an area kept clear | yes: placement keeps other parts out of it and says where it is; drawing it as a rule area is the build's |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
@@ -131,7 +132,9 @@ the board is the build's.
   row spacing is measured between; with no inset the part's outline touches the edge.
   Along the edge it is centred. Two edges are a corner.
 - `facing=` an edge: the side that is up in the library footprint is turned to it.
-- `between=` two parts: its centre is midway between theirs, across and along.
+- `between=` two parts: its centre is midway between theirs, across and along. With
+  `against=` an edge as well, the edge says how far the part is from it and
+  `between=` where it is along it.
 - `near=` a pin or part, `within=`: the nearest place that is on the board and clear of
   every other part, a pad of the part within the distance of a pad of what it is near,
   centre to centre.
@@ -139,6 +142,8 @@ the board is the build's.
   with holes takes both faces.
 - `align`: the parts' first pins are a whole number of grid steps apart. Checked, not
   moved to.
+- `keepout` of an area of a part: no other part's outline reaches into it, on the
+  part's face or on both.
 
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest, and is reported: `P1: turned 90 degrees, of 90, 270, for the shortest
@@ -164,13 +169,58 @@ and each header's courtyard, so the straps go on the back, under the pins they b
 With those two values every part is placed
 (`test_what_the_t0_board_file_says_about_placement_places_every_part`).
 
+**As built, annotations** (`pkidl.annotations`): what a footprint does not say about
+its part, here that one end of the module is its antenna, is a part annotation: a
+TOML file for each footprint in `src/pkidl/parts/`, found by the footprint's name
+whichever library it is in.
+
+```toml
+footprint = "ESP-12E"
+
+[pads]
+1 = [0, 0]
+22 = [16, 0]
+
+[areas]
+antenna = [[0, -8.4], [16, -2.6]]
+```
+
+It is written against two of the part's pads and not a footprint's origin, since
+libraries draw one package about different origins and turned different ways. It is
+fitted to the footprint a board has by those two pads, moved and turned through right
+angles. A footprint whose pads are not that far apart is some other part under the
+name: its annotation is not used, and `u1.area("antenna")` says why not.
+`Board.from_inputs` fits what ships to the board's footprints. A part with nothing
+shipped gets its areas in the board file, in its footprint's coordinates:
+`board.annotate(u1, antenna=((0 * mm, -8.4 * mm), (16 * mm, -2.6 * mm)))`. An area is
+said once; a different box for one that is there is refused.
+
+`u1.area("antenna")` is the area as an object, and `board.keepout(area, copper=True,
+both_sides=True)` a statement like `place`. A keepout claims nothing about a part, so
+two never conflict. `Solution.keepouts` says where each area is on the board and on
+which faces: on T0, the width of the module between its two rows of pads, from the top
+edge down 5.8 mm, on both. The call that draws a rule area from an outline is now
+`board.rule_area(...)`.
+
+The antenna's box is the one the T0 board's footprint draws on its courtyard layer and
+labels "No Copper"; a test holds the two together
+(`test_the_esp12e_annotation_is_the_box_its_footprint_marks_no_copper`). It has not
+been checked against a datasheet.
+
+**`between=` and an edge**, left open by placement, is settled: `between=` alone centres
+the module along the board as well as across it, 4.79 mm from the top edge, and with
+`against=Edge.TOP` as well it gives way along the board to the edge. A part that
+looks for a place (`near=`) looks once every part given a place has one, so it keeps
+out of their areas whatever its reference.
+
 Open after this:
 
-- **`between=` and an edge.** `between=` centres the module along the board as well as
-  across it, so its antenna end is 4.79 mm from the top edge, beside the headers' top
-  pins. Saying `against=Edge.TOP` as well is reported as two places (`U1 is put in two
-  places 4.7875 mm apart along the board`). Whether `between=` should give way along
-  the board to an edge that is named is for the antenna area's step to settle.
+- **Annotations hold areas only**, each a box. Pin names (`driver.pin("B")`) are not
+  in the format yet, and a footprint drawn as the mirror image of the annotation is
+  not fitted.
+- **An area of a part that itself looks for its place** (`near=`) is not kept out of
+  by parts placed before it. What is in it is reported (`R1 is in U1's antenna area,
+  which is kept clear of copper`), not moved.
 - **`side=`.** Here it is the face of the board. The fan channel below writes
   `side=Edge.TOP` for which side of the fan the LED sits; one of the two needs another
   word.

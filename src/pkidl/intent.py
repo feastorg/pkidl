@@ -7,6 +7,9 @@ is a function that returns statements, to add to any board that has those parts.
 
 Each aspect of a part is said once. Two statements that give it differently are a
 conflict, reported with the line each was written on; neither wins.
+
+``keepout(u1.area("antenna"), copper=True)`` is a statement too, about an area of a
+part. It says nothing of where the part goes, so keepouts add up and never conflict.
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pkidl.circuit import Circuit, Part, Pin, natural
+from pkidl.circuit import Area, Circuit, Part, Pin, natural
 from pkidl.units import Length, length
 
 _HERE = str(Path(__file__).parent) + os.sep
@@ -204,6 +207,37 @@ class Align(Statement):
         return {"align": [p.ref for p in self.parts], "grid": self.grid.nm}
 
 
+@dataclass(frozen=True)
+class Keepout(Statement):
+    """What stays out of an area of a part. Made with ``keepout``."""
+
+    area: Area
+    copper: bool = False
+    both_sides: bool = False
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.area, Area):
+            raise TypeError('keepout() takes an area of a part, such as u1.area("antenna"), '
+                            f"not {self.area!r}")  # fmt: skip
+        if not self.copper:
+            raise ValueError(f"keepout({self.area}) does not say what is kept out: give "
+                             "copper=True")  # fmt: skip
+
+    def __str__(self) -> str:
+        sides = ", both_sides=True" if self.both_sides else ""
+        return f"keepout({self.area}, copper=True{sides})"
+
+    def mentions(self) -> tuple[Part, ...]:
+        return (self.area.part,)
+
+    def data(self) -> dict[str, Any]:
+        return {"keepout": self.area.part.ref, "area": self.area.name, "copper": True,
+                "both_sides": self.both_sides}  # fmt: skip
+
+    def check(self, circuit: Circuit) -> None:
+        circuit.part(self.area.part.ref).area(self.area.name)
+
+
 def place(
     part: Part,
     *,
@@ -231,6 +265,14 @@ def align(*parts: Part, grid: Length | str) -> Align:
     """Say that *parts* sit a whole number of *grid* steps from each other, across and
     along: what puts two headers into one breadboard."""
     return Align(parts, length(grid), source=_written_at())
+
+
+def keepout(area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
+    """Say what stays out of *area*, a named area of a part such as
+    ``u1.area("antenna")``, wherever the part is placed. *copper*: no other part, and no
+    track, via or pour, on the part's face of the board, or on both with *both_sides*.
+    Keepouts add up: an area is clear of everything any of them says."""
+    return Keepout(area, bool(copper), bool(both_sides), source=_written_at())
 
 
 @dataclass(frozen=True)

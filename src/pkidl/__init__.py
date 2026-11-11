@@ -7,7 +7,8 @@ judge them. See ``docs/charter.md``.
 
 from pkidl.board import Board
 from pkidl.circuit import on_net, where
-from pkidl.intent import Edge, Side, align, place
+from pkidl.intent import Edge, Side, align, keepout, place
 from pkidl.units import inch, mil, mm
 
-__all__ = ["Board", "Edge", "Side", "align", "inch", "mil", "mm", "on_net", "place", "where"]
+__all__ = ["Board", "Edge", "Side", "align", "inch", "keepout", "mil", "mm", "on_net", "place",
+           "where"]  # fmt: skip
