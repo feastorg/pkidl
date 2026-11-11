@@ -7,15 +7,17 @@ references: placed again where it was, each gives back the pads and graphics it 
 import functools
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import pytest
 
 from pkidl import Board, Edge, inch, mm
 from pkidl.circuit import natural
-from pkidl.footprint import Placement, footprint_path, library_form, place
+from pkidl.footprint import Placement, footprint_path, library_form, pad_xy, place
 from pkidl.importer import _property, circuit, footprints, mechanical
 from pkidl.sexpr import Node, dumps, find, find_all, parse
+from pkidl.units import Length
 
 CORPUS = Path(__file__).parents[1] / "corpus"
 BOARDS = sorted(p.parent for p in CORPUS.glob("*/*/reference.kicad_pcb"))
@@ -153,30 +155,75 @@ def test_each_strap_of_the_t0_board_finds_the_module_pin_it_biases():
     assert biased == ["U1.1", "U1.3", "U1.18", "U1.17", "U1.16"]
 
 
-def test_what_the_t0_board_file_says_about_placement_is_said_without_conflict():
-    """The placement lines of the T0 board file, on its real inputs: said, not yet solved."""
+def _t0(inset: Length, side: str | None = None) -> Board:
+    """The T0 board's real inputs, and the placement lines of its board file."""
     board = Board.from_inputs(CORPUS / "t0" / "esp12-breakout_ESP12Breakout")
-    before = dumps(board.sexpr())
     board.rails("VCC", "GND")
     u1, p1, p2 = board.parts("U1", "P1", "P2")
-    board.place(p1, against=Edge.LEFT, inset=1.27 * mm)
-    board.place(p2, against=Edge.RIGHT, inset=1.27 * mm)
+    board.place(p1, against=Edge.LEFT, inset=inset)
+    board.place(p2, against=Edge.RIGHT, inset=inset)
     board.align(p1, p2, grid=0.1 * inch)
     board.place(u1, between=(p1, p2), facing=Edge.TOP)
     for r in board.parts("R1..R5"):
-        board.place(r, near=u1.pin_on(r.signal_net), within=3 * mm)
+        board.place(r, near=u1.pin_on(r.signal_net), within=3 * mm, side=side)
+    return board
+
+
+def test_what_the_t0_board_file_says_about_placement_places_every_part():
+    board = _t0(0.075 * inch, "back")
     assert board.conflicts() == ()
     assert [s.data() for s in board.statements()] == [
-        {"place": "P1", "against": "left", "inset": 1_270_000},
-        {"place": "P2", "against": "right", "inset": 1_270_000},
+        {"place": "P1", "against": "left", "inset": 1_905_000},
+        {"place": "P2", "against": "right", "inset": 1_905_000},
         {"align": ["P1", "P2"], "grid": 2_540_000},
         {"place": "U1", "between": ["P1", "P2"], "facing": "top"},
-        {"place": "R1", "near": "U1.1", "within": 3_000_000},
-        {"place": "R2", "near": "U1.3", "within": 3_000_000},
-        {"place": "R3", "near": "U1.18", "within": 3_000_000},
-        {"place": "R4", "near": "U1.17", "within": 3_000_000},
-        {"place": "R5", "near": "U1.16", "within": 3_000_000},
+        {"place": "R1", "near": "U1.1", "within": 3_000_000, "side": "back"},
+        {"place": "R2", "near": "U1.3", "within": 3_000_000, "side": "back"},
+        {"place": "R3", "near": "U1.18", "within": 3_000_000, "side": "back"},
+        {"place": "R4", "near": "U1.17", "within": 3_000_000, "side": "back"},
+        {"place": "R5", "near": "U1.16", "within": 3_000_000, "side": "back"},
     ]
-    # Every part of the board has something said about it, and nothing has moved.
-    assert all(board.statements(about=part) for part in board.parts())
-    assert dumps(board.sexpr()) == before
+    before = dumps(board.sexpr())
+    solution = board.solve()
+    assert solution.ok, [str(problem) for problem in solution.problems]
+    assert dumps(board.sexpr()) == before  # worked out, and nothing has moved
+    assert [p.ref for p in board.parts()] == list(solution.poses)
+
+    def pads(ref: str) -> dict[str, tuple[float, float]]:
+        part, pose = board[ref], solution.poses[ref]
+        placed = place(board.library[part.footprint],
+                       Placement(part.footprint, ref, part.value, pose.x.mm, pose.y.mm,
+                                 pose.rot, pose.back))  # fmt: skip
+        return {str(pad[1]): pad_xy(placed, str(pad[1])) for pad in find_all(placed, "pad")}
+
+    p1, p2, u1 = pads("P1"), pads("P2"), pads("U1")
+    x0, _, x1, _ = board.extent or (0, 0, 0, 0)
+    # The headers: every pin 0.075 inch in from its edge, so the rows are 0.9 inch apart
+    # on the 1.05 inch board, with pin 1 of each level with the other's.
+    assert {round(x - x0, 6) for x, _ in p1.values()} == {1.905}
+    assert {round(x1 - x, 6) for x, _ in p2.values()} == {1.905}
+    assert round(p2["1"][0] - p1["1"][0], 6) == 22.86 and p1["1"][1] == p2["1"][1]
+    # The module is midway between them, and each header is the way round that puts its
+    # pins beside the module's pads on their nets: P1.8 by U1.1, P2.8 by U1.22.
+    assert round(u1["1"][0] - p1["1"][0], 6) == round(p2["1"][0] - u1["22"][0], 6)
+    assert u1["1"][1] < u1["8"][1] and p1["8"][1] < p1["1"][1] and p2["8"][1] < p2["1"][1]
+    # Each strap is on the back, a pad of it within 3 mm of the pin it biases.
+    for r in board.parts("R1..R5"):
+        pin = u1[r.circuit.part("U1").pin_on(r.signal_net).number]
+        assert solution.poses[r.ref].back
+        assert min(math.dist(pad, pin) for pad in pads(r.ref).values()) <= 3.0
+
+
+def test_what_does_not_fit_on_the_t0_board_is_said():
+    """The same lines with the headers 0.05 inch in and the straps on the front, as the
+    board file was first sketched: neither holds on this board, and both are reported."""
+    solution = _t0(0.05 * inch).solve()
+    assert [problem.text for problem in solution.problems] == [
+        "P1 does not fit on the board: it reaches 0.48 mm past the left edge",
+        "align(P1, P2, grid=2.54 mm) does not hold: P1 and P2 are 24.13 mm apart across "
+        "the board, 9.5 steps",
+        "P2 does not fit on the board: it reaches 0.48 mm past the right edge",
+        *(f"R{n} has no place within 3 mm of U1.{pin} that is on the front of the board "
+          "and clear of the other parts" for n, pin in enumerate((1, 3, 18, 17, 16), 1)),
+    ]  # fmt: skip
+    assert set(solution.poses) == {"P1", "P2", "U1"} and solution.free == ()

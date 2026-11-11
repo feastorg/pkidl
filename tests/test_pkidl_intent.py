@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 import pkidl
-from pkidl import Board, Edge, align, inch, mil, mm, place
+from pkidl import Board, Edge, Side, align, inch, mil, mm, place
 from pkidl.circuit import Circuit
 from pkidl.intent import Align, Place, canonical, conflicts
 from pkidl.sexpr import dumps
@@ -144,7 +144,8 @@ def test_a_statement_about_something_the_board_has_not_got_is_refused_whole(boar
 @pytest.mark.parametrize(
     ("said", "error", "message"),
     [
-        (lambda b: place(b["U1"]), ValueError, r"place\(U1\) does not say where"),
+        (lambda b: place(b["U1"]), ValueError,
+         r"place\(U1\) does not say where: give against=, between=, facing=, near= or side="),
         (lambda b: place(b["U1"], facing=Edge.TOP, inset=mm), ValueError,
          "U1: inset= is measured from an edge"),
         (lambda b: place(b["U1"], against=Edge.TOP, inset=-mm), ValueError,
@@ -168,6 +169,10 @@ def test_a_statement_about_something_the_board_has_not_got_is_refused_whole(boar
         (lambda b: place(b["U1"], against="left"), TypeError,
          "U1: against= takes an edge, such as Edge.LEFT, not 'left'"),
         (lambda b: place(b["U1"], facing="top"), TypeError, "U1: facing= takes an edge"),
+        (lambda b: place(b["U1"], side="under"), TypeError,
+         "U1: side= takes Side.FRONT or Side.BACK, not 'under'"),
+        (lambda b: place(b["U1"], side=Edge.TOP), TypeError,
+         "U1: side= takes Side.FRONT or Side.BACK, not <Edge.TOP"),
         (lambda b: place(b["R1"], near="U1", within=mm), TypeError,
          "R1: near= takes a part or a pin, not 'U1'"),
         (lambda b: place("U1", against=Edge.TOP), TypeError,
@@ -293,3 +298,30 @@ def test_statements_made_without_a_line_are_reported_without_one(board):
 
 def test_an_edge_prints_as_it_is_written():
     assert [str(e) for e in Edge] == ["Edge.LEFT", "Edge.RIGHT", "Edge.TOP", "Edge.BOTTOM"]
+
+
+def test_which_face_a_part_is_on_is_said_with_the_face_or_its_name(board):
+    u1, r1 = board.parts("U1", "R1")
+    under = place(r1, near=u1.pin(1), within=3 * mm, side="back")
+    assert under == place(r1, near=u1.pin(1), within=3 * mm, side=Side.BACK)
+    assert under != place(r1, near=u1.pin(1), within=3 * mm, side="front")
+    assert under != place(r1, near=u1.pin(1), within=3 * mm)
+    assert str(under) == "place(R1, near=U1.1, within=3 mm, side=Side.BACK)"
+    assert under.data() == {"place": "R1", "near": "U1.1", "within": 3_000_000, "side": "back"}
+    # The face alone is something to say, and a board passes it on.
+    alone = board.place(u1, side="front")
+    assert alone.side is Side.FRONT and str(alone) == "place(U1, side=Side.FRONT)"
+    assert board.statements() == (alone,)
+    assert pkidl.Side is Side and str(Side.BACK) == "Side.BACK"
+
+
+def test_two_faces_for_one_part_are_a_conflict(board):
+    u1 = board["U1"]
+    board.place(u1, side="front")
+    board.place(u1, facing=Edge.TOP)  # no face said: it claims none
+    assert board.conflicts() == ()
+    board.place(u1, against=Edge.TOP, side=Side.BACK)
+    line = _line() - 1
+    (found,) = board.conflicts()
+    assert (found.part, found.aspect) == ("U1", "side")
+    assert str(found) == f"U1: side is the front ({HERE}:{line - 3}) and the back ({HERE}:{line})"

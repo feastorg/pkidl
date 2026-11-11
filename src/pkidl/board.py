@@ -18,7 +18,8 @@ from typing import Any
 from pkidl import intent
 from pkidl.circuit import Circuit, Net, Part, Pin, Selector
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
-from pkidl.intent import Align, Conflict, Edge, Place, Statement
+from pkidl.intent import Align, Conflict, Edge, Place, Side, Statement
+from pkidl.placement import Solution, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 from pkidl.units import Length
 
@@ -219,10 +220,11 @@ class Board:
         facing: Edge | None = None,
         near: Pin | Part | None = None,
         within: Length | str | None = None,
+        side: Side | str | None = None,
     ) -> Place:
         """Say where *part* goes, and get the statement back. See ``pkidl.place``."""
         statement = intent.place(part, against=against, inset=inset, between=between,
-                                 facing=facing, near=near, within=within)  # fmt: skip
+                                 facing=facing, near=near, within=within, side=side)  # fmt: skip
         self.add(statement)
         return statement
 
@@ -244,6 +246,12 @@ class Board:
     def conflicts(self) -> tuple[Conflict, ...]:
         """Each aspect of a part that two statements give differently, with both."""
         return intent.conflicts(self._statements)
+
+    def solve(self) -> Solution:
+        """Where everything said puts each part: a pose for each part placed, the parts
+        nothing places, and what was said that does not hold, with its lines. Nothing
+        on the board moves. See ``pkidl.placement``."""
+        return solve(self.circuit, self.library, self.extent, self._statements)
 
     def _uuid(self, *parts: str) -> str:
         """A UUID from what the item is; repeats of the same item are numbered."""

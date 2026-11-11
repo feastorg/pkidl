@@ -28,19 +28,20 @@ board.rails("VCC", "GND")
 u1, p1, p2 = board.parts("U1", "P1", "P2")
 straps = board.parts("R1..R5")
 
-# The headers plug into a breadboard: one down each long edge, on the 0.1-inch grid,
-# their rows an exact number of grid steps apart.
-board.place(p1, against=Edge.LEFT, inset=1.27 * mm)
-board.place(p2, against=Edge.RIGHT, inset=1.27 * mm)
+# The headers plug into a breadboard: one down each long edge, their rows 0.9 inch
+# apart on the 1.05 inch board, an exact number of 0.1-inch grid steps.
+board.place(p1, against=Edge.LEFT, inset=0.075 * inch)
+board.place(p2, against=Edge.RIGHT, inset=0.075 * inch)
 board.align(p1, p2, grid=0.1 * inch)
 
-# The module between them, its antenna end at the top edge with no copper under it.
+# The module between them, its antenna end towards the top edge with no copper under it.
 board.place(u1, between=(p1, p2), facing=Edge.TOP)
 board.keepout(u1.area("antenna"), copper=True, both_sides=True)
 
-# Each strap sits by the module pin it biases.
+# Each strap sits by the module pin it biases, on the back: the module and the headers
+# fill the front.
 for r in straps:
-    board.place(r, near=u1.pin_on(r.signal_net), within=3 * mm)
+    board.place(r, near=u1.pin_on(r.signal_net), within=3 * mm, side="back")
 
 board.rules(track=0.25 * mm, clearance=0.2 * mm)
 board.pour("GND", layer="B.Cu")
@@ -56,13 +57,13 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 |---|---|---|
 | `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name from `footprints/` | yes: the outline drawn, the holes placed, the parts loaded and waiting for placement; takes the directory or a file in it (`__file__`) |
 | `board.parts("R1..R5")` | typed part handles, range selectors | yes (`pkidl.circuit`): references, runs, `on_net(...)`, `where(value=...)` |
-| `place(against=Edge.LEFT, inset=)` | placement relative to the outline | said, not solved: a statement with its line (`pkidl.intent`); nothing is placed by it yet |
-| `align(p1, p2, grid=)` | grid alignment across parts | said, not solved |
-| `place(between=, facing=)` | relative placement, orientation by intent | said, not solved |
+| `place(against=Edge.LEFT, inset=)` | placement relative to the outline | yes (`pkidl.placement`): `board.solve()` works out a pose for each part; putting it on the board is the build's |
+| `align(p1, p2, grid=)` | grid alignment across parts | yes: checked, and reported when it does not hold |
+| `place(between=, facing=)` | relative placement, orientation by intent | yes |
 | `u1.area("antenna")` | named regions on a footprint | no: KiCad footprints don't carry it; see below |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
-| `place(near=, within=)` | proximity placement | said, not solved |
-| `1.27 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
+| `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
+| `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
 | `board.rules(...)` | design rules from intent | `pkidl.project` writes rules; not from a board API |
 | `board.pour("GND", layer=)` | whole-layer pour | yes (`Board.pour`) |
 | `board.route()` | staged routing | in `spike/`, not pkidl |
@@ -106,17 +107,82 @@ wherever they were written, and saying one twice says it once. Each records the 
 the board file that made it, the line inside a block function when a block made it.
 `board.statements(about=part)` reads back what has been said, and `statement.data()` is
 the same plain data however it was written (`{"place": "P1", "against": "left",
-"inset": 1270000}`).
+"inset": 1905000}`).
 
 What one statement alone can say about a part is said once: its inset from an edge, the
 edge it faces, its distance from a pin. Two statements that give one of these
 differently are a conflict, reported with both lines and neither winning: `P1: inset
-from the left edge is 1.27 mm (board.py:33) and 2.54 mm (board.py:40)`. An inset left
+from the left edge is 1.905 mm (board.py:33) and 2.54 mm (board.py:40)`. An inset left
 out and an inset given are also two answers. Against the left edge and against the top
 edge is a corner, not a conflict. `board.conflicts()` finds these before anything is
 solved, in an order that does not depend on the order the statements were added. Whether
 the statements can all hold on the board at once (a part between two others and against
 an edge, parts on a grid) is geometry, and is the placement solver's to report.
+
+**As built, placement** (`pkidl.placement`): `board.solve()` reads the statements and
+gives a `Solution`: a pose for each part it could place (`poses`), the parts nothing
+places (`free`), each statement it could not make hold with the line that made it
+(`problems`), and what it settled where the board file left it open (`chosen`). It
+moves nothing, and never drops a statement to make the others fit; putting the poses on
+the board is the build's.
+
+- `against=` an edge: the part lies along it, its longer side to the edge. `inset=` is
+  from the edge to the centres of the part's pads nearest it, which is what a header's
+  row spacing is measured between; with no inset the part's outline touches the edge.
+  Along the edge it is centred. Two edges are a corner.
+- `facing=` an edge: the side that is up in the library footprint is turned to it.
+- `between=` two parts: its centre is midway between theirs, across and along.
+- `near=` a pin or part, `within=`: the nearest place that is on the board and clear of
+  every other part, a pad of the part within the distance of a pad of what it is near,
+  centre to centre.
+- `side="back"`: the face it is on. Parts on one face may touch and not overlap; a part
+  with holes takes both faces.
+- `align`: the parts' first pins are a whole number of grid steps apart. Checked, not
+  moved to.
+
+Which way round a part is, where nothing says, is the way that makes its connections
+shortest, and is reported: `P1: turned 90 degrees, of 90, 270, for the shortest
+connections`.
+
+Question 3, in part: a part nothing places is named in `free`, and a statement that
+cannot hold is a problem with its line. Neither is settled silently. Whether a build
+refuses a board that has either is the build's to decide.
+
+The T0 file above was first sketched with the headers 1.27 mm in and the straps on the
+front. Solved on the board's inputs, neither holds, and both are reported
+(`test_what_does_not_fit_on_the_t0_board_is_said`):
+
+```
+P1 does not fit on the board: it reaches 0.48 mm past the left edge
+align(P1, P2, grid=2.54 mm) does not hold: P1 and P2 are 24.13 mm apart across the board, 9.5 steps
+R1 has no place within 3 mm of U1.1 that is on the front of the board and clear of the other parts
+```
+
+The board is 1.05 inch wide, so rows 0.9 inch apart are 0.075 inch in from each edge;
+and with the module between the headers, 0.48 mm of the front is left between its pads
+and each header's courtyard, so the straps go on the back, under the pins they bias.
+With those two values every part is placed
+(`test_what_the_t0_board_file_says_about_placement_places_every_part`).
+
+Open after this:
+
+- **`between=` and an edge.** `between=` centres the module along the board as well as
+  across it, so its antenna end is 4.79 mm from the top edge, beside the headers' top
+  pins. Saying `against=Edge.TOP` as well is reported as two places (`U1 is put in two
+  places 4.7875 mm apart along the board`). Whether `between=` should give way along
+  the board to an edge that is named is for the antenna area's step to settle.
+- **`side=`.** Here it is the face of the board. The fan channel below writes
+  `side=Edge.TOP` for which side of the fan the LED sits; one of the two needs another
+  word.
+- **The narrow variant below** moves the straps to the back; on this board they are
+  there already, and the spacing is the whole difference.
+- **A placement that goes round.** A part is turned to bring its pads nearer what they
+  connect to, and that can leave a part placed `near=` it with no place; without that
+  part it turns back. It is reported (`the placement does not settle: each pass moves a
+  part`), not resolved.
+- **Limits of this solver:** the board is taken as the box around its outline, and
+  mounting holes are not kept clear of; `near=` is solved alone, not with `against=` or
+  `between=` beside it; parts turn in right angles.
 
 Question 5, units: both. A length is `1.27 * mm`, `50 * mil`, `0.1 * inch`, or the text
 `"1.27mm"`, `"50mil"`, `"0.1in"`, and is kept as a whole number of nanometres, as KiCad

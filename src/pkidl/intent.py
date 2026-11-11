@@ -38,6 +38,16 @@ class Edge(Enum):
         return f"Edge.{self.name}"
 
 
+class Side(Enum):
+    """A face of the board."""
+
+    FRONT = "front"
+    BACK = "back"
+
+    def __str__(self) -> str:
+        return f"Side.{self.name}"
+
+
 @dataclass(frozen=True)
 class Source:
     """The line of a board file that made a statement."""
@@ -94,6 +104,7 @@ class Place(Statement):
     facing: Edge | None = None
     near: Pin | Part | None = None
     within: Length | None = None
+    side: Side | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.part, Part):
@@ -102,9 +113,11 @@ class Place(Statement):
             if not isinstance(edge, Edge | None):
                 raise TypeError(f"{self.part}: {name}= takes an edge, such as Edge.LEFT, "
                                 f"not {edge!r}")  # fmt: skip
-        if not (self.against or self.between or self.facing or self.near):
+        if not isinstance(self.side, Side | None):
+            raise TypeError(f"{self.part}: side= takes Side.FRONT or Side.BACK, not {self.side!r}")
+        if not (self.against or self.between or self.facing or self.near or self.side):
             raise ValueError(f"place({self.part}) does not say where: give against=, "
-                             "between=, facing= or near=")  # fmt: skip
+                             "between=, facing=, near= or side=")  # fmt: skip
         if self.inset is not None and self.against is None:
             raise ValueError(f"{self.part}: inset= is measured from an edge: give against=")
         if self.inset is not None and self.inset < Length(0):
@@ -130,7 +143,7 @@ class Place(Statement):
             object.__setattr__(self, "between", tuple(sorted(pair, key=_by_ref)))
 
     def _said(self) -> Iterator[tuple[str, Any]]:
-        for name in ("against", "inset", "between", "facing", "near", "within"):
+        for name in ("against", "inset", "between", "facing", "near", "within", "side"):
             if (value := getattr(self, name)) is not None:
                 yield name, value
 
@@ -150,6 +163,8 @@ class Place(Statement):
             claims[self.part.ref, "facing"] = self.facing
         if self.near is not None:
             claims[self.part.ref, f"distance from {self.near}"] = self.within
+        if self.side is not None:
+            claims[self.part.ref, "side"] = self.side
         return claims
 
     def data(self) -> dict[str, Any]:
@@ -198,13 +213,18 @@ def place(
     facing: Edge | None = None,
     near: Pin | Part | None = None,
     within: Length | str | None = None,
+    side: Side | str | None = None,
 ) -> Place:
     """Say where *part* goes: *against* an edge of the board, *inset* from it; *between*
-    two parts; *facing* an edge; *near* a pin or a part, *within* a distance of it. One
-    statement can say several. Nothing moves until the board is built."""
+    two parts; *facing* an edge; *near* a pin or a part, *within* a distance of it; on
+    which *side* of the board, ``Side.BACK`` or ``"back"``. One statement can say
+    several. Nothing moves until the board is built."""
     inset = None if inset is None else length(inset)
     within = None if within is None else length(within)
-    return Place(part, against, inset, between, facing, near, within, source=_written_at())
+    if isinstance(side, str) and side in ("front", "back"):
+        side = Side(side)
+    return Place(part, against, inset, between, facing, near, within, side,  # type: ignore[arg-type]
+                 source=_written_at())  # fmt: skip
 
 
 def align(*parts: Part, grid: Length | str) -> Align:
@@ -276,13 +296,15 @@ def _spoken(value: object) -> str:
     """A value as a sentence has it."""
     if value is None:
         return "left unsaid"
+    if isinstance(value, Side):
+        return f"the {value.value}"
     return f"the {value.value} edge" if isinstance(value, Edge) else str(value)
 
 
 def _data(value: Any) -> Any:
     if isinstance(value, Length):
         return value.nm
-    if isinstance(value, Edge):
+    if isinstance(value, Edge | Side):
         return value.value
     if isinstance(value, tuple):
         return [str(v) for v in value]
