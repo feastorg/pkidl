@@ -28,7 +28,9 @@ dev = [
 line-length = 100
 target-version = "py313"
 # spike/ is a separate project, checked by its own tooling; docs/ examples are prose.
-extend-exclude = ["spike", "docs"]
+# ruff formats *.md, and an agent session's sandbox masks .claude/loop.md with a
+# placeholder that cannot be read, which fails the check with exit code 2.
+extend-exclude = ["spike", "docs", ".claude"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
