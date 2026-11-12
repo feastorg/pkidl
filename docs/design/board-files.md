@@ -137,7 +137,8 @@ the board is the build's.
   `between=` where it is along it.
 - `near=` a pin or part, `within=`: the nearest place that is on the board and clear of
   every other part, a pad of the part within the distance of a pad of what it is near,
-  centre to centre.
+  centre to centre. `toward=` an edge: on that side of what it is near.
+- `centre=True`: the middle of its outline at the middle of the board.
 - `side="back"`: the face it is on. Parts on one face may touch and not overlap; a part
   with holes takes both faces.
 - `align`: the parts' first pins are a whole number of grid steps apart. Checked, not
@@ -238,9 +239,9 @@ Open after this:
 - **An area of a part that itself looks for its place** (`near=`) is not kept out of
   by parts placed before it. What is in it is reported (`R1 is in U1's antenna area,
   which is kept clear of copper`), not moved.
-- **`side=`.** Here it is the face of the board. The fan channel below writes
-  `side=Edge.TOP` for which side of the fan the LED sits; one of the two needs another
-  word.
+- **`side=`.** Here it is the face of the board. The fan channel below first wrote
+  `side=Edge.TOP` for which side of the fan the LED sits; that is `toward=Edge.TOP`
+  (decided 2026-11-11; "As built, the centre and a side", below).
 - **The narrow variant below** moves the straps to the back; on this board they are
   there already, and the spacing is the whole difference.
 - **A placement that goes round.** A part is turned to bring its pads nearer what they
@@ -248,8 +249,9 @@ Open after this:
   part it turns back. It is reported (`the placement does not settle: each pass moves a
   part`), not resolved.
 - **Limits of this solver:** the board is taken as the box around its outline, and
-  mounting holes are not kept clear of; `near=` is solved alone, not with `against=` or
-  `between=` beside it; parts turn in right angles.
+  mounting holes are not kept clear of; `near=` is solved alone, not with `against=`,
+  `between=`, `centre=True` or a row beside it, and one `near=` to a part; parts turn
+  in right angles.
 
 **As built, rows:** `row(parts, along=Edge.BOTTOM)` is a statement about several parts
 at once, which a block can return and `board.add` or `board.row` adds. Each part lies
@@ -279,6 +281,23 @@ each, along the 60 mm edge with five gaps of 4.48 mm. The end two then overlap t
 mounting holes 4 mm in from the corners, which the solver does not know of yet. A row
 spreads over the whole edge until it does; then, over what the holes leave clear
 (decided 2026-11-11).
+
+**As built, the centre and a side:** `place(u1, centre=True)` puts the middle of the
+part's outline at the middle of the board. It is one place, so an edge or `between=`
+beside it is held to it and reported where they are apart.
+
+`place(led, near=fan, toward=Edge.TOP, within=5 * mm)` says which side of what it is
+near the part is on: its whole outline is beyond that part's outline on the side toward
+the edge. `side=` stays the face of the board. `toward=` goes with `near=`, is said
+once for what it is near, and a part with no place on that side is told so (`R1 has no
+place within 4 mm of P1, toward the bottom edge, that is on the front of the board and
+clear of the other parts`). `within=` is still from pad to pad, so toward a side that
+what it is near has more of itself on, it has to be longer: a module whose body
+reaches 4 mm above its pads leaves a part no place above it within 4 mm.
+
+On the fan controller, with the fan headers in their row, the processor at the centre
+and each LED near its fan toward the top edge, the four LEDs are placed, each 1.6 mm
+from its header and above it.
 
 **As built, routing** (`pkidl.routing`): a router is an engine behind one interface.
 It is given a `Job` (the placed footprints, the outline, the net classes, what copper
@@ -397,7 +416,7 @@ def fan_channel(fan, driver, base_r, tach_r, led, led_r, cap):
         place(base_r, near=driver.pin("B"), within=2 * mm),
         place(tach_r, near=fan.pin(3), within=3 * mm),
         place(cap, near=fan.pin(2), within=2 * mm),
-        place(led, near=fan, side=Edge.TOP, within=5 * mm),
+        place(led, near=fan, toward=Edge.TOP, within=5 * mm),
         place(led_r, near=led, within=2 * mm),
     ]
 
@@ -428,7 +447,7 @@ def fan_channel(board, fan, driver, base_r, tach_r, led, led_r, cap):
             .place(base_r, near=driver.pin("B"), within=2 * mm)
             .place(tach_r, near=fan.pin(3), within=3 * mm)
             .place(cap, near=fan.pin(2), within=2 * mm)
-            .place(led, near=fan, side=Edge.TOP, within=5 * mm)
+            .place(led, near=fan, toward=Edge.TOP, within=5 * mm)
             .place(led_r, near=led, within=2 * mm))
 
 fans = board.parts("P3", "P4", "P5", "P6")

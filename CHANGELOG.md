@@ -9,6 +9,11 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- `place(part, centre=True)`: the middle of the part's outline at the middle of the
+  board. `place(part, near=, within=, toward=Edge.TOP)`: on the side of what it is near
+  that is toward an edge, its whole outline beyond that part's outline. `side=` is
+  still the face of the board. `toward=` is said once for what a part is near, and
+  `Board.solve()` names the side when a part has no place on it. (#23)
 - `row(parts, along=Edge.BOTTOM, pitch="even")` and `Board.row()`: a statement that
   parts go in a row along an edge, in the order named, from the left or from the top
   down. Each lies against the edge as `place(against=)` has it, `inset=` likewise. With

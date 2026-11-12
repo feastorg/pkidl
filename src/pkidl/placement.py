@@ -19,7 +19,11 @@ What each statement means here:
   along it.
 - ``near=`` a pin or part, ``within=`` a distance: the nearest place to it that is on the
   board and clear of every other part, a pad of the part no further than the distance
-  from a pad of what it is near, centre to centre.
+  from a pad of what it is near, centre to centre. ``toward=`` an edge: on that side of
+  what it is near, its outline wholly beyond that part's outline. The distance is
+  still between pads, so it has to reach past as much of that part as lies between its
+  pads and that side.
+- ``centre=True``: the middle of the part's outline is at the middle of the board.
 - ``side=``: the face of the board it is on; the front when nothing says.
 - ``row`` along an edge: each part lies against the edge as ``against=`` has it, and
   they follow one another in the order named, from the left or from the top. With an
@@ -318,6 +322,10 @@ class _Solver:
                 self._problem((ref,), f"{ref}: near= is solved alone: one near=, and no "
                               "row() beside it", *self.said[ref])  # fmt: skip
                 return None
+            if any(s.centre for s in asks):
+                self._problem((ref,), f"{ref}: near= is solved alone: one near=, and no "
+                              "centre=True beside it", *asks)  # fmt: skip
+                return None
             if len(nears) > 1 or edges or betweens:
                 self._problem((ref,), f"{ref}: near= is solved alone: one near=, and no "
                               "against= or between= beside it", *asks)  # fmt: skip
@@ -458,6 +466,10 @@ class _Solver:
             if (at := self._in_row(ref, row, turned)) is None:
                 return None
             (xs if row.along in (Edge.TOP, Edge.BOTTOM) else ys).append((at, row))
+        for s in self.asks[ref]:
+            if s.centre:
+                xs.append(((x0 + x1) // 2 - (bx0 + bx1) // 2, s))
+                ys.append(((y0 + y1) // 2 - (by0 + by1) // 2, s))
         for edge, s in edges.items():
             d = None if s.inset is None else s.inset.nm
             if edge is Edge.LEFT:
@@ -573,6 +585,15 @@ class _Solver:
         targets = [(x, y) for n, x, y in self._pads(target)
                    if not isinstance(s.near, Pin) or n == s.near.number]  # fmt: skip
         shape, limit, step = self.shapes[ref], s.within.nm, STEP.nm
+        of = self._box(target)
+
+        def beyond(box: Box) -> bool:
+            """On the side of what it is near that the statement says, where it says."""
+            if s.toward is None:
+                return True
+            return {Edge.TOP: box[3] <= of[1], Edge.BOTTOM: box[1] >= of[3],
+                    Edge.LEFT: box[2] <= of[0], Edge.RIGHT: box[0] >= of[2]}[s.toward]  # fmt: skip
+
         n = limit // step
         offsets = sorted((dx * dx + dy * dy, dy, dx)
                          for dx in range(-n * step, n * step + 1, step)
@@ -589,8 +610,9 @@ class _Solver:
                     for _, px, py in turned.pads:
                         for tx, ty in targets:
                             x, y = tx + dx - px, ty + dy - py
-                            if not self._clear(ref, _moved(turned.box, x, y), back,
-                                               shape.through, done, keeps):  # fmt: skip
+                            box = _moved(turned.box, x, y)
+                            if not (beyond(box) and self._clear(ref, box, back, shape.through,
+                                                                done, keeps)):  # fmt: skip
                                 continue
                             key = (self._wires(ref, turned, x, y), rot, y, x)
                             if best is None or key < best[0]:
@@ -603,8 +625,10 @@ class _Solver:
             kept = [k for k, _, faces in self._kept(done) if shape.through or back in faces]
             if kept and nearest(False)[0] is None:
                 kept = []
-            self._problem((ref,), f"{ref} has no place within {s.within} of {s.near} that is on "
-                          f"the {'back' if back else 'front'} of the board and clear of the "
+            toward = "" if s.toward is None else f", toward the {s.toward.value} edge,"
+            self._problem((ref,), f"{ref} has no place within {s.within} of {s.near}{toward} "
+                          f"that is on the {'back' if back else 'front'} of the board and "
+                          "clear of the "
                           "other parts" + (" and of what is kept clear" if kept else ""),
                           s, *kept)  # fmt: skip
             return None

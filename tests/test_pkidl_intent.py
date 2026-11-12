@@ -145,7 +145,14 @@ def test_a_statement_about_something_the_board_has_not_got_is_refused_whole(boar
     ("said", "error", "message"),
     [
         (lambda b: place(b["U1"]), ValueError,
-         r"place\(U1\) does not say where: give against=, between=, facing=, near= or side="),
+         r"place\(U1\) does not say where: give against=, between=, centre=True, facing=, "
+         "near= or side="),
+        (lambda b: place(b["U1"], centre=False), ValueError, r"place\(U1\) does not say where"),
+        (lambda b: place(b["U1"], centre=1), TypeError, "U1: centre= takes True, not 1"),
+        (lambda b: place(b["R1"], against=Edge.TOP, toward=Edge.TOP), ValueError,
+         "R1: toward= says which side of what it is near: give near="),
+        (lambda b: place(b["R1"], near=b["U1"], within=mm, toward="top"), TypeError,
+         "R1: toward= takes an edge, such as Edge.LEFT, not 'top'"),
         (lambda b: place(b["U1"], facing=Edge.TOP, inset=mm), ValueError,
          "U1: inset= is measured from an edge"),
         (lambda b: place(b["U1"], against=Edge.TOP, inset=-mm), ValueError,
@@ -458,4 +465,25 @@ def test_a_row_says_its_parts_inset_and_a_part_is_in_one_row_along_an_edge(board
         f'({HERE}:{first}) and row(R1, P1, along=Edge.BOTTOM, pitch="even") ({HERE}:{first + 6})',
         f"P2: inset from the bottom edge is left unsaid ({HERE}:{first}) and 2 mm "
         f"({HERE}:{first + 5})",
+    ]
+
+
+def test_the_centre_of_the_board_and_the_side_of_what_a_part_is_near_are_said(board):
+    u1, r1, r2 = board.parts("U1", "R1", "R2")
+    a = place(u1, centre=True)
+    assert a == place(u1, centre=True) and a != place(u1, against=Edge.TOP)
+    assert str(a) == "place(U1, centre=True)" and a.data() == {"place": "U1", "centre": True}
+    b = place(r1, near=u1, within=3 * mm, toward=Edge.TOP)
+    assert b != place(r1, near=u1, within=3 * mm)
+    assert b != place(r1, near=u1, within=3 * mm, toward=Edge.LEFT)
+    assert str(b) == "place(R1, near=U1, within=3 mm, toward=Edge.TOP)"
+    assert b.data() == {"place": "R1", "near": "U1", "within": 3_000_000, "toward": "top"}
+    # Nothing said of the centre or of a side is in a statement that does not say it.
+    assert place(r2, against=Edge.TOP).data() == {"place": "R2", "against": "top"}
+    # Which side of what it is near is said once.
+    board.add(a, b)
+    first = _line() - 9
+    board.place(r1, near=u1, within=3 * mm, toward=Edge.BOTTOM)
+    assert [str(c) for c in board.conflicts()] == [
+        f"R1: side of U1 is the top edge ({HERE}:{first}) and the bottom edge ({HERE}:{first + 10})"
     ]

@@ -233,10 +233,13 @@ class Board:
         near: Pin | Part | None = None,
         within: Length | str | None = None,
         side: Side | str | None = None,
+        toward: Edge | None = None,
+        centre: bool = False,
     ) -> Place:
         """Say where *part* goes, and get the statement back. See ``pkidl.place``."""
         statement = intent.place(part, against=against, inset=inset, between=between,
-                                 facing=facing, near=near, within=within, side=side)  # fmt: skip
+                                 facing=facing, near=near, within=within, side=side,
+                                 toward=toward, centre=centre)  # fmt: skip
         self.add(statement)
         return statement
 

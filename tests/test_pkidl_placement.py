@@ -1396,3 +1396,76 @@ def test_in_a_row_a_header_drawn_on_end_has_its_pin_1_at_the_same_end_as_one_dra
     # Each header's pins run 7.62 mm along the edge, and both the same way.
     assert [abs(run) for run in runs] == pytest.approx([7.62, 7.62])
     assert runs[0] * runs[1] > 0
+
+
+def test_centre_puts_the_middle_of_a_parts_outline_at_the_middle_of_the_board():
+    # The module's outline is 10 by 8 mm with its middle 4 mm right of its origin.
+    board = _board(U1="A B C D GND", Q1="E F")
+    board.place(board["U1"], centre=True)
+    solution = board.solve()
+    assert solution.poses == {"U1": Pose(Length(111_000_000), Length(65_000_000))}
+    assert solution.free == ("Q1",) and solution.problems == ()
+    assert solution.chosen == (
+        "U1: turned 0 degrees, of 0, 90, 180, 270, for the shortest connections",
+    )
+    # It is one place: an edge as well is another.
+    board.place(board["U1"], against=Edge.LEFT)
+    (problem,) = board.solve().problems
+    assert problem.text.startswith("U1 is put in two places ")
+    assert problem.statements == board.statements()
+    # And a part that looks for a place near something is not also at the centre.
+    board = _board(U1="A B C D GND", Q1="E F")
+    board.place(board["U1"], against=Edge.TOP)
+    board.place(board["Q1"], near=board["U1"], within=3 * mm, centre=True)
+    assert [p.text for p in board.solve().problems] == [
+        "Q1: near= is solved alone: one near=, and no centre=True beside it"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("edge", "beyond"),
+    [
+        (Edge.TOP, lambda x, y: 63.25 - y),
+        (Edge.BOTTOM, lambda x, y: y - 66.75),
+        (Edge.LEFT, lambda x, y: 109.44 - x),
+        (Edge.RIGHT, lambda x, y: x - 120.56),
+    ],
+)
+def test_toward_an_edge_a_part_is_on_that_side_of_what_it_is_near(edge, beyond):
+    # A header at the centre of the board: its courtyard is from 109.44 to 120.56 mm
+    # across and from 63.25 to 66.75 mm down. A resistor's pads are 0.8 mm or more in
+    # from its own courtyard, so they are that far beyond the header's.
+    board = _board(P1="A B C D", R1="B X")
+    board.place(board["P1"], centre=True, facing=Edge.TOP)
+    board.place(board["R1"], near=board["P1"], within=4 * mm, toward=edge)
+    solution = board.solve()
+    assert solution.ok
+    assert all(beyond(x, y) > 0.8 - 1e-6 for x, y in _pads(board, solution, "R1").values())
+
+
+def test_a_part_with_no_place_on_the_side_it_is_to_be_on_is_said():
+    board = _board(P1="A B C D", R1="B X")
+    board.place(board["P1"], against=Edge.BOTTOM)
+    board.place(board["R1"], near=board["P1"], within=4 * mm, toward=Edge.BOTTOM)
+    line = _line_no() - 1
+    assert _told(board.solve()) == [
+        "R1 has no place within 4 mm of P1, toward the bottom edge, that is on the front of "
+        f"the board and clear of the other parts ({HERE}:{line})"
+    ]
+
+
+def test_toward_an_edge_a_parts_whole_outline_is_beyond_what_it_is_near():
+    # The module at the centre is from 110 to 120 mm across and 61 to 69 mm down, with
+    # its pin 1 at (111, 65): 1 mm in from its left side and 4 mm down from its top. The
+    # nearest clear place to that pin is beside the module; toward the top edge the
+    # test point is above it, the whole of its 1 mm pad.
+    board = _board(U1="A B C D GND", T1="A")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.place(board["T1"], near=board["U1"].pin(1), within=5 * mm)
+    assert _pads(board, board.solve(), "T1")["1"][0] == pytest.approx(109.5)
+    board = _board(U1="A B C D GND", T1="A")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.place(board["T1"], near=board["U1"].pin(1), within=5 * mm, toward=Edge.TOP)
+    solution = board.solve()
+    assert solution.ok
+    assert _pads(board, solution, "T1")["1"] == pytest.approx((111.0, 60.5))
