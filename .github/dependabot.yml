@@ -1,0 +1,28 @@
+# Weekly, one grouped PR per ecosystem. To hold an update back, say so here with the
+# reason and what lifts it (an `ignore` entry); a closed Dependabot PR is not proposed
+# again, and leaves no record of why.
+version: 2
+updates:
+  # The Actions both workflows use, pinned by commit with the version beside it.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  # pkidl's own lockfile. spike/ is left out: it takes SKiDL from a checkout beside the
+  # repository (`[tool.uv.sources]`), which Dependabot has no copy of to resolve against.
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]
+    commit-message:
+      prefix: build
+      include: scope
