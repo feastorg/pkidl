@@ -51,13 +51,52 @@ In order; each a PR with its tests:
 
 ## Milestone 2: T2, blocks
 
-fan_controller: blocks as functions, rows, decoupling from the circuit. Then the other
-T0 and T2 boards.
+fan_controller: blocks as functions, rows, decoupling from the circuit. The other T0
+and T2 boards follow it, each with its own board file, and are not part of what done
+means here.
 
-No corpus reference carries pin names (`pinfunction` appears in none of the 15), so
-`circuit.json` has pad numbers only. The fan_controller board file selects pins by name
-(`driver.pin("B")`); those names have to come from part annotations, as the ESP-12E's
-antenna area does in milestone 1.
+**Done when** `corpus/t2/fan_controller_fan_controller/board.py` builds a board that
+`just corpus` scores: the netlist matches `circuit.json`, 0 unconnected, DRC errors no
+more than the reference's own, every one of its 49 parts placed by a stated relation,
+the four fan channels placed by one block function, and the board file under 60 lines.
+
+In order; each a PR with its tests:
+
+1. **Pin names, said in the board file.** No corpus reference carries pin names
+   (`pinfunction` appears in none of the 15), so `circuit.json` has pad numbers only,
+   and the board file selects pins by name (`driver.pin("B")`). A footprint does not
+   fix them: the drivers are `lib_pcb:SOT-23` with value `Q_NPN_BEC`, and a SOT-23's
+   pin order differs by part. So the board file says them (decided 2026-11-11):
+   `board.annotate(q, pins={"B": 1, "E": 2, "C": 3})`. The names are that part's alone,
+   where an area said the same way is every part's with the footprint: on
+   UProgrammer one SOT-23 footprint holds two MOSFETs and two bipolar transistors.
+   Shipped names, for a footprint that does fix them, can follow.
+2. **Rows**: `row(parts, along=Edge.BOTTOM, pitch="even")`, a statement a block can
+   return.
+3. **`centre=True`, and one word for two sides.** `side="back"` is the face of the
+   board; the fan channel wrote `side=Edge.TOP` for which side of the fan its LED
+   sits. `side=` stays the face, and which side of what a part is near is
+   `toward=Edge.TOP` (decided 2026-11-11): a relation the solver has to keep, not only
+   a word.
+4. **What the solver leaves out that this board has**: its four mounting holes kept
+   clear of, and its corners, rounded to a 4 mm radius about those holes, where the
+   solver takes the board as the box around its outline. A row then spreads over what
+   the holes leave clear of an edge (decided 2026-11-11). `near=` solved with
+   `against=` or `between=` beside it is the other limit; no line of the sketch needs
+   it yet, so it is built when a board file does.
+5. **Decoupling from the circuit**: `board.decouple(u1, caps)` puts each capacitor by
+   a supply pin it is on. The sketch gives U1 three capacitors on +5V (C2, C8, C9),
+   and U1 has two +5V pins (13, 28), with U2's output on the same net: which
+   capacitor goes to which pin, and what a third one does, is this step's to settle.
+   C12 is the one capacitor alone with a pin of U1 (pin 20), and the sketch leaves it
+   out.
+6. **The whole board file.** The sketch in the board files places 35 of the 49 parts.
+   The fifth channel (P1, Q1, R14), the bulk capacitor (C7) and C1, C10..C12, R1..R6
+   are not in it, and a build refuses a board with a part nothing places. It also
+   says `route()` with no `rules(...)`, which a build refuses as well, and it names
+   its inputs by a path where the T0 board file uses `__file__`.
+7. **Build and score**: `board.py` committed, held to the text in the board files, and
+   its row in the scorecard under its reference.
 
 ## Milestone 3: T1, copper for current
 
