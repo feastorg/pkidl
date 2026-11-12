@@ -37,6 +37,8 @@ pkidl = { path = "..", editable = true }
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+# _working/ holds evidence: its scripts are kept as they were run, not maintained.
+extend-exclude = ["_working"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -45,7 +47,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
 # build/ is generated output (gitignored, which ruff honours and pyright does not).
-exclude = ["build", "**/node_modules", "**/__pycache__", "**/.*"]
+exclude = ["build", "_working", "**/node_modules", "**/__pycache__", "**/.*"]
 # SKiDL ships no type stubs and uses dynamic attribute injection heavily.
 reportMissingTypeStubs = false
 

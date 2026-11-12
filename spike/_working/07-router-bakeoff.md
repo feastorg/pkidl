@@ -137,7 +137,7 @@ I stopped there. Converting formats further would have tested my converter, not 
 Each one is filed only after a minimal reproduction and your approval. The Freerouting one waits on a run of the `master` snapshot (decided 2026-11-10).
 
 1. **Freerouting: a fixed via inside a plane of its own net counts as a clearance violation when `plane_as_obstacle` is on.**
-   - **Reproduction:** `build/bakeoff/repro/via-in-plane.dsn`, 50 lines: one GND plane, two GND pads, one fixed GND via.
+   - **Reproduction:** `bakeoff/repro/via-in-plane.dsn`: one GND plane, two GND pads, one fixed GND via.
    - **With the flag on, 2.5.0 reports:** `ObstacleArea#2 [net GND] <-> FixedVia#5 [net GND]`.
    - **Controls:** with the flag off, no violation; with the via outside the plane, no violation.
    - **On DCMT:** 678 violations before routing with the flag, 53 without.
@@ -157,14 +157,14 @@ Each one is filed only after a minimal reproduction and your approval. The Freer
 
 ## Reproducing
 
-Everything lives under `build/bakeoff/` (generated, untracked):
+The harness is in `bakeoff/`, beside this note, as it was run (`bakeoff/README.md`):
 
 - `runner.py`: the runs;
-- `evaluate.py` with `connectivity.py`: the completion table;
+- `evaluate.py` with `connectivity.py`: the completion table, `results.tsv`;
 - `assemble.py` and `kicad-cli pcb drc`: the KiCad checks;
-- `pieces.py`, in the session scratchpad: the pour pieces.
+- `pieces.py`: the pour pieces.
 
-The candidates are cloned and built under `build/bakeoff/<name>/`.
+It ran from `build/bakeoff/` (generated, untracked), which also held the boards, the results, and each candidate cloned and built under `build/bakeoff/<name>/`. None of those is kept.
 
 ## Decision (2026-11-10)
 

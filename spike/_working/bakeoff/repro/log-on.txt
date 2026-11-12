@@ -1,0 +1,23 @@
+2026-11-10 14:50:28.668 INFO   Freerouting v2.5.0 (build-date: 2026-10-05)
+2026-11-10 14:50:28.996 INFO   Hardware: 12 CPU cores, 373 CPU score, 8008 MB RAM
+2026-11-10 14:50:29.000 WARN   GUI is disabled and you don't have a console available, so the only feedback from Freerouting is in the log.
+2026-11-10 14:50:29.003 INFO   Configured network proxy: 127.0.0.1:3128
+2026-11-10 14:50:30.425 INFO   [D8571F\2205EC] Loading board file 'via-in-plane.dsn'...
+2026-11-10 14:50:30.445 INFO   Layer 'F.Cu' contains a power plane / large copper pour covering >=30% of the board; associated net(s) configured for plane routing.
+2026-11-10 14:50:30.466 INFO   [D8571F\2205EC] Job 'D8571F\2205EC' started at 2026-11-10T19:50:30.466132463Z.
+2026-11-10 14:50:30.481 WARN   Design Warning: Board has 1 pre-existing clearance violation(s) in the loaded design (before routing):
+  - 1 unfixable violation(s) (cannot be resolved by Freerouting):
+      * 1 fixed trace/via clearance violations:
+          - ObstacleArea#2 [net GND] <-> FixedVia#5 [net GND]
+  - 0 potentially fixable violations
+Notice: Freerouting does not modify component placement, board outlines, or fixed items.
+Resolving these 1 unfixable violation(s) is the responsibility of the board author in their EDA tool (e.g. KiCad).
+2026-11-10 14:50:30.509 INFO   [D8571F\2205EC] Pipeline thread limits: autorouter pass is single-threaded, optimizer.max_threads=1.
+2026-11-10 14:50:30.530 INFO   [D8571F\2205EC] Fanout stage is enabled but skipped because the board has no SMD pins.
+2026-11-10 14:50:30.540 INFO   [D8571F\2205EC] Auto-routing stage started on board 'bc616481a0182ec92b17298d10ce9ca9' with baseline score 978.75 for 0 unrouted items.
+2026-11-10 14:50:30.572 INFO   [D8571F\2205EC] Auto-routing pass #1 on board 'bc616481a0182ec92b17298d10ce9ca9' was completed in 0.00 seconds with score 978.75 (0 unrouted and 1 violation).
+2026-11-10 14:50:30.603 INFO   [D8571F\2205EC] Auto-routing stage completed: started with 0 unrouted nets, completed in 0.09 seconds, final score: 978.75 (0 unrouted and 1 violation), using 0.00 total CPU seconds, 0.00 GB total allocated, and 0.0 MB peak heap usage.
+2026-11-10 14:50:30.618 INFO   [D8571F\2205EC] Skipping optimization stage: all vias on the board are mandatory layer transitions between SMD pins that cannot be eliminated.
+2026-11-10 14:50:30.629 INFO   [D8571F\2205EC] Job 'D8571F\2205EC' finished with state: COMPLETED (elapsed: 0.16 seconds, finished at UTC: 2026-11-10T19:50:30.627839104Z).
+2026-11-10 14:50:30.644 INFO   Saving output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/via-in-plane-on.ses' (SES)...
+2026-11-10 14:50:30.646 INFO   Successfully saved output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/via-in-plane-on.ses' (625 bytes).

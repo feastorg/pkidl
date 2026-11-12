@@ -12,7 +12,7 @@ expect many issues.
 
 ## Inputs
 
-Board root: `/home/cam/repos_kidl_spike/kidl-spike/build/review/`
+Board root: `build/review/` (generated, untracked)
 
 - Generated board as CI built it (zones unfilled): `<board>/<board>.kicad_pcb`
 - Same board with KiCad's zone fill applied: `<board>-filled/<board>.kicad_pcb`
@@ -31,8 +31,8 @@ Board root: `/home/cam/repos_kidl_spike/kidl-spike/build/review/`
     text appears mirrored).
   - `silk_fab`: silkscreen both sides, F.Fab, courtyards, edge.
   - `orig_cu_filled` (Slices only): the ORIGINAL board's copper, both layers, filled.
-- Query tool (run from `/home/cam/repos_kidl_spike/kidl-spike`):
-  `uv run python /home/cam/.local/state/scratch/claude-1000/-home-cam-repos-kidl-spike/f8c521a6-3a1b-4df1-b310-849c73ddf784/scratchpad/board_query.py BOARD window X0 Y0 X1 Y1`
+- Query tool (run from `spike/`):
+  `uv run python _working/review/board_query.py BOARD window X0 Y0 X1 Y1`
   (also `net NAME`, `nets`, `footprints`). Use it to put exact nets, widths and coordinates
   on everything you report. Do not report a width or clearance you did not measure; say
   "visual estimate" if you only eyeballed it.

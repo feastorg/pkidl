@@ -1,0 +1,47 @@
+(pcb "via-in-plane.dsn"
+  (parser
+    (string_quote ")
+    (space_in_quoted_tokens on)
+    (host_cad "hand-written")
+    (host_version "1")
+  )
+  (resolution um 10)
+  (unit um)
+  (structure
+    (layer F.Cu (type signal) (property (index 0)))
+    (layer B.Cu (type signal) (property (index 1)))
+    (plane GND (polygon F.Cu 0  2000 -2000  18000 -2000  18000 -18000  2000 -18000  2000 -2000))
+    (boundary (path pcb 0  0 0  20000 0  20000 -20000  0 -20000  0 0))
+    (via "Via[0-1]_600:300_um")
+    (rule (width 250) (clearance 200))
+  )
+  (placement
+    (component "R"
+      (place "R1" 10000 -10000 front 0)
+    )
+  )
+  (library
+    (image "R"
+      (pin "Round[A]Pad_1000_um" 1 -5000 0)
+      (pin "Round[A]Pad_1000_um" 2 5000 0)
+    )
+    (padstack "Round[A]Pad_1000_um"
+      (shape (circle F.Cu 1000))
+      (shape (circle B.Cu 1000))
+      (attach off)
+    )
+    (padstack "Via[0-1]_600:300_um"
+      (shape (circle F.Cu 600))
+      (shape (circle B.Cu 600))
+      (attach off)
+    )
+  )
+  (network
+    (net GND (pins R1-1 R1-2))
+    (net SIG (pins))
+    (class default GND (circuit (use_via "Via[0-1]_600:300_um")) (rule (width 250) (clearance 200)))
+  )
+  (wiring
+    (via "Via[0-1]_600:300_um" 10000 -14000 (net SIG) (type protect))
+  )
+)

@@ -24,6 +24,7 @@ Everything else is the reasoning and evidence behind it:
 | [`../_working/02-tool-landscape.md`](../_working/02-tool-landscape.md) | Alternatives considered and rejected — why `skidl` + `pkidl` and not atopile / tscircuit / PCBFlow |
 | [`../_working/03-library-analysis.md`](../_working/03-library-analysis.md) | Why we delete the submodules and build no drift workflow |
 | [`../_working/06-verdict.md`](../_working/06-verdict.md) | **The spike's verdict (2026-11-10):** what works, what doesn't and why, and the options from here |
+| [`05-pkidl-dsl.md`](05-pkidl-dsl.md) | What came after the verdict (2026-11-11): pkidl as a language for writing boards. The first statement of it; `../../docs/charter.md`, `../../docs/design/board-files.md` and `../../docs/roadmap.md` replace it |
 | [`../_working/FINDINGS.md`](../_working/FINDINGS.md) | Running findings log (F-001 … F-014), newest first |
 | [`../_working/LIBRARY-REVIEW.md`](../_working/LIBRARY-REVIEW.md) | Fleet library re-point review |
 | [`../_working/WORKLIST.md`](../_working/WORKLIST.md) | Fleet remediation worklist (42 boards) |
