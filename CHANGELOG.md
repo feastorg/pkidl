@@ -9,6 +9,15 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- `row(parts, along=Edge.BOTTOM, pitch="even")` and `Board.row()`: a statement that
+  parts go in a row along an edge, in the order named, from the left or from the top
+  down. Each lies against the edge as `place(against=)` has it, `inset=` likewise. With
+  an even pitch the gaps are equal, between the parts and from each end of the edge to
+  the part nearest it; with a length, the parts' middles are that far apart about the
+  middle of the edge. The parts of a row are turned the same way, the way that makes
+  the row's connections shortest, but for one `facing=` an edge. `Board.solve()`
+  reports a row longer than its edge and places none of it; a part is in one row along
+  an edge, and a second is a conflict. (#22)
 - `Board.annotate(part, pins={"B": 1, "E": 2, "C": 3})` names a part's pins, and
   `Part.pin("B")` and `Part.pins("B", "C")` find them by name: the same pins their
   numbers find, so a statement about one says the same thing either way. Only the part

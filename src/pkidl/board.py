@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from pkidl import annotations, intent
 from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
-from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Route, Rules, Side, Statement
+from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Route, Row, Rules, Side, Statement
 from pkidl.placement import Solution, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 from pkidl.units import Length, length, mm
@@ -244,6 +244,14 @@ class Board:
         """Say that *parts* sit a whole number of *grid* steps apart, and get the
         statement back. See ``pkidl.align``."""
         statement = intent.align(*parts, grid=grid)
+        self.add(statement)
+        return statement
+
+    def row(self, parts: Iterable[Part], *, along: Edge, pitch: Length | str = "even",
+            inset: Length | str | None = None) -> Row:  # fmt: skip
+        """Say that *parts* go in a row along an edge, in the order named, and get the
+        statement back. See ``pkidl.row``."""
+        statement = intent.row(parts, along=along, pitch=pitch, inset=inset)
         self.add(statement)
         return statement
 

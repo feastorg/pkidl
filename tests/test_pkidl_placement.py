@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from pkidl import Board, Edge, Side, align, keepout, mm, place
+from pkidl import Board, Edge, Side, align, keepout, mm, place, row
 from pkidl.circuit import Circuit
 from pkidl.footprint import Placement, pad_xy, pads
 from pkidl.footprint import place as put
@@ -46,6 +46,14 @@ LIBRARY = {
         " ".join(_line(*ends) for ends in [(-1.75, -1.75, 9.37, -1.75), (9.37, -1.75, 9.37, 1.75),
                                            (9.37, 1.75, -1.75, 1.75), (-1.75, 1.75, -1.75, -1.75)]),
         *(f'(pad "{n + 1}" thru_hole circle (at {2.54 * n} 0) (size 1.7 1.7) (drill 1) '
+          '(layers "*.Cu" "*.Mask"))' for n in range(4)),
+    ),
+    # The same header drawn on end: its pins along +y.
+    "Conn:V": _footprint(
+        "V",
+        " ".join(_line(*ends) for ends in [(-1.75, -1.75, 1.75, -1.75), (1.75, -1.75, 1.75, 9.37),
+                                           (1.75, 9.37, -1.75, 9.37), (-1.75, 9.37, -1.75, -1.75)]),
+        *(f'(pad "{n + 1}" thru_hole circle (at 0 {2.54 * n}) (size 1.7 1.7) (drill 1) '
           '(layers "*.Cu" "*.Mask"))' for n in range(4)),
     ),
     # A resistor: pads 1 mm either side of the origin, in a courtyard 3.6 by 1.8 mm drawn
@@ -108,7 +116,7 @@ LIBRARY = {
 }  # fmt: skip
 _KINDS = {"P": "Conn:H", "R": "Device:R", "U": "RF:M", "F": "Mech:Dot", "T": "Test:TP",
           "Q": "Device:Q", "K": "Sensor:K", "D": "Device:D", "H": "Mech:Hole",
-          "N": "Mech:Nothing"}  # fmt: skip
+          "N": "Mech:Nothing", "V": "Conn:V"}  # fmt: skip
 
 
 def _board(**parts: str) -> Board:
@@ -1141,3 +1149,250 @@ def test_an_area_of_a_part_that_looks_for_its_place_is_not_kept_out_of_but_repor
         "T1 is in U1's around area, which is kept clear of copper "
         f"({HERE}:{line}, {HERE}:{line - 6})",
     ]
+
+
+def _xs(board: Board, solution: Solution, *refs: str) -> list[float]:
+    """Where the pads of *refs* are across the board, part by part, each from the left."""
+    return [x for ref in refs for x in sorted(x for x, _ in _pads(board, solution, ref).values())]
+
+
+def test_a_row_spreads_its_parts_along_an_edge_with_equal_gaps_the_ends_too():
+    # Three resistors, 3.6 mm each, along a 30 mm edge: four gaps of 4.8 mm.
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.ok and solution.free == ()
+    # Each lies along the edge, its courtyard touching it, 0.9 mm out from its pads.
+    assert {y for ref in ("R1", "R2", "R3") for _, y in _pads(board, solution, ref).values()} == {
+        79.1
+    }
+    assert _xs(board, solution, "R1", "R2", "R3") == pytest.approx(
+        [105.6, 107.6, 114.0, 116.0, 122.4, 124.4]
+    )
+
+
+def test_a_row_is_in_the_order_its_parts_are_named_whatever_their_sizes():
+    # A resistor, a 3 mm square part and a resistor: 10.2 mm, and four gaps of 4.95 mm.
+    board = _board(R1="A B", Q1="C D", R2="E F")
+    board.add(row([board["R2"], board["Q1"], board["R1"]], along=Edge.TOP))
+    solution = board.solve()
+    assert solution.ok
+    assert [solution.poses[ref].x.mm for ref in ("R2", "Q1", "R1")] == pytest.approx(
+        [106.75, 115.0, 123.25]
+    )
+    assert {solution.poses[ref].y.mm for ref in ("R1", "R2")} == {50.9}
+
+
+@pytest.mark.parametrize(("edge", "x"), [(Edge.LEFT, 100.9), (Edge.RIGHT, 129.1)])
+def test_a_row_along_a_side_runs_from_the_top_down(edge, x):
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.row(board.parts("R1..R3"), along=edge)
+    solution = board.solve()
+    assert solution.ok
+    assert [(solution.poses[ref].x.mm, solution.poses[ref].y.mm) for ref in ("R1", "R2", "R3")] == [
+        pytest.approx((x, y)) for y in (56.6, 65.0, 73.4)
+    ]
+    assert all(solution.poses[ref].rot in (90, 270) for ref in ("R1", "R2", "R3"))
+
+
+def test_a_row_with_a_pitch_has_its_parts_that_far_apart_about_the_middle_of_the_edge():
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.row(board.parts("R1..R3"), along=Edge.TOP, pitch=5 * mm, inset=2 * mm)
+    solution = board.solve()
+    assert solution.ok
+    assert [solution.poses[ref].x.mm for ref in ("R1", "R2", "R3")] == [110.0, 115.0, 120.0]
+    # Inset is to the pads, as it is for one part against an edge.
+    assert {y for ref in ("R1", "R2", "R3") for _, y in _pads(board, solution, ref).values()} == {
+        52.0
+    }
+
+
+def test_a_row_does_not_depend_on_when_it_was_said_and_places_what_is_placed_by_it():
+    def said(board: Board) -> list:
+        p1, p2 = board.parts("P1", "P2")
+        return [row([p1, p2], along=Edge.BOTTOM),
+                place(board["U1"], between=(p1, p2), against=Edge.TOP),
+                place(board["R1"], near=p1.pin(1), within=4 * mm)]  # fmt: skip
+
+    first, second = (_board(P1="A B C D", P2="E F G H", U1="A E C G GND", R1="A X")
+                     for _ in range(2))  # fmt: skip
+    first.add(*said(first))
+    second.add(*reversed(said(second)))
+    solution = first.solve()
+    assert solution.ok and solution == second.solve()
+    # Two headers 11.12 mm long: three gaps of 2.5867 mm, to the nanometre below, and
+    # the pins 1.75 mm in from each header's courtyard, whichever way round it is.
+    assert _xs(first, solution, "P1", "P2") == pytest.approx(
+        [start + 2.54 * n for start in (104.336667, 118.043333) for n in range(4)], abs=2e-6
+    )
+
+
+def test_a_row_too_long_for_its_edge_is_said_and_none_of_it_is_placed():
+    board = _board(P1="A B C D", P2="E F G H", P3="J K L M", R1="A X")
+    board.row(board.parts("P1..P3"), along=Edge.BOTTOM)
+    line = _line_no() - 1
+    board.place(board["R1"], against=Edge.TOP)
+    solution = board.solve()
+    assert not solution.ok and list(solution.poses) == ["R1"] and solution.free == ()
+    assert _told(solution) == [
+        'row(P1, P2, P3, along=Edge.BOTTOM, pitch="even") does not fit: its parts are '
+        f"33.36 mm along the bottom edge, which is 30 mm ({HERE}:{line})"
+    ]
+    assert solution.problems[0].parts == ("P1", "P2", "P3")
+
+
+def test_a_row_and_another_place_for_one_of_its_parts_are_held_together():
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    line = _line_no() - 1
+    # The left edge puts R1 4.8 mm from where the row has it.
+    board.place(board["R1"], against=Edge.LEFT)
+    board.place(board["R3"], near=board["R2"], within=3 * mm)
+    assert _told(board.solve()) == [
+        f"R1 is put in two places 4.8 mm apart across the board ({HERE}:{line}, {HERE}:{line + 3})",
+        f"R3: near= is solved alone: one near=, and no row() beside it ({HERE}:{line + 4}, "
+        f"{HERE}:{line})",
+    ]
+
+
+def test_the_parts_of_a_row_are_turned_the_same_way_for_the_rows_shortest_connections():
+    # A header along the top with its pins A to D from the left, and under it a row of
+    # three resistors. R1 and R2 have a pad nearer its pin turned 0 degrees; R3 alone
+    # would turn 180, to bring its pad 2 nearer D.
+    def board() -> Board:
+        board = _board(P1="A B C D", R1="X A", R2="B Y", R3="Z D")
+        board.place(board["P1"], against=Edge.TOP, facing=Edge.TOP)
+        board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+        return board
+
+    solution = board().solve()
+    assert solution.ok
+    assert [solution.poses[ref].rot for ref in ("R1", "R2", "R3")] == [0, 0, 0]
+    assert solution.chosen == (
+        "P1: centred along the top edge",
+        'row(R1, R2, R3, along=Edge.BOTTOM, pitch="even"): turned 0 degrees, of 0, 180, for '
+        "the shortest connections",
+    )
+    # With each resistor's nets the other way round, the row is turned the other way.
+    turned = _board(P1="A B C D", R1="A X", R2="Y B", R3="D Z")
+    turned.place(turned["P1"], against=Edge.TOP, facing=Edge.TOP)
+    turned.row(turned.parts("R1..R3"), along=Edge.BOTTOM)
+    solution = turned.solve()
+    assert solution.ok
+    assert [solution.poses[ref].rot for ref in ("R1", "R2", "R3")] == [180, 180, 180]
+    # A part of the row that faces an edge keeps to it, and the rest are turned together.
+    faced = board()
+    faced.place(faced["R3"], facing=Edge.BOTTOM)
+    solution = faced.solve()
+    assert solution.ok
+    assert [solution.poses[ref].rot for ref in ("R1", "R2", "R3")] == [0, 0, 180]
+    assert _xs(faced, solution, "R3") == pytest.approx([122.4, 124.4])
+
+
+def test_a_part_of_a_row_lies_along_the_rows_edge_whatever_other_edge_it_is_against():
+    # Three headers down the left edge are 33.36 mm, on end; the first is against the
+    # top edge as well, which does not leave any of them lying across the board.
+    board = _board(P1="A B C D", P2="E F G H", P3="J K L M")
+    board.row(board.parts("P1..P3"), along=Edge.LEFT)
+    board.place(board["P1"], against=Edge.TOP)
+    assert [p.text for p in board.solve().problems] == [
+        'row(P1, P2, P3, along=Edge.LEFT, pitch="even") does not fit: its parts are 33.36 mm '
+        "along the left edge, which is 30 mm"
+    ]
+
+
+def test_a_row_holds_a_part_drawn_on_end_beside_one_drawn_across():
+    # A resistor, 3.6 mm long as drawn, and a header drawn on end, 11.12 mm long once it
+    # lies along the edge: three gaps of 5.0933 mm.
+    board = _board(R1="A B", V1="C D E F")
+    board.row(board.parts("R1", "V1"), along=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.ok
+    assert solution.poses["R1"].rot in (0, 180) and solution.poses["V1"].rot in (90, 270)
+    header = _pads(board, solution, "V1").values()
+    assert {y for _, y in header} == {78.25}
+    assert sorted(x for x, _ in header) == pytest.approx(
+        [115.536667 + 2.54 * n for n in range(4)], abs=2e-6
+    )
+    assert _xs(board, solution, "R1") == pytest.approx([105.893333, 107.893333], abs=2e-6)
+    assert solution.chosen == (
+        'row(R1, V1, along=Edge.BOTTOM, pitch="even"): turned 0 degrees from how each part '
+        "lies along the edge, of 0, 180, for the shortest connections",
+    )
+
+
+def test_a_part_in_rows_along_two_edges_is_said_to_be_in_two_places():
+    board = _board(R1="A B", R2="C D", R3="E F", R4="G H", R5="J K")
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    board.row(board.parts("R1", "R4", "R5"), along=Edge.LEFT)
+    solution = board.solve()
+    # R1 lies along the edge of the first row it is in, and the other row goes on
+    # without it.
+    assert [p.text for p in solution.problems] == [
+        "R1 is put in two places 4.8 mm apart across the board"
+    ]
+    assert sorted(solution.poses) == ["R2", "R3", "R4", "R5"]
+
+
+def test_what_a_turn_a_row_does_not_take_would_run_into_is_not_said():
+    # The module is not the same about its middle, so each way round puts it somewhere
+    # else against the top edge; only the way the row is turned is reported.
+    board = _board(U1="A B C D GND", U2="E F G H GND")
+    board.row(board.parts("U1", "U2"), along=Edge.BOTTOM, inset=1 * mm)
+    board.place(board["U1"], against=Edge.TOP)
+    assert [p.text for p in board.solve().problems] == [
+        "U1 is put in two places 22 mm apart along the board"
+    ]
+
+
+def test_a_row_with_a_pitch_that_runs_past_its_edge_is_said_and_none_of_it_is_placed():
+    # Middles 14 mm apart about the middle of a 30 mm edge: the outer two are 1 mm
+    # from its ends, and half a resistor is 1.8 mm.
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM, pitch=14 * mm)
+    solution = board.solve()
+    assert solution.poses == {} and [p.text for p in solution.problems] == [
+        "row(R1, R2, R3, along=Edge.BOTTOM, pitch=14 mm) does not fit: at that pitch R1 "
+        "reaches 0.8 mm past the end of the bottom edge"
+    ]
+    # A header and a resistor 20 mm apart are 27.36 mm from end to end, which is less
+    # than the edge; the header's middle is 5 mm from the end and half of it is 5.56 mm.
+    board = _board(P1="A B C D", R1="E F")
+    board.row(board.parts("P1", "R1"), along=Edge.BOTTOM, pitch=20 * mm)
+    solution = board.solve()
+    assert solution.poses == {} and [p.text for p in solution.problems] == [
+        "row(P1, R1, along=Edge.BOTTOM, pitch=20 mm) does not fit: at that pitch P1 reaches "
+        "0.56 mm past the end of the bottom edge"
+    ]
+
+
+def test_a_row_is_turned_for_its_connections_to_the_rest_of_the_board_not_to_itself():
+    # R1's pad on A is nearer the header's pin turned 0 degrees, by 2 mm. R1 and R2
+    # share a net whose pads would be nearer each other turned 180, by more.
+    board = _board(P1="A B C D", R1="N A", R2="Y N", R3="Z W")
+    board.place(board["P1"], against=Edge.TOP, facing=Edge.TOP)
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.ok
+    assert [solution.poses[ref].rot for ref in ("R1", "R2", "R3")] == [0, 0, 0]
+
+
+@pytest.mark.parametrize("edge", [Edge.TOP, Edge.BOTTOM, Edge.LEFT, Edge.RIGHT])
+@pytest.mark.parametrize("side", [Side.FRONT, Side.BACK])
+def test_in_a_row_a_header_drawn_on_end_has_its_pin_1_at_the_same_end_as_one_drawn_across(
+    edge, side
+):
+    board = _board(P1="A B C D", V1="E F G H")
+    board.row(board.parts("P1", "V1"), along=edge)
+    for part in board.parts("P1", "V1"):
+        board.place(part, side=side)
+    solution = board.solve()
+    assert solution.ok
+    along = 0 if edge in (Edge.TOP, Edge.BOTTOM) else 1
+    runs = []
+    for ref in ("P1", "V1"):
+        at = _pads(board, solution, ref)
+        runs.append(at["4"][along] - at["1"][along])
+    # Each header's pins run 7.62 mm along the edge, and both the same way.
+    assert [abs(run) for run in runs] == pytest.approx([7.62, 7.62])
+    assert runs[0] * runs[1] > 0

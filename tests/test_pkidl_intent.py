@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 import pkidl
-from pkidl import Board, Edge, Side, align, inch, keepout, mil, mm, place
+from pkidl import Board, Edge, Side, align, inch, keepout, mil, mm, place, row
 from pkidl.circuit import Circuit
 from pkidl.intent import Align, Keepout, Place, canonical, conflicts
 from pkidl.sexpr import dumps
@@ -395,3 +395,67 @@ def test_a_keepout_of_an_area_the_board_has_not_got_is_refused_whole(board, ante
     assert other.add(keepout(shield, copper=True)) == other.statements()
     (theirs,) = other.annotate(other["U1"], antenna=((0 * mm, 0 * mm), (1 * mm, 1 * mm)))
     assert board.add(keepout(theirs, copper=True)) == (keepout(antenna, copper=True),)
+
+
+def test_a_row_is_a_statement_about_its_parts_in_the_order_they_are_named(board):
+    p1, p2, r1 = board.parts("P1", "P2", "R1")
+    a = row([p1, p2, r1], along=Edge.BOTTOM)
+    line = _line() - 1
+    assert a == row((p1, p2, r1), along=Edge.BOTTOM, pitch="even") and a.source is not None
+    assert (a.source.file.endswith(HERE), a.source.line) == (True, line)
+    # The order is the row's: another order is another row. So is another edge or pitch.
+    assert a != row([p2, p1, r1], along=Edge.BOTTOM)
+    assert a != row([p1, p2, r1], along=Edge.TOP)
+    assert a != row([p1, p2, r1], along=Edge.BOTTOM, pitch=5 * mm)
+    assert row([p1, p2], along=Edge.TOP, pitch="5mm") == row([p1, p2], along=Edge.TOP, pitch=5 * mm)
+    assert str(a) == 'row(P1, P2, R1, along=Edge.BOTTOM, pitch="even")'
+    assert a.mentions() == (p1, p2, r1)
+    assert a.data() == {"row": ["P1", "P2", "R1"], "along": "bottom", "pitch": "even"}
+    b = row([p2, p1], along=Edge.LEFT, pitch=5 * mm, inset="2mm")
+    assert str(b) == "row(P2, P1, along=Edge.LEFT, pitch=5 mm, inset=2 mm)"
+    assert b.data() == {"row": ["P2", "P1"], "along": "left", "pitch": 5_000_000,
+                        "inset": 2_000_000}  # fmt: skip
+    # A block returns it, and a board is added to with it or told it.
+    assert board.add(a) == (a,) and board.row([p1, p2, r1], along=Edge.BOTTOM) == a
+    assert board.statements() == (a,) == board.statements(about="R1")
+    assert board.statements(about="U1") == ()
+
+
+@pytest.mark.parametrize(
+    ("make", "error", "message"),
+    [
+        (lambda b: row([b["P1"]], along=Edge.TOP), ValueError,
+         r"row\(\) takes two parts or more"),
+        (lambda b: row([b["P1"], b["P2"], b["P1"]], along=Edge.TOP), ValueError,
+         r"row\(\) has P1 twice"),
+        (lambda b: row(["P1", "P2"], along=Edge.TOP), TypeError, r"row\(\) takes parts"),
+        (lambda b: row([b["P1"], b["P2"]], along="top"), TypeError,
+         r"row\(\): along= takes an edge, such as Edge.BOTTOM, not 'top'"),
+        (lambda b: row([b["P1"], b["P2"]], along=Edge.TOP, pitch=0 * mm), ValueError,
+         r"row\(\): pitch= 0 mm is not a step"),
+        (lambda b: row([b["P1"], b["P2"]], along=Edge.TOP, pitch="evenly"), ValueError,
+         "'evenly' is not a length"),
+        (lambda b: row([b["P1"], b["P2"]], along=Edge.TOP, inset=-1 * mm), ValueError,
+         r"row\(\): inset= -1 mm is outside the board"),
+    ],
+)  # fmt: skip
+def test_a_row_that_does_not_say_a_row_is_refused(board, make, error, message):
+    with pytest.raises(error, match=message):
+        make(board)
+
+
+def test_a_row_says_its_parts_inset_and_a_part_is_in_one_row_along_an_edge(board):
+    p1, p2, r1 = board.parts("P1", "P2", "R1")
+    board.row([p1, p2], along=Edge.BOTTOM)
+    first = _line() - 1
+    # Against the edge the row is along, said the same way, is said once.
+    board.place(p1, against=Edge.BOTTOM)
+    assert board.conflicts() == ()
+    board.place(p2, against=Edge.BOTTOM, inset=2 * mm)
+    board.row([r1, p1], along=Edge.BOTTOM)
+    assert [str(c) for c in board.conflicts()] == [
+        f'P1: row along the bottom edge is row(P1, P2, along=Edge.BOTTOM, pitch="even") '
+        f'({HERE}:{first}) and row(R1, P1, along=Edge.BOTTOM, pitch="even") ({HERE}:{first + 6})',
+        f"P2: inset from the bottom edge is left unsaid ({HERE}:{first}) and 2 mm "
+        f"({HERE}:{first + 5})",
+    ]

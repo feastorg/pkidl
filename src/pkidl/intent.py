@@ -8,6 +8,9 @@ is a function that returns statements, to add to any board that has those parts.
 Each aspect of a part is said once. Two statements that give it differently are a
 conflict, reported with the line each was written on; neither wins.
 
+``row(fans, along=Edge.BOTTOM)`` is about several parts at once: where they go along an
+edge, in the order they are named.
+
 ``keepout(u1.area("antenna"), copper=True)`` is a statement too, about an area of a
 part. It says nothing of where the part goes, so keepouts add up and never conflict.
 
@@ -211,6 +214,56 @@ class Align(Statement):
 
 
 @dataclass(frozen=True)
+class Row(Statement):
+    """Parts spread along an edge, in the order named. Made with ``row``."""
+
+    parts: tuple[Part, ...]
+    along: Edge
+    pitch: Length | str = "even"
+    inset: Length | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "parts", tuple(self.parts))
+        if not all(isinstance(p, Part) for p in self.parts):
+            raise TypeError(f'row() takes parts, such as board.parts("P3..P6"), not {self.parts!r}')
+        if twice := [p.ref for p in dict.fromkeys(self.parts) if self.parts.count(p) > 1]:
+            raise ValueError(f"row() has {', '.join(twice)} twice")
+        if len(self.parts) < 2:
+            raise ValueError("row() takes two parts or more: one is placed against= the edge")
+        if not isinstance(self.along, Edge):
+            raise TypeError("row(): along= takes an edge, such as Edge.BOTTOM, "
+                            f"not {self.along!r}")  # fmt: skip
+        if isinstance(self.pitch, Length):
+            if self.pitch <= Length(0):
+                raise ValueError(f"row(): pitch= {self.pitch} is not a step")
+        elif self.pitch != "even":
+            raise TypeError(f'row(): pitch= takes "even" or a length, not {self.pitch!r}')
+        if self.inset is not None and self.inset < Length(0):
+            raise ValueError(f"row(): inset= {self.inset} is outside the board")
+
+    def __str__(self) -> str:
+        pitch = '"even"' if self.pitch == "even" else self.pitch
+        inset = "" if self.inset is None else f", inset={self.inset}"
+        return (f"row({', '.join(p.ref for p in self.parts)}, along={self.along}, "
+                f"pitch={pitch}{inset})")  # fmt: skip
+
+    def mentions(self) -> tuple[Part, ...]:
+        return self.parts
+
+    def claims(self) -> dict[tuple[str, str], object]:
+        claims: dict[tuple[str, str], object] = {}
+        for part in self.parts:
+            claims[part.ref, f"inset from the {self.along.value} edge"] = self.inset
+            claims[part.ref, f"row along the {self.along.value} edge"] = str(self)
+        return claims
+
+    def data(self) -> dict[str, Any]:
+        inset = {} if self.inset is None else {"inset": self.inset.nm}
+        return {"row": [p.ref for p in self.parts], "along": self.along.value,
+                "pitch": _data(self.pitch), **inset}  # fmt: skip
+
+
+@dataclass(frozen=True)
 class Keepout(Statement):
     """What stays out of an area of a part. Made with ``keepout``."""
 
@@ -315,6 +368,18 @@ def align(*parts: Part, grid: Length | str) -> Align:
     """Say that *parts* sit a whole number of *grid* steps from each other, across and
     along: what puts two headers into one breadboard."""
     return Align(parts, length(grid), source=_written_at())
+
+
+def row(parts: Iterable[Part], *, along: Edge, pitch: Length | str = "even",
+        inset: Length | str | None = None) -> Row:  # fmt: skip
+    """Say that *parts* go in a row *along* an edge of the board, in the order named:
+    from the left along the top or bottom, from the top down a side. Each lies against
+    the edge as ``place(part, against=)`` has it, *inset* from it likewise. With
+    *pitch* ``"even"`` the gaps are equal: between the parts, and from each end of the
+    edge to the part nearest it. With a length, the parts' middles are that far apart
+    and the row is about the middle of the edge."""
+    return Row(tuple(parts), along, pitch if pitch == "even" else length(pitch),
+               None if inset is None else length(inset), source=_written_at())  # fmt: skip
 
 
 def keepout(area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:

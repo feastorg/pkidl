@@ -251,6 +251,35 @@ Open after this:
   mounting holes are not kept clear of; `near=` is solved alone, not with `against=` or
   `between=` beside it; parts turn in right angles.
 
+**As built, rows:** `row(parts, along=Edge.BOTTOM)` is a statement about several parts
+at once, which a block can return and `board.add` or `board.row` adds. Each part lies
+against the edge as `against=` has it, `inset=` likewise, and they follow one another
+in the order named: from the left along the top or bottom, from the top down a side.
+With `pitch="even"`, which is what is meant when no pitch is given, the gaps are equal,
+between the parts' outlines and from each end of the edge to the outline nearest it;
+with a length, the middles of their outlines are that far apart, about the middle of
+the edge. A row longer than its edge, by its parts or by its pitch, is said, and none
+of it is placed.
+
+The parts of a row are turned the same way, the way that makes the row's connections
+to the rest of the board shortest, which is said once for the row. Turned each on its
+own, the fan controller's four fan headers came out end for end by turns. A part of the
+row that is `facing=` an edge keeps to that. The turn is counted from how each part
+lies along the edge with its length running the way the row runs, so a header drawn on
+end and one drawn across are in one row a quarter turn apart, pin 1 of each at the
+same end, on either face.
+
+A part is in one row along an edge: a second is a conflict, as an `inset=` that differs
+from the row's is. Any other place said for a part of a row is held together with it,
+and reported where the two are apart (`R1 is put in two places 4.8 mm apart across the
+board`). `near=` is still solved alone, so not beside a row.
+
+On the fan controller, `row(fans, along=Edge.BOTTOM)` puts the four headers, 9.398 mm
+each, along the 60 mm edge with five gaps of 4.48 mm. The end two then overlap the
+mounting holes 4 mm in from the corners, which the solver does not know of yet. A row
+spreads over the whole edge until it does; then, over what the holes leave clear
+(decided 2026-11-11).
+
 **As built, routing** (`pkidl.routing`): a router is an engine behind one interface.
 It is given a `Job` (the placed footprints, the outline, the net classes, what copper
 is there already, the areas to keep out of, the pours, and how to route: `neck_down`,
