@@ -10,6 +10,7 @@ import pytest
 import pkidl.annotations
 from pkidl import Board, mm
 from pkidl.annotations import Annotation, fit, read, shipped
+from pkidl.circuit import Circuit
 from pkidl.footprint import footprint_path
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.sexpr import Node, dumps, find, find_all, parse
@@ -360,3 +361,100 @@ def test_a_part_the_board_has_not_got_is_not_annotated(board):
     other = Board.from_inputs(CORPUS / "t0" / "esp12-breakout_ESP12Breakout")
     with pytest.raises(LookupError):
         board.annotate(other["P1"], body=((0 * mm, 0 * mm), (1 * mm, 1 * mm)))
+
+
+def test_a_board_file_names_the_pins_of_a_part(board):
+    r1, r2 = board.parts("R1", "R2")
+    # A pin by its name is the pin by its number. Naming pins gives no areas back.
+    assert board.annotate(r1, pins={"K": 2, "A": "1"}) == ()
+    k, a = r1.pin("K"), r1.pin("A")
+    assert (k, a) == (r1.pin(2), r1.pin(1))
+    assert (str(k), k.number, k.net) == ("R1.2", "2", board.net("B"))
+    assert r1.pins("A", 2) == (a, k)
+    # Only the part that was named has the names: a footprint does not say which pad
+    # of a part is which.
+    with pytest.raises(LookupError) as e:
+        r2.pin("K")
+    assert e.value.args == ("R2 has no pin K: name its pins with annotate(pins=)",)
+    with pytest.raises(LookupError) as e:
+        r1.pin("G")
+    assert e.value.args == ("R1 has no pin G: its pins are named K, A",)
+    # A number it has not got is answered as one, not with its names.
+    with pytest.raises(LookupError) as e:
+        r1.pin(9)
+    assert e.value.args == ("R1 has no pin 9",)
+    # Names said later are added to the ones there, and a pin may have two.
+    board.annotate(r1, pins={"cathode": 2})
+    assert r1.pin("cathode") == k and r1.pin("A") == a
+    # Said with areas, the areas come back as they do alone.
+    got = board.annotate(r2, pins={"A": 1}, body=((-1 * mm, -0.5 * mm), (1 * mm, 0.5 * mm)))
+    assert got == (r2.area("body"),) and r2.pin("A") == r2.pin(1)
+
+
+def test_a_statement_about_a_pin_by_name_is_about_the_pin(board):
+    r1, r2 = board.parts("R1", "R2")
+    board.annotate(r1, pins={"K": 2})
+    by_name = board.place(r2, near=r1.pin("K"), within=2 * mm)
+    assert by_name == board.place(r2, near=r1.pin(2), within=2 * mm)
+    assert by_name.data() == {"place": "R2", "near": "R1.2", "within": 2_000_000}
+    assert len(board.statements()) == 1
+
+
+def test_a_pin_name_is_said_once_and_names_a_pin_the_part_has(board):
+    r1 = board["R1"]
+    board.annotate(r1, pins={"K": 2})
+    board.annotate(r1, pins={"K": "2"})
+    for pins, error, message in [
+        ({"A": 1, "K": 1}, ValueError, "R1: pin K is 2, and cannot also be 1"),
+        ({"A": 3}, LookupError, "R1 has no pin 3"),
+        ({"A": 1, "2": 1}, ValueError, "R1 has a pin numbered 2: a name is not a number"),
+        # A number the part has not got would be taken for one, and so is not a name.
+        ({"A": 1, "4": 1}, ValueError, "R1: a pin's name is a word, such as B, not '4'"),
+        ({"A": 1, "": 1}, ValueError, "R1: a pin's name is a word, such as B, not ''"),
+        ({"A": 1, 2: 1}, TypeError, "R1: a pin's name is a word, such as B, not 2"),
+        ({"A": 1, 7: 1}, TypeError, "R1: a pin's name is a word, such as B, not 7"),
+    ]:
+        with pytest.raises(error) as e:
+            board.annotate(r1, pins=pins, body=((-1 * mm, -0.5 * mm), (1 * mm, 0.5 * mm)))  # pyright: ignore[reportArgumentType]
+        assert e.value.args == (message,)
+        # Nothing of what was said with it is kept, a name or an area.
+        with pytest.raises(LookupError, match="R1 has no pin A: its pins are named K$"):
+            r1.pin("A")
+        with pytest.raises(LookupError, match="has no annotation"):
+            r1.area("body")
+    # An area that is refused keeps the names said with it out too.
+    board.annotate(r1, body=((-1 * mm, -0.5 * mm), (1 * mm, 0.5 * mm)))
+    with pytest.raises(ValueError, match="has an area body already"):
+        board.annotate(r1, pins={"A": 1}, body=((-1 * mm, -0.5 * mm), (1 * mm, 0.6 * mm)))
+    with pytest.raises(LookupError, match="R1 has no pin A"):
+        r1.pin("A")
+
+
+def test_the_fan_controllers_drivers_named_have_their_base_on_the_base_resistor():
+    """The T2 board's drivers are SOT-23 with value Q_NPN_BEC: base, emitter, collector
+    on pads 1, 2, 3. Named so, each has its base on its base resistor's net, its emitter
+    on ground and its collector on its fan header's pin 4."""
+    board = Board.from_inputs(CORPUS / "t2" / "fan_controller_fan_controller")
+    board.rails("+12V", "+5V", "GND")
+    drivers = board.parts("Q2..Q5")
+    assert {q.value for q in drivers} == {"Q_NPN_BEC"}
+    for q, base_r, fan in zip(drivers, board.parts("R15..R18"), board.parts("P3..P6"),
+                              strict=True):  # fmt: skip
+        board.annotate(q, pins={"B": 1, "E": 2, "C": 3})
+        base = q.pin("B").net
+        assert base is not None and base in base_r.nets() and not base.is_rail
+        assert q.pin("E").net == board.net("GND")
+        assert q.pin("C").net == fan.pin(4).net
+
+
+def test_a_pin_number_that_is_not_digits_is_not_a_name_either():
+    """A grid array numbers its pads A1, B2: a name is none of the part's own numbers."""
+    part = {"ref": "U1", "value": "BGA", "footprint": "f", "pads": {"A1": "X", "B2": "Y"}}
+    circuit = Circuit({"parts": [part], "nets": ["X", "Y"]})
+    with pytest.raises(ValueError) as e:
+        circuit.annotate("f", {}, {"U1": {"VDD": "A1", "B2": "A1"}})
+    assert e.value.args == ("U1 has a pin numbered B2: a name is not a number",)
+    with pytest.raises(LookupError, match="U1 has no pin VDD: name its pins"):
+        circuit.part("U1").pin("VDD")
+    circuit.annotate("f", {}, {"U1": {"VDD": "A1"}})
+    assert circuit.part("U1").pin("VDD") == circuit.part("U1").pin("A1")

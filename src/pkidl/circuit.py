@@ -6,8 +6,8 @@ by its reference, a pin by its part and number, a net by its name. Two handles f
 same thing are equal, whichever board they came from.
 
 What a board file declares about the circuit is kept beside it: which nets are rails,
-names for nets the schematic left anonymous, and the named areas of a footprint that
-its annotation marks out.
+names for nets the schematic left anonymous, the named areas of a footprint that its
+annotation marks out, and names for a part's pins.
 
 Anything plural is a method that selects, and gives everything when asked for nothing
 (``board.parts()``, ``part.pins()``, ``net.pins()``); anything singular is an attribute.
@@ -109,13 +109,23 @@ class Part:
         return self.circuit._parts[self.ref]["footprint"]
 
     def pin(self, number: int | str) -> Pin:
-        if str(number) not in self.circuit._pins[self.ref]:
-            raise LookupError(f"{self.ref} has no pin {number}")
-        return Pin(self, str(number))
+        """Its pin with this number, or with this name where the board file named its
+        pins: ``driver.pin("B")``."""
+        numbers, names = self.circuit._pins[self.ref], self.circuit._names.get(self.ref, {})
+        found = str(number) if str(number) in numbers else names.get(str(number))
+        if found is None:
+            if str(number).isdigit():
+                why = ""  # a number the part has not got: its names are no answer
+            elif names:
+                why = f": its pins are named {', '.join(names)}"
+            else:
+                why = ": name its pins with annotate(pins=)"
+            raise LookupError(f"{self.ref} has no pin {number}{why}")
+        return Pin(self, found)
 
     def pins(self, *numbers: int | str) -> tuple[Pin, ...]:
-        """The pins numbered, in the order given; with no number, all of them, in the
-        footprint's order."""
+        """The pins numbered or named, in the order given; with none, all of them, in
+        the footprint's order."""
         return tuple(self.pin(n) for n in numbers or self.circuit._pins[self.ref])
 
     def area(self, name: str) -> Area:
@@ -208,6 +218,7 @@ class Circuit:
         self._rails_read: str | None = None  # the first thing that asked what a rail is
         self._given: dict[str, str] = {}  # the circuit's name for a net -> the board file's
         self._areas: dict[str, dict[str, Box]] = {}  # footprint name -> area name -> box
+        self._names: dict[str, dict[str, str]] = {}  # reference -> pin name -> number
         # A footprint whose shipped annotation is of some other footprint, and why.
         self.unfitted: dict[str, str] = {}
 
@@ -262,15 +273,39 @@ class Circuit:
         self._rails |= {n.name for n in found}
         return found
 
-    def annotate(self, footprint: str, areas: Mapping[str, Box]) -> None:
+    def annotate(
+        self,
+        footprint: str,
+        areas: Mapping[str, Box],
+        pins: Mapping[str, Mapping[str, str]] | None = None,
+    ) -> None:
         """Give the footprint named *footprint* its named *areas*, each a box in the
-        footprint's own coordinates. An area is said once: one already there stays, and
-        a different box for it is refused, with none of *areas* kept."""
+        footprint's own coordinates, and each part in *pins*, by its reference, names
+        for its pins, each with the pin's number. A name is a word: not all digits, which
+        would be taken for a pin's number, and not the number of one of the part's pins.
+        An area or a name is said once: one already there stays, and a different box or
+        pin for it is refused, with nothing of what was said kept."""
         have = self._areas.get(footprint, {})
         for name, box in areas.items():
             if have.get(name, box) != box:
                 raise ValueError(f"{footprint} has an area {name} already, somewhere else")
+        named = {}
+        for ref, names in (pins or {}).items():
+            named[ref] = dict(self._names.get(self.part(ref).ref, {}))
+            for name, number in names.items():
+                if not isinstance(name, str):
+                    raise TypeError(f"{ref}: a pin's name is a word, such as B, not {name!r}")
+                if name in self._pins[ref]:
+                    raise ValueError(f"{ref} has a pin numbered {name}: a name is not a number")
+                if not name or name.isdigit():
+                    raise ValueError(f"{ref}: a pin's name is a word, such as B, not {name!r}")
+                if number not in self._pins[ref]:
+                    raise LookupError(f"{ref} has no pin {number}")
+                if named[ref].setdefault(name, number) != number:
+                    raise ValueError(f"{ref}: pin {name} is {named[ref][name]}, and cannot "
+                                     f"also be {number}")  # fmt: skip
         self._areas[footprint] = {**have, **areas}
+        self._names.update(named)
 
     def name_nets(self, names: Mapping[str, str]) -> tuple[Net, ...]:
         """Give nets the schematic left anonymous a name to write and read:

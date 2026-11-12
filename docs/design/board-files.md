@@ -98,8 +98,8 @@ API style is the working choice below, to be confirmed by the comparison that fo
 given, not the board, and a named net keeps the circuit's name in the KiCad files, so
 the netlist still matches. Rails are declared before `signal_net` is read: a rail
 declared afterwards is refused, since the answer already given would no longer hold.
-A pin is found by number (`fan.pin(4)`); by name (`driver.pin("B")`) waits for part
-annotations, since no corpus reference carries pin names.
+A pin is found by number (`fan.pin(4)`), or by a name the board file gave it
+(`driver.pin("B")`, below), since no corpus reference carries pin names.
 
 **As built, statements** (`pkidl.intent`): `place(...)` and `align(...)` make a
 statement and move nothing; `board.place`, `board.align` and `board.add` add it to a
@@ -207,6 +207,24 @@ labels "No Copper"; a test holds the two together
 (`test_the_esp12e_annotation_is_the_box_its_footprint_marks_no_copper`). It has not
 been checked against a datasheet.
 
+**As built, pin names:** a board file names a part's pins, each name with the pin's
+number, and then finds a pin by its name:
+
+```python
+for q in board.parts("Q2..Q5"):
+    board.annotate(q, pins={"B": 1, "E": 2, "C": 3})
+```
+
+The names are the part's, not its footprint's, where an area is every part's with that
+footprint: the fan controller's drivers are `lib_pcb:SOT-23` with value `Q_NPN_BEC`,
+and a SOT-23 with another transistor in it has its base on another pad. `q.pin("B")` is
+the pin `q.pin(1)` is, so a statement made by either says the same thing and its data
+names the pin by number (`"near": "Q2.1"`). A name is said once, as an area is: a
+second pin for it is refused, and so is a name that is all digits, which would be taken
+for a pin's.
+No annotation that ships names pins yet: one could, for a footprint that does fix them,
+as the ESP-12E's does.
+
 **`between=` and an edge**, left open by placement, is settled: `between=` alone centres
 the module along the board as well as across it, 4.79 mm from the top edge, and with
 `against=Edge.TOP` as well it gives way along the board to the edge. A part that
@@ -215,9 +233,8 @@ out of their areas whatever its reference.
 
 Open after this:
 
-- **Annotations hold areas only**, each a box. Pin names (`driver.pin("B")`) are not
-  in the format yet, and a footprint drawn as the mirror image of the annotation is
-  not fitted.
+- **An annotation that ships holds areas only**, each a box, and a footprint drawn as
+  the mirror image of the annotation is not fitted.
 - **An area of a part that itself looks for its place** (`near=`) is not kept out of
   by parts placed before it. What is in it is reported (`R1 is in U1's antenna area,
   which is kept clear of copper`), not moved.

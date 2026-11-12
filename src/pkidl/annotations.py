@@ -25,7 +25,9 @@ by the footprint's name whichever library it is in::
     [areas]
     antenna = [[0, -8.4], [16, -2.6]]
 
-A board file gives the areas of a part that has none shipped with ``board.annotate``.
+A board file gives the areas of a part that has none shipped with ``board.annotate``,
+and names a part's pins with it: which pad is a transistor's base is the part's to
+say, not its footprint's.
 """
 
 from __future__ import annotations

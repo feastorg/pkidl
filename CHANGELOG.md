@@ -9,6 +9,14 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- `Board.annotate(part, pins={"B": 1, "E": 2, "C": 3})` names a part's pins, and
+  `Part.pin("B")` and `Part.pins("B", "C")` find them by name: the same pins their
+  numbers find, so a statement about one says the same thing either way. Only the part
+  named has the names, where an area is every part's with that footprint: a footprint
+  does not say which pad of a transistor is its base. A name is a word and is said once;
+  a second pin for it, a pin the part has not got, and a name that is all digits are
+  refused, with nothing of what was said kept. `Part.pin()` with a name
+  the part has not got says the names it has. (#21)
 - `Board.build(outdir)` and `pkidl.build`: a board's KiCad files, from what its board
   file said. The build solves the statements, puts each part where the solution has
   it, draws each area kept clear as a rule area on the faces it holds on, routes the

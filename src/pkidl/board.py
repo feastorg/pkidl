@@ -248,14 +248,19 @@ class Board:
         return statement
 
     def annotate(
-        self, part: Part, **areas: tuple[tuple[Length | str, Length | str],
-                                         tuple[Length | str, Length | str]]
+        self, part: Part, *, pins: Mapping[str, int | str] | None = None,
+        **areas: tuple[tuple[Length | str, Length | str], tuple[Length | str, Length | str]]
     ) -> tuple[Area, ...]:  # fmt: skip
         """Say what *part*'s footprint means, where no annotation ships for it: each
         named area by two opposite corners, in the footprint's own coordinates as a
         footprint editor shows them, and get the areas back.
         ``(antenna,) = board.annotate(u1, antenna=((0 * mm, -8.4 * mm), (16 * mm, -2.6 * mm)))``.
-        Every part with that footprint has them."""
+        Every part with that footprint has them.
+
+        *pins* names *part*'s pins, each name with the pin's number:
+        ``board.annotate(q, pins={"B": 1, "E": 2, "C": 3})``, and then ``q.pin("B")``.
+        Only *part* has the names: a footprint does not say which pad of a transistor
+        is its base."""
         part = self.circuit.part(part.ref)
         boxes = {}
         for name, corners in areas.items():
@@ -263,7 +268,8 @@ class Board:
             if x0 == x1 or y0 == y1:
                 raise ValueError(f"{part}: area {name} has no size")
             boxes[name] = (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
-        self.circuit.annotate(part.footprint, boxes)
+        names = {name: str(number) for name, number in (pins or {}).items()}
+        self.circuit.annotate(part.footprint, boxes, {part.ref: names})
         return tuple(part.area(name) for name in areas)
 
     def keepout(self, area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
