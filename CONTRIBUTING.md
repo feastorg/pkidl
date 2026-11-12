@@ -16,6 +16,24 @@ SKiDL. The ones that run Freerouting are skipped where it is not installed, and 
 CI. `spike/` is a separate project with its own `justfile`; its boards need KiCad 10,
 SKiDL and Freerouting.
 
+## Pull requests
+
+1. Branch from `main`.
+2. Make the change, with its tests.
+3. Run `just check && just test`.
+4. Open a pull request against `main`. It is merged by squashing, and its title and
+   description become the commit: say what changed and how you know it works.
+
+`main` takes changes only through pull requests, and only once the `ok` check has
+passed on a branch that is up to date. On a pull request from a fork, CI runs after a
+maintainer has read the change and approved the run, and again after each update.
+
+## Reporting issues
+
+Open an issue with what you expected, what happened, the steps or the board file that
+show it, and the versions involved (Python, KiCad, Freerouting). For a security problem,
+see [`SECURITY.md`](SECURITY.md) instead.
+
 ## Conventions
 
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org):
