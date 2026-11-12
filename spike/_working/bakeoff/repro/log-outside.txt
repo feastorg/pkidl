@@ -17,5 +17,5 @@
 2026-11-10 14:50:41.037 INFO   [B9ECB1\9A2A9C] Stopping optimizer because the improvement in this pass (0.0000%) is below the threshold (2.50%).
 2026-11-10 14:50:41.039 INFO   [B9ECB1\9A2A9C] Optimization stage completed:. Baseline router score: 957.50, baseline optimizer score: 0.00, final router score: 957.50, final optimizer score: 0.00, completed in 0.21 seconds, using 0.14 total CPU seconds, 0.01 GB total allocated, and 49.2 MB peak heap usage.
 2026-11-10 14:50:41.045 INFO   [B9ECB1\9A2A9C] Job 'B9ECB1\9A2A9C' finished with state: COMPLETED (elapsed: 0.73 seconds, finished at UTC: 2026-11-10T19:50:41.044153753Z).
-2026-11-10 14:50:41.065 INFO   Saving output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/out.ses' (SES)...
-2026-11-10 14:50:41.068 INFO   Successfully saved output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/out.ses' (1121 bytes).
+2026-11-10 14:50:41.065 INFO   Saving output file '<repo>/build/bakeoff/repro/out.ses' (SES)...
+2026-11-10 14:50:41.068 INFO   Successfully saved output file '<repo>/build/bakeoff/repro/out.ses' (1121 bytes).

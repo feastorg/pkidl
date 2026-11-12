@@ -304,7 +304,7 @@ but without a PR trigger it remains *advisory*.
 ## F-011 — Fleet library rot ⚠️⚠️
 
 **The biggest finding in the project.** Surveyed all 42 boards with hardware in
-`~/repos_feast` (40 `Slice_*`, 2 `Loaf_*`; `Loaf_CANPB` is an empty stub), resolving every
+the local checkouts of the fleet (40 `Slice_*`, 2 `Loaf_*`; `Loaf_CANPB` is an empty stub), resolving every
 non-stock reference against the committed KiCad-Master-Lib tables. All repos verified current
 with origin first.
 
@@ -372,7 +372,7 @@ sample; the fleet was 43.
 the same mistake produced the submodule-deletion misjudgement earlier.
 
 **Lesson (adopted):** before any change to KiCad-Master-Lib, run the resolver across
-**`~/repos_feast`**, not against the spike's three boards. The library serves the fleet.
+**the local checkouts of the fleet**, not against the spike's three boards. The library serves the fleet.
 
 **Fix:** fold `KMLib_Mounting:Thermal Pad` → `Thermal_Pad` into the fleet migration map
 (below). It is one more entry in a rename pass that has to happen anyway — but it should

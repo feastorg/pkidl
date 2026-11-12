@@ -1,5 +1,4 @@
 # pkidl task runner. spike/ has its own justfile for the boards it builds.
-# See https://github.com/CameronBrooks11/dev-toolbox/blob/main/docs/just-conventions.md
 
 # KiCad ships as a flatpak locally and as a plain binary in CI/containers.
 kicad_cli := env_var_or_default("KICAD_CLI", "flatpak run --command=kicad-cli org.kicad.KiCad")

@@ -128,7 +128,7 @@ d3392376  OPL_Kicad_Library            github.com/Seeed-Studio/OPL_Kicad_Library
 d4bd68f4  digikey-kicad-library        github.com/Digi-Key/digikey-kicad-library
 ```
 
-Working checkout `/home/cam/eda/kicad/KiCad-Master-Lib`: **clean, no uncommitted work,
+Working checkout `<KiCad-Master-Lib checkout>`: **clean, no uncommitted work,
 no dirty submodules.**
 
 `kmlib-local/` contains 13 footprint libs and 13 symbol libs, already organised into a
@@ -142,7 +142,7 @@ Passives_THT, Proto, Proto_Decorators, Relays, Switches, TestPoints).
 - Referenced **4×** by `Loaf_x004` as `SparkFun-Connector:BREAD 10-Pin Connector`.
 - **Does not exist upstream** in SparkFun-KiCad-Libraries at the pinned SHA
   (`find SparkFun-KiCad-Libraries -iname "*BREAD*"` → nothing).
-- **Does not exist anywhere** under `/home/cam` as a `.kicad_mod`.
+- **Does not exist anywhere** under the home directory as a `.kicad_mod`.
 - It is a **first-party part that was squatting in a third-party library namespace**, and
   it has been lost.
 

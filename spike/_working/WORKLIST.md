@@ -150,8 +150,8 @@ Re-check any board:
 
 ```sh
 KICAD_CLI='flatpak run --command=kicad-cli org.kicad.KiCad' \
-KICAD_MASTER_LIB=~/repos_feast/KiCad-Master-Lib \
-  python3 ~/repos_feast/bread-infra/scripts/validate_board.py <repo>
+KICAD_MASTER_LIB=<KiCad-Master-Lib checkout> \
+  python3 <bread-infra checkout>/scripts/validate_board.py <repo>
 ```
 
 DRC — note all three lines, not just the first:

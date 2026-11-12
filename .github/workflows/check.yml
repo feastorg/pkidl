@@ -6,8 +6,6 @@
 #
 # Branch protection: require ONLY the `ok` context (not `check`/`test`). Skipped
 # jobs don't block; only failures and cancellations do.
-#
-# See https://github.com/CameronBrooks11/dev-toolbox/blob/main/docs/just-conventions.md
 
 name: Check
 

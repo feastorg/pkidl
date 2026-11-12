@@ -17,9 +17,9 @@ Last updated: 2026-10-23
 | P1 | KiCad-Master-Lib: lib tables, vendoring, drift tracking | Claude | ✅ **Done** — [PR #1](https://github.com/feastorg/KiCad-Master-Lib/pull/1) merged (`89cd0b1`) |
 | P2 | Boards: KiCad 10 migration + re-point nicknames | Cam | ✅ **Done** — all three on KiCad 10 (`20260206`) |
 | P3 | Re-run library audit; confirm zero dead nicknames | Claude | ✅ **GREEN** |
-| P4 | Pin the KiCad version (flatpak local, container digest CI) | Claude | ✅ **Done** locally ([PR #7](https://github.com/feastorg/kidl-spike/pull/7)); container digest is fleet (F-008) |
+| P4 | Pin the KiCad version (flatpak local, container digest CI) | Claude | ✅ **Done** locally (kidl-spike PR 7); container digest is fleet (F-008) |
 | P5 | Router research pass | Claude | ✅ **Done** — Freerouting 2.5.0 (JVM jar). See `_working/04-router-research.md` |
-| P6 | Scaffold `kidl-spike` to dev-toolbox standards | Claude | ✅ **Done** (`f9871ce`) |
+| P6 | Scaffold `kidl-spike` to the project template's standards | Claude | ✅ **Done** (`f9871ce`) |
 | P7 | **Fix the DRC parity gate across BREAD** (see below) | — | **New — not started** |
 
 ## ✅ R1 RETIRED — 2026-07-12
@@ -49,13 +49,13 @@ Closes risk **R1** (library reproducibility), the Phase 0 blocker. Without it,
 "regenerate KiCad from Python" is impossible: nickname resolution currently lives only in
 a hand-edited global KiCad config, and is already broken.
 
-Repo: `~/eda/kicad/KiCad-Master-Lib` (via `$KICAD_MASTER_LIB`).
+Repo: `<KiCad-Master-Lib checkout>` (via `$KICAD_MASTER_LIB`).
 Rationale + evidence: `_working/03-library-analysis.md`, `_working/01-library-audit.md`.
 
 ✅ **Complete.** [PR #1](https://github.com/feastorg/KiCad-Master-Lib/pull/1) on branch
 `chore/library-reproducibility` (`e0dfc9b` → `4d582ac` → `ac0a860`). Awaiting merge.
 
-> **Workflow note:** this was done directly in `~/eda/kicad/KiCad-Master-Lib`, which
+> **Workflow note:** this was done directly in `<KiCad-Master-Lib checkout>`, which
 > collided with Cam working in the same checkout (a mid-run branch switch orphaned a
 > commit; recovered, no loss). **Future org-repo work: use a scratch clone and let Cam
 > pull, rather than operating in his working checkout.**
@@ -195,7 +195,7 @@ a requirement on our generator that de-risks every router choice.
 
 ## P6 — Scaffold `kidl-spike` ✅
 
-Done in `f9871ce`. dev-toolbox `python-uv` profile: justfile, pre-commit (ruff + gitleaks),
+Done in `f9871ce`. The project template's `python-uv` profile: justfile, pre-commit (ruff + gitleaks),
 CI, AGENTS.md. `just check` + `just test` green; 8 tests.
 
 The substantive part is `src/kidl_spike/libs.py` — **the reproducibility boundary.** It

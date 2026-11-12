@@ -168,7 +168,7 @@ The pasted research proposed the same manifest fields. That part is right.
 - **Router runs stay out of `just test`.** At 30 s–3 min per route (`04-router-bakeoff.md` estimate), 8 boards would add 4–24 minutes. Put them in a separate recipe, run on demand or nightly.
 - **(b) can go in `just test`** if it stays per board in seconds. That is plausible for a pure-Python DSN write and diff, but unmeasured.
 
-**Environment finding.** `kicad-cli-session pcb upgrade` returns exit 3, "Board file does not exist or is not accessible", on a scratchpad path: the flatpak doesn't see the scratchpad. On an absolute path under the repo's `build/` it works ("Successfully saved board file using the latest format", 7 of 7 bake-off boards, 2026-11-10).
+**Environment finding.** `kicad-cli pcb upgrade`, through the session's wrapper, returns exit 3, "Board file does not exist or is not accessible", on a scratchpad path: the flatpak doesn't see the scratchpad. On an absolute path under the repo's `build/` it works ("Successfully saved board file using the latest format", 7 of 7 bake-off boards, 2026-11-10).
 
 ## Recommendation
 

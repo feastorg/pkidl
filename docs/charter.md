@@ -153,7 +153,8 @@ A change to pkidl is judged by the whole scorecard, not by the board it was made
 - **`feastorg/pkidl`**: the library, this charter, the corpus, the harness.
 - **`spike/`**: our boards (Loaf, RLHT, DCMT, HBTC, TC4) written in pkidl, as an
   outside user's repository of boards would be: it imports pkidl's public API only.
-- **`feastorg/kidl-spike`'s history** is carried into pkidl (#2), not lost.
+- **The history of `kidl-spike`**, the repository `spike/` began in, is carried into
+  pkidl (#2), not lost.
 
 ## Open questions
 

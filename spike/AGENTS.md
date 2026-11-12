@@ -68,9 +68,9 @@ A new Slice is a YAML file in `src/kidl_spike/boards/`: a root layout (`root: rl
 its Nano pins and anchor. `kidl_spike.build` builds it through `slice_build`; references
 are generated unless a channel lists its own. See `rlht.yaml`, `dcmt.yaml`, `tc4.yaml`.
 
-From a sandboxed Claude Code session, KiCad runs only through `kicad-cli-session`, alone in
-its tool call; `just erc`/`drc`/`verify`/`fab` cannot start it there. Call
-`kicad-cli-session` directly with the arguments the recipe uses.
+Where a recipe cannot start KiCad, as in a sandboxed agent session that reaches it only
+through a wrapper of its own, `just erc`/`drc`/`verify`/`fab` do not run: call that
+wrapper directly with the arguments the recipe uses.
 
 ## Conventions
 

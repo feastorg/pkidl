@@ -120,7 +120,7 @@ The same targets as above, on DCMT:
    - route with `plane_as_obstacle` on, then fill and DRC;
    - **go** if it routes completely and the pours stay in one piece; anything else comes back to you with the numbers.
 1. **The fill step** (*decided 2026-11-10: pkidl with shapely*, a pinned Python dependency, so that `gen` stays free of KiCad and works in a sandboxed session). The options were:
-   - **(a) KiCad, in the build:** `kicad-cli pcb drc --refill-zones --save-board`. That adds KiCad to `gen`; CI has it, and a session needs `kicad-cli-session`;
+   - **(a) KiCad, in the build:** `kicad-cli pcb drc --refill-zones --save-board`. That adds KiCad to `gen`; CI has it, and a sandboxed session needs its own wrapper for it;
    - **(b) pkidl's own polygon fill:** a new dependency, or the raster fill model in `stitch.py` traced back to polygons.
 
    This is a build-architecture choice, so it comes to you with a recommendation, informed by the probe.

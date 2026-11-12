@@ -129,7 +129,7 @@ These aren't exclusive. My assessment of each:
      - a fixed via inside a same-net pad counted as a violation.
 
      A third candidate, a plane not keeping other nets out, turned out to be the `plane_as_obstacle` setting: the reason every candidate is checked against the source first.
-   - **Against:** Freerouting 2.5 builds on Java 25, and this machine has a Java 25 runtime but only a Java 21 compiler (`/usr/lib/jvm`, 2026-11-10). Building it here needs a JDK 25 added through workstation-configs.
+   - **Against:** Freerouting 2.5 builds on Java 25, and this machine has a Java 25 runtime but only a Java 21 compiler (`/usr/lib/jvm`, 2026-11-10). Building it here needs a JDK 25 added to the machine's managed tooling.
    - **Cost:** filing issues with our reproductions is cheap; fixing them is a Java codebase of its own.
 
 **My recommendation:** option 1 next, on DCMT's bridge block, since it's the only option that changes what the boards can be. Alongside it, file the Freerouting gaps that survive a minimal reproduction (the cheap half of option 5) and run a small bake-off (option 4) on our five DSNs plus a few external boards (the cheap half of option 3). Those answer whether to invest in a router at all. Graduate pkidl (option 2) once option 1 has settled its API.

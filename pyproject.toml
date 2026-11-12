@@ -6,9 +6,23 @@ readme = "README.md"
 requires-python = ">=3.13"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
+authors = [{ name = "Cameron Brooks" }]
+keywords = ["pcb", "kicad", "eda", "layout", "skidl", "hardware"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
 dependencies = [
     "shapely>=2.2.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/feastorg/pkidl"
+Issues = "https://github.com/feastorg/pkidl/issues"
+Changelog = "https://github.com/feastorg/pkidl/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]

@@ -115,6 +115,6 @@ templates), and `spike/`'s boards rewritten in the language.
   bldc-gimbal-1d, a123 BCM); `just corpus` gives up after 600 s. Cause unknown; worth a
   minimal reproduction before any upstream report.
 - **pre-commit is not installed in this clone**: installing a hook repo for the first
-  time is a hand step (workstation-configs #609). CI runs the same checks.
+  time is a hand step on the machine it was written on. CI runs the same checks.
 - **Whether agents should edit the intent model's data form or the Python**: tested once
   milestone 1's model exists (charter, open questions).

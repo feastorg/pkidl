@@ -172,6 +172,9 @@ def test_the_t0_board_file_is_the_one_the_design_shows_and_under_30_lines():
     text = (T0 / "board.py").read_text()
     shown = re.findall(r"^```python\n(.*?)^```$", BOARD_FILES.read_text(), re.S | re.M)
     assert shown[0] == text
+    # The README shows the same file.
+    readme = Path(__file__).parents[1] / "README.md"
+    assert re.findall(r"^```python\n(.*?)^```$", readme.read_text(), re.S | re.M) == [text]
     assert len(text.splitlines()) < 30
 
 

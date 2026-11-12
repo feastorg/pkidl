@@ -12,5 +12,5 @@
 2026-11-10 14:50:27.754 INFO   [537287\FA754F] Auto-routing stage completed: started with 0 unrouted nets, completed in 0.11 seconds, final score: 1000.00 (0 unrouted and 0 violations), using 0.00 total CPU seconds, 0.00 GB total allocated, and 0.0 MB peak heap usage.
 2026-11-10 14:50:27.759 INFO   [537287\FA754F] Skipping optimization stage: all vias on the board are mandatory layer transitions between SMD pins that cannot be eliminated.
 2026-11-10 14:50:27.767 INFO   [537287\FA754F] Job '537287\FA754F' finished with state: COMPLETED (elapsed: 0.18 seconds, finished at UTC: 2026-11-10T19:50:27.766500271Z).
-2026-11-10 14:50:27.785 INFO   Saving output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/via-in-plane-off.ses' (SES)...
-2026-11-10 14:50:27.787 INFO   Successfully saved output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/via-in-plane-off.ses' (625 bytes).
+2026-11-10 14:50:27.785 INFO   Saving output file '<repo>/build/bakeoff/repro/via-in-plane-off.ses' (SES)...
+2026-11-10 14:50:27.787 INFO   Successfully saved output file '<repo>/build/bakeoff/repro/via-in-plane-off.ses' (625 bytes).

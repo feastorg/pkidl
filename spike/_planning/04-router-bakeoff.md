@@ -49,7 +49,7 @@ For each router and board:
 
 ## How
 
-- **Builds:** each candidate is built from a pinned commit in a scratch clone, with toolchains this machine already manages (rustup, cmake, g++, uv, node). Nothing is installed system-wide. If a router wins, it gets added through workstation-configs before anything depends on it.
+- **Builds:** each candidate is built from a pinned commit in a scratch clone, with toolchains this machine already manages (rustup, cmake, g++, uv, node). Nothing is installed system-wide. If a router wins, it gets added to the machine's managed tooling before anything depends on it.
 - **Scripts:** the harness is in `../_working/bakeoff/`.
 - **Results:** they go into `../_working/07-router-bakeoff.md`, with the command behind every figure.
 - **Size, estimated:** 5 routers × about 14 boards × 2 runs is about 140 routes, at 30 s to 3 min each, so 2–4 hours. It runs in the background.

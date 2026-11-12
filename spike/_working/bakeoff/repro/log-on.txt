@@ -19,5 +19,5 @@ Resolving these 1 unfixable violation(s) is the responsibility of the board auth
 2026-11-10 14:50:30.603 INFO   [D8571F\2205EC] Auto-routing stage completed: started with 0 unrouted nets, completed in 0.09 seconds, final score: 978.75 (0 unrouted and 1 violation), using 0.00 total CPU seconds, 0.00 GB total allocated, and 0.0 MB peak heap usage.
 2026-11-10 14:50:30.618 INFO   [D8571F\2205EC] Skipping optimization stage: all vias on the board are mandatory layer transitions between SMD pins that cannot be eliminated.
 2026-11-10 14:50:30.629 INFO   [D8571F\2205EC] Job 'D8571F\2205EC' finished with state: COMPLETED (elapsed: 0.16 seconds, finished at UTC: 2026-11-10T19:50:30.627839104Z).
-2026-11-10 14:50:30.644 INFO   Saving output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/via-in-plane-on.ses' (SES)...
-2026-11-10 14:50:30.646 INFO   Successfully saved output file '/home/cam/repos_kidl_spike/kidl-spike/build/bakeoff/repro/via-in-plane-on.ses' (625 bytes).
+2026-11-10 14:50:30.644 INFO   Saving output file '<repo>/build/bakeoff/repro/via-in-plane-on.ses' (SES)...
+2026-11-10 14:50:30.646 INFO   Successfully saved output file '<repo>/build/bakeoff/repro/via-in-plane-on.ses' (625 bytes).
