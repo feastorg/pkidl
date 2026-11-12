@@ -3,11 +3,14 @@
 usage:
   python scripts/corpus.py extract     write each board's circuit.json, mechanical.json and
                                        footprints/ from its reference, and corpus/manifest.json
+  python scripts/corpus.py build DIR   build each board that has a board.py into
+                                       DIR/<board_id>/ as built.kicad_pcb
   python scripts/corpus.py score DIR   score the boards whose filled copies (and DRC
                                        reports) are in DIR; see the justfile's corpus recipe
 
 Each board lives in corpus/<tier>/<board_id>/ with reference.kicad_pcb (the original,
-upgraded to KiCad 10: compared against, never copied from) and its LICENSE.
+upgraded to KiCad 10: compared against, never copied from) and its LICENSE. One that
+pkidl builds has a board.py there too: it makes a ``board`` from the inputs beside it.
 """
 
 from __future__ import annotations
@@ -15,10 +18,12 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import runpy
 import sys
 from collections import Counter
 from pathlib import Path
 
+from pkidl.build import BuildError
 from pkidl.footprint import footprint_path
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.measure import regions
@@ -28,8 +33,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "corpus"
 FREEROUTING = "842ad83"  # freerouting/freerouting commit the PCBench boards come from
 # What each board directory holds and the manifest hashes, beside the files under
-# footprints/ (board.py is hashed once written).
+# footprints/ and, where the board is built, its board.py.
 FILES = ("LICENSE", "circuit.json", "mechanical.json", "reference.kicad_pcb")
+BUILT = "built"  # the name a board file's board is built under
 
 # board_id -> (tier, licence, source repository). Licences read from each source repo.
 BOARDS = {
@@ -84,7 +90,7 @@ def extract() -> None:
         _dump(d / "circuit.json", circuit(board))
         _dump(d / "mechanical.json", mechanical(board))
         written, differ = _write_footprints(d, board)
-        files = [d / n for n in FILES] + written
+        files = [d / n for n in FILES] + written + [p for p in [d / "board.py"] if p.is_file()]
         manifest["boards"][board_id] = {
             "tier": tier, "licence": licence, "source": source,
             "pcbench": f"scripts/benchmark/fixtures/PCBench/{board_id}/raw.kicad_pcb",
@@ -133,9 +139,61 @@ def drc_counts(report: dict) -> dict:
     }
 
 
+def build(out: Path) -> int:
+    """Build each board that has a ``board.py`` into ``out/<board_id>/``: the KiCad
+    files as ``built.kicad_pcb`` and ``built.kicad_pro``, what the router read and
+    wrote, and ``built.json``, what the build says of itself. A board file that does
+    not build is said, and the rest are still built."""
+    failed = 0
+    for board_id in BOARDS:
+        board_py = board_dir(board_id) / "board.py"
+        if not board_py.is_file():
+            continue
+        d = out / board_id
+        d.mkdir(parents=True, exist_ok=True)
+        (d / f"{BUILT}.json").unlink(missing_ok=True)  # an earlier build's is not this one's
+        try:
+            built = runpy.run_path(str(board_py))["board"].build(d, BUILT)
+        except BuildError as e:
+            failed += 1
+            _dump(d / f"{BUILT}.json", {"built": False, "problems": list(e.problems)})
+            print(e, file=sys.stderr)
+            continue
+        runs = built.routed.runs if built.routed is not None else ()
+        _dump(d / f"{BUILT}.json", {
+            "built": True,
+            "placed": list(built.solution.poses),
+            "chosen": list(built.solution.chosen),
+            "routed": [{"stage": stage, "unrouted": run.unrouted} for stage, run in runs],
+        })  # fmt: skip
+        print(f"{BOARDS[board_id][0]} {board_id}: built, {len(built.solution.poses)} parts placed"
+              + "".join(f", {run.unrouted} unrouted" for _, run in runs))  # fmt: skip
+    return 1 if failed else 0
+
+
+def _built(d: Path, c: dict) -> dict | None:
+    """What a board file's board scores, from ``d``: None where there is none."""
+    if not (d / f"{BUILT}.json").is_file():
+        return None
+    said = json.loads((d / f"{BUILT}.json").read_text())
+    if not said["built"] or not (d / f"{BUILT}-drc.json").is_file():
+        return {"built": said["built"], "run": False, "problems": said.get("problems", [])}
+    board = parse((d / f"{BUILT}.kicad_pcb").read_text())
+    return {
+        "built": True, "run": True,
+        **measures(board),
+        **drc_counts(json.loads((d / f"{BUILT}-drc.json").read_text())),
+        "netlist_matches": circuit(board) == c,
+        "placed": len(said["placed"]),
+        "unrouted": [r["unrouted"] for r in said["routed"]],
+    }  # fmt: skip
+
+
 def score(build: Path) -> None:
     """One row per board from ``build/<board_id>/``: ``reference.kicad_pcb`` refilled by
-    KiCad and ``drc.json``, its report. Boards not run show as such."""
+    KiCad and ``drc.json``, its report. Boards not run show as such. A board with a
+    board file has a second row, for the board built from it (``built.kicad_pcb``,
+    refilled, and ``built-drc.json``)."""
     rows = {}
     for board_id, (tier, _, _) in BOARDS.items():
         d = build / board_id
@@ -150,6 +208,7 @@ def score(build: Path) -> None:
             "reference": {**measures(parse((d / "reference.kicad_pcb").read_text())),
                           **drc_counts(json.loads((d / "drc.json").read_text())),
                           "refilled": not (d / "not-refilled").is_file()},
+            "built": _built(d, c),
             "board_py_lines": (len(board_py.read_text().splitlines())
                                if board_py.is_file() else None),
         }  # fmt: skip
@@ -168,7 +227,16 @@ def score(build: Path) -> None:
               f"{m['warnings']:4} {m['unconnected']:5} {m['vias']:5} {m['track_mm']:9} "
               f"{len(m['split_pours']):11} {lines:>8}"
               f"{'' if m['refilled'] else '  * not refilled'}")  # fmt: skip
-    print(f"\nReference boards only so far: the bar a board file has to reach. "
+        b = r["built"]
+        if b is not None and not b["run"]:
+            print(f"     {'  its board.py: ' + ('not checked' if b['built'] else 'not built'):44}")
+        elif b is not None:
+            print(f"     {'  built from its board.py':44} {b['placed']:5} "
+                  f"{'same' if b['netlist_matches'] else 'DIFF':>4} {b['errors']:4} "
+                  f"{b['warnings']:4} {b['unconnected']:5} {b['vias']:5} {b['track_mm']:9} "
+                  f"{len(b['split_pours']):11}")  # fmt: skip
+    print(f"\nA reference is the bar its board file has to reach; under a built board, "
+          f"parts is the parts placed and nets whether its netlist is the circuit's. "
           f"* KiCad's refill ran past 600 s; checked on the pours as saved. "
           f"Full rows in {build / 'scorecard.json'}.")  # fmt: skip
 
@@ -177,6 +245,8 @@ def main(argv: list[str]) -> int:
     if argv[1:2] == ["extract"]:
         extract()
         return 0
+    if argv[1:2] == ["build"] and len(argv) == 3:
+        return build(Path(argv[2]))
     if argv[1:2] == ["score"] and len(argv) == 3:
         score(Path(argv[2]))
         return 0

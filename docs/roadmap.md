@@ -15,6 +15,11 @@ the board files (`docs/design/board-files.md`) say what the language should look
 
 ## Milestone 1: the T0 board end to end
 
+Done 2026-11-11: the eight steps below are merged, and the T0 board file builds a board
+with the circuit's netlist, 0 unconnected, 8 DRC errors beside the reference's 8, all
+eight parts placed by a stated relation, in 29 lines (`docs/design/board-files.md`, "As
+built, the build", has the scorecard rows and what is open).
+
 **Done when** `corpus/t0/esp12-breakout_ESP12Breakout/board.py`, as written in the board
 files, builds a board that `just corpus` scores: the netlist matches `circuit.json`, 0
 unconnected, DRC errors no more than the reference's own, every part placed by a stated

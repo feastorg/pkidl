@@ -57,18 +57,18 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 |---|---|---|
 | `Board.from_inputs` | load `circuit.json` + `mechanical.json`; footprints by name from `footprints/` | yes: the outline drawn, the holes placed, the parts loaded and waiting for placement; takes the directory or a file in it (`__file__`) |
 | `board.parts("R1..R5")` | typed part handles, range selectors | yes (`pkidl.circuit`): references, runs, `on_net(...)`, `where(value=...)` |
-| `place(against=Edge.LEFT, inset=)` | placement relative to the outline | yes (`pkidl.placement`): `board.solve()` works out a pose for each part; putting it on the board is the build's |
+| `place(against=Edge.LEFT, inset=)` | placement relative to the outline | yes (`pkidl.placement`): `board.solve()` works out a pose for each part, and `board.build()` puts it there |
 | `align(p1, p2, grid=)` | grid alignment across parts | yes: checked, and reported when it does not hold |
 | `place(between=, against=, facing=)` | relative placement, orientation by intent | yes |
 | `u1.area("antenna")` | named regions on a footprint | yes (`pkidl.annotations`): shipped for the ESP-12E, or said in the board file with `board.annotate` |
-| `keepout(area, copper=True)` | an area kept clear | yes: placement keeps other parts out of it and says where it is; drawing it as a rule area is the build's |
+| `keepout(area, copper=True)` | an area kept clear | yes: placement keeps other parts out of it and says where it is, the build draws it as a rule area on each face it holds on, and the router is told to keep out of it |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
-| `board.rules(...)` | design rules from intent | `pkidl.project` writes rules; not from a board API |
+| `board.rules(...)` | design rules from intent | yes: a statement, said once; the build writes them into the project and routes to them |
 | `board.pour("GND", layer=)` | whole-layer pour | yes (`Board.pour`) |
-| `board.route()` | staged routing | the stages and the router are in pkidl (`pkidl.routing`, `pkidl.route.Freerouting`); `board.route()` itself is the build's |
-| the build and the scorecard | KiCad files, refill, DRC, measures | partly (`pkidl.measure`, `just corpus`) |
+| `board.route()` | staged routing | yes: a statement; the build has a router (`pkidl.route.Freerouting` unless given another) route the board in stages (`pkidl.routing`) |
+| the build and the scorecard | KiCad files, refill, DRC, measures | yes: `board.build(dir)` writes the board and its project; `just corpus` builds each `board.py`, has KiCad refill and check it, and scores it under its reference |
 
 **Design questions it raises:**
 
@@ -256,14 +256,53 @@ minutes for nothing), said in terms another router could answer.
 
 Open after this:
 
-- **`board.route()`** is not there: a board file cannot ask for routing yet. Making
-  the job from the board (its footprints, outline, `board.rules(...)`, the kept areas
-  placement reports) is the build's.
 - **A `Run` says a number**, not which connections are unmade. The charter's "routed,
   partly routed, infeasible or not found" needs the nets named, which Freerouting's
   log does not give and its REST API does.
 - **Stages come from net classes**: a class other than Default is routed first. A
   board file has no words yet for which nets those are.
+
+**As built, the build** (`pkidl.build`): `board.rules(track=, clearance=, edge=)` and
+`board.route()` are statements like the rest: each is said once, and a second `rules`
+that gives a width differently is a conflict with both lines. `board.build(dir)` solves
+what was said, puts each part where the solution has it, draws each kept area as a rule
+area on the faces it holds on, has the router route the board if the board file said
+`route()`, and writes `<name>.kicad_pcb` and `<name>.kicad_pro` into `dir`, the name
+being the directory the inputs came from unless `name=` gives another. It gives back a
+`Built`: the two files, the solution, and what the router proposed.
+
+A board is not built from statements that conflict or do not hold, with a part nothing
+places, or with `route()` and no `rules`: `BuildError` says each, with its line, and
+nothing is written. A router that leaves connections unmade does not stop the build:
+its number is in the result, and KiCad's DRC judges the board. The `Board` is not
+changed by building it, so it can be built again.
+
+The T0 board file above is `corpus/t0/esp12-breakout_ESP12Breakout/board.py`, and a
+test holds the two to the same text. Built, refilled and checked by KiCad 10.0.6, then
+scored (`scripts/corpus.py build`, `kicad-cli pcb drc --refill-zones --save-board
+--severity-all`, `scripts/corpus.py score`: the steps of `just corpus`, 2026-11-11):
+
+```
+tier board                           parts nets  err warn uncon  vias  track mm
+t0   esp12-breakout_ESP12Breakout        8   22    8   22     0    10     200.9
+       built from its board.py           8 same    8   13     0     2     138.3
+```
+
+The eight errors on each are the same eight: `malformed_courtyard`, all on U1, whose
+footprint is the reference's own. The built board's 13 warnings are all
+`silk_over_copper`.
+
+Open after this:
+
+- **Reference text is where the footprint has it**, which on this board is over pads:
+  the 13 warnings. `pkidl.silk` moves references clear, and the build does not call it.
+- **The pour is not a statement.** `board.pour("GND", layer=)` draws a zone when it is
+  called, as `Board.pour` always has. The router is not told of it and routes GND as
+  track; KiCad fills the pour around what was routed.
+- **Every net is in one class**, with the board's one track width and clearance.
+  Classes, and so the stages, wait for words that say which nets carry power.
+- **The build does not run KiCad.** Refill and DRC are `just corpus`'s, on the files
+  the build wrote.
 
 Question 5, units: both. A length is `1.27 * mm`, `50 * mil`, `0.1 * inch`, or the text
 `"1.27mm"`, `"50mil"`, `"0.1in"`, and is kept as a whole number of nanometres, as KiCad

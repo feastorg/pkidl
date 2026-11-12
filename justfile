@@ -36,7 +36,7 @@ check: fmt-check lint typecheck
 test:
     uv run pytest
 
-# Refill and DRC every corpus reference with KiCad, then print the scorecard
+# DRC every corpus reference, build and DRC every board.py, print the scorecard
 corpus:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -55,4 +55,17 @@ corpus:
             echo "KiCad's refill ran past 600 s; DRC on the zones as saved" > "$d/not-refilled"
         fi
     done
+    # A board file that does not build is a row of the scorecard, and fails the recipe
+    # once the scorecard is printed.
+    built=0
+    uv run python scripts/corpus.py build build/corpus || built=$?
+    for board in build/corpus/*/built.kicad_pcb; do
+        [ -e "$board" ] || continue
+        d="$(dirname "$board")"
+        rm -f "$d/built-drc.json"
+        grep -qs '"built": true' "$d/built.json" || continue
+        {{ kicad_cli }} pcb drc --refill-zones --save-board --severity-all \
+            --format json -o "$d/built-drc.json" "$board"
+    done
     uv run python scripts/corpus.py score build/corpus
+    exit "$built"

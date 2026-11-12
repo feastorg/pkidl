@@ -9,6 +9,31 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- `Board.build(outdir)` and `pkidl.build`: a board's KiCad files, from what its board
+  file said. The build solves the statements, puts each part where the solution has
+  it, draws each area kept clear as a rule area on the faces it holds on, routes the
+  board if the board file said `route()`, and writes `<name>.kicad_pcb` and, for a
+  board with `rules`, `<name>.kicad_pro`. It gives a `Built`: the files, the
+  `Solution` and what the router proposed. A board whose statements conflict or do
+  not hold, with a part nothing places, or with `route()` and no `rules`, is not
+  built: `BuildError.problems` says each, and nothing is written. A router that
+  leaves connections unmade does not stop the build. The `Board` is left as it was.
+  (#17)
+- `Board.rules(track=, clearance=, edge=)` and `Board.route()`: statements, in
+  `pkidl.intent` as `rules()` and `route()`. The rules are the board's track width,
+  clearance and clearance from its edge (0.5 mm unless given), each said once. The
+  build writes them into the project and gives them to the router. `Board.route()`
+  asks for routing by `pkidl.route.Freerouting`, or by the router `build(router=)`
+  is given. (#17)
+- `Board.name`: the name a board's files are written under. `Board.from_inputs()`
+  sets it to the name of the directory the inputs are in; `build(name=)` gives
+  another. (#17)
+- `corpus/t0/esp12-breakout_ESP12Breakout/board.py`: the first corpus board file, the
+  one `docs/design/board-files.md` shows. `python scripts/corpus.py build DIR` builds
+  every corpus `board.py`, and `just corpus` has KiCad refill and check what was
+  built and scores it in a row under its reference: the parts placed, whether the
+  netlist is the circuit's, and the same DRC counts and measures. A board file that
+  does not build fails `just corpus` once the scorecard is printed. (#17)
 - `pkidl.routing`: a board routed in stages, by a router behind one interface. A `Job`
   is what a board asks of a router: its footprints, outline, net classes, the copper
   already there, and what to keep out of. A `Router` has one method, `route(job, outdir,

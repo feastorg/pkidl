@@ -10,6 +10,9 @@ conflict, reported with the line each was written on; neither wins.
 
 ``keepout(u1.area("antenna"), copper=True)`` is a statement too, about an area of a
 part. It says nothing of where the part goes, so keepouts add up and never conflict.
+
+``rules(track=0.25 * mm, clearance=0.2 * mm)`` and ``route()`` are about the board, not
+a part: the widths its copper is held to, and that it is routed when it is built.
 """
 
 from __future__ import annotations
@@ -24,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from pkidl.circuit import Area, Circuit, Part, Pin, natural
-from pkidl.units import Length, length
+from pkidl.units import Length, length, mm
 
 _HERE = str(Path(__file__).parent) + os.sep
 
@@ -238,6 +241,53 @@ class Keepout(Statement):
         circuit.part(self.area.part.ref).area(self.area.name)
 
 
+BOARD = "the board"
+
+
+@dataclass(frozen=True)
+class Rules(Statement):
+    """The widths the board's copper is held to. Made with ``rules``."""
+
+    track: Length
+    clearance: Length
+    edge: Length
+
+    def __post_init__(self) -> None:
+        for name, value in (("track", self.track), ("clearance", self.clearance)):
+            if value <= Length(0):
+                raise ValueError(f"rules(): {name}= {value} is not a width")
+        if self.edge < Length(0):
+            raise ValueError(f"rules(): edge= {self.edge} is outside the board")
+
+    def __str__(self) -> str:
+        return f"rules(track={self.track}, clearance={self.clearance}, edge={self.edge})"
+
+    def mentions(self) -> tuple[Part, ...]:
+        return ()
+
+    def claims(self) -> dict[tuple[str, str], object]:
+        return {(BOARD, "track width"): self.track, (BOARD, "clearance"): self.clearance,
+                (BOARD, "clearance from the edge"): self.edge}  # fmt: skip
+
+    def data(self) -> dict[str, Any]:
+        return {"rules": {"track": self.track.nm, "clearance": self.clearance.nm,
+                          "edge": self.edge.nm}}  # fmt: skip
+
+
+@dataclass(frozen=True)
+class Route(Statement):
+    """That the board is routed when it is built. Made with ``route``."""
+
+    def __str__(self) -> str:
+        return "route()"
+
+    def mentions(self) -> tuple[Part, ...]:
+        return ()
+
+    def data(self) -> dict[str, Any]:
+        return {"route": True}
+
+
 def place(
     part: Part,
     *,
@@ -275,9 +325,25 @@ def keepout(area: Area, *, copper: bool = False, both_sides: bool = False) -> Ke
     return Keepout(area, bool(copper), bool(both_sides), source=_written_at())
 
 
+def rules(*, track: Length | str, clearance: Length | str,
+          edge: Length | str = 0.5 * mm) -> Rules:  # fmt: skip
+    """Say the widths the board's copper is held to: how wide a *track* is, the
+    *clearance* between copper of two nets, and how far copper stays from the board's
+    *edge*. They are the rules the router is given and the ones written into the
+    project for KiCad's DRC. Each is said once: a second ``rules`` that gives one
+    differently is a conflict."""
+    return Rules(length(track), length(clearance), length(edge), source=_written_at())
+
+
+def route() -> Route:
+    """Say that the board is routed when it is built: every net, to the board's
+    ``rules``, around its parts and out of every area kept clear of copper."""
+    return Route(source=_written_at())
+
+
 @dataclass(frozen=True)
 class Conflict:
-    """One aspect of one part, given differently by two statements."""
+    """One aspect of one part, or of the board, given differently by two statements."""
 
     part: str
     aspect: str

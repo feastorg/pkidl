@@ -1,6 +1,7 @@
-# The corpus scorecard: every corpus board refilled and checked by KiCad, then scored.
-# Needs KiCad, so it runs on demand and weekly, not on every push (see the Check
-# workflow for pkidl's own gate). The scorecard is uploaded as an artifact.
+# The corpus scorecard: every corpus reference refilled and checked by KiCad, every
+# board.py built, routed and checked the same way, then scored. Needs KiCad, so it
+# runs on demand and weekly, not on every push (see the Check workflow for pkidl's own
+# gate). The scorecard is uploaded as an artifact.
 
 name: Corpus
 
@@ -23,6 +24,8 @@ jobs:
       options: --user root
     env:
       KICAD_CLI: kicad-cli
+      # The autorouter's jar, as the Check workflow pins it: a bump changes both.
+      FREEROUTING_SHA256: f6f51bb02245e8e717f9359bd260cc9c5c0b1bc0acc8b7cb2cd5b8ffeb5de3c7
     steps:
       - name: Install git
         run: apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl
@@ -35,6 +38,23 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
+
+      # The router, for the boards built from a board.py.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Freerouting (pinned version, checked jar)
+        run: |
+          ver=$(sed -n 's/^WANT_FREEROUTING = "\(.*\)"$/\1/p' spike/src/kidl_spike/doctor.py)
+          test -n "$ver" || { echo "WANT_FREEROUTING not found in doctor.py"; exit 1; }
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/freerouting.jar" \
+            "https://github.com/freerouting/freerouting/releases/download/v$ver/freerouting-$ver.jar"
+          echo "$FREEROUTING_SHA256  $RUNNER_TEMP/freerouting.jar" | sha256sum -c -
+          # Headless, and without the analytics it otherwise posts on every start.
+          echo "FREEROUTING=java -Djava.awt.headless=true -jar $RUNNER_TEMP/freerouting.jar" \
+            "--gui.enabled=false --usage_and_diagnostic_data.disable_analytics=true" >> "$GITHUB_ENV"
 
       - name: Setup
         run: just setup
@@ -49,3 +69,6 @@ jobs:
           path: |
             build/corpus/scorecard.json
             build/corpus/*/drc.json
+            build/corpus/*/built.json
+            build/corpus/*/built-drc.json
+            build/corpus/*/built.kicad_pcb

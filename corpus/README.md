@@ -26,7 +26,7 @@ whose source repository carries a permissive licence are here; each keeps its `L
                           board, with a reason, when its board file is written
     footprints/           the library footprint behind each footprint name, laid out as
                           KiCad libraries: <library>.pretty/<footprint>.kicad_mod
-    board.py              the pkidl board file (step 4 of the charter)
+    board.py              the pkidl board file, where the board has one
     LICENSE               the source project's
 ```
 
@@ -48,13 +48,17 @@ the version most of them carry, and `manifest.json` lists the parts that carry a
 ## The scorecard
 
 `just corpus` copies each reference to `build/corpus/`, has KiCad refill and check it,
-and prints one row per board; `build/corpus/scorecard.json` holds the full rows. The
-Corpus workflow runs it on demand and weekly.
+builds each `board.py` beside it (`python scripts/corpus.py build`), has KiCad refill
+and check what was built, and prints one row per board with a second row under it for
+the board built from its `board.py`; `build/corpus/scorecard.json` holds the full rows.
+The Corpus workflow runs it on demand and weekly.
 
-Today it scores the references only: the bar each board file has to reach. Their DRC
-counts are under KiCad 10's rules, which most of these older boards don't fully meet;
-findings about footprint libraries, which aren't available here, are left out. Built
-boards are scored the same way once they have a `board.py`.
+A reference's row is the bar its board file has to reach. Its DRC counts are under
+KiCad 10's rules, which most of these older boards don't fully meet; findings about
+footprint libraries, which aren't available here, are left out. A built board is
+scored the same way, and its row also says how many parts its board file placed and
+whether its netlist is `circuit.json`'s. A board file that does not build is said in
+its row, and `just corpus` fails once the scorecard is printed.
 
 KiCad 10's refill of three references (OpenMPPT, bldc-gimbal-1d, a123 BCM) ran past an
 hour on 2026-11-11, alone or in parallel. The recipe gives each refill ten minutes;

@@ -13,15 +13,19 @@ import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pkidl import annotations, intent
 from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
-from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Side, Statement
+from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Route, Rules, Side, Statement
 from pkidl.placement import Solution, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
-from pkidl.units import Length, length
+from pkidl.units import Length, length, mm
+
+if TYPE_CHECKING:
+    from pkidl.build import Built
+    from pkidl.routing import Router
 
 # The two-layer stack, as KiCad 10 writes it: (id, name, type, user name).
 _LAYERS = [
@@ -128,6 +132,7 @@ class Board:
     library: dict[str, Node] = field(default_factory=dict, repr=False)
     # What the board file has said about the layout, each statement once.
     _statements: dict[Statement, None] = field(default_factory=dict, repr=False)
+    name: str = ""  # what its files are called: from_inputs gives its directory's name
 
     @classmethod
     def from_inputs(cls, where: Path | str) -> Board:
@@ -143,7 +148,7 @@ class Board:
         d = Path(where)
         if not d.is_dir():
             d = d.parent
-        board = cls()
+        board = cls(name=d.resolve().name)
         circuit = json.loads((d / "circuit.json").read_text())
         mech = json.loads((d / "mechanical.json").read_text())
         uses = [(p["ref"], p["footprint"]) for p in circuit["parts"]]
@@ -268,6 +273,21 @@ class Board:
         self.add(statement)
         return statement
 
+    def rules(self, *, track: Length | str, clearance: Length | str,
+              edge: Length | str = 0.5 * mm) -> Rules:  # fmt: skip
+        """Say the widths the board's copper is held to, and get the statement back. See
+        ``pkidl.intent.rules``."""
+        statement = intent.rules(track=track, clearance=clearance, edge=edge)
+        self.add(statement)
+        return statement
+
+    def route(self) -> Route:
+        """Say that the board is routed when it is built, and get the statement back.
+        See ``pkidl.intent.route``."""
+        statement = intent.route()
+        self.add(statement)
+        return statement
+
     def statements(self, about: Part | str | None = None) -> tuple[Statement, ...]:
         """What has been said about the layout, in the order it was added, which means
         nothing; with *about*, what speaks of that part."""
@@ -285,6 +305,19 @@ class Board:
         nothing places, and what was said that does not hold, with its lines. Nothing
         on the board moves. See ``pkidl.placement``."""
         return solve(self.circuit, self.library, self.extent, self._statements)
+
+    def build(self, outdir: Path | str, name: str | None = None, *,
+              router: Router | None = None) -> Built:  # fmt: skip
+        """Write the board's KiCad files into *outdir*, named *name* or, for a board
+        from its inputs, after their directory: the parts where everything said puts
+        them, each area kept clear as a rule area, and the board routed by *router*
+        (Freerouting where none is given) if ``route()`` was said. The board itself is
+        left as it was. See ``pkidl.build``."""
+        from pkidl.build import build  # the router's files are written from a board
+
+        if not (name or self.name):
+            raise ValueError("build() needs a name for the board's files: give name=")
+        return build(self, Path(outdir), name or self.name, router)
 
     def _uuid(self, *parts: str) -> str:
         """A UUID from what the item is; repeats of the same item are numbered."""

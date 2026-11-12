@@ -8,6 +8,9 @@ import functools
 import hashlib
 import json
 import math
+import re
+import runpy
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
@@ -16,10 +19,15 @@ from pkidl import Board, Edge, inch, mm
 from pkidl.circuit import natural
 from pkidl.footprint import Placement, footprint_path, library_form, pad_xy, place
 from pkidl.importer import _property, circuit, footprints, mechanical
+from pkidl.project import NetClass
+from pkidl.route import RouterError, router_command
+from pkidl.routing import Job, Run
 from pkidl.sexpr import Node, dumps, find, find_all, parse
 from pkidl.units import Length
 
 CORPUS = Path(__file__).parents[1] / "corpus"
+T0 = CORPUS / "t0" / "esp12-breakout_ESP12Breakout"
+BOARD_FILES = Path(__file__).parents[1] / "docs" / "design" / "board-files.md"
 BOARDS = sorted(p.parent for p in CORPUS.glob("*/*/reference.kicad_pcb"))
 MANIFEST = json.loads((CORPUS / "manifest.json").read_text())["boards"]
 PLACED_ONLY = ("uuid", "path", "sheetname", "sheetfile", "locked", "placed")
@@ -155,9 +163,22 @@ def test_each_strap_of_the_t0_board_finds_the_module_pin_it_biases():
     assert biased == ["U1.1", "U1.3", "U1.18", "U1.17", "U1.16"]
 
 
+def _board_file() -> Board:
+    """The T0 board, as its board file leaves it."""
+    return runpy.run_path(str(T0 / "board.py"))["board"]
+
+
+def test_the_t0_board_file_is_the_one_the_design_shows_and_under_30_lines():
+    text = (T0 / "board.py").read_text()
+    shown = re.findall(r"^```python\n(.*?)^```$", BOARD_FILES.read_text(), re.S | re.M)
+    assert shown[0] == text
+    assert len(text.splitlines()) < 30
+
+
 def _t0(inset: Length, side: str | None = None) -> Board:
-    """The T0 board's real inputs, and the placement lines of its board file."""
-    board = Board.from_inputs(CORPUS / "t0" / "esp12-breakout_ESP12Breakout")
+    """The T0 board's real inputs, and the placement lines of its board file with the
+    headers *inset* and the straps on *side*."""
+    board = Board.from_inputs(T0)
     board.rails("VCC", "GND")
     u1, p1, p2 = board.parts("U1", "P1", "P2")
     board.place(p1, against=Edge.LEFT, inset=inset)
@@ -170,10 +191,11 @@ def _t0(inset: Length, side: str | None = None) -> Board:
     return board
 
 
-def test_what_the_t0_board_file_says_about_placement_places_every_part():
-    board = _t0(0.075 * inch, "back")
+def test_what_the_t0_board_file_says_places_every_part():
+    board = _board_file()
     assert board.conflicts() == ()
-    assert [s.data() for s in board.statements()] == [
+    said = [s.data() for s in board.statements()]
+    assert said == [
         {"place": "P1", "against": "left", "inset": 1_905_000},
         {"place": "P2", "against": "right", "inset": 1_905_000},
         {"align": ["P1", "P2"], "grid": 2_540_000},
@@ -184,7 +206,10 @@ def test_what_the_t0_board_file_says_about_placement_places_every_part():
         {"place": "R3", "near": "U1.18", "within": 3_000_000, "side": "back"},
         {"place": "R4", "near": "U1.17", "within": 3_000_000, "side": "back"},
         {"place": "R5", "near": "U1.16", "within": 3_000_000, "side": "back"},
+        {"rules": {"track": 250_000, "clearance": 200_000, "edge": 500_000}},
+        {"route": True},
     ]
+    assert [s.data() for s in _t0(0.075 * inch, "back").statements()] == said[:-2]
     before = dumps(board.sexpr())
     solution = board.solve()
     assert solution.ok, [str(problem) for problem in solution.problems]
@@ -223,6 +248,68 @@ def test_what_the_t0_board_file_says_about_placement_places_every_part():
         assert solution.poses[r.ref].back
         assert min(math.dist(pad, pin) for pad in pads(r.ref).values()) <= 3.0
         assert all(y > kept.box[3].mm for _, y in pads(r.ref).values())
+
+
+@dataclass
+class Scripted:
+    """A router that proposes nothing, and keeps what it was asked."""
+
+    asked: list[tuple[str, Job, Path, str]] = field(default_factory=list)
+
+    def route(self, job: Job, outdir: Path, name: str, stage: str = "") -> Run:
+        self.asked.append((stage, job, outdir, name))
+        return Run((), ())
+
+
+def _nets(board: Node, kind: str) -> set[str]:
+    return {str(net[1]) for item in find_all(board, kind) for net in find_all(item, "net")}
+
+
+def test_the_t0_board_file_builds_its_circuit_with_every_part_placed(tmp_path):
+    router = Scripted()
+    built = _board_file().build(tmp_path, router=router)
+    assert built.board == tmp_path / "esp12-breakout_ESP12Breakout.kicad_pcb"
+    assert built.project == tmp_path / "esp12-breakout_ESP12Breakout.kicad_pro"
+    made = parse(built.board.read_text())
+    wanted = json.loads((T0 / "circuit.json").read_text())
+    assert circuit(made) == wanted
+    assert mechanical(made) == json.loads((T0 / "mechanical.json").read_text())
+    assert sorted(built.solution.poses) == sorted(p["ref"] for p in wanted["parts"])
+    assert built.solution.free == () and built.solution.problems == ()
+    # The router is asked once, for the whole board, with the board file's rules and the
+    # antenna's area on both faces; this one proposed nothing, and nothing is laid.
+    ((stage, job, outdir, name),) = router.asked
+    assert (stage, outdir, name) == ("", tmp_path, "esp12-breakout_ESP12Breakout")
+    assert job.netclasses == [NetClass("Default", 0.2, 0.25)] and job.edge_clearance == 0.5
+    assert len(job.footprints) == len(wanted["parts"])
+    (kept,) = built.solution.keepouts
+    x0, y0, x1, y1 = (side.mm for side in kept.box)
+    box = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    assert job.keepouts == [("F.Cu", box), ("B.Cu", box)]
+    assert built.routed is not None and built.routed.wires == () and built.routed.vias == ()
+    assert find_all(made, "segment") == [] and find_all(made, "via") == []
+    assert _nets(made, "zone") == {"GND"}  # the pour the board file asks for
+
+
+def test_the_t0_board_file_is_routed_by_freerouting_with_nothing_left(tmp_path):
+    """Where Freerouting is installed. What it says it left is its own word: KiCad's DRC
+    of the board this writes is ``just corpus``."""
+    try:
+        router_command()
+    except RouterError as e:
+        pytest.skip(str(e))
+    built = _board_file().build(tmp_path)
+    assert built.routed is not None
+    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("", 0)]
+    made = parse(built.board.read_text())
+    wanted = json.loads((T0 / "circuit.json").read_text())
+    assert circuit(made) == wanted
+    # Every net with two pads or more has track on it, and no track is on another net.
+    pads: dict[str, int] = {}
+    for part in wanted["parts"]:
+        for net in part["pads"].values():
+            pads[net] = pads.get(net, 0) + 1
+    assert _nets(made, "segment") == {net for net, n in pads.items() if net and n > 1}
 
 
 def test_what_does_not_fit_on_the_t0_board_is_said():
