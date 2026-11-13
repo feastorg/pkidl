@@ -10,12 +10,14 @@ island removal). The result steers the router; DRC on KiCad's own fill decides.
 ``cut_off`` asks the same fill a question once a board is routed: is each poured net
 still one piece, or have tracks across a pour left some of its pads joined to nothing
 but each other. A pad is joined to a pour as KiCad joins it: through the spokes of its
-thermal relief, of which KiCad asks two, or all round where the zone or the pad says
-solid. A track or a via is joined where it touches.
+thermal relief, of which KiCad asks two, or all round where the zone, the footprint or
+the pad says solid. A track or a via is joined where it touches.
 
-What the model leaves out errs toward calling a pad cut off that KiCad joins: a spoke
-counts only where the fill covers its whole width out past the gap. KiCad's DRC of its
-own fill is still the judge of a built board.
+It is a model, and is meant to be wrong only one way, calling a pad cut off that KiCad
+joins: a spoke counts only where the fill covers its whole width out past the gap, and
+not where it would cross the gap cut round another pad of the net, though KiCad may
+join two such pads spoke to spoke. It has been wrong the other way twice and corrected.
+KiCad's DRC of its own fill is the judge of a built board.
 
 Pads are modelled by their size and rotation as rectangles, ovals and circles;
 custom pad primitives are taken as their bounding rectangle.
@@ -65,32 +67,42 @@ def _net(node: Node) -> str:
     return "" if n is None else str(n[-1])
 
 
+def _turned(shape: BaseGeometry, fp: Node, pad: Node) -> BaseGeometry:
+    """*shape*, drawn about a pad's copper in the pad's own frame, where it is on the
+    board. A pad's place is its hole's, and its copper can be off that by the drill's
+    ``offset``. KiCad's pad angle is on the board (footprint rotation included),
+    counter-clockwise with y down: a negative rotation in shapely's y-up sense."""
+    at, drill = find(pad, "at"), find(pad, "drill")
+    angle = float(at[3]) if at is not None and len(at) > 3 else 0.0
+    off = find(drill, "offset") if drill is not None else None
+    if off is not None:
+        shape = affinity.translate(shape, float(off[1]), float(off[2]))
+    c = pad_at(fp, pad)
+    return affinity.translate(affinity.rotate(shape, -angle, origin=(0, 0)), c[0], c[1])
+
+
 def _pad_shape(fp: Node, pad: Node) -> BaseGeometry:
     """A pad's copper: its rectangle, oval or circle, rotated, at its board position."""
-    c = pad_at(fp, pad)
     size = find(pad, "size")
     assert size is not None
     w, h = float(size[1]), float(size[2]) if len(size) > 2 else float(size[1])
-    at = find(pad, "at")
-    angle = float(at[3]) if at is not None and len(at) > 3 else 0.0
     kind = str(pad[3])
     if kind == "circle":
-        return SPoint(c).buffer(w / 2)
-    if kind == "oval":
+        shape = SPoint(0, 0).buffer(w / 2)
+    elif kind == "oval":
         r, half = min(w, h) / 2, abs(w - h) / 2
         line = LineString([(-half, 0), (half, 0)] if w >= h else [(0, -half), (0, half)])
         shape = line.buffer(r) if half > 0 else SPoint(0, 0).buffer(r)
     else:
         shape = box(-w / 2, -h / 2, w / 2, h / 2)
-    # KiCad's pad angle is on the board (footprint rotation included), counter-clockwise
-    # with y down: a negative rotation in shapely's y-up sense.
-    return affinity.translate(affinity.rotate(shape, -angle, origin=(0, 0)), c[0], c[1])
+    return _turned(shape, fp, pad)
 
 
-def _relief(zone: Node, pad: Node) -> str:
+def _relief(zone: Node, fp: Node, pad: Node) -> str:
     """How *pad* joins *zone*'s fill: ``solid``, ``thermal`` or ``none``. The pad's own
-    ``zone_connect`` says first, then the zone's ``connect_pads``."""
-    own = find(pad, "zone_connect")
+    ``zone_connect`` says first, then its footprint's, then the zone's
+    ``connect_pads``."""
+    own = find(pad, "zone_connect") or find(fp, "zone_connect")
     if own is not None:
         return {"0": "none", "2": "solid"}.get(str(own[1]), "thermal")
     said = find(zone, "connect_pads")
@@ -102,35 +114,45 @@ def _relief(zone: Node, pad: Node) -> str:
     return {"yes": "solid", "no": "none"}.get(mode, "thermal")
 
 
+def _gap(zone: Node, pad: Node) -> float:
+    """The gap of *pad*'s thermal relief in *zone*: the pad's own where it says."""
+    return _num(pad, "thermal_gap", default=_num(zone, "fill", "thermal_gap", 0.5))
+
+
 def _spokes(fp: Node, pad: Node, zone: Node) -> list[BaseGeometry]:
     """Where each spoke of *pad*'s thermal relief in *zone* has to have copper: from the
-    pad's middle out across the gap and as far again as the fill's least width, as wide
-    as a spoke. KiCad draws four: along a pad's own sides, and on the diagonals of a
-    round one (measured on the fills KiCad made of the corpus boards)."""
-    size, at = find(pad, "size"), find(pad, "at")
+    middle of the pad's copper out across the gap and as far again as the fill's least
+    width, as wide as a spoke. KiCad draws four: at the pad's ``thermal_bridge_angle``
+    where it says one, or else along a pad's own sides and on the diagonals of a round
+    one (measured on fills KiCad made). The gap and the width are the pad's own where
+    it says them."""
+    size = find(pad, "size")
     assert size is not None
     w, h = float(size[1]), float(size[2]) if len(size) > 2 else float(size[1])
-    angle = float(at[3]) if at is not None and len(at) > 3 else 0.0
     round_ = str(pad[3]) == "circle"
-    beyond = _num(zone, "fill", "thermal_gap", 0.5) + _num(zone, "min_thickness", default=0.25)
-    wide = _num(zone, "fill", "thermal_bridge_width", 0.5)
-    c = pad_at(fp, pad)
+    first = _num(pad, "thermal_bridge_angle", default=45.0 if round_ else 0.0) % 90
+    beyond = _gap(zone, pad) + _num(zone, "min_thickness", default=0.25)
+    wide = _num(pad, "thermal_bridge_width",
+                default=_num(zone, "fill", "thermal_bridge_width", 0.5))  # fmt: skip
     out = []
-    for turn in (45, 135, 225, 315) if round_ else (0, 90, 180, 270):
-        reach = (w if round_ or turn % 180 == 0 else h) / 2 + beyond
+    for turn in (first, first + 90, first + 180, first + 270):
+        # As far as the pad reaches that way, at most: its half diagonal off its axes.
+        reach = (w / 2 if round_ else h / 2 if turn % 180 == 90 else w / 2 if turn % 180 == 0
+                 else math.hypot(w, h) / 2) + beyond  # fmt: skip
         strip = affinity.rotate(box(0, -wide / 2, reach, wide / 2), turn, origin=(0, 0))
-        out.append(affinity.translate(affinity.rotate(strip, -angle, origin=(0, 0)), c[0], c[1]))
+        out.append(_turned(strip, fp, pad))
     return out
 
 
-def _joined(fp: Node, pad: Node, zone: Node, piece: BaseGeometry) -> bool:
+def _joined(fp: Node, pad: Node, zone: Node, piece: BaseGeometry, rings: BaseGeometry) -> bool:
     """Whether *pad* is joined to *piece*, a piece of *zone*'s fill, as KiCad joins a
-    pad to a pour."""
+    pad to a pour. *rings* is where the fill is cut away round the net's other pads that
+    have reliefs: no spoke of this one has copper there."""
     shape = _pad_shape(fp, pad)
-    how = _relief(zone, pad)
+    how = _relief(zone, fp, pad)
     if how != "thermal":
         return how == "solid" and shape.intersects(piece)
-    there = piece.buffer(0.001)
+    there = piece.buffer(0.001).difference(rings)
     return sum(there.covers(s.difference(shape)) for s in _spokes(fp, pad, zone)) >= SPOKES
 
 
@@ -340,8 +362,11 @@ def cut_off(
                 i = group[i]
             return i
 
-        zone_on = {layer: next(z for z in zones if _net(z) == net and layer in _layers(z))
-                   for layer, _ in poured}  # fmt: skip
+        # The zones of this net, and the net's pads that have reliefs in each: the fill
+        # is cut away round those by their gap.
+        mine_zones = [z for z in zones if _net(z) == net]
+        relieved = {id(z): [k for k in of if _relief(z, *of[k]) == "thermal"]
+                    for z in mine_zones}  # fmt: skip
         for i in range(len(nodes)):
             mine = nodes[i][1]
             for j in range(i + 1, len(nodes)):
@@ -350,7 +375,15 @@ def cut_off(
                 theirs = nodes[j][1]
                 if i in of and j >= first:  # a pad and a piece of pour
                     layer = next(iter(theirs))
-                    joined = layer in mine and _joined(*of[i], zone_on[layer], theirs[layer])
+                    piece = theirs[layer]
+                    on = [z for z in mine_zones if layer in _layers(z)]
+                    at = piece.representative_point()
+                    zone = next((z for z in on if _outline(z).contains(at)), on[0])
+                    rings = unary_union([
+                        nodes[k][1][layer].buffer(_gap(zone, of[k][1]))
+                        for k in relieved[id(zone)] if k != i and layer in nodes[k][1]
+                    ] or [Polygon()])  # fmt: skip
+                    joined = layer in mine and _joined(*of[i], zone, piece, rings)
                 else:
                     joined = any(k in theirs and mine[k].intersects(theirs[k]) for k in mine)
                 if joined:

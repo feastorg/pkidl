@@ -17,7 +17,9 @@ Unreleased. History before this file was reconstructed from the git log.
   which layer, fenced in by which nets' tracks, and the board is routed again with
   that net carried by tracks, as it was before. `pkidl.fill.fills` is a board's pours
   as the pieces they fill in. A build of a board whose pour is cut takes two runs of
-  the router. (#43)
+  the router. `fills`, `prefill` and `cut_off` take the outline as its corners or as
+  the area inside it, cut-outs as holes, and keep the clearance given for `""` from
+  what is on no net. `pkidl.footprint.pad_at(footprint, pad)` is where a pad is. (#43)
 - `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
   decouple a part. Each is across ground and one of the part's supplies, and is placed
   with its pad on that supply near one of the part's pins on it, one capacitor to a
@@ -275,6 +277,12 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- A pad that shares its number with another in its footprint, as a shield's or a tab's
+  pads do, is where it is. `pkidl.fill`, `pkidl.measure`, `pkidl.silk`, `pkidl.stitch`
+  and `Board.pour(around=)` took each to be where the first of that number is: a pour
+  was filled over the others, and a stitch or a label was placed by the wrong pad. A
+  pad whose copper is off its hole, by its drill's offset, is where its copper is in
+  `pkidl.fill`. (#43)
 - A router is kept off an unplated hole as far as KiCad asks, and off the whole of its
   pad. `pkidl.dsn.write_dsn` wrote such a hole as a keepout of its drill's width: a
   track could cross the ring of a pad wider than its hole, and came within the

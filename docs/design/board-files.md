@@ -436,16 +436,32 @@ of the nets that have pours. What the router says it left unmade of the others, 
 of a board routed again with no pour, is in each run and is the router's word, as it
 was: KiCad's DRC judges the board.
 
-The check is a model of KiCad's fill, made to err one way. A pad is joined to a pour
-as KiCad joins it: by the spokes of its thermal relief, on a round pad's diagonals and
-along another's sides, where the fill covers a spoke's whole width out past the gap,
-and by two of them, which is what KiCad asks before it calls a relief starved. Where
-the zone or the pad says solid, by touching. On the 79 pads of poured nets in the
-twelve builds of the fan controller and the T0 board that KiCad has filled, the model
-joins none that KiCad gives fewer than two spokes, and leaves five unjoined that KiCad
-gives two or more. The fill is inside the outline as it is drawn, cut-outs and all,
-and as far from an unplated hole as KiCad asks. It is still a model: KiCad's own fill,
-and its DRC, decide a built board.
+The check is a model of KiCad's fill, and a model can be wrong. It is meant to be wrong
+only toward calling a pad cut off that KiCad joins, which costs a second run of the
+router and not a board with a pad left unconnected. What it models:
+
+- A pad is joined to a pour by the spokes of its thermal relief, and by two of them,
+  which is what KiCad asks before it calls a relief starved. A spoke counts where the
+  fill covers its whole width out past the gap and the fill's least width beyond.
+- Spokes are at the pad's `thermal_bridge_angle` where it says one; else along a pad's
+  sides and on a round pad's diagonals, about the middle of its copper, which a drill's
+  offset puts off its hole. Measured on KiCad's fills: every spoke of the builds here
+  (26 round, 6 rectangular, KiCad 10.0.6) and of the corpus references as their own
+  designers' KiCad filled them (251 round, 466 rectangular, 193 oval) is so.
+- The gap and the spoke's width are the pad's own where it says them. Solid, or no
+  connection, is as the pad, its footprint or the zone it lies in says.
+- A spoke has no copper in the gap cut round another pad of its net. KiCad may join two
+  such pads spoke to spoke, and the model does not.
+- The fill is inside the outline as it is drawn, cut-outs and all, and as far from an
+  unplated hole as KiCad asks.
+
+It has been wrong the dangerous way twice, each found by trying to break it and each
+now a test: a pad taken as joined for lying in the pour, and a spoke counted across the
+gap round a neighbouring pad of its own net, which KiCad 10.0.6 confirmed leaves the
+pad unconnected. On the 79 pads of poured nets in the twelve builds of the two corpus
+boards that KiCad has filled, it joins none that KiCad gives fewer than two spokes and
+leaves five unjoined that KiCad gives two or more. That is two boards. KiCad's fill and
+its DRC decide a built board, and the Corpus workflow asks them.
 
 On the T0 board the first run stands: ground is its pour, with one segment of track and
 a via bringing the module's ground pad to it, where it had seven segments; KiCad finds the same

@@ -130,13 +130,14 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
             # A pour fills inside the outline as it is drawn, as far from its edge as the
             # rules say and from an unplated hole as KiCad asks.
             inside = board.edge() or Polygon(outline)
-            held = {"": Job.hole_clearance}
+            # Said once, so the pour the router is told of and the one checked are one.
+            fill_as = (inside, rules.edge.mm, {"": Job.hole_clearance})
 
             def cut(wires: Sequence[Wire], vias: Sequence[Via]) -> list[Cut]:
                 """What the board's pours would leave cut off with these laid."""
                 tried = replace(built, items=[], _uuids=set())
                 lay(tried, Routed(tuple(wires), tuple(vias), ()))
-                return cut_off(unrouted + tried.items, inside, rules.edge.mm, held)
+                return cut_off(unrouted + tried.items, *fill_as)
 
             job = Job(
                 footprints=[item for item in built.items if item[0] == "footprint"],
@@ -152,7 +153,7 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 # Each pour as it fills round the parts before there is a track, sized
                 # as it is built: a net with a pour is joined through it where the
                 # routed board shows it still is.
-                planes=prefill(unrouted, inside, rules.edge.mm, held),
+                planes=prefill(unrouted, *fill_as),
             )
             routed = poured(router or Freerouting(), job, outdir, name, cut)
             lay(built, routed)

@@ -314,3 +314,114 @@ def test_a_pour_fills_inside_the_outline_it_is_given_as_a_shape():
     items = _items(*TWO, _fp("C3", 8, 20, [("1", 0, 0, 1, "GND")]), _zone("GND", SQUARE))
     assert [c.pads for c in cut_off(items, slotted, 0.5)] == [("C2.1",)]
     assert cut_off(items, OUTLINE, 0.5) == []
+
+
+def _one(ref, x, y, net="GND", *, kind="smd rect", size="1 1", angle=0, more="", of_fp=""):
+    """A footprint of one pad at (x, y), with whatever else is said of the pad or of
+    the footprint."""
+    layers = '"*.Cu"' if "thru_hole" in kind else '"F.Cu"'
+    return (f'(footprint "t" (layer "F.Cu") (at {x} {y} {angle}) (property "Reference" "{ref}") '
+            f'{of_fp} (pad "1" {kind} (at 0 0 {angle}) (size {size}) {more} (layers {layers}) '
+            f'(net "{net}")))')  # fmt: skip
+
+
+REST = [_one("C2", 25, 15), _one("C3", 20, 20)]  # the most of the net, with room round them
+
+
+def _round(spots, x=5.0, y=15.0):
+    """Pads of another net, 1 mm square, at those offsets from (x, y)."""
+    return [_one(f"X{n}", x + dx, y + dy, "SIG") for n, (dx, dy) in enumerate(spots)]
+
+
+SIDES = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+
+def _cut(*nodes, zone=None):
+    cuts = cut_off(_items(*nodes, *REST, zone or _relieved("GND")), OUTLINE, 0.5)
+    return sorted(p for c in cuts for p in c.pads)
+
+
+def test_a_spoke_has_no_copper_in_the_gap_cut_round_another_pad_of_its_net():
+    # KiCad 10.0.6 leaves this pad unconnected: pads of its own net 0.6 mm either side,
+    # each 0.6 mm off its line, and tracks of other nets above and below. Its spokes to
+    # the sides end in the gaps cut round those two pads.
+    beside = [_one("B1", 3.4, 15.6), _one("B2", 6.6, 14.4)]
+    tracks = [
+        _track("SIG", (2, 14.05), (8, 14.05), 0.25),
+        _track("SIG", (2, 15.95), (8, 15.95), 0.25),
+    ]
+    assert "A.1" in _cut(_one("A", 5, 15), *beside, *tracks)
+    # With those two pads on other nets it is cut off the same, and with nothing beside
+    # it it is joined by its two spokes to the sides.
+    assert _cut(_one("A", 5, 15), *tracks) == []
+
+
+def test_what_a_footprint_or_a_pad_says_of_its_connection_is_what_joins_it():
+    boxed = _round([(1.6 * dx, 1.6 * dy) for dx, dy in SIDES])
+    # A pad with every spoke taken is cut off, and joined where it or its footprint
+    # says solid.
+    assert _cut(_one("A", 5, 15), *boxed) == ["A.1"]
+    assert _cut(_one("A", 5, 15, more="(zone_connect 2)"), *boxed) == []
+    assert _cut(_one("A", 5, 15, of_fp="(zone_connect 2)"), *boxed) == []
+    # One with room for every spoke is joined, and not where it or its footprint says
+    # it joins no pour.
+    assert _cut(_one("A", 5, 15)) == []
+    assert _cut(_one("A", 5, 15, more="(zone_connect 0)")) == ["A.1"]
+    assert _cut(_one("A", 5, 15, of_fp="(zone_connect 0)")) == ["A.1"]
+    # A zone with reliefs for pads with holes only joins the others solidly.
+    holes_only = _relieved("GND", connect="thru_hole_only")
+    holed = "thru_hole rect"
+    assert _cut(_one("A", 5, 15), *boxed, zone=holes_only) == []
+    assert _cut(_one("A", 5, 15, kind=holed, more="(drill 0.4)"), *boxed, zone=holes_only) == [
+        "A.1"
+    ]
+
+
+def test_a_pads_own_spoke_angle_gap_and_width_are_the_ones_its_spokes_have():
+    corners = _round([(-1.2, -1.2), (1.2, -1.2), (-1.2, 1.2), (1.2, 1.2)])
+    assert _cut(_one("A", 5, 15), *corners) == []
+    assert _cut(_one("A", 5, 15, more="(thermal_bridge_angle 45)"), *corners) == ["A.1"]
+    # Copper 1.4 mm off each side leaves the zone's 0.5 mm gap room, and not a pad's 1.5.
+    off = _round([(2.4 * dx, 2.4 * dy) for dx, dy in SIDES])
+    assert _cut(_one("A", 5, 15), *off) == []
+    assert _cut(_one("A", 5, 15, more="(thermal_gap 1.5)"), *off) == ["A.1"]
+    # Copper beside each spoke's line that reaches 0.05 mm into a spoke 0.5 mm wide is
+    # clear of one 0.3 mm wide.
+    beside = _round([(1.6, 0.9), (-1.6, -0.9), (-0.9, 1.6), (0.9, -1.6)])
+    assert _cut(_one("A", 5, 15), *beside) == ["A.1"]
+    assert _cut(_one("A", 5, 15, more="(thermal_bridge_width 0.3)"), *beside) == []
+
+
+def test_a_spoke_needs_the_fills_least_width_of_copper_beyond_the_gap():
+    # A pad 1 mm square with a 0.5 mm gap needs copper to 1.25 mm from its middle. A pad
+    # of another net 0.9 mm off its side leaves it to 1.2 mm, and one 1 mm off to 1.3.
+    assert _cut(_one("A", 5, 15), *_round([(1.9 * dx, 1.9 * dy) for dx, dy in SIDES])) == ["A.1"]
+    assert _cut(_one("A", 5, 15), *_round([(2.0 * dx, 2.0 * dy) for dx, dy in SIDES])) == []
+
+
+def test_a_pads_spokes_turn_with_it_and_reach_as_far_as_it_does_each_way():
+    # 2 by 1 mm, turned on end: 1 mm of pad up and down and 0.5 mm to each side. Copper
+    # that takes the long spokes of the pad on end leaves them free where it lies flat.
+    spots = [(0, -2.3), (0, 2.3), (-1.9, 0), (1.9, 0)]
+    assert _cut(_one("A", 5, 15, size="2 1", angle=90), *_round(spots)) == ["A.1"]
+    assert _cut(_one("A", 5, 15, size="2 1"), *_round(spots)) == []
+
+
+def test_a_pad_whose_copper_is_off_its_hole_is_where_its_copper_is():
+    off = "thru_hole oval"
+    pad = _one("A", 5, 15, kind=off, size="1 1", more="(drill 0.4 (offset 3 0))")
+    # The copper is at (8, 15): boxed in there it is cut off, and round the hole not.
+    assert _cut(pad, *_round([(1.6 * dx, 1.6 * dy) for dx, dy in SIDES], x=8.0)) == ["A.1"]
+    assert _cut(pad, *_round([(1.6 * dx, 1.6 * dy) for dx, dy in SIDES], x=5.0)) == []
+
+
+def test_a_pad_is_joined_as_the_zone_it_lies_in_says_not_the_first_of_its_net():
+    # A small solid pour listed first, and the pour the boxed pad is in, with reliefs.
+    small = [(2.0, 2.0), (4.0, 2.0), (4.0, 4.0), (2.0, 4.0)]
+    xy = " ".join(f"(xy {x} {y})" for x, y in small)
+    solid = (f'(zone (net "GND") (layer "F.Cu") (connect_pads yes (clearance 0.2)) '
+             f"(min_thickness 0.25) (fill yes (thermal_gap 0.5) (thermal_bridge_width 0.5)) "
+             f"(polygon (pts {xy})))")  # fmt: skip
+    boxed = _round([(1.6 * dx, 1.6 * dy) for dx, dy in SIDES], x=15.0)
+    items = _items(solid, _relieved("GND"), _one("A", 15, 15), *boxed, *REST)
+    assert "A.1" in [p for c in cut_off(items, OUTLINE, 0.5) for p in c.pads]
