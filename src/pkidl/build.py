@@ -10,7 +10,8 @@ nothing places: ``BuildError`` says each, with the line it was written on. A rou
 that leaves connections unmade does not stop the build. What it says is in the result
 (``Built.routed``), and KiCad's DRC judges the board that was written.
 
-The board is taken as the box around its outline, as the placement takes it.
+A router is given the box around the board's outline. The placement keeps parts inside
+the outline as it is drawn; the routing does not yet.
 """
 
 from __future__ import annotations

@@ -9,6 +9,29 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
+  decouple a part. Each is across ground and one of the part's supplies, and is placed
+  with its pad on that supply near one of the part's pins on it, one capacitor to a
+  pin, in the order named and the order of the pin numbers. A part's capacitors are
+  said in one statement. A capacitor with no pin left, or not across ground and a net
+  the part is on, is a problem and is not placed. (#7)
+- `Board.ground("GND")` declares which nets are ground, and `Net.is_ground` reads it.
+  A ground is a rail as well. `decouple` needs it said. (#7)
+
+### Changed
+
+- A `Problem` lists a statement once in `statements` where it listed it once for each
+  part it placed, as an overlap of two parts of one row did. What it prints is the
+  same. (#7)
+- Parts are kept inside the board's outline as it is drawn, and clear of its mounting
+  holes. `Board.edge()` is the area the outline encloses, rounded corners and cut-outs
+  included (`pkidl.edge`); `Board.hole(footprint, at)` puts a mounting hole on the
+  board, `Board.from_inputs()` does so for each one in `mechanical.json`, and
+  `Board.fixed` lists them. `Board.solve()` reports a part outside the outline or over
+  a hole, has a part placed `near=` something look only where it is clear of both, and
+  spreads a row over the longest stretch of its edge that holes and the outline leave
+  clear, saying how long that is. An outline that does not close, or that encloses two
+  areas apart from each other, is the board's one problem, and nothing is placed. (#4)
 - `place(part, centre=True)`: the middle of the part's outline at the middle of the
   board. `place(part, near=, within=, toward=Edge.TOP)`: on the side of what it is near
   that is toward an edge, its whole outline beyond that part's outline. `side=` is
@@ -196,6 +219,9 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A board with rounded corners or mounting holes can now have problems where it had
+  none: a part in a rounded corner, or over a hole, was placed without a word. A row
+  along an edge with holes near it is narrower than it was. (#4)
 - pkidl is licensed under Apache-2.0, where it was MIT. `spike/` is GPL-3.0-or-later.
   (#3)
 - The library, its tests and their fixtures moved from `spike/` to the repository root,

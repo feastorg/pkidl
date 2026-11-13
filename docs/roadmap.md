@@ -68,7 +68,7 @@ How long the board file is goes in the scorecard and is not a bar to pass. A lin
 that says which capacitor goes to which pin is worth more than its absence, and a
 target on length is a reason to leave it out.
 
-Tracked in #8. Steps 1 to 4 are merged, step 5 is #7, step 6 is #11 and step 7 is #12.
+Tracked in #8. Steps 1 to 5 are merged, step 6 is #11 and step 7 is #12.
 The router is still given the box around the board and not its outline (#13).
 
 In order; each a PR with its tests:
@@ -95,12 +95,13 @@ In order; each a PR with its tests:
    the holes leave clear of an edge (decided 2026-11-11). `near=` solved with
    `against=` or `between=` beside it is the other limit (#14); no line of the sketch
    needs it yet, so it is built when a board file does.
-5. **Decoupling from the circuit**: `board.decouple(u1, caps)` puts each capacitor by
-   a supply pin it is on. The sketch gives U1 three capacitors on +5V (C2, C8, C9),
-   and U1 has two +5V pins (13, 28), with U2's output on the same net: which
-   capacitor goes to which pin, and what a third one does, is this step's to settle.
-   C12 is the one capacitor alone with a pin of U1 (pin 20), and the sketch leaves it
-   out.
+5. **Decoupling from the circuit**: `board.decouple(u1, caps, within=)` puts each
+   capacitor by one of the part's pins on the supply it is across, one capacitor to a
+   pin (decided 2026-11-12), with ground declared by `board.ground("GND")` (decided
+   2026-11-12). The sketch gives U1 three capacitors on +5V (C2, C8, C9), and U1 has
+   two +5V pins (13, 28), with U2's output on the same net: the third has no pin and is
+   reported. C12 is the one capacitor alone with a pin of U1 (pin 20), and the sketch
+   leaves it out.
 6. **The whole board file.** The sketch in the board files places 35 of the 49 parts.
    The fifth channel (P1, Q1, R14), the bulk capacitor (C7) and C1, C10..C12, R1..R6
    are not in it, and a build refuses a board with a part nothing places. It also

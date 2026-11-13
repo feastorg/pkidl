@@ -248,10 +248,12 @@ Open after this:
   connect to, and that can leave a part placed `near=` it with no place; without that
   part it turns back. It is reported (`the placement does not settle: each pass moves a
   part`), not resolved.
-- **Limits of this solver:** the board is taken as the box around its outline, and
-  mounting holes are not kept clear of; `near=` is solved alone, not with `against=`,
-  `between=`, `centre=True` or a row beside it, and one `near=` to a part; parts turn
-  in right angles.
+- **Limits of this solver:** an edge is a side of the box around the outline, so on a
+  board cut to another shape a part against an edge can be off the board, and is said
+  to be; `near=` is solved alone, not with `against=`, `between=`, `centre=True` or a
+  row beside it, and one `near=` to a part; parts turn in right angles; a part and a
+  mounting hole are each the box around what they are drawn with, so a part is held
+  off the corners of the square about a round hole.
 
 **As built, rows:** `row(parts, along=Edge.BOTTOM)` is a statement about several parts
 at once, which a block can return and `board.add` or `board.row` adds. Each part lies
@@ -276,11 +278,59 @@ from the row's is. Any other place said for a part of a row is held together wit
 and reported where the two are apart (`R1 is put in two places 4.8 mm apart across the
 board`). `near=` is still solved alone, so not beside a row.
 
-On the fan controller, `row(fans, along=Edge.BOTTOM)` puts the four headers, 9.398 mm
-each, along the 60 mm edge with five gaps of 4.48 mm. The end two then overlap the
-mounting holes 4 mm in from the corners, which the solver does not know of yet. A row
-spreads over the whole edge until it does; then, over what the holes leave clear
-(decided 2026-11-11).
+On the fan controller, `row(fans, along=Edge.BOTTOM)` first put the four headers,
+9.398 mm each, along the whole 60 mm edge with five gaps of 4.48 mm, the end two over
+the mounting holes 4 mm in from the corners. A row spreads over what the holes leave
+clear (decided 2026-11-11), and now does: below.
+
+**As built, the outline and the holes:** a part lies inside the board's outline as it
+is drawn, and clear of its mounting holes. `board.edge()` is the area the outline
+encloses (`pkidl.edge`): the lines and arcs joined end to end, an arc followed to
+within a micrometre, a cut-out a hole in it. Five of the fifteen corpus boards are not
+the box around their outline: three have rounded corners, one has an arc bitten out of
+each corner, and one narrows on a slant to a tab at one side and is 68% of its box.
+Each closed line turns board into cut-out and cut-out into board, so a rectangle drawn
+inside the outline is a hole in it and one drawn on its edge is a notch. An outline
+that does not close, or that encloses two areas apart from each other, is not a board:
+that is the one problem `board.solve()` gives, and nothing is placed. A stub of a line
+that closes nothing is ignored within the box around the board, since real outlines
+have them where an edge is drawn on past a rounded corner. `board.hole(footprint, at)` puts a mounting hole on the board and
+tells the solver of it, and `Board.from_inputs` does so for each hole in
+`mechanical.json`; `board.fixed` lists them. A hole is the box around its own
+footprint, as a part is: the drill alone on the fan controller, a courtyard 6.9 mm
+across on the SWR meter.
+
+Neither moves a part. One put outside the outline or over a hole is reported:
+
+```
+U2 does not fit on the board: it reaches 1.656854 mm outside the outline at (108.966 mm, 53.932 mm)
+U2 is over MountingHole_0.13in at (112.966, 57.932)
+```
+
+That is the fan controller's regulator against the left and top edges, in a corner
+rounded to 4 mm about a hole. A part that looks for a place (`near=`) looks only where
+it is inside the outline and clear of the holes.
+
+A row spreads over the longest stretch of its edge that is clear, across the strip from
+the edge to the far side of its parts: clear of the holes that reach into that strip,
+and of where the outline is cut back from the edge. Its gaps are equal within that stretch, and a pitch is about
+its middle. Only what is fixed narrows a row, never another part, so where a row's
+parts go still does not depend on where anything is placed. The fan headers are
+3.684 mm deep and the holes reach to 2.349 mm from the edge, so the bottom edge is clear
+for 48.698 mm between them: five gaps of 2.2212 mm, and the solver says so
+(`row(P3, P4, P5, P6, along=Edge.BOTTOM, pitch="even"): over the 48.698 mm of the bottom
+edge that is clear, of 60 mm`).
+
+Open after this:
+
+- **The router is still given the box.** `pkidl.build` hands a router the box around
+  the outline, and the inset the DSN writer makes of it is for a convex shape. On a
+  board with rounded corners copper can be routed where the board is cut away, which
+  KiCad's DRC then reports.
+- **A part against an edge is centred along the whole edge**, not along what is clear
+  of it as a row is, and is reported where that puts it over a hole.
+- **A cut-out left unfinished is ignored**, as a stub is: three sides of a slot drawn
+  inside a closed outline leave the board whole, with nothing said.
 
 **As built, the centre and a side:** `place(u1, centre=True)` puts the middle of the
 part's outline at the middle of the board. It is one place, so an edge or `between=`
@@ -298,6 +348,50 @@ reaches 4 mm above its pads leaves a part no place above it within 4 mm.
 On the fan controller, with the fan headers in their row, the processor at the centre
 and each LED near its fan toward the top edge, the four LEDs are placed, each 1.6 mm
 from its header and above it.
+
+**As built, decoupling:** `decouple(part, caps, within=2 * mm)` is a statement, and
+`board.decouple` adds it. Each capacitor is placed as `near=` one pin of the part has
+it, and one capacitor to a pin: they take the part's pins on a supply in the order
+they are named and the order of the pin numbers. A part's capacitors are said in one
+statement, so that the order named is the only order there is: two statements for one
+part are a conflict.
+
+A capacitor decouples a part by being across one of its supplies and ground, and
+which net is ground is for the board file to say, once: `board.ground("GND")`. A ground
+is a rail as well. The capacitor goes by the part's pin on the supply, with its own pad
+on that supply the one within the distance; its ground pad may be further off. The
+part is on both nets: a capacitor to a ground the part is not on is refused. A ground
+the board file did not declare is taken for a supply.
+
+Nothing is settled silently. Each of these is a problem, and the capacitor is not
+placed:
+
+```
+decouple(U1, C2, C8, C9, C12, C1, within=3 mm): C1 is across +12V and GND, and U1 is not on +12V
+decouple(U1, C2, C8, C9, C12, C1, within=3 mm): C9 has no pin of U1 on +5V left: C2 is by U1.13 and C8 is by U1.28
+decouple(U1, R1, within=3 mm): R1 is across GND and VCC, and no net is said to be ground: say which is, as in ground("GND")
+```
+
+The first two are the fan controller. Its processor has two pins on +5V, and three
+capacitors are on that net with the regulator's output: the sketch below gives all
+three to the processor, and one of them has no pin. The netlist does not say which of
+the three is the regulator's, since they are the same part on the same nets; the board
+file does, by which two it names for the processor. C12, alone with the processor's
+pin 20, is its own and is not in the sketch.
+
+The pin was first chosen as the one on whichever of the capacitor's two nets had fewer
+pins on it in the whole circuit, taking that for the supply. On a module with five
+pull-ups and a header, ground is the smaller net.
+
+Open after this:
+
+- **The sketches below write `board.decouple(u1, caps)` with no `within=`**, which is
+  required, and none says `board.ground(...)`, so each would be told no net is said to
+  be ground. T1, T3 and T4 write `decouple(part)` with no capacitors. Choosing
+  them from the circuit is where three capacitors on one net with two parts cannot be
+  told apart.
+- **A capacitor is whatever the board file names**: one across ground and an input
+  pin's net, a filter, is placed by that pin like any other.
 
 **As built, routing** (`pkidl.routing`): a router is an engine behind one interface.
 It is given a `Job` (the placed footprints, the outline, the net classes, what copper

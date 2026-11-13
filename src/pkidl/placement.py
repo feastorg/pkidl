@@ -35,6 +35,12 @@ What each statement means here:
   but for a part that is ``facing=`` an edge. The turn is counted from how each part
   lies along the edge with its length running the way the row runs, so a part drawn
   on end and one drawn across are in one row with pin 1 of each at the same end.
+- ``decouple`` a part with capacitors: each capacitor is across ground, as the board
+  file declares it, and one supply of the part, and is placed as ``near=`` one of the
+  part's pins on that supply has it, with the capacitor's own pad on the supply the
+  one within the distance. Capacitors take the part's pins on a supply one each, in
+  the order named and the order of the pin numbers. One with no pin left is a problem,
+  and so is one that is not across ground and a net the part is on.
 - ``align``: the parts' first pins are a whole number of grid steps apart, across and
   along. It is checked, and moves nothing.
 - ``keepout`` of an area of a part: no other part's outline reaches into the area, on
@@ -44,7 +50,17 @@ What each statement means here:
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest. A part's outline is the box around its pads, courtyard and fabrication
 drawing; two parts on one face may touch and not overlap, and a part with holes takes
-both faces. The board is taken as the box around its outline.
+both faces.
+
+A part lies inside the board's outline as it is drawn (``pkidl.edge``), rounded corners
+and cut-outs included, and clear of what is fixed on the board: its mounting holes, each
+taken as the box around its own footprint, as a part is. Neither moves a part: one that
+is put outside the outline or over a hole is reported. A part that looks for a place
+(``near=``) looks only where it is clear of both, and a row spreads over the longest
+stretch of its edge that is clear, across the strip from the edge to the far side of
+its parts. Only what is
+fixed narrows a row, never another part, so a row still does not depend on where
+anything is placed. An edge is a side of the box around the outline.
 
 Everything is in whole nanometres, and parts are placed in an order made from what
 depends on what, then those that look for a place after those given one, then from
@@ -59,8 +75,23 @@ from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
 
+from shapely.geometry import Polygon
+from shapely.geometry import box as _area
+from shapely.prepared import prep
+
 from pkidl.circuit import Circuit, Pin, natural
-from pkidl.intent import Align, Edge, Keepout, Place, Row, Side, Statement, canonical, conflicts
+from pkidl.intent import (
+    Align,
+    Decouple,
+    Edge,
+    Keepout,
+    Place,
+    Row,
+    Side,
+    Statement,
+    canonical,
+    conflicts,
+)
 from pkidl.sexpr import Node, find, find_all
 from pkidl.units import Length
 
@@ -79,6 +110,20 @@ class Pose:
     x: Length
     y: Length
     rot: int = 0
+    back: bool = False
+
+
+@dataclass(frozen=True)
+class Fixed:
+    """Something on the board that the board file does not place, a mounting hole say:
+    what it is called in a problem, its footprint's name in the library, where its
+    origin is, its rotation in degrees and whether it is on the back."""
+
+    label: str
+    footprint: str
+    x: Length
+    y: Length
+    rot: float = 0.0
     back: bool = False
 
 
@@ -203,15 +248,35 @@ def solve(
     library: Mapping[str, Node],
     extent: tuple[float, float, float, float] | None,
     statements: Iterable[Statement],
+    *,
+    edge: Polygon | None = None,
+    fixed: Iterable[Fixed] = (),
 ) -> Solution:
     """Place *circuit*'s parts, from footprints in *library*, on a board whose outline
-    has the box *extent* (millimetres), as *statements* say."""
+    has the box *extent* (millimetres), as *statements* say. *edge* is the area inside
+    the outline, where it is not the whole of that box, and *fixed* what is on the board
+    already for parts to keep clear of."""
     statements = canonical(statements)
     if found := conflicts(statements):
         return Solution({}, (), tuple(Problem((c.part,), str(c)) for c in found), ())
     if extent is None:
         raise ValueError("a board is placed on once its outline is drawn")
-    return _Solver(circuit, library, extent, statements).solution()
+    return _Solver(circuit, library, extent, statements, edge, tuple(fixed)).solution()
+
+
+def _spun(box: Box, rot: float, back: bool) -> Box:
+    """The box around *box* once its footprint is turned *rot* degrees, any angle, as
+    KiCad turns it: mirrored in Y on the back, then counter-clockwise from the front."""
+    corners = [(x, y) for x in (box[0], box[2]) for y in (box[1], box[3])]
+    if rot % 90 == 0:  # a right angle is exact
+        turned = [_turn(x, y, int(rot) % 360, back) for x, y in corners]
+        xs, ys = [float(x) for x, _ in turned], [float(y) for _, y in turned]
+    else:
+        a = math.radians(rot)
+        cos, sin = math.cos(a), math.sin(a)
+        xs = [x * cos + (-y if back else y) * sin for x, y in corners]
+        ys = [-x * sin + (-y if back else y) * cos for x, y in corners]
+    return (math.floor(min(xs)), math.floor(min(ys)), math.ceil(max(xs)), math.ceil(max(ys)))
 
 
 class _Solver:
@@ -221,8 +286,40 @@ class _Solver:
         library: Mapping[str, Node],
         extent: tuple[float, float, float, float],
         statements: list[Statement],
+        edge: Polygon | None = None,
+        fixed: tuple[Fixed, ...] = (),
     ) -> None:
         self.board: Box = (_nm(extent[0]), _nm(extent[1]), _nm(extent[2]), _nm(extent[3]))
+        # The area inside the outline, in nanometres, where it is not the whole box.
+        self.edge: Polygon | None = None
+        if edge is not None:
+            # In whole nanometres, as everything here is: 129.54 mm is not 129540000 nm
+            # until it is rounded, and a board is its box only when it is exactly that.
+            inside = Polygon([(_nm(x), _nm(y)) for x, y in edge.exterior.coords],
+                             [[(_nm(x), _nm(y)) for x, y in ring.coords]
+                              for ring in edge.interiors])  # fmt: skip
+            if not inside.equals(_area(*self.board)):
+                self.edge, self.within = inside, prep(inside)
+        # Where the box around the outline is not board, piece by piece: a part clear
+        # of the box around each piece is on the board without looking further.
+        self.cuts: list[Box] = []
+        if self.edge is not None:
+            off = _area(*self.board).difference(self.edge)
+            for piece in getattr(off, "geoms", [off]):
+                x0, y0, x1, y1 = piece.bounds
+                self.cuts.append((math.floor(x0), math.floor(y0), math.ceil(x1), math.ceil(y1)))
+        # What is fixed on the board: each with its outline there, and whether it has
+        # holes and so takes both faces.
+        self.fixed: list[tuple[Fixed, Box, bool]] = []
+        # In an order of their own, so that which of two a problem names is not the
+        # order they were put on the board in.
+        for f in sorted(fixed, key=lambda f: (f.x.nm, f.y.nm, f.label, f.rot, f.back)):
+            if f.footprint not in library:
+                raise ValueError(f"{f.label}: no footprint {f.footprint!r} to keep clear of")
+            shape = _shape(library[f.footprint])
+            self.fixed.append((f, _moved(_spun(shape.box, f.rot, f.back), f.x.nm, f.y.nm),
+                               shape.through))  # fmt: skip
+        self.runs: dict[Row, tuple[int, int]] = {}  # the clear stretch of each row's edge
         self.asks: dict[str, list[Place]] = {}
         self.aligns = [s for s in statements if isinstance(s, Align)]
         # Each area kept clear, as this circuit has it, whichever board's part the
@@ -249,12 +346,78 @@ class _Solver:
                 raise ValueError(f"{part}: no footprint {part.footprint!r} to place")
             self.shapes[part.ref] = _shape(library[part.footprint])
             self.nets[part.ref] = {p.number: p.net.name for p in part.pins() if p.net is not None}
+        self.unordered: list[Problem] = []  # found once, before anything is placed
+        self.barred: set[str] = set()  # parts a statement names and cannot place
+        # What a decoupling makes of itself: the place it gives each capacitor, by its
+        # identity, with the statement that said it and the capacitor's pads to be near.
+        self.origin: dict[int, Statement] = {}
+        self.pad: dict[int, set[str]] = {}
+        self._decouple(circuit, [s for s in statements if isinstance(s, Decouple)])
         self.free = tuple(p.ref for p in circuit.parts() if p.ref not in self.asks)
         self.poses: dict[str, Pose] = {}
         self.problems: dict[Problem, None] = {}
         self.chosen: dict[str, None] = {}
-        self.unordered: list[Problem] = []  # parts no order places, found once
         self.turns: dict[Row, int] = {}  # the way round each row's parts are, this pass
+
+    def _decouple(self, circuit: Circuit, statements: list[Decouple]) -> None:
+        """Give each capacitor that decouples a part one of the part's pins to be near:
+        a pin on the supply the capacitor is across, each pin to one capacitor. A part
+        has one such statement, so the order is the one it names them in."""
+        grounds = {net.name for net in circuit.nets() if net.is_ground}
+
+        def refuse(s: Decouple, cap: str, why: str) -> None:
+            self.barred.add(cap)
+            self.unordered.append(Problem((cap,), f"{s}: {why}", (s,)))
+
+        for s in statements:
+            part = circuit.part(s.part.ref)
+            pins = sorted(self.nets[part.ref], key=natural)
+            taken: dict[str, str] = {}  # the part's pin -> the capacitor by it
+            for cap in s.caps:
+                self.asks.setdefault(cap.ref, [])
+                self.said.setdefault(cap.ref, []).append(s)
+                on = sorted(set(self.nets[cap.ref].values()))
+                across = " and ".join(on) or "nothing"
+                supplies = [net for net in on if net not in grounds]
+                if not grounds:
+                    refuse(s, cap.ref, f"{cap.ref} is across {across}, and no net is said to be "
+                           'ground: say which is, as in ground("GND")')  # fmt: skip
+                elif len(supplies) == len(on):
+                    refuse(s, cap.ref, f"{cap.ref} is across {across}, neither of them ground")
+                elif len(supplies) != 1:
+                    refuse(s, cap.ref, f"{cap.ref} is across {across}, not ground and one supply")
+                elif supplies[0] not in self.nets[part.ref].values():
+                    refuse(
+                        s,
+                        cap.ref,
+                        f"{cap.ref} is across {across}, and {part.ref} is not on {supplies[0]}",
+                    )
+                elif off := [
+                    n for n in on if n in grounds and n not in self.nets[part.ref].values()
+                ]:
+                    # A ground of some other part's: an analogue ground, say.
+                    refuse(
+                        s,
+                        cap.ref,
+                        f"{cap.ref} is across {across}, and {part.ref} is not on {off[0]}",
+                    )
+                else:
+                    net = supplies[0]
+                    there = [n for n in pins if self.nets[part.ref][n] == net]
+                    pin = next((n for n in there if n not in taken), None)
+                    if pin is None:
+                        by = " and ".join(f"{taken[n]} is by {part.ref}.{n}" for n in there)
+                        refuse(
+                            s, cap.ref, f"{cap.ref} has no pin of {part.ref} on {net} left: {by}"
+                        )
+                        continue
+                    taken[pin] = cap.ref
+                    place = Place(circuit.part(cap.ref), near=part.pin(pin), within=s.within,
+                                  source=s.source)  # fmt: skip
+                    self.asks[cap.ref].append(place)
+                    self.origin[id(place)] = s
+                    # The capacitor's pad on the supply is the one by the pin.
+                    self.pad[id(place)] = {n for n, its in self.nets[cap.ref].items() if its == net}
 
     def solution(self) -> Solution:
         order = self._order()
@@ -282,7 +445,8 @@ class _Solver:
                         self.free, tuple(problems), tuple(self.chosen), kept)  # fmt: skip
 
     def _problem(self, parts: tuple[str, ...], text: str, *statements: Statement) -> None:
-        self.problems.setdefault(Problem(parts, text, statements))
+        said = tuple(dict.fromkeys(self.origin.get(id(s), s) for s in statements))
+        self.problems.setdefault(Problem(parts, text, said))
 
     def _chose(self, text: str) -> None:
         self.chosen.setdefault(text)
@@ -309,6 +473,8 @@ class _Solver:
         return order
 
     def _place(self, ref: str, done: set[str]) -> Pose | None:
+        if ref in self.barred:
+            return None
         asks, rows = self.asks[ref], self.rows.get(ref, [])
         shape = self.shapes[ref]
         back, rots = self._back(ref), self._rots(ref)
@@ -419,20 +585,66 @@ class _Solver:
                             f"edge, of {of}, for the shortest connections")  # fmt: skip
         return self.turns[row]
 
+    def _run(self, row: Row) -> tuple[int, int]:
+        """The stretch of its edge that *row* spreads over: the longest that is clear,
+        across the strip from the edge to the far side of the row's parts, of what is
+        fixed on the board and of where the outline is cut back from the edge. The
+        whole edge where nothing is."""
+        if row not in self.runs:
+            axis = 0 if row.along in (Edge.TOP, Edge.BOTTOM) else 1
+            lo, hi = self.board[axis], self.board[axis + 2]
+            backs = {self._back(p.ref) for p in row.parts}
+            holed = any(self.shapes[p.ref].through for p in row.parts)
+            deep = (row.inset.nm if row.inset else 0) + max(
+                (t := _turned(self.shapes[p.ref], self._rots(p.ref)[0], self._back(p.ref)))
+                .box[3 - axis] - t.box[1 - axis] for p in row.parts)  # fmt: skip
+            x0, y0, x1, y1 = self.board
+            strip = {
+                Edge.TOP: (x0, y0, x1, y0 + deep),
+                Edge.BOTTOM: (x0, y1 - deep, x1, y1),
+                Edge.LEFT: (x0, y0, x0 + deep, y1),
+                Edge.RIGHT: (x1 - deep, y0, x1, y1),
+            }[row.along]
+            taken: list[tuple[int, int]] = []
+            if self.edge is not None:
+                off = _area(*strip).difference(self.edge)
+                for piece in getattr(off, "geoms", [off]):
+                    if piece.area > 0:
+                        taken.append((math.floor(piece.bounds[axis]),
+                                      math.ceil(piece.bounds[axis + 2])))  # fmt: skip
+            for f, box, through in self.fixed:
+                if (through or holed or f.back in backs) and _overlap(box, strip):
+                    taken.append((box[axis], box[axis + 2]))
+            clear, at = [], lo
+            for a, b in sorted(taken):
+                if a > at:
+                    clear.append((at, a))
+                at = max(at, b)
+            if hi > at:
+                clear.append((at, hi))
+            self.runs[row] = max(clear, key=lambda run: (run[1] - run[0], -run[0]),
+                                 default=(lo, lo))  # fmt: skip
+        return self.runs[row]
+
     def _in_row(self, ref: str, row: Row, turned: _Shape) -> int | None:
         """Where *ref*'s origin goes along the edge *row* is along, or None with the
         reason reported, when the row is longer than the edge."""
         axis = 0 if row.along in (Edge.TOP, Edge.BOTTOM) else 1
-        lo, hi = self.board[axis], self.board[axis + 2]
+        whole = self.board[axis + 2] - self.board[axis]
+        lo, hi = self._run(row)
         long = [(t := _turned(self.shapes[p.ref], self._rots(p.ref)[0], self._back(p.ref)))
                 .box[axis + 2] - t.box[axis] for p in row.parts]  # fmt: skip
         i = [p.ref for p in row.parts].index(ref)
         refs = tuple(p.ref for p in row.parts)
+        edge = f"the {row.along.value} edge"
+        if hi - lo < whole:
+            edge = f"what is clear of {edge}"
+            self._chose(f"{row}: over the {Length(hi - lo)} of the {row.along.value} edge that "
+                        f"is clear, of {Length(whole)}")  # fmt: skip
         if not isinstance(row.pitch, Length):
             if sum(long) > hi - lo:
                 self._problem(refs, f"{row} does not fit: its parts are {Length(sum(long))} "
-                              f"along the {row.along.value} edge, which is {Length(hi - lo)}",
-                              row)  # fmt: skip
+                              f"along {edge}, which is {Length(hi - lo)}", row)  # fmt: skip
                 return None
             gap = (hi - lo - sum(long)) // (len(long) + 1)
             return lo + gap * (i + 1) + sum(long[:i]) - turned.box[axis]
@@ -445,8 +657,7 @@ class _Solver:
         if max(past) > 0:
             worst = past.index(max(past))
             self._problem(refs, f"{row} does not fit: at that pitch {refs[worst]} reaches "
-                          f"{Length(max(past))} past the end of the {row.along.value} edge",
-                          row)  # fmt: skip
+                          f"{Length(max(past))} past the end of {edge}", row)  # fmt: skip
             return None
         return middles[i] - (turned.box[axis] + turned.box[axis + 2]) // 2
 
@@ -557,12 +768,27 @@ class _Solver:
                 faces = {False, True} if s.both_sides else {pose.back}
                 yield s, _moved(box, pose.x.nm, pose.y.nm), faces
 
-    def _clear(self, ref: str, box: Box, back: bool, through: bool, of: Iterable[str],
-               keeps: bool = True) -> bool:  # fmt: skip
-        """Inside the board, overlapping none *of* the parts placed and, with *keeps*, in
-        no area of theirs that is kept clear."""
+    def _on(self, box: Box) -> bool:
+        """Whether *box* is inside the board's outline; touching it is inside."""
         if not (self.board[0] <= box[0] and self.board[1] <= box[1]
                 and box[2] <= self.board[2] and box[3] <= self.board[3]):  # fmt: skip
+            return False
+        if self.edge is None or not any(_overlap(box, cut) for cut in self.cuts):
+            return True
+        return self.within.covers(_area(*box))
+
+    def _over(self, box: Box, back: bool, through: bool) -> Fixed | None:
+        """What is fixed on the board that *box*, on that face, overlaps: the first."""
+        for f, taken, holed in self.fixed:
+            if (through or holed or f.back == back) and _overlap(box, taken):
+                return f
+        return None
+
+    def _clear(self, ref: str, box: Box, back: bool, through: bool, of: Iterable[str],
+               keeps: bool = True) -> bool:  # fmt: skip
+        """Inside the board, over nothing fixed on it, overlapping none *of* the parts
+        placed and, with *keeps*, in no area of theirs that is kept clear."""
+        if not self._on(box) or self._over(box, back, through) is not None:
             return False
         for _, kept, faces in self._kept(of if keeps else ()):
             if (through or back in faces) and _overlap(box, kept):
@@ -586,6 +812,7 @@ class _Solver:
                    if not isinstance(s.near, Pin) or n == s.near.number]  # fmt: skip
         shape, limit, step = self.shapes[ref], s.within.nm, STEP.nm
         of = self._box(target)
+        only = self.pad.get(id(s))  # the pads of this part that are to be near, if not any
 
         def beyond(box: Box) -> bool:
             """On the side of what it is near that the statement says, where it says."""
@@ -607,7 +834,9 @@ class _Solver:
                     break
                 for rot in rots:
                     turned = _turned(shape, rot, back)
-                    for _, px, py in turned.pads:
+                    for number, px, py in turned.pads:
+                        if only is not None and number not in only:
+                            continue
                         for tx, ty in targets:
                             x, y = tx + dx - px, ty + dy - py
                             box = _moved(turned.box, x, y)
@@ -626,10 +855,11 @@ class _Solver:
             if kept and nearest(False)[0] is None:
                 kept = []
             toward = "" if s.toward is None else f", toward the {s.toward.value} edge,"
+            holes = " and its holes" if self.fixed else ""
             self._problem((ref,), f"{ref} has no place within {s.within} of {s.near}{toward} "
                           f"that is on the {'back' if back else 'front'} of the board and "
-                          "clear of the "
-                          "other parts" + (" and of what is kept clear" if kept else ""),
+                          f"clear of the other parts{holes}"
+                          + (" and of what is kept clear" if kept else ""),
                           s, *kept)  # fmt: skip
             return None
         self._chose(f"{ref}: {Length(math.isqrt(found))} from {s.near}, turned "
@@ -650,6 +880,20 @@ class _Solver:
                     self._problem((ref,), f"{ref} does not fit on the board: it reaches "
                                   f"{Length(past)} past the {name} edge",
                                   *self.said[ref])  # fmt: skip
+            if max(over) <= 0 and not self._on(box):
+                assert self.edge is not None
+                # The point of the part furthest outside the outline, and how far.
+                off = _area(*box).difference(self.edge)
+                rings = [piece.exterior.coords for piece in getattr(off, "geoms", [off])]
+                far, (x, y) = max((self.edge.distance(_area(x, y, x, y)), (x, y))
+                                  for ring in rings for x, y in ring)  # fmt: skip
+                where = f"({Length(round(x))}, {Length(round(y))})"
+                self._problem((ref,), f"{ref} does not fit on the board: it reaches "
+                              f"{Length(round(far))} outside the outline at {where}",
+                              *self.said[ref])  # fmt: skip
+            pose = self.poses[ref]
+            if (f := self._over(box, pose.back, self.shapes[ref].through)) is not None:
+                self._problem((ref,), f"{ref} is over {f.label}", *self.said[ref])
         for i, a in enumerate(placed):
             for b in placed[i + 1 :]:
                 shares = (self.shapes[a].through or self.shapes[b].through
