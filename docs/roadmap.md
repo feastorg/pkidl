@@ -68,7 +68,7 @@ How long the board file is goes in the scorecard and is not a bar to pass. A lin
 that says which capacitor goes to which pin is worth more than its absence, and a
 target on length is a reason to leave it out.
 
-Tracked in #8. Steps 1 to 5 are merged, step 6 is #11 and step 7 is #12.
+Tracked in #8. Steps 1 to 6 are merged and step 7 is #12.
 The router is still given the box around the board and not its outline (#13).
 
 In order; each a PR with its tests:
