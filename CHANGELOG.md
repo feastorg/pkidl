@@ -282,6 +282,13 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.fill.cut_off`, pkidl's model of what a pour joins, cuts the fill away round
+  each pad of the net that has a thermal relief, as KiCad does: a pad in the only way
+  through a wall parts the pour, and the model took it as whole. A pad is joined to
+  every piece of pour its spokes reach, two spokes in all. A pad's own `(clearance 0)`
+  is its footprint's, and a piece of pour that touches only a pad that joins no pour is
+  not kept. A build asks KiCad where KiCad is installed; this is what answers where it
+  is not.
 - A pad that shares its number with another in its footprint, as a shield's or a tab's
   pads do, is where it is. `pkidl.fill`, `pkidl.measure`, `pkidl.silk`, `pkidl.stitch`
   and `Board.pour(around=)` took each to be where the first of that number is: a pour
