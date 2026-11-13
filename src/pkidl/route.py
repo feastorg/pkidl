@@ -93,6 +93,7 @@ class Freerouting:
             list(job.netclasses),
             {c: list(nets) for c, nets in job.members.items()},
             edge_clearance=job.edge_clearance,
+            hole_clearance=job.hole_clearance,
             only=None if job.only is None else set(job.only),
             fixed=(list(job.wires), list(job.vias)),
             class_clearances=None if job.class_clearances is None else dict(job.class_clearances),

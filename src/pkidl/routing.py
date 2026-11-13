@@ -41,7 +41,8 @@ class Job:
     """One run of a router: what it routes, around what, and how.
 
     *footprints* are placed board nodes and *outline* the board edge as a closed polygon,
-    in board millimetres; the router is kept *edge_clearance* inside it. *netclasses* and
+    in board millimetres; the router is kept *edge_clearance* inside it and
+    *hole_clearance* from an unplated hole, as KiCad is asked to hold them. *netclasses* and
     their *members* are as ``pkidl.project.write_project`` takes them: the first is
     Default. With *only*, just those nets are routed and every pin stays an obstacle.
     *wires* and *vias* are there before routing and kept. *class_clearances* is the
@@ -60,6 +61,7 @@ class Job:
     netclasses: Sequence[NetClass]
     members: Mapping[str, Sequence[str]]
     edge_clearance: float = 0.5
+    hole_clearance: float = 0.25
     only: frozenset[str] | None = None
     wires: Sequence[Wire] = ()
     vias: Sequence[Via] = ()

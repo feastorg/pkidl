@@ -103,3 +103,23 @@ def test_an_unplated_hole_with_a_ring_round_it_is_kept_out_of_as_wide_as_its_pad
     assert _hole(tmp_path, 3.1, 2.1) == '(keepout "" (circle signal 3200 3000 0))'
     # A slot is taken by its longer side.
     assert _hole(tmp_path, 1, "oval 1 2.5") == '(keepout "" (circle signal 2600 3000 0))'
+
+
+def test_the_router_holds_the_first_classs_clearance_from_a_hole_whatever_the_others_are(
+    tmp_path,
+):
+    # Freerouting keeps a net's clearance from a keepout and never less than the first
+    # class's, so that is what the hole's own clearance is measured against: 0.6 mm is
+    # already more than KiCad's 0.25 mm, though another class has 0.1 mm.
+    classes = [NetClass("Default", 0.6, 0.5), NetClass("Fine", 0.1, 0.2)]
+    text = write_dsn(tmp_path / "b.dsn", [parse(HOLED.format(size=1.27, drill=1.27))],
+                     OUTLINE, classes, {"Fine": ["A"]}).read_text()  # fmt: skip
+    assert '(keepout "" (circle signal 1270 3000 0))' in text
+
+
+def test_an_unplated_hole_in_a_pad_with_corners_is_kept_out_of_to_its_corners(tmp_path):
+    squared = HOLED.replace("np_thru_hole circle", "np_thru_hole rect")
+    text = write_dsn(tmp_path / "b.dsn", [parse(squared.format(size=4, drill=2))],
+                     OUTLINE, CLASSES, MEMBERS).read_text()  # fmt: skip
+    # 4 mm square is 5.6569 mm corner to corner, and 0.05 mm more each side.
+    assert '(keepout "" (circle signal 5756.9 3000 0))' in text

@@ -214,9 +214,11 @@ def write_dsn(
 
     An unplated hole is a keepout on every layer: a circle as wide as the hole or as
     its pad, whichever is wider, since such a pad can have a ring round the hole that
-    is on no net. The router keeps a net's own clearance from a keepout; where
-    *hole_clearance*, what KiCad asks between copper and a hole (0.25 mm unless a
-    project says), is more than the least of those, the circle is wider by the rest.
+    is on no net; for a pad with corners, as wide as it is from corner to corner. The
+    router keeps a net's clearance from a keepout, and never less than the first
+    class's (Freerouting 2.5.0, measured). Where *hole_clearance*, what KiCad asks
+    between copper and a hole (0.25 mm unless a project says), is more than the first
+    class's clearance, the circle is wider by the rest.
 
     With *only*, just those nets are routed; every pin stays an obstacle. *fixed*
     routes (as ``read_ses`` returns them) are written as protected wiring: the
@@ -250,8 +252,11 @@ def write_dsn(
             if str(pad[2]) == "np_thru_hole":
                 drill, size = find(pad, "drill"), find(pad, "size")
                 assert drill is not None
-                across = max(_lengths(drill) + (_lengths(size) if size is not None else []))
-                more = max(0.0, hole_clearance - min(c.clearance for c in netclasses))
+                ring = _lengths(size) if size is not None else []
+                if len(ring) == 2 and str(pad[3]) not in ("circle", "oval"):
+                    ring = [math.hypot(*ring)]  # a pad with corners, by its diagonal
+                across = max(_lengths(drill) + ring)
+                more = max(0.0, hole_clearance - netclasses[0].clearance)
                 keepouts.append(f'(keepout "" (circle signal {_n((across + 2 * more) * 1000)} '
                                 f"{_n(x)} {_n(y)}))")  # fmt: skip
                 continue
