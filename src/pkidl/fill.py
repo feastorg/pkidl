@@ -156,22 +156,30 @@ def _joined(fp: Node, pad: Node, zone: Node, piece: BaseGeometry, rings: BaseGeo
     return sum(there.covers(s.difference(shape)) for s in _spokes(fp, pad, zone)) >= SPOKES
 
 
-def _copper(items: list[Node], layer: str) -> list[tuple[str, BaseGeometry]]:
-    """Every pad, track and via on *layer*: (net, shape)."""
-    out: list[tuple[str, BaseGeometry]] = []
+Copper = tuple[str, BaseGeometry, float, tuple[Node, Node] | None]
+
+
+def _copper(items: list[Node], layer: str) -> list[Copper]:
+    """Every pad, track and via on *layer*: its net, its shape, the clearance it asks
+    for itself (a pad's own or its footprint's, else 0) and, for a pad, its footprint
+    and itself."""
+    out: list[Copper] = []
     for item in items:
         head = str(item[0])
         if head == "footprint":
             for pad in find_all(item, "pad"):
                 if layer in _layers(pad) and find(pad, "size") is not None:
-                    out.append((_net(pad), _pad_shape(item, pad)))
+                    own = _num(pad, "clearance", default=_num(item, "clearance"))
+                    out.append((_net(pad), _pad_shape(item, pad), own, (item, pad)))
         elif head == "segment" and layer in _layers(item):
             w = _num(item, "width")
             out.append(
-                (_net(item), LineString([_xy(item, "start"), _xy(item, "end")]).buffer(w / 2))
-            )
+                (_net(item), LineString([_xy(item, "start"), _xy(item, "end")]).buffer(w / 2),
+                 0.0, None)
+            )  # fmt: skip
         elif head == "via":
-            out.append((_net(item), SPoint(_xy(item, "at")).buffer(_num(item, "size") / 2)))
+            dot = SPoint(_xy(item, "at")).buffer(_num(item, "size") / 2)
+            out.append((_net(item), dot, 0.0, None))
     return out
 
 
@@ -263,12 +271,19 @@ def fills(
             if layer not in filled:
                 continue
             area = _outline(zone).intersection(board).difference(nopour[layer])
-            foreign = [_grow(s, max(gap, cl.get(n, 0.0))) for n, s in copper[layer] if n != net]
+            # Other nets' copper, each kept the most that is asked of it: the pour's
+            # clearance, its net's, or its own. And the net's own pads that join no pour:
+            # KiCad cuts the fill back from those as from any other copper.
+            foreign = [_grow(s, max(gap, cl.get(n, 0.0), own))
+                       for n, s, own, _ in copper[layer] if n != net]  # fmt: skip
+            apart = [(s, own) for n, s, own, of in copper[layer]
+                     if n == net and of is not None and _relief(zone, *of) == "none"]  # fmt: skip
+            foreign += [_grow(s, max(gap, own)) for s, own in apart]
             foreign += [_grow(s, max(gap, cl.get(n, 0.0))) for n, s in filled[layer] if n != net]
             if foreign:
                 area = area.difference(unary_union(foreign))
             area = area.buffer(-thick / 2).buffer(thick / 2)  # nothing thinner than min_thickness
-            own = unary_union([s for n, s in copper[layer] if n == net] or [Polygon()])
+            own = unary_union([s for n, s, _, _ in copper[layer] if n == net] or [Polygon()])
             pieces = [
                 p
                 for p in getattr(area, "geoms", [area])
@@ -309,7 +324,7 @@ class Cut:
 
     def __str__(self) -> str:
         if self.seen:
-            return f"KiCad leaves unconnected on {self.net}: {self.seen}"
+            return f"KiCad, of {self.net}: {self.seen}"
         pads = ", ".join(self.pads)
         are = "is" if len(self.pads) == 1 else "are"
         if self.layer is None:

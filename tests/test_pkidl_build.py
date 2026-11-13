@@ -15,6 +15,7 @@ import pytest
 from pkidl import Board, Edge, mm
 from pkidl.build import BuildError, Built
 from pkidl.dsn import Via, Wire
+from pkidl.fill import Cut
 from pkidl.footprint import footprint_path, pad_xy
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.intent import Route, Rules, route, rules
@@ -591,6 +592,7 @@ def test_where_kicad_is_installed_it_is_kicad_that_says_what_a_pour_leaves_cut_o
     args = ran_with()
     asked = tmp_path / "out" / "breakout-poured-check.kicad_pcb"
     assert args[:3] == ["pcb", "drc", "--refill-zones"] and args[-1] == str(asked)
+    assert "--severity-all" in args and args[args.index("--format") + 1] == "json"
     assert asked.exists() and asked.with_suffix(".kicad_pro").exists()
     assert _pours(Built(asked, None, built.solution, None)) == {("GND", "B.Cu"): (0.2, 0.2)}
 
@@ -605,9 +607,7 @@ def test_what_kicad_leaves_unconnected_is_said_in_its_words_and_routed_again(
     assert [stage for stage, *_ in router.asked] == ["poured", ""]
     (cut,) = built.routed.cut
     assert (cut.net, cut.pads) == ("GND", ("P1.3",))
-    assert str(cut) == (
-        "KiCad leaves unconnected on GND: Zone [GND] on B.Cu, priority 0 and PTH pad 3 [GND] of P1"
-    )
+    assert str(cut) == ("KiCad, of GND: Zone [GND] on B.Cu, priority 0 and PTH pad 3 [GND] of P1")
     assert built.routed.judge == "KiCad"
 
 
@@ -650,3 +650,54 @@ def test_kicads_report_is_read_for_the_net_and_the_pads_it_names():
         ("GND", ("A.1",)), ("GND", ()), ("Net-(Q5-Pad1)", ("Q5.1",)),
     ]  # fmt: skip
     assert cuts({"unconnected_items": []}) == [] and cuts({}) == []
+    # A pad on one spoke is connected, by KiCad, and an error by its DRC: a pour that
+    # leaves one so does not carry its net as the board's rules ask.
+    one_spoke = {"violations": [
+        {"type": "silk_overlap", "description": "x", "items": []},
+        {"type": "starved_thermal",
+         "description": "Thermal relief connection to zone incomplete (layer F.Cu; zone "
+                        "min spoke count 2; actual 1)",
+         "items": [{"description": "Zone [G1] on F.Cu, priority 0"},
+                   {"description": "Pad 1 [G1] of A1 on F.Cu"}]},
+    ]}  # fmt: skip
+    (cut,) = cuts(one_spoke)
+    assert (cut.net, cut.pads) == ("G1", ("A1.1",)) and "actual 1" in str(cut)
+
+
+def test_kicad_that_does_not_finish_leaves_the_model_to_say(board, tmp_path, monkeypatch):
+    from pkidl.kicad import unconnected
+
+    slow = tmp_path / "slow.py"
+    slow.write_text("import time; time.sleep(30)")
+    monkeypatch.setenv("KICAD_CLI", f"{sys.executable} {slow}")
+    asked = tmp_path / "b.kicad_pcb"
+    asked.write_text("(kicad_pcb)")
+    assert unconnected(asked, timeout=0.5) is None
+    # And a build then has the model's word, and says it is the model's.
+    monkeypatch.setattr("pkidl.build.unconnected", lambda path: None)
+    built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None
+    assert built.routed.judge == "model" and len(built.routed.cut) == 2
+
+
+def test_the_judge_named_is_the_one_asked_last_and_an_old_report_is_not_read(
+    board, tmp_path, monkeypatch
+):
+    from pkidl.kicad import unconnected
+
+    # A report left from an earlier run is not this run's: KiCad that writes none fails.
+    broken = tmp_path / "broken.py"
+    broken.write_text("import sys; sys.exit(3)")
+    monkeypatch.setenv("KICAD_CLI", f"{sys.executable} {broken}")
+    asked = tmp_path / "b.kicad_pcb"
+    asked.write_text("(kicad_pcb)")
+    (tmp_path / "b-drc.json").write_text('{"unconnected_items": []}')
+    with pytest.raises(KicadError):
+        unconnected(asked)
+    # KiCad answers the first time and does not finish the second: the second is the
+    # model's word, and the result says so.
+    answers = iter([[Cut("GND", ("P1.3",), seen="x")], None])
+    monkeypatch.setattr("pkidl.build.unconnected", lambda path: next(answers))
+    board.pour("A", layer="F.Cu")
+    built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None and built.routed.judge == "model"

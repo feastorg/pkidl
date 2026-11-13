@@ -425,3 +425,50 @@ def test_a_pad_is_joined_as_the_zone_it_lies_in_says_not_the_first_of_its_net():
     boxed = _round([(1.6 * dx, 1.6 * dy) for dx, dy in SIDES], x=15.0)
     items = _items(solid, _relieved("GND"), _one("A", 15, 15), *boxed, *REST)
     assert "A.1" in [p for c in cut_off(items, OUTLINE, 0.5) for p in c.pads]
+
+
+def test_a_spoke_stops_at_the_gap_round_a_pad_of_its_net_whose_copper_is_further_off():
+    # Pads of the net 1 mm off each side: their copper is beyond where a spoke has to
+    # reach, 0.75 mm, and the 0.5 mm gap cut round each is not. Above and below, copper
+    # of another net.
+    blocked = _round([(0, -1.6), (0, 1.6)])
+    assert "A.1" in _cut(_one("A", 5, 15), _one("B1", 3, 15), _one("B2", 7, 15), *blocked)
+    # Where those two say a gap of their own of 0.1 mm, the spokes have their copper.
+    narrow = [_one("B1", 3, 15, more="(thermal_gap 0.1)"),
+              _one("B2", 7, 15, more="(thermal_gap 0.1)")]  # fmt: skip
+    assert _cut(_one("A", 5, 15), *narrow, *blocked) == []
+
+
+WALL_WITH_A_GAP = [_track("SIG", (15, 1), (15, 14)), _track("SIG", (15, 16), (15, 29))]
+LEFT = [_one("A", 5, 15), _one("B", 8, 20)]
+
+
+def test_a_pad_of_the_net_that_joins_no_pour_is_kept_clear_of_like_any_other_copper():
+    # KiCad 10.0.6 leaves pads so placed unconnected. A wall of another net across the
+    # pour with one gap in it, and in the gap a pad of the pour's own net that says it
+    # joins no pour: the fill is cut back round it and the gap is shut.
+    plug = _one("K", 15, 15, more="(zone_connect 0)", size="1.4 1.4")
+    cut = _cut(*LEFT, *WALL_WITH_A_GAP, plug, _track("GND", (15, 15), (25, 15), 0.25))
+    assert "A.1" in cut and "B.1" in cut
+    # With the gap open the pour is one piece through it.
+    assert _cut(*LEFT, *WALL_WITH_A_GAP) == []
+
+
+def test_other_copper_is_kept_the_clearance_its_pad_or_footprint_asks_of_a_pour():
+    # A wall with a gap 3 mm wide, and in the gap a small pad of another net. At the
+    # pour's own 0.2 mm the gap is open either side of it; at the 1 mm it asks, shut.
+    wall = [_track("SIG", (15, 1), (15, 13.5)), _track("SIG", (15, 16.5), (15, 29))]
+    right = _one("C4", 22, 10)  # so that the pads right of the wall are the most
+    assert _cut(*LEFT, right, *wall, _one("X", 15, 15, "SIG", size="0.3 0.3")) == []
+    asks = _one("X", 15, 15, "SIG", size="0.3 0.3", more="(clearance 1.0)")
+    assert _cut(*LEFT, right, *wall, asks) == ["A.1", "B.1"]
+    by_fp = _one("X", 15, 15, "SIG", size="0.3 0.3", of_fp="(clearance 1.0)")
+    assert _cut(*LEFT, right, *wall, by_fp) == ["A.1", "B.1"]
+
+
+def test_a_turned_pads_copper_is_off_its_hole_the_way_the_pad_is_turned():
+    pad = _one("A", 5, 15, kind="thru_hole oval", angle=90, more="(drill 0.4 (offset 3 0))")
+    boxed = [(1.6 * dx, 1.6 * dy) for dx, dy in SIDES]
+    # Turned a quarter, counter-clockwise with y down: its copper is 3 mm up the board.
+    assert _cut(pad, *_round(boxed, x=5.0, y=12.0)) == ["A.1"]
+    assert _cut(pad, *_round(boxed, x=8.0, y=15.0)) == []

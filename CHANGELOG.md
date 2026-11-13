@@ -22,7 +22,8 @@ Unreleased. History before this file was reconstructed from the git log.
   what is on no net. `pkidl.footprint.pad_at(footprint, pad)` is where a pad is. (#43)
 - Where KiCad is installed (`$KICAD_CLI`, default `kicad-cli`), it is KiCad that says
   what a build's pours leave unconnected, from its own fill of the proposed routing
-  (`pkidl.kicad.unconnected`), and pkidl's model answers only where it is not.
+  (`pkidl.kicad.unconnected`), with any pad it joins by fewer spokes than it asks,
+  and pkidl's model answers only where it is not.
   `Routed.judge` says which, and `scripts/corpus.py build` prints it. (#43)
 - `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
   decouple a part. Each is across ground and one of the part's supplies, and is placed

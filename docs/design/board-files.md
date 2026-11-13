@@ -453,23 +453,30 @@ router and not a board with a pad left unconnected. What it models:
   fill covers its whole width out past the gap and the fill's least width beyond.
 - Spokes are at the pad's `thermal_bridge_angle` where it says one; else along a pad's
   sides and on a round pad's diagonals, about the middle of its copper, which a drill's
-  offset puts off its hole. Measured on KiCad's fills: every spoke of the builds here
-  (26 round, 6 rectangular, KiCad 10.0.6) and of the corpus references as their own
-  designers' KiCad filled them (251 round, 466 rectangular, 193 oval) is so.
+  offset puts off its hole. The defaults are measured on fills KiCad made: of the corpus
+  references as their own designers' KiCad filled them, every spoke found is within
+  8 degrees of that (251 on round pads, 476 on rectangular, 195 on oval). No corpus pad
+  says an angle of its own.
 - The gap and the spoke's width are the pad's own where it says them. Solid, or no
   connection, is as the pad, its footprint or the zone it lies in says.
 - A spoke has no copper in the gap cut round another pad of its net. KiCad may join two
   such pads spoke to spoke, and the model does not.
+- A pad of the pour's own net that joins no pour is cut back from like other copper,
+  and other copper is kept the clearance its pad or footprint asks for itself.
 - The fill is inside the outline as it is drawn, cut-outs and all, and as far from an
   unplated hole as KiCad asks.
 
-It has been wrong the dangerous way twice, each found by trying to break it and each
-now a test: a pad taken as joined for lying in the pour, and a spoke counted across the
-gap round a neighbouring pad of its own net, which KiCad 10.0.6 confirmed leaves the
-pad unconnected. On the 79 pads of poured nets in the twelve builds of the two corpus
-boards that KiCad has filled, it joins none that KiCad gives fewer than two spokes and
-leaves five unjoined that KiCad gives two or more. That is two boards. KiCad's fill and
-its DRC decide a built board, and the Corpus workflow asks them.
+It has been wrong the dangerous way four times, each found by trying to break it, each
+confirmed by KiCad 10.0.6 where it could be, and each now a test: a pad taken as joined
+for lying in the pour; a spoke counted across the gap round a neighbouring pad of its
+own net; a pour filled over a pad of its own net that joins no pour; and a pad's own
+clearance not kept. A board of twenty such cases, one to a net, was filled by KiCad and
+by the model: of the nineteen with a pour the model now joins none that KiCad leaves
+unconnected, and is the stricter on some. That is why KiCad is asked where it is there.
+
+KiCad's verdict is its unconnected items, and with them any pad it joins by fewer
+spokes than it asks (`starved_thermal`): connected, by its fill, and an error by its
+DRC, so not a pour to leave a net to.
 
 On the T0 board the first run stands: ground is its pour, with one segment of track and
 a via bringing the module's ground pad to it, where it had seven segments; KiCad finds the same

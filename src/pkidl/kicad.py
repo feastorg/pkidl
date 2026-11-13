@@ -33,8 +33,9 @@ def kicad_command() -> list[str] | None:
 
 def unconnected(board: Path, *, timeout: float = 300.0) -> list[Cut] | None:
     """What KiCad leaves unconnected on *board* once it has filled its pours: a ``Cut``
-    for each item of its report, with the net and the pads it names and its own words.
-    The board file is not changed; the report is left beside it as ``<stem>-drc.json``.
+    for each item of its report (see ``cuts``), with the net and the pads it names and
+    its own words. The board file is not changed; the report is left beside it as
+    ``<stem>-drc.json``, and KiCad leaves a ``<stem>.kicad_prl`` there as well.
 
     None where KiCad does not finish within *timeout* seconds, which it does not for
     some boards. Raises ``KicadError`` where it is not installed or does not report.
@@ -59,12 +60,19 @@ def unconnected(board: Path, *, timeout: float = 300.0) -> list[Cut] | None:
 
 
 def cuts(report: dict) -> list[Cut]:
-    """The unconnected items of a KiCad DRC *report* (its JSON), each as a ``Cut``."""
+    """What a KiCad DRC *report* (its JSON) says a board's pours do not carry: each
+    unconnected item, and each pad joined to its pour by fewer spokes than KiCad asks
+    (``starved_thermal``), which KiCad counts as connected and as an error. Each is a
+    ``Cut`` with the net and the pads KiCad names, in its words."""
+    starved = [v for v in report.get("violations", []) if v.get("type") == "starved_thermal"]
     found = []
-    for item in report.get("unconnected_items", []):
+    for item in [*report.get("unconnected_items", []), *starved]:
         said = [str(part.get("description", "")) for part in item.get("items", [])]
         nets = [m.group(1) for text in said if (m := re.search(r"\[(.*?)\]", text))]
         pads = [f"{m.group(2)}.{m.group(1)}" for text in said
                 if (m := re.search(r"[Pp]ad (\S+) \[.*?\] of (\S+)", text))]  # fmt: skip
-        found.append(Cut(nets[0] if nets else "", tuple(pads), seen=" and ".join(said)))
+        what = " and ".join(said)
+        if item in starved:
+            what = f"{item.get('description', 'starved thermal')}: {what}"
+        found.append(Cut(nets[0] if nets else "", tuple(pads), seen=what))
     return found

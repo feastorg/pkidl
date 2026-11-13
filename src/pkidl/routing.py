@@ -111,8 +111,8 @@ class Routed:
     # What a run with the pours known left cut off, for which the board was routed
     # again with those nets carried by tracks (``poured``).
     cut: tuple[Cut, ...] = ()
-    # Whose word it is that the pours join what they are left to: KiCad's, with its
-    # version, or pkidl's model of KiCad's fill. Empty where nothing was asked.
+    # Whose word it is that the pours join what they are left to: ``KiCad``, or
+    # ``model`` for pkidl's model of KiCad's fill. Empty where nothing was asked.
     judge: str = ""
 
 
