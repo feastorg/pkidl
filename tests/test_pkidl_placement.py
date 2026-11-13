@@ -1702,3 +1702,35 @@ def test_a_part_with_no_place_on_a_board_with_holes_is_told_they_are_among_what_
         "R1 has no place within 4 mm of P1, toward the bottom edge, that is on the front of "
         "the board and clear of the other parts and its holes"
     ]
+
+
+def test_a_part_a_hair_outside_a_rounded_corner_is_outside_it():
+    # Corners of 4 mm: 0.15 mm short of where the top edge runs straight, the arc is
+    # 2.8 micrometres below the box. A test point touching the top of the box there is
+    # that far outside the outline, and is said to be.
+    board = _rounded(4, T1="A")
+    board.place(board["T1"], against=Edge.TOP)
+    board.place(board["T1"], against=Edge.LEFT, inset=4.35 * mm)
+    (problem,) = board.solve().problems
+    far = re.fullmatch(
+        r"T1 does not fit on the board: it reaches ([\d.]+) mm outside the outline at "
+        r"\(103.85 mm, 50 mm\)",
+        problem.text,
+    )
+    assert far is not None and float(far[1]) == pytest.approx(0.0028, abs=0.0011)
+    # Where the edge runs straight it is on the board.
+    board = _rounded(4, T1="A")
+    board.place(board["T1"], against=Edge.TOP)
+    board.place(board["T1"], against=Edge.LEFT, inset=4.5 * mm)
+    assert board.solve().ok
+
+
+def test_a_part_in_a_notch_drawn_on_the_boards_edge_is_off_the_board():
+    made = _board(R1="A B")
+    board = Board(circuit=made.circuit, library=made.library)
+    board.outline([{"type": "gr_rect", "start": (100, 50), "end": (130, 80)},
+                   {"type": "gr_rect", "start": (100, 60), "end": (106, 70)}])  # fmt: skip
+    board.place(board["R1"], against=Edge.LEFT)
+    assert [p.text for p in board.solve().problems] == [
+        "R1 does not fit on the board: it reaches 3.2 mm outside the outline at (101.8 mm, 66.8 mm)"
+    ]

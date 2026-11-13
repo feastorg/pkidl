@@ -65,6 +65,16 @@ def test_a_cut_out_drawn_inside_the_outline_is_a_hole_in_the_board():
     # A frame: the cut-out is most of the box, and is still what is cut out.
     frame = shape([*SQUARE, {"type": "gr_rect", "start": [1, 1], "end": [9, 9]}])
     assert frame.area == 36 and frame.bounds == (0, 0, 10, 10)
+    # The same frame with its cut-out drawn in lines.
+    inner = [(1, 1), (9, 1), (9, 9), (1, 9)]
+    drawn = [_line(a, b) for a, b in zip(inner, inner[1:] + inner[:1], strict=True)]
+    assert shape([*SQUARE, *drawn]).equals(frame)
+    # A cut-out drawn on the edge is a notch in it, not a hole filled in.
+    notch = shape([*SQUARE, {"type": "gr_rect", "start": [0, 4], "end": [3, 6]}])
+    assert notch.area == 94 and len(notch.interiors) == 0
+    assert not notch.contains(shape([{"type": "gr_rect", "start": [0, 4], "end": [3, 6]}]).centroid)
+    # A line across the board that cuts nothing out leaves it whole.
+    assert shape([*SQUARE, _line((5, 0), (5, 10))]).area == 100
 
 
 def test_a_line_that_closes_nothing_is_ignored_within_the_box_around_the_board():
@@ -94,6 +104,11 @@ def test_a_line_that_closes_nothing_is_ignored_within_the_box_around_the_board()
         ([_line((0, 0), (10, 10)), _line((10, 10), (10, 0)), _line((10, 0), (0, 10)),
           _line((0, 10), (0, 0))],
          "the outline encloses 2 areas apart from each other, not one board"),
+        # A slot from one edge to the other cuts the board in two.
+        ([*SQUARE, {"type": "gr_rect", "start": [4, 0], "end": [6, 10]}],
+         "the outline encloses 2 areas apart from each other, not one board"),
+        ([*SQUARE, {"type": "gr_rect", "start": [0, 0], "end": [10, 10]}],
+         "the outline encloses nothing: what it cuts out is all of it"),
     ],
 )  # fmt: skip
 def test_an_outline_that_does_not_close_is_refused(items, message):

@@ -10,6 +10,7 @@ An arc becomes short straight lines no further than a micrometre from it.
 
 from __future__ import annotations
 
+import functools
 import math
 from collections.abc import Iterable, Mapping
 from typing import Any
@@ -54,11 +55,13 @@ def _round(ox: float, oy: float, r: float, a0: float, span: float) -> list[Point
 def shape(items: Iterable[Mapping[str, Any]]) -> Polygon:
     """The area the outline *items* enclose, in board millimetres: each item as
     ``mechanical.json`` lists it. A cut-out drawn inside the outline is a hole in it,
-    and a line that closes nothing is ignored within the box around the board. Raises
+    one drawn on its edge a notch, and a line that closes nothing is ignored within
+    the box around the board. Raises
     ``ValueError`` for an outline that does not close, or has a line left over that
     reaches outside that box, and for one that encloses two areas apart from each
     other."""
     lines: list[LineString] = []
+    loops: list[Polygon] = []  # what is drawn closed: a rectangle, a circle, a polygon
     for item in items:
         kind = item["type"]
         if kind == "gr_line":
@@ -67,31 +70,30 @@ def shape(items: Iterable[Mapping[str, Any]]) -> Polygon:
             lines.append(LineString(_arc(*(_point(item[k]) for k in ("start", "mid", "end")))))
         elif kind == "gr_rect":
             (x0, y0), (x1, y1) = _point(item["start"]), _point(item["end"])
-            lines.append(LineString([(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]))
+            loops.append(Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)]))
         elif kind == "gr_circle":
             (ox, oy), on = _point(item["center"]), _point(item["end"])
-            ring = _round(ox, oy, math.dist((ox, oy), on), 0.0, math.tau)
-            lines.append(LineString([*ring[:-1], ring[0]]))
+            loops.append(Polygon(_round(ox, oy, math.dist((ox, oy), on), 0.0, math.tau)[:-1]))
         elif kind == "gr_poly":
-            corners = [_point(p) for p in item["pts"]]
-            lines.append(LineString([*corners, corners[0]]))
+            loops.append(Polygon([_point(p) for p in item["pts"]]))
         else:
             raise ValueError(f"outline: {kind!r} is not something Edge.Cuts is drawn with")
     open_ended = "the outline does not close: its items do not meet end to end"
-    if not lines:
+    rest: list[Any] = []
+    if lines:
+        found, *rest = polygonize_full(unary_union(lines))
+        loops += [Polygon(face.exterior) for face in found.geoms]
+    if not loops:
         raise ValueError(open_ended)
-    found, *rest = polygonize_full(unary_union(lines))
-    faces = list(found.geoms)
-    if not faces:
-        raise ValueError(open_ended)
-    # Each closed line is a face. One inside an odd number of them, itself counted, is
-    # board; one inside an even number is cut out of it.
-    rings = [Polygon(face.exterior) for face in faces]
-    solid = [face for face in faces
-             if sum(ring.contains(face.representative_point()) for ring in rings) % 2]  # fmt: skip
-    board = unary_union(solid)
+    # Each closed line turns board into cut-out and cut-out into board: what is inside
+    # an odd number of them is board. So a cut-out is one whether it is drawn inside the
+    # outline or on its edge, as a notch.
+    board = functools.reduce(lambda area, loop: area.symmetric_difference(loop), loops)
+    if board.is_empty:
+        raise ValueError("the outline encloses nothing: what it cuts out is all of it")
     if not isinstance(board, Polygon):
-        raise ValueError(f"the outline encloses {len(solid)} areas apart from each other, "
+        apart = len(getattr(board, "geoms", ()))
+        raise ValueError(f"the outline encloses {apart} areas apart from each other, "
                          "not one board")  # fmt: skip
     # A line that closes nothing is no harm within the box around the board: real
     # outlines have stubs where an edge is drawn on past a rounded corner. One that

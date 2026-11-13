@@ -289,10 +289,12 @@ encloses (`pkidl.edge`): the lines and arcs joined end to end, an arc followed t
 within a micrometre, a cut-out a hole in it. Five of the fifteen corpus boards are not
 the box around their outline: three have rounded corners, one has an arc bitten out of
 each corner, and one narrows on a slant to a tab at one side and is 68% of its box.
-An outline that does not close, or that encloses two areas apart from each other, is
-not a board: that is the one problem `board.solve()` gives, and nothing is placed. A
-stub of a line that closes nothing is ignored within the box around the board, since
-real outlines have them where an edge is drawn on past a rounded corner. `board.hole(footprint, at)` puts a mounting hole on the board and
+Each closed line turns board into cut-out and cut-out into board, so a rectangle drawn
+inside the outline is a hole in it and one drawn on its edge is a notch. An outline
+that does not close, or that encloses two areas apart from each other, is not a board:
+that is the one problem `board.solve()` gives, and nothing is placed. A stub of a line
+that closes nothing is ignored within the box around the board, since real outlines
+have them where an edge is drawn on past a rounded corner. `board.hole(footprint, at)` puts a mounting hole on the board and
 tells the solver of it, and `Board.from_inputs` does so for each hole in
 `mechanical.json`; `board.fixed` lists them. A hole is the box around its own
 footprint, as a part is: the drill alone on the fan controller, a courtyard 6.9 mm
@@ -327,6 +329,8 @@ Open after this:
   KiCad's DRC then reports.
 - **A part against an edge is centred along the whole edge**, not along what is clear
   of it as a row is, and is reported where that puts it over a hole.
+- **A cut-out left unfinished is ignored**, as a stub is: three sides of a slot drawn
+  inside a closed outline leave the board whole, with nothing said.
 
 **As built, the centre and a side:** `place(u1, centre=True)` puts the middle of the
 part's outline at the middle of the board. It is one place, so an edge or `between=`
