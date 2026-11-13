@@ -9,7 +9,8 @@ What each statement means here:
 
 - ``against=`` an edge: the part lies along it, its longer side to the edge. ``inset=`` is
   from the edge to the centres of the part's pads nearest it, or to its outline when it
-  has no pads; with no inset the part's outline touches the edge from inside. Along the
+  has no pads; with no inset the part's outline touches the edge from inside, or the
+  part is as far in as the rules keep its copper from the edge. Along the
   edge it is centred, unless a second edge makes a corner, where it may lie along either.
 - ``facing=`` an edge: the side of the part that is up in its footprint, as a library
   draws it, is turned to that edge of the board as the front shows it, whichever face
@@ -50,10 +51,11 @@ What each statement means here:
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest. A part's outline is the box around its pads, courtyard and fabrication
 drawing, or around its pads and what its silk draws where the footprint has neither,
-as an older library draws a part's body; two parts on one face may touch and not overlap, and a part with holes takes
-both faces. Pads of two parts on different nets are no closer than the clearance the
-board's ``rules`` say, each pad taken as the box around it: a pair that is closer is
-reported, and a part that looks for a place looks only where its pads are clear.
+as an older library draws a part's body; two parts on one face may touch and not
+overlap, and a part with holes takes both faces. Pads of two parts on different nets
+are no closer than the clearance the board's ``rules`` say, each pad taken as the box
+around it: a pair that is closer is reported, and a part that looks for a place looks
+only where its pads are clear.
 A pad is no nearer the board's edge than the rules' edge clearance, held the same way,
 and a part ``against=`` an edge with no inset is as far in as that takes.
 
