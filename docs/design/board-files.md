@@ -546,6 +546,35 @@ The eight errors on each are the same eight: `malformed_courtyard`, all on U1, w
 footprint is the reference's own. The built board's 13 warnings are all
 `silk_over_copper`.
 
+Both corpus board files, as the Corpus workflow scored them on 2026-11-13 (run
+43485652557, KiCad 10.0.6 and Freerouting 2.5.0, the same steps):
+
+```
+tier board                                        parts nets  err warn uncon  vias  track mm split pours board.py
+t0   esp12-breakout_ESP12Breakout                     8   22    8   22     0    10     200.9           0       29
+       built from its board.py                        8 same    8   13     0     1     142.4           0
+t2   fan_controller_fan_controller                   49   43    0   42     0    23     534.0           0       65
+       built from its board.py                       49 same    0  218     0    23    1085.4           1
+```
+
+The fan controller meets milestone 2's bar: its circuit's netlist, all 49 parts placed,
+nothing unconnected and no DRC error, beside a reference that has none. What the row
+also says, and the bar does not ask:
+
+- **Twice the track**, 1085 mm to the reference's 534. Ground is carried by tracks on
+  this board: with the pour known the router left pads of ground cut off, KiCad said
+  so, and the board was routed again without it (`poured`, above).
+- **218 warnings to 42**: 188 are reference text over pads and over other text (#26),
+  and 30 are silk by the board's edge, where the fan headers' housings are.
+- **The ground pour is in two pieces**, joined by track, where the reference's is one.
+
+On T0 the pour does carry ground, by KiCad's word: one via and 142 mm of track, where
+with ground routed by track it had 157 mm. Its
+pour is one piece by the count, with about a fifth of the back bare under the module:
+tracks on the back fence it off, no pad of ground is in it, and KiCad removes it.
+Nothing in a board file says which layer to keep for a pour, and nothing in the
+scorecard says how much of a pour is left.
+
 Open after this:
 
 - **Reference text is where the footprint has it**, which on this board is over pads:
@@ -572,8 +601,9 @@ Open after this:
   carried by tracks. That is `poured`, above.
 - **Every net is in one class**, with the board's one track width and clearance.
   Classes, and so the stages, wait for words that say which nets carry power.
-- **The build does not run KiCad.** Refill and DRC are `just corpus`'s, on the files
-  the build wrote.
+- **The build does not have KiCad check the board it writes.** It asks KiCad one thing,
+  where KiCad is installed: what the pours leave unconnected (`poured`, above). Refill
+  and DRC of the finished board are `just corpus`'s, on the files the build wrote.
 
 Question 5, units: both. A length is `1.27 * mm`, `50 * mil`, `0.1 * inch`, or the text
 `"1.27mm"`, `"50mil"`, `"0.1in"`, and is kept as a whole number of nanometres, as KiCad
@@ -610,7 +640,8 @@ distances behind the fan headers that leave room for their housings, 5 to 7 mm w
 the sketch said 2 to 5, with each tach pull-up said to be on the side of its header
 toward the top edge: nearest its pin, it went into the gap between two housings. The encoder is against the right edge where the sketch had it
 at the top, which the input header has. It solves in about half a minute (#18), and
-what KiCad says of the built board is #12.
+what KiCad says of the built board is under "As built, the build", with its row in the
+scorecard.
 
 A PIC24 (U1) driving four PC fans: each fan channel is a 4-pin fan header, an NPN
 low-side driver with its base resistor, a pull-up on the tach line, a status LED with

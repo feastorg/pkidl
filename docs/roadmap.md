@@ -68,8 +68,12 @@ How long the board file is goes in the scorecard and is not a bar to pass. A lin
 that says which capacitor goes to which pin is worth more than its absence, and a
 target on length is a reason to leave it out.
 
-Tracked in #8. Steps 1 to 6 are merged and step 7 is #12.
-The router is still given the box around the board and not its outline (#13).
+Done 2026-11-13: the seven steps are merged, and the Corpus workflow scores the built
+board with its circuit's netlist, all 49 parts placed, nothing unconnected and no DRC
+error, beside a reference that has none (`docs/design/board-files.md`, "As built, the
+build", has the row and what it shows that the bar does not ask). Tracked in #8, which
+stays open for the router being given the box around the board and not its outline
+(#13).
 
 In order; each a PR with its tests:
 
@@ -109,9 +113,8 @@ In order; each a PR with its tests:
    inputs by a path where the T0 board file uses `__file__`. `board.py` is committed
    with all 49 placed, and the board files show it, held to the same text.
 7. **Build and score**: its row in the scorecard under its reference, with DRC errors
-   no more than the reference's, which has none. Built here, with its pour sized by
-   its rules, it has none either and nothing unconnected; the scorecard's row is the
-   Corpus workflow's.
+   no more than the reference's, which has none. With its pour sized by its rules it
+   has none either and nothing unconnected, by the Corpus workflow's scorecard.
 
 ## Milestone 2b: a board with the library as it stands
 
