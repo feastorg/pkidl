@@ -152,6 +152,9 @@ class Board:
     # file does not place: its mounting holes.
     _edge: list[dict[str, Any]] = field(default_factory=list, repr=False)
     fixed: list[Fixed] = field(default_factory=list, repr=False)
+    # Each pour whose clearance or thermal gap was not said, by its zone's UUID: a build
+    # takes them from the board's rules.
+    _unsized: dict[str, tuple[str, ...]] = field(default_factory=dict, repr=False)
 
     @classmethod
     def from_inputs(cls, where: Path | str) -> Board:
@@ -535,7 +538,13 @@ class Board:
         *around* (their convex hull, each pad grown by *margin*), which follows the
         placement, so a block placed twice gets its pour twice. Where the pour meets other
         copper the fill keeps its clearance; where it meets another pour, priorities
-        decide. *zone* is as for ``zone``."""
+        decide. *zone* is as for ``zone``.
+
+        A pour whose ``clearance`` or ``thermal_gap`` is not said has them from the
+        board's ``rules`` when the board is built: both the rules' clearance, so the
+        pour is as near other copper, and as near the pads it joins, as a track may
+        be. The thermal gap is never made wider than ``zone``'s own. On a board with
+        no rules, and until it is built, both are ``zone``'s own."""
         if around is None:
             if self.extent is None:
                 raise ValueError("pour over the whole board before its outline is drawn")
@@ -544,6 +553,10 @@ class Board:
         else:
             outline = pad_hull(around, net, margin)
         self.zone(net, layer, outline, **zone)
+        if unsaid := tuple(key for key in ("clearance", "thermal_gap") if key not in zone):
+            uid = find(self.items[-1], "uuid")
+            assert uid is not None
+            self._unsized[str(uid[1])] = unsaid
 
     def rule_area(
         self,

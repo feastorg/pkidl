@@ -423,3 +423,69 @@ def test_copper_may_reach_the_edge_where_the_rules_say_so(board, tmp_path):
 def test_a_bare_number_is_not_a_rule(board):
     with pytest.raises(TypeError, match="0.25 has no unit"):
         board.rules(track=0.25, clearance=0.2 * mm)  # type: ignore[arg-type]
+
+
+def _pours(built: Built) -> dict[tuple[str, str], tuple[float, float]]:
+    """Each pour of a built board: by net and layer, its clearance and thermal gap."""
+    found = {}
+    for zone in find_all(parse(built.board.read_text()), "zone"):
+        net, layer = find(zone, "net"), find(zone, "layer")
+        if net is None or layer is None or find(zone, "keepout") is not None:
+            continue
+        gap, relief = (
+            find(find(zone, "connect_pads") or [], "clearance"),
+            find(find(zone, "fill") or [], "thermal_gap"),
+        )
+        assert gap is not None and relief is not None
+        found[str(net[1]), str(layer[1])] = (float(str(gap[1])), float(str(relief[1])))
+    return found
+
+
+def test_a_pour_is_as_near_other_copper_and_its_pads_as_the_rules_let_a_track_be(board, tmp_path):
+    board.pour("GND", layer="B.Cu")
+    # On a board with no rules a pour is as a zone is drawn.
+    assert _pours(board.build(tmp_path / "plain")) == {("GND", "B.Cu"): (0.4, 0.5)}
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    assert _pours(board.build(tmp_path / "ruled")) == {("GND", "B.Cu"): (0.2, 0.2)}
+    # The board itself is as it was said, whatever was built from it.
+    (drawn,) = find_all(parse(dumps(board.items[-1])), "connect_pads")
+    assert float(str(find(drawn, "clearance")[1])) == 0.4  # type: ignore[index]
+
+
+def test_what_a_pour_says_of_its_own_clearance_or_thermal_gap_is_kept(board, tmp_path):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    board.pour("GND", layer="B.Cu", clearance=0.3)
+    board.pour("GND", layer="F.Cu", thermal_gap=0.6)
+    board.pour("A", layer="F.Cu", clearance=0.35, thermal_gap=0.45, priority=1)
+    assert _pours(board.build(tmp_path / "out")) == {
+        ("GND", "B.Cu"): (0.3, 0.2),
+        ("GND", "F.Cu"): (0.2, 0.6),
+        ("A", "F.Cu"): (0.35, 0.45),
+    }
+
+
+def test_rules_that_ask_more_clearance_do_not_widen_a_pours_thermal_gap(board, tmp_path):
+    # The gap is between a pad and its own net's pour: a wider one starves the spokes.
+    board.rules(track=0.25 * mm, clearance=0.8 * mm)
+    board.pour("GND", layer="B.Cu")
+    assert _pours(board.build(tmp_path / "out")) == {("GND", "B.Cu"): (0.8, 0.5)}
+
+
+def test_a_pour_around_parts_is_sized_as_one_over_the_whole_board_is(board, tmp_path):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    part = ('(footprint "R" (at {x} 60) (property "Reference" "{ref}") '
+            '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net "A")))')  # fmt: skip
+    around = [parse(part.format(x=105, ref="R8")), parse(part.format(x=110, ref="R9"))]
+    board.pour("A", layer="F.Cu", around=around, margin=0.5)
+    board.pour("A", layer="F.Cu", around=around, margin=1.0)  # and a second, the same net
+    written = parse(board.build(tmp_path / "out").board.read_text())
+    sized = [(float(str(find(find(z, "connect_pads") or [], "clearance")[1])),  # type: ignore[index]
+              float(str(find(find(z, "fill") or [], "thermal_gap")[1])))  # type: ignore[index]
+             for z in find_all(written, "zone") if find(z, "keepout") is None]  # fmt: skip
+    assert sized == [(0.2, 0.2), (0.2, 0.2)]
+
+
+def test_a_zone_drawn_by_hand_is_not_sized_by_the_rules(board, tmp_path):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    board.zone("GND", "B.Cu", [(101.0, 51.0), (119.0, 51.0), (119.0, 69.0), (101.0, 69.0)])
+    assert _pours(board.build(tmp_path / "out")) == {("GND", "B.Cu"): (0.4, 0.5)}

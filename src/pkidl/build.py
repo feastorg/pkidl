@@ -16,6 +16,8 @@ the outline as it is drawn; the routing does not yet.
 
 from __future__ import annotations
 
+import copy
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -26,6 +28,7 @@ from pkidl.placement import Solution
 from pkidl.project import NetClass, write_project
 from pkidl.route import Freerouting
 from pkidl.routing import Job, Routed, Router, lay, staged
+from pkidl.sexpr import Node, find, num
 
 if TYPE_CHECKING:
     from pkidl.board import Board
@@ -51,6 +54,25 @@ class Built:
     routed: Routed | None
 
 
+def _sized(item: Node, unsized: Mapping[str, tuple[str, ...]], clearance: float) -> Node:
+    """*item*, or where it is a pour whose clearance or thermal gap was not said, a copy
+    with them as the board's rules have its *clearance*. The thermal gap is between a
+    pad and its own net's pour, which no rule widens: it is the clearance where that is
+    less than the gap the zone was drawn with, and never more."""
+    uid = find(item, "uuid") if item[0] == "zone" else None
+    unsaid = unsized.get(str(uid[1]), ()) if uid is not None else ()
+    if not unsaid:
+        return item
+    sized = copy.deepcopy(item)
+    for key, inside in (("clearance", "connect_pads"), ("thermal_gap", "fill")):
+        holder = find(sized, inside)
+        value = find(holder, key) if holder is not None else None
+        if key in unsaid and value is not None:
+            drawn = float(str(value[1]))
+            value[1] = num(min(clearance, drawn) if key == "thermal_gap" else clearance)
+    return sized
+
+
 def build(board: Board, outdir: Path, name: str, router: Router | None = None) -> Built:
     """Write *board*'s KiCad files into *outdir* as ``<name>.kicad_pcb`` and
     ``<name>.kicad_pro``, with what the router read and wrote beside them. *router*
@@ -67,7 +89,8 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
     if problems:
         raise BuildError(name, problems)
 
-    built = replace(board, items=list(board.items), _uuids=set(board._uuids))
+    built = replace(board, items=list(board.items), _uuids=set(board._uuids),
+                    _unsized=dict(board._unsized))  # fmt: skip
     for ref, pose in solution.poses.items():
         part = board[ref]
         nets = {pin.number: pin.net.name for pin in part.pins() if pin.net is not None}
@@ -76,6 +99,10 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                   Placement(part.footprint, ref, part.value, pose.x.mm, pose.y.mm, pose.rot,
                             pose.back, nets=nets))
         )  # fmt: skip
+
+    if rules is not None:
+        built.items = [_sized(item, board._unsized, rules.clearance.mm)
+                       for item in built.items]  # fmt: skip
 
     keepouts: list[tuple[str, list[tuple[float, float]]]] = []
     for kept in solution.keepouts:
