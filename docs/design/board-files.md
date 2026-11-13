@@ -129,8 +129,10 @@ the board is the build's.
 
 - `against=` an edge: the part lies along it, its longer side to the edge. `inset=` is
   from the edge to the centres of the part's pads nearest it, which is what a header's
-  row spacing is measured between; with no inset the part's outline touches the edge.
-  Along the edge it is centred. Two edges are a corner.
+  row spacing is measured between; with no inset the part's outline touches the edge,
+  or the part is as far in as keeps its copper the distance the board's `rules(edge=)`
+  say from it, whichever is further, and the choices say which. Along the edge it is
+  centred. Two edges are a corner.
 - `facing=` an edge: the side that is up in the library footprint is turned to it.
 - `between=` two parts: its centre is midway between theirs, across and along. With
   `against=` an edge as well, the edge says how far the part is from it and
@@ -143,6 +145,12 @@ the board is the build's.
   with holes takes both faces. Where the board has `rules(...)`, pads of two parts on
   different nets are no closer than its clearance: a pair that is closer is reported
   by its two pads, and a part placed `near=` something looks only where it is clear.
+  A pad is no nearer the board's edge than the rules' `edge=`, held the same way.
+- A part's outline is the box around its pads, its courtyard and its fabrication
+  drawing. A footprint with neither a courtyard nor a fabrication drawing has its body
+  on the silk, as older libraries draw it, and its outline takes that in: seven of the
+  fan controller's ten footprints are such, its fan headers among them, whose housing
+  reaches 2.4 mm past their pads.
 - `align`: the parts' first pins are a whole number of grid steps apart. Checked, not
   moved to.
 - `keepout` of an area of a part: no other part's outline reaches into it, on the

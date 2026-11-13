@@ -361,15 +361,17 @@ def test_the_boards_that_are_not_the_box_around_their_outline_are_known():
 
 
 def test_the_fan_controllers_headers_are_in_a_row_between_its_mounting_holes():
-    """Four fan headers, 9.398 mm each, along the 60 mm bottom edge. The holes 4 mm in
-    from the corners are 3.302 mm across and reach into the strip the headers take up,
-    so the edge is clear for 48.698 mm between them: five gaps of 2.2212 mm."""
+    """Four fan headers along the 60 mm bottom edge, each 10.3 mm by its housing, which
+    its footprint draws on the silk and nowhere else: its pads alone are 9.398 mm. The
+    holes 4 mm in from the corners are 3.302 mm across and reach into the strip the
+    headers take up, so the edge is clear for 48.698 mm between them: five gaps of
+    1.4996 mm."""
     board = Board.from_inputs(CORPUS / "t2" / "fan_controller_fan_controller")
     board.row(board.parts("P3", "P4", "P5", "P6"), along=Edge.BOTTOM)
     solution = board.solve()
     assert solution.problems == ()
     assert [solution.poses[ref].x.mm for ref in ("P3", "P4", "P5", "P6")] == pytest.approx(
-        [121.5372, 133.1564, 144.7756, 156.3948]
+        [121.3166, 133.1162, 144.9158, 156.7154]
     )
     assert solution.chosen[-1] == (
         'row(P3, P4, P5, P6, along=Edge.BOTTOM, pitch="even"): over the 48.698 mm of the '

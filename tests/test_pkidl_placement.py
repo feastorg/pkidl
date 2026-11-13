@@ -15,7 +15,7 @@ from pkidl import Board, Edge, Side, align, decouple, keepout, mm, place, row
 from pkidl.circuit import Circuit
 from pkidl.footprint import Placement, pad_xy, pads
 from pkidl.footprint import place as put
-from pkidl.placement import Pose, Problem, Solution
+from pkidl.placement import Pose, Problem, Solution, _shape, _Solver
 from pkidl.sexpr import Node, dumps, parse
 from pkidl.units import Length
 
@@ -1949,11 +1949,109 @@ def test_a_part_that_looks_for_its_place_keeps_its_pads_as_far_off_as_the_rules_
 
 def test_a_hole_of_a_part_is_kept_as_far_from_another_parts_pad_as_the_rules_say():
     board = _board(H1="", T1="A")
-    # The hole is 2 mm across with its middle 1 mm in, and the pad 1 mm square with its
-    # middle 2.6 mm in: 0.1 mm between them.
-    board.place(board["H1"], against=Edge.LEFT, inset=1 * mm)
-    board.place(board["T1"], against=Edge.LEFT, inset=2.6 * mm)
+    # The hole is 2 mm across with its middle 2 mm in, and the pad 1 mm square with its
+    # middle 3.6 mm in: 0.1 mm between them.
+    board.place(board["H1"], against=Edge.LEFT, inset=2 * mm)
+    board.place(board["T1"], against=Edge.LEFT, inset=3.6 * mm)
     board.rules(track=0.25 * mm, clearance=0.2 * mm)
     assert [p.text for p in board.solve().problems] == [
         "a hole of H1 is 0.1 mm from T1.1, and the rules keep copper 0.2 mm apart"
     ]
+
+
+def _ruled(**parts: str) -> Board:
+    board = _board(**parts)
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)  # and copper 0.5 mm from the edge
+    return board
+
+
+@pytest.mark.parametrize(
+    ("edge", "at"),
+    [(Edge.LEFT, (101.0, 65.0)), (Edge.RIGHT, (129.0, 65.0)),
+     (Edge.TOP, (115.0, 51.0)), (Edge.BOTTOM, (115.0, 79.0))],
+)  # fmt: skip
+def test_against_an_edge_is_as_near_it_as_the_rules_let_the_parts_copper_be(edge, at):
+    # A test point is a pad 1 mm square and nothing else: on the edge, its copper is.
+    board = _ruled(T1="A")
+    board.place(board["T1"], against=edge)
+    solution = board.solve()
+    assert solution.problems == () and _pads(board, solution, "T1") == {"1": at}
+    assert solution.chosen[0] == (
+        f"T1: 0.5 mm in from the {edge.value} edge, to keep its copper 0.5 mm from it"
+    )
+    # A resistor's courtyard reaches 0.3 mm past its pads, so it comes in 0.2 mm.
+    board = _ruled(R1="A B")
+    board.place(board["R1"], against=edge)
+    assert board.solve().chosen[0] == (
+        f"R1: 0.2 mm in from the {edge.value} edge, to keep its copper 0.5 mm from it"
+    )
+
+
+def test_a_board_with_no_rules_has_a_part_against_an_edge_on_the_edge():
+    board = _board(T1="A")
+    board.place(board["T1"], against=Edge.LEFT)
+    solution = board.solve()
+    assert _pads(board, solution, "T1") == {"1": (100.5, 65.0)}
+    assert solution.chosen[0] == "T1: centred along the left edge"
+
+
+def test_copper_nearer_the_edge_than_the_rules_say_is_a_problem_where_an_inset_puts_it():
+    board = _ruled(T1="A")
+    board.place(board["T1"], against=Edge.LEFT, inset=0.7 * mm)  # its pad from 0.2 mm in
+    (problem,) = board.solve().problems
+    assert problem.text == (
+        "T1.1 is 0.2 mm from the board's edge, and the rules keep copper 0.5 mm from it"
+    )
+    assert [str(s) for s in problem.statements] == [
+        "place(T1, against=Edge.LEFT, inset=0.7 mm)",
+        "rules(track=0.25 mm, clearance=0.2 mm, edge=0.5 mm)",
+    ]
+    board = _ruled(T1="A")
+    board.place(board["T1"], against=Edge.LEFT, inset=1 * mm)
+    assert board.solve().problems == ()
+
+
+def test_a_part_that_looks_for_its_place_keeps_its_copper_from_the_edge():
+    def above(ruled: bool) -> Solution:
+        # T1's pad is from 1.2 mm in from the top edge: room for a pad 1 mm square
+        # between it and the edge, and not for one 0.5 mm from the edge.
+        board = _ruled(T1="A", T2="A") if ruled else _board(T1="A", T2="A")
+        board.place(board["T1"], against=Edge.TOP, inset=1.7 * mm)
+        board.place(board["T2"], near=board["T1"], within=3 * mm, toward=Edge.TOP)
+        return board.solve()
+
+    assert above(False).problems == () and "T2" in above(False).poses
+    (problem,) = above(True).problems
+    assert problem.text.startswith("T2 has no place within 3 mm of T1, toward the top edge,")
+
+
+def test_a_footprint_with_no_courtyard_or_fabrication_drawing_has_its_body_on_the_silk():
+    def drawn(layer: str, x: float, y: float) -> str:
+        return (f"(fp_rect (start {-x} {-y}) (end {x} {y}) (stroke (width 0.1) (type solid)) "
+                f'(fill no) (layer "{layer}"))')  # fmt: skip
+
+    pad = _smd(1, 0, 0, 1, 1)
+
+    def mm_box(fp: Node) -> tuple[float, ...]:
+        return tuple(v / 1_000_000 for v in _shape(fp).box)
+
+    # An older footprint draws its housing on the silk and nowhere else.
+    assert mm_box(_footprint("S", drawn("F.SilkS", 3, 2), pad)) == (-3, -2, 3, 2)
+    # One with a courtyard is its courtyard, whatever its silk shows.
+    both = drawn("F.SilkS", 3, 2) + " " + drawn("F.CrtYd", 1, 1)
+    assert mm_box(_footprint("S", both, pad)) == (-1, -1, 1, 1)
+    # Text is not a drawing of the part: a value written on the fabrication layer does
+    # not make that layer the body's.
+    text = '(fp_text value "x" (at 9 9) (layer "F.Fab"))'
+    assert mm_box(_footprint("S", text + " " + drawn("F.SilkS", 3, 2), pad)) == (-3, -2, 3, 2)
+    assert mm_box(_footprint("S", text, pad)) == (-0.5, -0.5, 0.5, 0.5)
+
+
+def test_a_placed_parts_outline_is_where_the_part_is_now():
+    board = _board(T1="A")
+    solver = _Solver(board.circuit, board.library, (100.0, 50.0, 130.0, 80.0), [])
+    solver.poses["T1"] = Pose(110 * mm, 60 * mm)
+    assert solver._box("T1") == (109_500_000, 59_500_000, 110_500_000, 60_500_000)
+    # Asked again once the part has moved, as it is between one pass and the next.
+    solver.poses["T1"] = Pose(120 * mm, 60 * mm)
+    assert solver._box("T1") == (119_500_000, 59_500_000, 120_500_000, 60_500_000)

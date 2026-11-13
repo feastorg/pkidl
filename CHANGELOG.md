@@ -213,6 +213,16 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A footprint with no courtyard and no fabrication drawing has its body on the silk,
+  and a part's outline takes that in. Such a part was taken as the box around its
+  pads: a fan header's housing hung off the board's edge, and other parts were placed
+  inside it.
+- A pad is no nearer the board's edge than the board's `rules(edge=)`. A part
+  `against=` an edge with no `inset=` is as far in as keeps its copper that far from
+  it, and `Board.solve()` says so in its choices; an `inset=` that puts a pad nearer
+  is a problem naming the pad; and a part placed `near=` something looks only where
+  its copper is clear of the edge. On a board with no rules a part against an edge is
+  on it, as before.
 - Pads of two parts on different nets are kept as far apart as the board's rules say
   (`rules(clearance=)`). Two parts could touch, and their pads with them: on the fan
   controller a capacitor's pad was 0.036 mm from a pin of the processor. `Board.solve()`
