@@ -16,7 +16,8 @@ Unreleased. History before this file was reconstructed from the git log.
   `Board.fixed` lists them. `Board.solve()` reports a part outside the outline or over
   a hole, has a part placed `near=` something look only where it is clear of both, and
   spreads a row over the longest stretch of its edge that holes and the outline leave
-  clear, saying how long that is. (#4)
+  clear, saying how long that is. An outline that does not close, or that encloses two
+  areas apart from each other, is the board's one problem, and nothing is placed. (#4)
 - `place(part, centre=True)`: the middle of the part's outline at the middle of the
   board. `place(part, near=, within=, toward=Edge.TOP)`: on the side of what it is near
   that is toward an edge, its whole outline beyond that part's outline. `side=` is

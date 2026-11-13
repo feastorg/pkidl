@@ -15,7 +15,7 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 from shapely.geometry import LineString, Polygon
-from shapely.ops import polygonize, unary_union
+from shapely.ops import polygonize_full, unary_union
 
 Point = tuple[float, float]
 
@@ -53,8 +53,11 @@ def _round(ox: float, oy: float, r: float, a0: float, span: float) -> list[Point
 
 def shape(items: Iterable[Mapping[str, Any]]) -> Polygon:
     """The area the outline *items* enclose, in board millimetres: each item as
-    ``mechanical.json`` lists it. A cut-out drawn inside the outline is a hole in it.
-    Raises ``ValueError`` for an outline that does not close."""
+    ``mechanical.json`` lists it. A cut-out drawn inside the outline is a hole in it,
+    and a line that closes nothing is ignored within the box around the board. Raises
+    ``ValueError`` for an outline that does not close, or has a line left over that
+    reaches outside that box, and for one that encloses two areas apart from each
+    other."""
     lines: list[LineString] = []
     for item in items:
         kind = item["type"]
@@ -74,9 +77,26 @@ def shape(items: Iterable[Mapping[str, Any]]) -> Polygon:
             lines.append(LineString([*corners, corners[0]]))
         else:
             raise ValueError(f"outline: {kind!r} is not something Edge.Cuts is drawn with")
-    faces = list(polygonize(unary_union(lines))) if lines else []
+    open_ended = "the outline does not close: its items do not meet end to end"
+    if not lines:
+        raise ValueError(open_ended)
+    found, *rest = polygonize_full(unary_union(lines))
+    faces = list(found.geoms)
     if not faces:
-        raise ValueError("the outline does not close: its items do not meet end to end")
-    # A cut-out is a face of its own, and a hole in the face around it: the board is
-    # the largest.
-    return max(faces, key=lambda face: face.area)
+        raise ValueError(open_ended)
+    # Each closed line is a face. One inside an odd number of them, itself counted, is
+    # board; one inside an even number is cut out of it.
+    rings = [Polygon(face.exterior) for face in faces]
+    solid = [face for face in faces
+             if sum(ring.contains(face.representative_point()) for ring in rings) % 2]  # fmt: skip
+    board = unary_union(solid)
+    if not isinstance(board, Polygon):
+        raise ValueError(f"the outline encloses {len(solid)} areas apart from each other, "
+                         "not one board")  # fmt: skip
+    # A line that closes nothing is no harm within the box around the board: real
+    # outlines have stubs where an edge is drawn on past a rounded corner. One that
+    # reaches outside that box is an outline left open.
+    box = board.envelope.buffer(1e-6)
+    if not all(box.covers(line) for left in rest for line in left.geoms):
+        raise ValueError(open_ended)
+    return board

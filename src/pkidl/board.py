@@ -20,7 +20,7 @@ from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
 from pkidl.edge import shape as edge_shape
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
 from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Route, Row, Rules, Side, Statement
-from pkidl.placement import Fixed, Solution, solve
+from pkidl.placement import Fixed, Problem, Solution, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 from pkidl.units import Length, length, mm
 
@@ -197,8 +197,9 @@ class Board:
         placed = Placement(footprint, ref, name, x, y, rot, back, board_only=True,
                            uid=f"hole:{x},{y}")  # fmt: skip
         self.footprint(place(self.library[footprint], placed))
-        fixed = Fixed(f"{name} at ({x:g}, {y:g})", footprint, Length(round(x * 1_000_000)),
-                      Length(round(y * 1_000_000)), float(rot), back)  # fmt: skip
+        fx, fy = Length(round(x * 1_000_000)), Length(round(y * 1_000_000))
+        where = ", ".join(str(v).removesuffix(" mm") for v in (fx, fy))
+        fixed = Fixed(f"{name} at ({where})", footprint, fx, fy, float(rot), back)
         self.fixed.append(fixed)
         return fixed
 
@@ -344,8 +345,12 @@ class Board:
         """Where everything said puts each part: a pose for each part placed, the parts
         nothing places, and what was said that does not hold, with its lines. Nothing
         on the board moves. See ``pkidl.placement``."""
+        try:
+            edge = self.edge()
+        except ValueError as e:  # an outline that is not one board: nothing is placed on it
+            return Solution({}, (), (Problem((), str(e)),), ())
         return solve(self.circuit, self.library, self.extent, self._statements,
-                     edge=self.edge(), fixed=self.fixed)  # fmt: skip
+                     edge=edge, fixed=self.fixed)  # fmt: skip
 
     def edge(self) -> Polygon | None:
         """The area inside the board's outline, in board millimetres, or None for a

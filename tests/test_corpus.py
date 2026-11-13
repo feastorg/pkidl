@@ -340,8 +340,8 @@ def test_every_outline_encloses_one_area_with_the_extent_the_board_is_drawn_to(d
 
 
 def test_the_boards_that_are_not_the_box_around_their_outline_are_known():
-    """Rounded corners on four, and one that narrows on a slant to a tab: where a part
-    can be inside the box and off the board."""
+    """Arcs at the corners of four, and one that narrows on a slant to a tab: where a
+    part can be inside the box and off the board."""
     cut = {}
     for d in BOARDS:
         board = Board.from_inputs(d)
@@ -379,3 +379,30 @@ def test_the_fan_controllers_headers_are_in_a_row_between_its_mounting_holes():
     told = [p.text for p in board.solve().problems]
     assert told[1] == "U2 is over MountingHole_0.13in at (112.966, 57.932)"
     assert told[0].startswith("U2 does not fit on the board: it reaches 1.65")
+
+
+def _is_its_box(d: Path) -> bool:
+    board = Board.from_inputs(d)
+    edge, (x0, y0, x1, y1) = board.edge(), board.extent  # pyright: ignore[reportGeneralTypeIssues]
+    return edge.area >= (x1 - x0) * (y1 - y0) * (1 - 1e-9)  # pyright: ignore[reportOptionalMemberAccess]
+
+
+PLAIN = [d for d in BOARDS if _is_its_box(d)]
+
+
+def test_ten_of_the_boards_are_plain_rectangles():
+    assert len(PLAIN) == 10  # an empty list would skip the test below
+
+
+@pytest.mark.parametrize("d", PLAIN, ids=lambda d: d.name)
+def test_on_a_board_that_is_its_box_a_part_against_any_edge_is_on_the_board(d):
+    """Drawn where they were drawn: 129.54 mm is not a whole number of nanometres until
+    it is rounded."""
+    board = Board.from_inputs(d)
+    part = board.parts()[0]
+    for side in Edge:
+        tried = Board.from_inputs(d)
+        tried.fixed.clear()  # the holes are another matter
+        tried.place(tried[part.ref], against=side)
+        solution = tried.solve()
+        assert solution.problems == (), (side, solution.problems)

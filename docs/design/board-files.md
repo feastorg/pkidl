@@ -287,8 +287,12 @@ clear (decided 2026-11-11), and now does: below.
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline
 encloses (`pkidl.edge`): the lines and arcs joined end to end, an arc followed to
 within a micrometre, a cut-out a hole in it. Five of the fifteen corpus boards are not
-the box around their outline: four have rounded corners, and one narrows on a slant to
-a tab at one side and is 68% of its box. `board.hole(footprint, at)` puts a mounting hole on the board and
+the box around their outline: three have rounded corners, one has an arc bitten out of
+each corner, and one narrows on a slant to a tab at one side and is 68% of its box.
+An outline that does not close, or that encloses two areas apart from each other, is
+not a board: that is the one problem `board.solve()` gives, and nothing is placed. A
+stub of a line that closes nothing is ignored within the box around the board, since
+real outlines have them where an edge is drawn on past a rounded corner. `board.hole(footprint, at)` puts a mounting hole on the board and
 tells the solver of it, and `Board.from_inputs` does so for each hole in
 `mechanical.json`; `board.fixed` lists them. A hole is the box around its own
 footprint, as a part is: the drill alone on the fan controller, a courtyard 6.9 mm
@@ -305,9 +309,9 @@ That is the fan controller's regulator against the left and top edges, in a corn
 rounded to 4 mm about a hole. A part that looks for a place (`near=`) looks only where
 it is inside the outline and clear of the holes.
 
-A row spreads over the longest stretch of its edge that is clear, across the strip its
-parts take up: clear of the holes that reach into that strip, and of where the outline
-is cut back from the edge. Its gaps are equal within that stretch, and a pitch is about
+A row spreads over the longest stretch of its edge that is clear, across the strip from
+the edge to the far side of its parts: clear of the holes that reach into that strip,
+and of where the outline is cut back from the edge. Its gaps are equal within that stretch, and a pitch is about
 its middle. Only what is fixed narrows a row, never another part, so where a row's
 parts go still does not depend on where anything is placed. The fan headers are
 3.684 mm deep and the holes reach to 2.349 mm from the edge, so the bottom edge is clear

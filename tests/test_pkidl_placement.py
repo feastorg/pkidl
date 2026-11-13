@@ -1636,3 +1636,69 @@ def test_a_row_with_a_pitch_is_about_the_middle_of_what_is_clear():
         "row(R1, R2, R3, along=Edge.BOTTOM, pitch=12 mm) does not fit: at that pitch R1 reaches "
         "0.3 mm past the end of what is clear of the bottom edge"
     ]
+
+
+def _drawn(x0: float, y0: float, x1: float, y1: float, **parts: str) -> Board:
+    """A board whose outline is drawn as four lines between those corners."""
+    made = _board(**parts)
+    board = Board(circuit=made.circuit, library=made.library)
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    board.outline({"type": "gr_line", "start": a, "end": b}
+                  for a, b in zip(corners, corners[1:] + corners[:1], strict=True))  # fmt: skip
+    return board
+
+
+@pytest.mark.parametrize("edge", [Edge.LEFT, Edge.RIGHT, Edge.TOP, Edge.BOTTOM])
+def test_a_plain_board_drawn_where_millimetres_are_not_whole_nanometres_is_still_its_box(edge):
+    # 129.54 mm times a million is 129539999.99999999: an outline scaled and not
+    # rounded is a hair off its box, and a part touching that edge was outside it.
+    board = _drawn(149.86, 96.52, 238.76, 129.54, R1="A B", R2="C D", R3="E F")
+    board.place(board["R1"], against=edge)
+    board.row(board.parts("R2", "R3"), along=edge, inset=5 * mm)
+    solution = board.solve()
+    assert solution.problems == ()
+    assert not any("clear" in line or "outside" in line for line in solution.chosen)
+
+
+@pytest.mark.parametrize("rot", [0, 90, 180, 270])
+def test_what_is_fixed_is_the_same_size_turned_through_right_angles(rot):
+    # A 3 mm part at the centre of the board is from 113.5 mm; a 2 mm hole at 112.5
+    # ends there. Touching is not overlapping, whichever way round the hole is.
+    board = _board(Q1="A B")
+    board.hole("Mech:Hole", (112.5, 65), rot=rot)
+    board.place(board["Q1"], centre=True)
+    assert board.solve().problems == ()
+    # And 1 micrometre further in, it is over it.
+    board = _board(Q1="A B")
+    board.hole("Mech:Hole", (112.501, 65), rot=rot)
+    board.place(board["Q1"], centre=True)
+    assert [p.text for p in board.solve().problems] == ["Q1 is over Hole at (112.501, 65)"]
+
+
+def test_which_hole_a_problem_names_does_not_depend_on_which_was_put_on_the_board_first():
+    told = []
+    for holes in ([(112, 65), (118, 65)], [(118, 65), (112, 65)]):
+        board = _board(U1="A B C D GND")
+        for at in holes:
+            board.hole("Mech:Hole", at)
+        board.place(board["U1"], centre=True, facing=Edge.TOP)
+        told.append([p.text for p in board.solve().problems])
+    assert told[0] == told[1] == ["U1 is over Hole at (112, 65)"]
+
+
+def test_a_hole_is_called_by_where_it_is_to_the_nanometre():
+    board = _board(Q1="A B")
+    assert board.hole("Mech:Hole", (115.1234567, 65.7654321)).label == (
+        "Hole at (115.123457, 65.765432)"
+    )
+
+
+def test_a_part_with_no_place_on_a_board_with_holes_is_told_they_are_among_what_it_avoids():
+    board = _board(P1="A B C D", R1="B X")
+    board.hole("Mech:Hole", (102, 52))
+    board.place(board["P1"], against=Edge.BOTTOM)
+    board.place(board["R1"], near=board["P1"], within=4 * mm, toward=Edge.BOTTOM)
+    assert [p.text for p in board.solve().problems] == [
+        "R1 has no place within 4 mm of P1, toward the bottom edge, that is on the front of "
+        "the board and clear of the other parts and its holes"
+    ]

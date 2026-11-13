@@ -62,6 +62,15 @@ def test_a_cut_out_drawn_inside_the_outline_is_a_hole_in_the_board():
     board = shape([*SQUARE, slot])
     assert board.area == 96 and len(board.interiors) == 1
     assert not board.contains(shape([slot]).centroid)
+    # A frame: the cut-out is most of the box, and is still what is cut out.
+    frame = shape([*SQUARE, {"type": "gr_rect", "start": [1, 1], "end": [9, 9]}])
+    assert frame.area == 36 and frame.bounds == (0, 0, 10, 10)
+
+
+def test_a_line_that_closes_nothing_is_ignored_within_the_box_around_the_board():
+    # Real outlines have stubs where an edge is drawn on past a rounded corner.
+    assert shape([*SQUARE, _line((10, 4), (10, 4.5))]).area == 100
+    assert shape([*SQUARE, _line((4, 4), (5, 5))]).area == 100
 
 
 @pytest.mark.parametrize(
@@ -71,6 +80,20 @@ def test_a_cut_out_drawn_inside_the_outline_is_a_hole_in_the_board():
         ([], "the outline does not close: its items do not meet end to end"),
         ([{"type": "gr_text", "start": [0, 0]}],
          "outline: 'gr_text' is not something Edge.Cuts is drawn with"),
+        # Three sides of the board and a slot in it: the slot is not the board.
+        ([*SQUARE[:3], {"type": "gr_rect", "start": [4, 4], "end": [6, 6]}],
+         "the outline does not close: its items do not meet end to end"),
+        ([*SQUARE, _line((10, 10), (12, 12))],
+         "the outline does not close: its items do not meet end to end"),
+        ([*SQUARE, {"type": "gr_rect", "start": [20, 0], "end": [30, 10]}],
+         "the outline encloses 2 areas apart from each other, not one board"),
+        # An island in a cut-out is a second board, and so are the halves of a bow-tie.
+        ([*SQUARE, {"type": "gr_rect", "start": [1, 1], "end": [9, 9]},
+          {"type": "gr_rect", "start": [4, 4], "end": [6, 6]}],
+         "the outline encloses 2 areas apart from each other, not one board"),
+        ([_line((0, 0), (10, 10)), _line((10, 10), (10, 0)), _line((10, 0), (0, 10)),
+          _line((0, 10), (0, 0))],
+         "the outline encloses 2 areas apart from each other, not one board"),
     ],
 )  # fmt: skip
 def test_an_outline_that_does_not_close_is_refused(items, message):
@@ -85,3 +108,13 @@ def test_a_board_knows_its_edge_once_its_outline_is_drawn():
     board.outline(SQUARE)
     edge = board.edge()
     assert edge is not None and edge.equals(shape(SQUARE)) and board.extent == (0, 0, 10, 10)
+
+
+def test_a_board_whose_outline_is_not_one_board_has_that_as_its_problem_and_places_nothing():
+    board = Board()
+    board.outline(SQUARE[:3])
+    solution = board.solve()
+    assert solution.poses == {} and not solution.ok
+    assert [p.text for p in solution.problems] == [
+        "the outline does not close: its items do not meet end to end"
+    ]

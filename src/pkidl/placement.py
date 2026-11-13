@@ -51,7 +51,8 @@ and cut-outs included, and clear of what is fixed on the board: its mounting hol
 taken as the box around its own footprint, as a part is. Neither moves a part: one that
 is put outside the outline or over a hole is reported. A part that looks for a place
 (``near=``) looks only where it is clear of both, and a row spreads over the longest
-stretch of its edge that is clear, across the strip its parts take up. Only what is
+stretch of its edge that is clear, across the strip from the edge to the far side of
+its parts. Only what is
 fixed narrows a row, never another part, so a row still does not depend on where
 anything is placed. An edge is a side of the box around the outline.
 
@@ -249,14 +250,15 @@ def solve(
 def _spun(box: Box, rot: float, back: bool) -> Box:
     """The box around *box* once its footprint is turned *rot* degrees, any angle, as
     KiCad turns it: mirrored in Y on the back, then counter-clockwise from the front."""
-    a = math.radians(rot)
-    cos, sin = math.cos(a), math.sin(a)
-    xs, ys = [], []
-    for x in (box[0], box[2]):
-        for y in (box[1], box[3]):
-            y = -y if back else y
-            xs.append(x * cos + y * sin)
-            ys.append(-x * sin + y * cos)
+    corners = [(x, y) for x in (box[0], box[2]) for y in (box[1], box[3])]
+    if rot % 90 == 0:  # a right angle is exact
+        turned = [_turn(x, y, int(rot) % 360, back) for x, y in corners]
+        xs, ys = [float(x) for x, _ in turned], [float(y) for _, y in turned]
+    else:
+        a = math.radians(rot)
+        cos, sin = math.cos(a), math.sin(a)
+        xs = [x * cos + (-y if back else y) * sin for x, y in corners]
+        ys = [-x * sin + (-y if back else y) * cos for x, y in corners]
     return (math.floor(min(xs)), math.floor(min(ys)), math.ceil(max(xs)), math.ceil(max(ys)))
 
 
@@ -274,15 +276,27 @@ class _Solver:
         # The area inside the outline, in nanometres, where it is not the whole box.
         self.edge: Polygon | None = None
         if edge is not None:
-            inside = Polygon([(x * 1e6, y * 1e6) for x, y in edge.exterior.coords],
-                             [[(x * 1e6, y * 1e6) for x, y in ring.coords]
+            # In whole nanometres, as everything here is: 129.54 mm is not 129540000 nm
+            # until it is rounded, and a board is its box only when it is exactly that.
+            inside = Polygon([(_nm(x), _nm(y)) for x, y in edge.exterior.coords],
+                             [[(_nm(x), _nm(y)) for x, y in ring.coords]
                               for ring in edge.interiors])  # fmt: skip
             if not inside.equals(_area(*self.board)):
                 self.edge, self.within = inside, prep(inside)
+        # Where the box around the outline is not board, piece by piece: a part clear
+        # of the box around each piece is on the board without looking further.
+        self.cuts: list[Box] = []
+        if self.edge is not None:
+            off = _area(*self.board).difference(self.edge)
+            for piece in getattr(off, "geoms", [off]):
+                x0, y0, x1, y1 = piece.bounds
+                self.cuts.append((math.floor(x0), math.floor(y0), math.ceil(x1), math.ceil(y1)))
         # What is fixed on the board: each with its outline there, and whether it has
         # holes and so takes both faces.
         self.fixed: list[tuple[Fixed, Box, bool]] = []
-        for f in fixed:
+        # In an order of their own, so that which of two a problem names is not the
+        # order they were put on the board in.
+        for f in sorted(fixed, key=lambda f: (f.x.nm, f.y.nm, f.label, f.rot, f.back)):
             if f.footprint not in library:
                 raise ValueError(f"{f.label}: no footprint {f.footprint!r} to keep clear of")
             shape = _shape(library[f.footprint])
@@ -487,8 +501,9 @@ class _Solver:
 
     def _run(self, row: Row) -> tuple[int, int]:
         """The stretch of its edge that *row* spreads over: the longest that is clear,
-        across the strip the row's parts take up, of what is fixed on the board and of
-        where the outline is cut back from the edge. The whole edge where nothing is."""
+        across the strip from the edge to the far side of the row's parts, of what is
+        fixed on the board and of where the outline is cut back from the edge. The
+        whole edge where nothing is."""
         if row not in self.runs:
             axis = 0 if row.along in (Edge.TOP, Edge.BOTTOM) else 1
             lo, hi = self.board[axis], self.board[axis + 2]
@@ -672,7 +687,9 @@ class _Solver:
         if not (self.board[0] <= box[0] and self.board[1] <= box[1]
                 and box[2] <= self.board[2] and box[3] <= self.board[3]):  # fmt: skip
             return False
-        return self.edge is None or self.within.covers(_area(*box))
+        if self.edge is None or not any(_overlap(box, cut) for cut in self.cuts):
+            return True
+        return self.within.covers(_area(*box))
 
     def _over(self, box: Box, back: bool, through: bool) -> Fixed | None:
         """What is fixed on the board that *box*, on that face, overlaps: the first."""
@@ -749,10 +766,11 @@ class _Solver:
             if kept and nearest(False)[0] is None:
                 kept = []
             toward = "" if s.toward is None else f", toward the {s.toward.value} edge,"
+            holes = " and its holes" if self.fixed else ""
             self._problem((ref,), f"{ref} has no place within {s.within} of {s.near}{toward} "
                           f"that is on the {'back' if back else 'front'} of the board and "
-                          "clear of the "
-                          "other parts" + (" and of what is kept clear" if kept else ""),
+                          f"clear of the other parts{holes}"
+                          + (" and of what is kept clear" if kept else ""),
                           s, *kept)  # fmt: skip
             return None
         self._chose(f"{ref}: {Length(math.isqrt(found))} from {s.near}, turned "
