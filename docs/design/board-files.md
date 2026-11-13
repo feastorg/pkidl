@@ -477,7 +477,23 @@ Open after this:
   the 13 warnings. `pkidl.silk` moves references clear, and the build does not call it.
 - **The pour is not a statement.** `board.pour("GND", layer=)` draws a zone when it is
   called, as `Board.pour` always has. The router is not told of it and routes GND as
-  track; KiCad fills the pour around what was routed.
+  track; KiCad fills the pour around what was routed. A build does size it: a pour
+  that does not say its clearance or its thermal gap has both from the board's rules,
+  as near other copper and its own pads as a track may be, where a zone drawn by hand
+  has 0.4 and 0.5 mm. On the fan controller, whose rules say 0.2 mm, that is the
+  difference between two ground pins of its headers with too few spokes into the pour
+  and none.
+- **Telling the router of a pour was tried on the fan controller and is not built**
+  (#19). Kept off the pour until a last pass, Freerouting 2.5.0 left 2 connections
+  unmade: a whole layer of a two-layer board is the pour. Free to cross it, it made
+  every connection by its own count and left the back with 16 short tracks and no
+  ground track, and four of those tracks fenced off 26 mm2 of the pour with the via
+  of a capacitor's ground pad inside it: unconnected, by KiCad's. Filling the pours
+  round what was routed (`pkidl.fill.prefill`) finds that, and the router asked to
+  join the pieces did not, with the other tracks fixed or free to move. Decided
+  2026-11-13: a build will route with the pours known, check each poured net is one
+  piece, and where it is not say what was cut off and route again with that net
+  carried by tracks.
 - **Every net is in one class**, with the board's one track width and clearance.
   Classes, and so the stages, wait for words that say which nets carry power.
 - **The build does not run KiCad.** Refill and DRC are `just corpus`'s, on the files

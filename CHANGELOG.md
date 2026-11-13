@@ -217,6 +217,10 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A pour that does not say its `clearance` or its `thermal_gap` has both from the
+  board's `rules(clearance=)` when the board is built, where it had 0.4 and 0.5 mm
+  whatever the rules. A pour that says either keeps what it says, a zone drawn with
+  `Board.zone` is as drawn, and so is a pour on a board with no rules.
 - A footprint with no courtyard and no fabrication drawing has its body on the silk,
   and a part's outline takes that in. Such a part was taken as the box around its
   pads: a fan header's housing hung off the board's edge, and other parts were placed
