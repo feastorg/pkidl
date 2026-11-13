@@ -292,8 +292,8 @@ and reported where the two are apart (`R1 is put in two places 4.8 mm apart acro
 board`). `near=` is still solved alone, so not beside a row.
 
 On the fan controller, `row(fans, along=Edge.BOTTOM)` first put the four headers,
-then taken as 9.398 mm each by their pads, along the whole 60 mm edge with five gaps of 4.48 mm, the end two over
-the mounting holes 4 mm in from the corners. A row spreads over what the holes leave
+then taken as 9.398 mm each by their pads, along the whole 60 mm edge with five gaps
+of 4.48 mm, the end two over the mounting holes 4 mm in from the corners. A row spreads over what the holes leave
 clear (decided 2026-11-11), and now does: below.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it

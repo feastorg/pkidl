@@ -2006,7 +2006,9 @@ def test_copper_nearer_the_edge_than_the_rules_say_is_a_problem_where_an_inset_p
     ]
     board = _ruled(T1="A")
     board.place(board["T1"], against=Edge.LEFT, inset=1 * mm)
-    assert board.solve().problems == ()
+    solution = board.solve()
+    # Where it was put, and not said to have been moved there for its copper.
+    assert solution.problems == () and _moved_in(solution) == []
 
 
 def test_a_part_that_looks_for_its_place_keeps_its_copper_from_the_edge():
