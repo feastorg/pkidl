@@ -3,6 +3,10 @@
 Where pkidl stands, and the next milestones. The charter (`docs/charter.md`) says why;
 the board files (`docs/design/board-files.md`) say what the language should look like.
 
+This file is orientation: what is done, what was decided, and the order of what is
+next. The work itself is in the issues, and each milestone below names its own. What
+is open and belongs to no milestone is in the issue list, not here.
+
 ## Done (2026-11-11)
 
 - Charter and prior-art survey (`docs/charter.md`, `docs/survey/`).
@@ -64,6 +68,9 @@ How long the board file is goes in the scorecard and is not a bar to pass. A lin
 that says which capacitor goes to which pin is worth more than its absence, and a
 target on length is a reason to leave it out.
 
+Tracked in #8. Steps 1 to 4 are merged, step 5 is #7, step 6 is #11 and step 7 is #12.
+The router is still given the box around the board and not its outline (#13).
+
 In order; each a PR with its tests:
 
 1. **Pin names, said in the board file.** No corpus reference carries pin names
@@ -86,8 +93,8 @@ In order; each a PR with its tests:
    clear of, and its corners, rounded to a 4 mm radius about those holes, where the
    solver takes the board as the box around its outline. A row then spreads over what
    the holes leave clear of an edge (decided 2026-11-11). `near=` solved with
-   `against=` or `between=` beside it is the other limit; no line of the sketch needs
-   it yet, so it is built when a board file does.
+   `against=` or `between=` beside it is the other limit (#14); no line of the sketch
+   needs it yet, so it is built when a board file does.
 5. **Decoupling from the circuit**: `board.decouple(u1, caps)` puts each capacitor by
    a supply pin it is on. The sketch gives U1 three capacitors on +5V (C2, C8, C9),
    and U1 has two +5V pins (13, 28), with U2's output on the same net: which
@@ -104,6 +111,8 @@ In order; each a PR with its tests:
 
 ## Milestone 2b: a board with the library as it stands
 
+Tracked in #23.
+
 Every step of milestones 1 and 2 changed pkidl for the board it was made for. That is
 how the language gets built, and it is not evidence that the language carries over.
 The evidence is a board written afterwards with nothing added.
@@ -113,10 +122,10 @@ written from its circuit and its mechanical inputs with no change under `src/pki
 21 parts, four mounting holes, and an arc bitten out of each corner. It is a different
 board from the two that shaped the library, in a tier the library already claims.
 
-**Done when** that board file is committed as far as it can be written, and this file
-lists what it could not say: each thing the board needed that pkidl did not have, one
-line each, with the statement that would have said it. The count is the measure, and
-it goes beside the board's row in the scorecard. Nothing on the list is built in that
+**Done when** that board file is committed as far as it can be written, and what it
+could not say is listed: each thing the board needed that pkidl did not have, one line
+each, with the statement that would have said it, and each filed as an issue. The
+count is the measure, and it goes beside the board's row in the scorecard. Nothing on the list is built in that
 PR.
 
 What the count means is decided before it is known. None or one: the next board is
@@ -130,24 +139,31 @@ OpenMPPT: `path(..., current=)` sizing copper and checking the narrowest neck on
 filled board, loops and areas as objectives, Kelvin sense, heatsinking. This is where
 DCMT's copied copper in `spike/` gets replaced by intent.
 
+Tracked in #10, coarse until milestone 2b's count is in. What is already known to be
+in the way: a pour is not a statement and the router is not told of it (#19), a board
+file has no words for which nets carry power (#20), a pour is filled across a cut-out
+and on outer layers only (#21), and there is no way to write a track by hand from a
+pin (#22).
+
 ## Later
 
 T3 (stackup, impedance, differential pairs), T4 (planes, fanout, mechanical standards as
 templates), and `spike/`'s boards rewritten in the language.
 
-## Open items
+## The placement solver
 
-- **KiCad 10 never finishes refilling three corpus references** (OpenMPPT,
-  bldc-gimbal-1d, a123 BCM); `just corpus` gives up after 600 s. Cause unknown; worth a
-  minimal reproduction before any upstream report.
-- **pre-commit is not installed in this clone**: installing a hook repo for the first
-  time is a hand step on the machine it was written on. CI runs the same checks.
-- **Whether agents should edit the intent model's data form or the Python**: tested once
-  milestone 1's model exists (charter, open questions).
-- **The placement solver places one part at a time**, each after what it is placed by,
-  and goes round until nothing moves. It reports what it cannot hold together and does
-  not search for it: `near=` is solved alone, and a placement that does not settle is
-  said to be one. Milestone 2b says how much that costs on a board it was not built for.
-- **Verification in the language of intent is one measure**, of pours
-  (`pkidl.measure`). KiCad's DRC judges everything else, and DRC does not say whether
-  a board carries its current. Milestone 3 is where that starts.
+The solver places one part at a time, each after what it is placed by, and goes round
+until nothing moves. It reports what it cannot hold together and does not search for
+it. Where it has been seen to stop is #9: `near=` solved alone (#14), a placement that
+does not settle (#15), a part against an edge centred on the whole edge (#16), an area
+of a part placed `near=` something (#17), and 14 s to solve 49 parts (#18). Milestone
+2b says how much that costs on a board it was not built for.
+
+## Open, outside the milestones
+
+In the issue list. The ones a milestone will meet:
+
+- KiCad 10 never finishes refilling three corpus references, OpenMPPT among them (#24).
+- A routing run says how many connections it left unmade, not which (#25).
+- Whether tools should edit the intent model's data form or the Python: the charter's
+  open question (#30).
