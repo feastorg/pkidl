@@ -437,7 +437,7 @@ and takes what KiCad reports unconnected (`pkidl.kicad.unconnected`): its word d
 since its fill is the one the board will have. Where KiCad is not installed, or does not
 finish, `pkidl.fill.cut_off` answers from pkidl's model of that fill, below, and
 `Routed.judge` says which it was: `KiCad` or `model`. Decided 2026-11-13, after the model
-was twice found to pass a pad KiCad leaves unconnected.
+was found, twice by then and five times in all, to pass a pad KiCad leaves unconnected.
 
 So a net is left to its pour only where its pour was checked to carry it. The check is
 of the nets that have pours. What the router says it left unmade of the others, and
@@ -459,20 +459,25 @@ router and not a board with a pad left unconnected. What it models:
   says an angle of its own.
 - The gap and the spoke's width are the pad's own where it says them. Solid, or no
   connection, is as the pad, its footprint or the zone it lies in says.
-- A spoke has no copper in the gap cut round another pad of its net. KiCad may join two
-  such pads spoke to spoke, and the model does not.
+- The fill is cut away, by its gap, round every pad of the net that has a relief, and
+  what that leaves thinner than the fill's least width is gone: a pad in the only way
+  through a wall parts the pour. A pad is joined to each piece a spoke of its reaches,
+  with two spokes in all; a spoke has its copper across the pad's own gap and beyond.
+  KiCad may join two neighbouring pads spoke to spoke, and the model does not.
 - A pad of the pour's own net that joins no pour is cut back from like other copper,
   and other copper is kept the clearance its pad or footprint asks for itself.
 - The fill is inside the outline as it is drawn, cut-outs and all, and as far from an
   unplated hole as KiCad asks.
 
-It has been wrong the dangerous way four times, each found by trying to break it, each
-confirmed by KiCad 10.0.6 where it could be, and each now a test: a pad taken as joined
+It has been wrong the dangerous way five times, each found by trying to break it, each
+confirmed by KiCad 10.0.6 but the first, and each now a test: a pad taken as joined
 for lying in the pour; a spoke counted across the gap round a neighbouring pad of its
-own net; a pour filled over a pad of its own net that joins no pour; and a pad's own
-clearance not kept. A board of twenty such cases, one to a net, was filled by KiCad and
-by the model: of the nineteen with a pour the model now joins none that KiCad leaves
-unconnected, and is the stricter on some. That is why KiCad is asked where it is there.
+own net; a pour filled over a pad of its own net that joins no pour; a pad's own
+clearance not kept; and the gap round a pad of the net, which parts the pour where the
+pad is in the only way through. Two boards of such cases, one case to a net, were filled
+by KiCad and by the model: of the twenty-two with a pour the model now joins none that
+KiCad leaves unconnected, and is the stricter on four. That is why KiCad is asked where
+it is there.
 
 KiCad's verdict is its unconnected items, and with them any pad it joins by fewer
 spokes than it asks (`starved_thermal`): connected, by its fill, and an error by its

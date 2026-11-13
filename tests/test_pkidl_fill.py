@@ -386,10 +386,10 @@ def test_a_pads_own_spoke_angle_gap_and_width_are_the_ones_its_spokes_have():
     assert _cut(_one("A", 5, 15), *off) == []
     assert _cut(_one("A", 5, 15, more="(thermal_gap 1.5)"), *off) == ["A.1"]
     # Copper beside each spoke's line that reaches 0.05 mm into a spoke 0.5 mm wide is
-    # clear of one 0.3 mm wide.
+    # clear of one 0.1 mm wide, with room for the fill's rounding where it meets the gap.
     beside = _round([(1.6, 0.9), (-1.6, -0.9), (-0.9, 1.6), (0.9, -1.6)])
     assert _cut(_one("A", 5, 15), *beside) == ["A.1"]
-    assert _cut(_one("A", 5, 15, more="(thermal_bridge_width 0.3)"), *beside) == []
+    assert _cut(_one("A", 5, 15, more="(thermal_bridge_width 0.1)"), *beside) == []
 
 
 def test_a_spoke_needs_the_fills_least_width_of_copper_beyond_the_gap():
@@ -472,3 +472,87 @@ def test_a_turned_pads_copper_is_off_its_hole_the_way_the_pad_is_turned():
     # Turned a quarter, counter-clockwise with y down: its copper is 3 mm up the board.
     assert _cut(pad, *_round(boxed, x=5.0, y=12.0)) == ["A.1"]
     assert _cut(pad, *_round(boxed, x=8.0, y=15.0)) == []
+
+
+WIDE_GAP = [_track("SIG", (15, 1), (15, 13.5)), _track("SIG", (15, 16.5), (15, 29))]
+MOST = _one("C4", 22, 10)  # so that the pads right of the wall are the most
+
+
+def _through(*in_the_gap):
+    """What is cut off with that in a gap 2.1 mm wide in a wall across the pour."""
+    return _cut(*LEFT, MOST, *WIDE_GAP, *in_the_gap)
+
+
+def test_a_pad_of_the_net_with_a_relief_in_the_only_way_through_parts_the_pour():
+    # KiCad 10.0.6 leaves the pads beyond unconnected: the gap cut round the pad for its
+    # relief is wider than the way past it, and copper on its diagonals takes its
+    # spokes. A track carries the pad itself to the far side.
+    def plug(more=""):
+        return ('(footprint "t" (layer "F.Cu") (at 15 15 0) (property "Reference" "K") '
+                f'(pad "1" smd circle (at 0 0) (size 1.4 1.4) {more} (layers "F.Cu") '
+                '(net "GND")))')  # fmt: skip
+
+    taken = _round([(-1.2, -1.2), (1.2, -1.2), (-1.2, 1.2), (1.2, 1.2)], x=15.0)
+    out = _track("GND", (15, 15), (25, 15), 0.25)
+    assert _through(plug(), *taken, out) == ["A.1", "B.1"]
+    # Joined solidly it has no gap round it, and the pour is whole through it.
+    assert _through(plug("(zone_connect 2)"), *taken, out) == []
+
+
+def test_a_pad_whose_two_spokes_reach_two_pieces_of_the_pour_joins_them():
+    # The same pad with nothing on its diagonals: the gap round it still parts the
+    # pour, and a spoke each way joins the two sides through the pad.
+    plug = ('(footprint "t" (layer "F.Cu") (at 15 15 0) (property "Reference" "K") '
+            '(pad "1" smd rect (at 0 0) (size 1.4 1.4) (layers "F.Cu") (net "GND")))')  # fmt: skip
+    assert _through(plug) == []
+
+
+def test_how_far_a_pour_keeps_from_a_pad_is_the_most_that_is_asked_and_the_pads_first():
+    def pad(net, size, more="", of_fp=""):
+        return _one("X", 15, 15, net, size=f"{size} {size}", more=more, of_fp=of_fp)
+
+    # A pad of the net that joins no pour is itself joined to nothing, and is said.
+    # 1.4 mm wide in the 2.1 mm way through, the 0.35 mm left each side is open, and
+    # with the pour's 0.2 mm kept from it, shut.
+    assert _through(pad("GND", 1.4, "(zone_connect 0)")) == ["A.1", "B.1", "X.1"]
+    # One 0.6 mm wide leaves room, and not where it asks 0.6 mm round itself.
+    assert _through(pad("GND", 0.6, "(zone_connect 0)")) == ["X.1"]
+    assert _through(pad("GND", 0.6, "(zone_connect 0) (clearance 0.6)")) == ["A.1", "B.1", "X.1"]
+    # What a pad asks comes before what its footprint does.
+    assert _through(pad("SIG", 0.3, "(clearance 0.3)", "(clearance 1.0)")) == []
+    # And less than the pour's own clearance is not less than the pour keeps.
+    assert _through(pad("SIG", 1.4, "(clearance 0.05)")) == ["A.1", "B.1"]
+
+
+def test_a_piece_of_pour_that_touches_only_a_pad_that_joins_no_pour_is_not_kept():
+    xy = " ".join(f"(xy {x} {y})" for x, y in SQUARE)
+    touching = (f'(zone (net "GND") (layer "F.Cu") (connect_pads (clearance 0)) '
+                f"(min_thickness 0.25) (fill yes (thermal_gap 0.5) (thermal_bridge_width 0.5)) "
+                f"(polygon (pts {xy})))")  # fmt: skip
+    alone = _one("K", 15, 15, more="(zone_connect 0)")
+    assert fills(_items(alone, touching), OUTLINE, 0.5) == []
+    assert len(fills(_items(_one("K", 15, 15), touching), OUTLINE, 0.5)) == 1
+
+
+def test_a_spoke_needs_copper_across_its_own_gap_as_well_as_beyond_it():
+    # A speck of another net's copper in the gap round the pad, on each spoke's line and
+    # short of the gap's far side: the fill beyond the gap is whole, and no spoke
+    # reaches it.
+    specks = [_one(f"X{n}", 5 + 0.7 * dx, 15 + 0.7 * dy, "SIG", size="0.05 0.05")
+              for n, (dx, dy) in enumerate(SIDES)]  # fmt: skip
+    assert _cut(_one("A", 5, 15), *specks) == ["A.1"]
+    assert _cut(_one("A", 5, 15, more="(zone_connect 2)"), *specks) == []
+
+
+def test_what_the_gap_round_a_pad_leaves_thinner_than_the_fills_least_width_is_gone():
+    # A pad 0.7 mm square in the 2.1 mm way through, its spokes taken: the gap round it
+    # leaves 0.2 mm of pour each side, under the fill's 0.25 mm, so no way through.
+    plug = _one("K", 15, 15, size="0.7 0.7")
+    taken = [
+        _one("X1", 13.7, 15, "SIG", size="0.3 0.3"),
+        _one("X2", 16.3, 15, "SIG", size="0.3 0.3"),
+    ]
+    assert _through(plug, *taken) == ["A.1", "B.1", "K.1"]
+    # A fill that may be 0.1 mm thin has its way past, and the pad's spokes their copper.
+    thin = _relieved("GND").replace("(min_thickness 0.25)", "(min_thickness 0.1)")
+    assert cut_off(_items(*LEFT, MOST, *WIDE_GAP, plug, *taken, *REST, thin), OUTLINE, 0.5) == []
