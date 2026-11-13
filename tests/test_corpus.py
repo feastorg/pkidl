@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
+from shapely.geometry import Point as ShapelyPoint
+from shapely.geometry import Polygon as ShapelyPolygon
 
 from pkidl import Board, Edge, inch, mm
 from pkidl.circuit import natural
@@ -499,6 +501,14 @@ def test_the_fan_controllers_board_file_places_every_part_by_what_it_says(fan_bu
 
 def test_the_fan_controller_is_routed_with_its_tracks_as_wide_as_its_rules_say(fan_built):
     _, _, router = fan_built
+    # The pour it is first told of is inside the board as it is drawn: not in the
+    # corners of the box round it, which are rounded off.
+    ((net, layer, outline),) = router.asked[0][1].planes
+    xs, ys = [x for x, _ in outline], [y for _, y in outline]
+    corner = (min(xs) + 0.3, min(ys) + 0.3)
+    assert (net, layer) == ("GND", "B.Cu") and not ShapelyPolygon(outline).contains(
+        ShapelyPoint(corner)
+    )
     *_, (_, job, _, _) = router.asked
     assert job.netclasses == [NetClass("Default", 0.2, 0.25)]
     assert job.neck_down is False and job.fan_out is False

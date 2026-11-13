@@ -144,7 +144,7 @@ filled board, loops and areas as objectives, Kelvin sense, heatsinking. This is 
 DCMT's copied copper in `spike/` gets replaced by intent.
 
 Tracked in #10, coarse until milestone 2b's count is in. What is already known to be
-in the way: a pour is not a statement and the router is not told of it (#19), a board
+in the way: a pour is not a statement (#19), a board
 file has no words for which nets carry power (#20), a pour is filled across a cut-out
 and on outer layers only (#21), and there is no way to write a track by hand from a
 pin (#22).

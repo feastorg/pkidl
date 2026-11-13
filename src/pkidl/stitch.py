@@ -12,7 +12,7 @@ from __future__ import annotations
 import math
 
 from pkidl.board import Point
-from pkidl.footprint import pad_xy
+from pkidl.footprint import pad_at
 from pkidl.sexpr import Node, find, find_all
 
 FILL_STEP = 0.25  # mm, the fill model's grid
@@ -73,7 +73,7 @@ def _main_fill(
                     continue
                 if not on_layer([str(v) for v in layers[1:]]):
                     continue
-                c, pr = pad_xy(item, str(pad[1])), math.hypot(float(size[1]), float(size[2])) / 2
+                c, pr = pad_at(item, pad), math.hypot(float(size[1]), float(size[2])) / 2
                 stamp(lambda q, c=c, pr=pr: math.dist(q, c) - pr, c[0] - pr - gap, c[1] - pr - gap,
                       c[0] + pr + gap, c[1] + pr + gap)  # fmt: skip
         elif head in ("segment", "via"):
@@ -155,7 +155,7 @@ def stitch_points(
                 pad_r = math.hypot(float(size[1]), float(size[2])) / 2  # conservative
                 pad_net = find(pad, "net")
                 other = str(pad_net[1]) if pad_net is not None else ""
-                circles.append((pad_xy(item, str(pad[1])), pad_r, keep(other)))
+                circles.append((pad_at(item, pad), pad_r, keep(other)))
         elif head == "segment":
             seg_net = str(find(item, "net")[1])  # type: ignore[index]
             if seg_net != net or seg_net in keep_from:

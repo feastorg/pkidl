@@ -22,6 +22,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from shapely.geometry import Polygon
+
 from pkidl.dsn import Via, Wire
 from pkidl.fill import Cut, cut_off, prefill
 from pkidl.footprint import Placement, place
@@ -125,12 +127,16 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
             x0, y0, x1, y1 = board.extent
             outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
             unrouted = list(built.items)  # the board as it is before a track is laid
+            # A pour fills inside the outline as it is drawn, as far from its edge as the
+            # rules say and from an unplated hole as KiCad asks.
+            inside = board.edge() or Polygon(outline)
+            held = {"": Job.hole_clearance}
 
             def cut(wires: Sequence[Wire], vias: Sequence[Via]) -> list[Cut]:
                 """What the board's pours would leave cut off with these laid."""
                 tried = replace(built, items=[], _uuids=set())
                 lay(tried, Routed(tuple(wires), tuple(vias), ()))
-                return cut_off(unrouted + tried.items, outline, rules.edge.mm)
+                return cut_off(unrouted + tried.items, inside, rules.edge.mm, held)
 
             job = Job(
                 footprints=[item for item in built.items if item[0] == "footprint"],
@@ -146,7 +152,7 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 # Each pour as it fills round the parts before there is a track, sized
                 # as it is built: a net with a pour is joined through it where the
                 # routed board shows it still is.
-                planes=prefill(unrouted, outline, rules.edge.mm),
+                planes=prefill(unrouted, inside, rules.edge.mm, held),
             )
             routed = poured(router or Freerouting(), job, outdir, name, cut)
             lay(built, routed)

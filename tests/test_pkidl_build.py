@@ -520,3 +520,23 @@ def test_a_board_with_a_pour_is_routed_with_it_known_and_checked_with_what_was_p
     assert built.routed is not None
     assert [stage for stage, *_ in joining.asked] == ["poured"]
     assert built.routed.cut == () and built.routed.vias == down
+
+
+def test_the_pour_the_router_is_told_of_keeps_the_rules_edge_and_kicads_hole_clearance(
+    board, tmp_path
+):
+    from shapely.geometry import Point as At
+    from shapely.geometry import Polygon
+
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, edge=1 * mm)
+    board.pour("GND", layer="B.Cu")
+    board.route()
+    router = Scripted()
+    board.build(tmp_path, router=router)
+    ((_, _, outline),) = router.asked[0][1].planes
+    plane = Polygon(outline)
+    # 1 mm in from the 40 by 30 mm board's edge, as the rules say.
+    assert [round(v, 3) for v in plane.bounds] == [101.0, 51.0, 139.0, 79.0]
+    # And 0.25 mm from the mounting hole, 3.2 mm across at (136, 76), where the rules'
+    # own clearance is 0.2 mm: the corner of the pour is cut back round it.
+    assert abs(plane.distance(At(136, 76)) - (1.6 + 0.25)) < 0.005

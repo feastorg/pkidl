@@ -67,7 +67,7 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
 | `board.rules(...)` | design rules from intent | yes: a statement, said once; the build writes them into the project and routes to them |
 | `board.pour("GND", layer=)` | whole-layer pour | yes (`Board.pour`) |
-| `board.route()` | staged routing | yes: a statement; the build has a router (`pkidl.route.Freerouting` unless given another) route the board in stages (`pkidl.routing`) |
+| `board.route()` | staged routing | yes: a statement; the build has a router (`pkidl.route.Freerouting` unless given another) route the board, with its pours known and checked (`pkidl.routing`) |
 | the build and the scorecard | KiCad files, refill, DRC, measures | yes: `board.build(dir)` writes the board and its project; `just corpus` builds each `board.py`, has KiCad refill and check it, and scores it under its reference |
 
 **Design questions it raises:**
@@ -429,8 +429,23 @@ piece of it apart with pads on it. So the run is checked: `pkidl.fill.cut_off` f
 pours round what was proposed and asks whether each poured net's pads, tracks, vias and
 pieces of pour are all joined. Where they are, that run is the routing. Where they are
 not, what was cut off is in the result (`Routed.cut`), and the board is routed again
-with that net carried by tracks and its pour beside them, as a board was before. Either
-way every connection is made by copper that was checked, not by the router's word.
+with that net carried by tracks and its pour beside them, as a board was before.
+
+So a net is left to its pour only where its pour was checked to carry it. The check is
+of the nets that have pours. What the router says it left unmade of the others, and
+of a board routed again with no pour, is in each run and is the router's word, as it
+was: KiCad's DRC judges the board.
+
+The check is a model of KiCad's fill, made to err one way. A pad is joined to a pour
+as KiCad joins it: by the spokes of its thermal relief, on a round pad's diagonals and
+along another's sides, where the fill covers a spoke's whole width out past the gap,
+and by two of them, which is what KiCad asks before it calls a relief starved. Where
+the zone or the pad says solid, by touching. On the 79 pads of poured nets in the
+twelve builds of the fan controller and the T0 board that KiCad has filled, the model
+joins none that KiCad gives fewer than two spokes, and leaves five unjoined that KiCad
+gives two or more. The fill is inside the outline as it is drawn, cut-outs and all,
+and as far from an unplated hole as KiCad asks. It is still a model: KiCad's own fill,
+and its DRC, decide a built board.
 
 On the T0 board the first run stands: ground is its pour, with one segment of track and
 a via bringing the module's ground pad to it, where it had seven segments; KiCad finds the same
@@ -500,8 +515,8 @@ Open after this:
 - **Reference text is where the footprint has it**, which on this board is over pads:
   the 13 warnings. `pkidl.silk` moves references clear, and the build does not call it.
 - **The pour is not a statement.** `board.pour("GND", layer=)` draws a zone when it is
-  called, as `Board.pour` always has. The router is not told of it and routes GND as
-  track; KiCad fills the pour around what was routed. A build does size it: a pour
+  called, as `Board.pour` always has, and has no line of its own. A build does tell
+  the router of it (`poured`, above), and does size it: a pour
   that does not say its clearance or its thermal gap has both from the board's rules,
   as near other copper and its own pads as a track may be, where a zone drawn by hand
   has 0.4 and 0.5 mm. The thermal gap is not made wider than that by rules that ask

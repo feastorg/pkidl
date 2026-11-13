@@ -347,10 +347,11 @@ def test_only_the_net_that_was_cut_off_gives_up_its_pour(tmp_path):
     # The other pour is still known the second time, and that run stands.
     assert [(stage, list(j.planes)) for stage, j in router.asked] == [
         ("poured", [GND_POUR, HV_POUR]),
-        ("poured", [HV_POUR]),
+        ("poured-2", [HV_POUR]),
     ]
     assert routed.wires == (A_ROUTE, GND_ROUTE) and routed.cut == (STRANDED,)
-    assert [stage for stage, _ in routed.runs] == ["poured", "poured"]
+    # Each run has its own name, and so its own files.
+    assert [stage for stage, _ in routed.runs] == ["poured", "poured-2"]
 
 
 def test_a_run_with_the_pours_known_that_leaves_a_connection_unmade_is_not_kept(tmp_path):
@@ -370,3 +371,33 @@ def test_a_board_with_no_pour_is_routed_in_its_stages(tmp_path):
     routed = poured(router, job(ONE_CLASS), tmp_path, "b", router.cut)
     assert [stage for stage, _ in router.asked] == [""] and router.checked == []
     assert routed == staged(InTurn([Run((A_ROUTE,), (), 0)], []), job(ONE_CLASS), tmp_path, "b")
+
+
+def test_a_net_cut_off_again_with_no_pour_of_its_own_left_ends_the_pours(tmp_path):
+    # Ground loses its pour after the first run and is reported cut off again after
+    # the second, where only the other net's pour is known: there is nothing of
+    # ground's left to give up, so every pour goes and the board is routed plainly.
+    runs = [Run((A_ROUTE,), (), 0), Run((A_ROUTE,), (), 0), Run((HV_ROUTE,), (), 0),
+            Run((A_ROUTE, HV_ROUTE, GND_ROUTE), (), 0)]  # fmt: skip
+    router = InTurn(runs, [[STRANDED], [STRANDED]])
+    routed = poured(router, job(planes=[GND_POUR, HV_POUR]), tmp_path, "b", router.cut)
+    assert [(stage, [net for net, _, _ in j.planes]) for stage, j in router.asked] == [
+        ("poured", ["GND", "HV"]),
+        ("poured-2", ["HV"]),
+        ("power", []),
+        ("", []),
+    ]
+    assert routed.cut == (STRANDED, STRANDED) and GND_ROUTE in routed.wires
+
+
+def test_a_connection_left_unmade_with_nothing_cut_off_ends_every_pour(tmp_path):
+    runs = [Run((A_ROUTE,), (), 1), Run((A_ROUTE, GND_ROUTE), (), 0)]
+    router = InTurn(runs, [[]])
+    poured(router, job(ONE_CLASS, planes=[GND_POUR, HV_POUR]), tmp_path, "b", router.cut)
+    assert [(stage, len(j.planes)) for stage, j in router.asked] == [("poured", 2), ("", 0)]
+
+
+def test_copper_the_job_came_with_is_kept_where_the_run_with_pours_stands(tmp_path):
+    router = InTurn([Run((A_ROUTE,), (), 0)], [[]])
+    whole = job(ONE_CLASS, planes=[GND_POUR], wires=[AUTHORED])
+    assert poured(router, whole, tmp_path, "b", router.cut).wires == (A_ROUTE, AUTHORED)

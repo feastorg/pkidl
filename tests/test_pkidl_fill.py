@@ -211,3 +211,106 @@ def test_the_planes_are_the_fills_pieces_each_as_one_outline():
     assert [(n, layer) for n, layer, _ in planes] == [(n, layer) for n, layer, _ in pieces]
     for (_, _, outline), (_, _, piece) in zip(planes, pieces, strict=True):
         assert abs(Polygon(outline).area - piece.area) < 0.01
+
+
+def test_two_pads_of_one_number_are_each_where_they_are():
+    # A shield's two pads share a number. One is across the wall from the other: it is
+    # cut off, and the piece of pour it is on is there, not lost with it.
+    shield = _fp("J1", 0, 15, [("SH", 5, 0, 1, "GND"), ("SH", 25, 0, 1, "GND")])
+    more = _fp("C3", 8, 20, [("1", 0, 0, 1, "GND")])
+    items = _items(shield, more, _zone("GND", SQUARE), WALL)
+    assert len(fills(items, OUTLINE, 0.5)) == 2
+    assert [c.pads for c in cut_off(items, OUTLINE, 0.5)] == [("J1.SH",)]
+    # And a pour keeps clear of the second of two pads of another net.
+    pair = _fp("J2", 0, 15, [("1", 10, 0, 1, "SIG"), ("1", 20, 0, 1, "SIG")])
+    ((_, _, piece),) = fills(_items(TWO[0], pair, _zone("GND", SQUARE)), OUTLINE, 0.5)
+    assert not piece.contains(SPoint(10, 15)) and not piece.contains(SPoint(20, 15))
+
+
+def _relieved(net: str, gap: float = 0.5, connect: str = "") -> str:
+    """A pour over the square that joins its pads by thermal reliefs: a *gap* round each
+    pad and spokes 0.5 mm wide, or as *connect* says."""
+    xy = " ".join(f"(xy {x} {y})" for x, y in SQUARE)
+    return (f'(zone (net "{net}") (layer "F.Cu") (connect_pads {connect} (clearance 0.2)) '
+            f"(min_thickness 0.25) (fill yes (thermal_gap {gap}) (thermal_bridge_width 0.5)) "
+            f"(polygon (pts {xy})))")  # fmt: skip
+
+
+def _boxed_in(off: float) -> list[str]:
+    """C1's pad, 1 mm square at (5, 15), with a pad of another net *off* mm from each of
+    its four sides: copper where its spokes would go."""
+    around = [("1", -(1 + off), 0, 1, "SIG"), ("2", 1 + off, 0, 1, "SIG"),
+              ("3", 0, -(1 + off), 1, "SIG"), ("4", 0, 1 + off, 1, "SIG")]  # fmt: skip
+    return [*TWO, _fp("C3", 20, 20, [("1", 0, 0, 1, "GND")]), _fp("X1", 5, 15, around)]
+
+
+def test_a_pad_is_joined_to_a_pour_by_its_spokes_and_not_by_lying_in_it():
+    # With room on every side its four spokes reach the pour.
+    assert cut_off(_items(*_boxed_in(3.0), _relieved("GND")), OUTLINE, 0.5) == []
+    # With other copper 0.6 mm off each side, no spoke has the 0.5 mm gap and 0.25 mm of
+    # pour beyond it clear of that copper's 0.2 mm: the pad lies in the pour's outline
+    # and is joined to nothing.
+    cuts = cut_off(_items(*_boxed_in(0.6), _relieved("GND")), OUTLINE, 0.5)
+    assert [c.pads for c in cuts] == [("C1.1",)]
+
+
+def test_a_pad_needs_two_spokes_as_kicad_asks():
+    # Copper off three sides leaves one spoke: connected, by KiCad's fill, and starved.
+    three = [("1", -1.6, 0, 1, "SIG"), ("2", 1.6, 0, 1, "SIG"), ("3", 0, -1.6, 1, "SIG")]
+    items = [*TWO, _fp("C3", 20, 20, [("1", 0, 0, 1, "GND")]), _fp("X1", 5, 15, three)]
+    assert [c.pads for c in cut_off(_items(*items, _relieved("GND")), OUTLINE, 0.5)] == [("C1.1",)]
+    two = three[:2]
+    items = [*TWO, _fp("C3", 20, 20, [("1", 0, 0, 1, "GND")]), _fp("X1", 5, 15, two)]
+    assert cut_off(_items(*items, _relieved("GND")), OUTLINE, 0.5) == []
+
+
+def test_a_solid_connection_joins_a_pad_wherever_the_pour_touches_it():
+    boxed = _boxed_in(0.6)
+    assert cut_off(_items(*boxed, _relieved("GND", connect="yes")), OUTLINE, 0.5) == []
+    # And a zone that connects no pads joins none: each of the three is alone, the
+    # first of them taken for the net and the other two said.
+    alone = cut_off(_items(*boxed, _relieved("GND", connect="no")), OUTLINE, 0.5)
+    assert sorted(p for c in alone for p in c.pads) == ["C2.1", "C3.1"]
+
+
+def test_a_round_pads_spokes_are_on_its_diagonals():
+    def round_pad(blockers):
+        pad = ('(footprint "t" (layer "F.Cu") (at 5 15 0) (property "Reference" "C1") '
+               '(pad "1" smd circle (at 0 0) (size 1 1) (layers "F.Cu") (net "GND")))')  # fmt: skip
+        rest = [TWO[1], _fp("C3", 20, 20, [("1", 0, 0, 1, "GND")]), _fp("X1", 5, 15, blockers)]
+        return [c.pads for c in cut_off(_items(pad, *rest, _relieved("GND")), OUTLINE, 0.5)]
+
+    # Copper off its four sides leaves the diagonals, where a round pad's spokes are.
+    sides = [("1", -1.9, 0, 1, "SIG"), ("2", 1.9, 0, 1, "SIG"),
+             ("3", 0, -1.9, 1, "SIG"), ("4", 0, 1.9, 1, "SIG")]  # fmt: skip
+    assert round_pad(sides) == []
+    # Copper on its four diagonals takes them.
+    corners = [("1", -1.2, -1.2, 1, "SIG"), ("2", 1.2, -1.2, 1, "SIG"),
+               ("3", -1.2, 1.2, 1, "SIG"), ("4", 1.2, 1.2, 1, "SIG")]  # fmt: skip
+    assert round_pad(corners) == [("C1.1",)]
+
+
+def test_a_pour_keeps_its_hole_clearance_from_what_is_on_no_net():
+    hole = (
+        '(footprint "t" (layer "F.Cu") (at 15 15 0) (property "Reference" "H1") '
+        '(pad "" np_thru_hole circle (at 0 0) (size 3 3) (drill 3) (layers "*.Cu")))'
+    )
+    items = _items(*TWO, hole, _relieved("GND"))
+
+    def gap(clearances):
+        ((_, _, piece),) = fills(items, OUTLINE, 0.5, clearances)
+        return piece.distance(SPoint(15, 15)) - 1.5
+
+    # The pour's own 0.2 mm, or what is asked of a hole where that is more.
+    assert abs(gap(None) - 0.2) < 0.005 and abs(gap({"": 0.25}) - 0.25) < 0.005
+
+
+def test_a_pour_fills_inside_the_outline_it_is_given_as_a_shape():
+    # The board with its top right corner cut off, and with a slot through its middle.
+    cornered = Polygon([(0, 0), (20, 0), (30, 10), (30, 30), (0, 30)])
+    ((_, _, piece),) = fills(_items(*TWO, _zone("GND", SQUARE)), cornered, 0.5)
+    assert not piece.contains(SPoint(27, 3)) and piece.contains(SPoint(3, 27))
+    slotted = Polygon(OUTLINE, [[(14, 1), (16, 1), (16, 29), (14, 29)]])
+    items = _items(*TWO, _fp("C3", 8, 20, [("1", 0, 0, 1, "GND")]), _zone("GND", SQUARE))
+    assert [c.pads for c in cut_off(items, slotted, 0.5)] == [("C2.1",)]
+    assert cut_off(items, OUTLINE, 0.5) == []

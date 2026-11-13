@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 from pkidl import annotations, intent
 from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
 from pkidl.edge import shape as edge_shape
-from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
+from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_at, place
 from pkidl.intent import (
     Align,
     Conflict,
@@ -81,7 +81,7 @@ def pad_hull(parts: Iterable[Node], net: str, margin: float) -> list[Point]:
             size = find(pad, "size")
             assert size is not None
             r = max(float(size[1]), float(size[2])) / 2 + margin
-            cx, cy = pad_xy(fp, str(pad[1]))
+            cx, cy = pad_at(fp, pad)
             pts += [(cx - r, cy - r), (cx + r, cy - r), (cx + r, cy + r), (cx - r, cy + r)]
     if not pts:
         raise ValueError(f"no pad on net {net!r}")

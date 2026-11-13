@@ -227,22 +227,26 @@ def poured(
     nothing cut off and nothing the router says it left unmade, that run is the
     routing. Otherwise the nets cut off lose their planes and the board is routed
     again, by ``staged`` once no plane is left: what is routed last is the routing,
-    and ``Routed.cut`` has what each earlier run left cut off.
+    and ``Routed.cut`` has what each earlier run left cut off. Only the nets that have
+    pours are checked. What a router says it left unmade of the others, and of a board
+    routed with no pour left, is in each ``Run`` and is its own word.
     """
     planes, runs, cuts = list(job.planes), [], []
     while planes:
+        stage = POURED if not runs else f"{POURED}-{len(runs) + 1}"
         run = router.route(replace(job, planes=planes, cross_planes=True, quick=True),
-                           outdir, name, POURED)  # fmt: skip
-        runs.append((POURED, run))
+                           outdir, name, stage)  # fmt: skip
+        runs.append((stage, run))
         found = list(cut(run.wires, run.vias))
         cuts += found
         if not found and not run.unrouted:
             return Routed(tuple(_with(list(run.wires), list(job.wires))), tuple(run.vias),
                           tuple(runs), tuple(cuts))  # fmt: skip
-        # A run that left a connection unmade and cut nothing off has no net to blame:
-        # every pour gives way.
-        lost = {c.net for c in found} or {net for net, _, _ in planes}
-        planes = [p for p in planes if p[0] not in lost]
+        # The nets cut off give up their pours. Where none of them has one left to give,
+        # a run that left a connection unmade or a net already carried by tracks, there
+        # is no net to blame and every pour gives way: each turn has fewer than the last.
+        lost = {c.net for c in found} & {net for net, _, _ in planes}
+        planes = [p for p in planes if p[0] not in lost] if lost else []
     rest = staged(router, replace(job, planes=()), outdir, name)
     return Routed(rest.wires, rest.vias, (*runs, *rest.runs), tuple(cuts))
 

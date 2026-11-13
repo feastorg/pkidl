@@ -16,7 +16,7 @@ from __future__ import annotations
 import math
 
 from pkidl.board import Point
-from pkidl.footprint import board_xy, pad_xy
+from pkidl.footprint import board_xy, pad_at
 from pkidl.sexpr import Node, find, find_all, num
 
 Box = tuple[float, float, float, float]  # x0, y0, x1, y1
@@ -122,7 +122,7 @@ def _pad_boxes(fp: Node) -> list[tuple[str, Box]]:
             w, h = h, w
         elif round(angle) % 90:
             w = h = math.hypot(w, h)
-        x, y = pad_xy(fp, str(pad[1]))
+        x, y = pad_at(fp, pad)
         names = [str(n) for n in layers[1:]]
         sides = [s for s, n in (("F", "F.Cu"), ("B", "B.Cu")) if n in names or "*.Cu" in names]
         out += [(s, (x - w / 2, y - h / 2, x + w / 2, y + h / 2)) for s in sides]
