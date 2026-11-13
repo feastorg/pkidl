@@ -211,6 +211,7 @@
    "pcbench": "scripts/benchmark/fixtures/PCBench/fan_controller_fan_controller/raw.kicad_pcb",
    "sha256": {
     "LICENSE": "30664642e6013eb9c811fef2b8f1d7ed6066c31f3d9e3162ff9540771516078c",
+    "board.py": "df65cf2eef0b33866b4a085b0fd6fed851419f83ab9f552d69259d26b962eea1",
     "circuit.json": "11b8332bbb339b1de1b2931a5cedee218cab615e251d40c4056a9ed388996977",
     "footprints/Capacitors_ThroughHole.pretty/C_Radial_D5_L11_P2.kicad_mod": "52128f910fdd5f5cd3f5d80ca56d633785e1c258b87a11778acabc26ac53ab19",
     "footprints/Diodes_SMD.pretty/D_0805.kicad_mod": "aea269c22ca902a4866c2946e7a5a274e77ca2a2d461486a083f5aae8d734fef",

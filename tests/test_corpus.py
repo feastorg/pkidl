@@ -432,3 +432,72 @@ def test_the_fan_controllers_processor_is_decoupled_by_capacitors_on_its_own_sup
     by = {line.split(":")[0]: line.partition(",")[0].split(" from ")[1]
           for line in solution.chosen if " from " in line}  # fmt: skip
     assert by == {"C2": "U1.13", "C8": "U1.28", "C12": "U1.20"}
+
+
+FAN = CORPUS / "t2" / "fan_controller_fan_controller"
+
+
+def test_the_fan_controllers_board_file_is_the_one_the_design_shows():
+    text = (FAN / "board.py").read_text()
+    shown = re.findall(r"^```python\n(.*?)^```$", BOARD_FILES.read_text(), re.S | re.M)
+    assert text in shown
+
+
+@pytest.fixture(scope="module")
+def fan_built(tmp_path_factory):
+    """The fan controller as its board file builds it, with a router that lays nothing.
+    Solving its 49 parts takes about half a minute, so once for the tests that read it."""
+    router = Scripted()
+    board = runpy.run_path(str(FAN / "board.py"))["board"]
+    return board, board.build(tmp_path_factory.mktemp("fan"), router=router), router
+
+
+def test_the_fan_controllers_board_file_places_every_part_by_what_it_says(fan_built):
+    board, built, _ = fan_built
+    wanted = json.loads((FAN / "circuit.json").read_text())
+    assert len(wanted["parts"]) == 49
+    # A build refuses a board with a problem or a part left free: this one built.
+    assert sorted(built.solution.poses) == sorted(p["ref"] for p in wanted["parts"])
+    made = parse(built.board.read_text())
+    assert circuit(made) == wanted
+    assert mechanical(made) == json.loads((FAN / "mechanical.json").read_text())
+    # Each fan has the same six statements about its own parts, from one function.
+    said = [str(s) for s in board.statements()]
+    channel = runpy.run_path(str(FAN / "board.py"))["fan_channel"]
+    for refs in zip(("P3", "P4", "P5", "P6"), ("Q2", "Q3", "Q4", "Q5"),
+                    ("R15", "R16", "R17", "R18"), ("R10", "R11", "R12", "R13"),
+                    ("D1", "D2", "D3", "D4"), ("R7", "R8", "R9", "R19"),
+                    ("C3", "C4", "C5", "C6"), strict=True):  # fmt: skip
+        mine = [str(s) for s in channel(*(board[ref] for ref in refs))]
+        assert len(mine) == 6 and all(line in said for line in mine)
+    # A tach pull-up is behind its header, not in the gap between two housings.
+    for fan, pull_up in (("P3", "R10"), ("P4", "R11"), ("P5", "R12"), ("P6", "R13")):
+        assert built.solution.poses[pull_up].y < built.solution.poses[fan].y - 3 * mm
+    # The regulator's tab and the encoder's lug are in from the edge for their copper.
+    assert [line for line in built.solution.chosen if " in from " in line] == [
+        "SW1: 0.5 mm in from the right edge, to keep its copper 0.5 mm from it",
+        "U2: 0.4492 mm in from the left edge, to keep its copper 0.5 mm from it",
+    ]
+
+
+def test_the_fan_controller_is_routed_with_its_tracks_as_wide_as_its_rules_say(fan_built):
+    _, _, router = fan_built
+    ((_, job, _, _),) = router.asked
+    assert job.netclasses == [NetClass("Default", 0.2, 0.25)]
+    assert job.neck_down is False and job.fan_out is False
+
+
+def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_left(tmp_path):
+    """Where Freerouting is installed. This is the board whose tracks it narrowed: with
+    neck-down off, 13 paths out of its fan-out stage were three quarters of the width."""
+    try:
+        router_command()
+    except RouterError as e:
+        pytest.skip(str(e))
+    built = runpy.run_path(str(FAN / "board.py"))["board"].build(tmp_path)
+    assert built.routed is not None
+    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("", 0)]
+    assert {wire.width for wire in built.routed.wires} == {0.25}
+    made = parse(built.board.read_text())
+    assert {float(str(w[1])) for s in find_all(made, "segment")
+            if (w := find(s, "width")) is not None} == {0.25}  # fmt: skip

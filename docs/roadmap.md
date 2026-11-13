@@ -68,7 +68,7 @@ How long the board file is goes in the scorecard and is not a bar to pass. A lin
 that says which capacitor goes to which pin is worth more than its absence, and a
 target on length is a reason to leave it out.
 
-Tracked in #8. Steps 1 to 5 are merged, step 6 is #11 and step 7 is #12.
+Tracked in #8. Steps 1 to 6 are merged and step 7 is #12.
 The router is still given the box around the board and not its outline (#13).
 
 In order; each a PR with its tests:
@@ -102,13 +102,15 @@ In order; each a PR with its tests:
    two +5V pins (13, 28), with U2's output on the same net: the third has no pin and is
    reported. C12 is the one capacitor alone with a pin of U1 (pin 20), and the sketch
    leaves it out.
-6. **The whole board file.** The sketch in the board files places 35 of the 49 parts.
+6. **The whole board file.** The sketch in the board files placed 35 of the 49 parts.
    The fifth channel (P1, Q1, R14), the bulk capacitor (C7) and C1, C10..C12, R1..R6
-   are not in it, and a build refuses a board with a part nothing places. It also
-   says `route()` with no `rules(...)`, which a build refuses as well, and it names
-   its inputs by a path where the T0 board file uses `__file__`.
-7. **Build and score**: `board.py` committed, held to the text in the board files, and
-   its row in the scorecard under its reference.
+   were not in it, and a build refuses a board with a part nothing places. It also
+   said `route()` with no `rules(...)`, which a build refuses as well, and named its
+   inputs by a path where the T0 board file uses `__file__`. `board.py` is committed
+   with all 49 placed, and the board files show it, held to the same text.
+7. **Build and score**: its row in the scorecard under its reference, with DRC errors
+   no more than the reference's, which has none. Built here it has two: a track
+   0.023 mm from an unplated hole of the encoder, and a starved thermal.
 
 ## Milestone 2b: a board with the library as it stands
 
