@@ -83,14 +83,16 @@ def test_both_router_stages_run_on_one_thread(tmp_path, stub):
 
 NECK = "--router.automatic_neckdown=false"
 OBSTACLE = "--router.plane_as_obstacle=true"
-QUICK = ["--router.fanout.enabled=false", "--router.optimizer.enabled=false"]
+FANOUT = "--router.fanout.enabled=false"
+QUICK = [FANOUT, "--router.optimizer.enabled=false"]
 
 
 @pytest.mark.parametrize(
     ("how", "options"),
     [
         ({}, []),
-        ({"neck_down": False}, [NECK]),
+        # Fan-out necks whatever the neck-down setting is, so it goes with it.
+        ({"neck_down": False}, [NECK, FANOUT]),
         ({"cross_planes": False}, [OBSTACLE]),
         ({"quick": True}, QUICK),
         ({"neck_down": False, "cross_planes": False, "quick": True}, [NECK, OBSTACLE, *QUICK]),

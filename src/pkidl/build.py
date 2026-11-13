@@ -101,6 +101,9 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 members={},
                 edge_clearance=rules.edge.mm,
                 keepouts=keepouts,
+                # The board's one track width is its minimum: a track that necks into
+                # a pin is narrower than the rules allow.
+                neck_down=False,
             )
             routed = staged(router or Freerouting(), job, outdir, name)
             lay(built, routed)

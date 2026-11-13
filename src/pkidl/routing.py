@@ -10,7 +10,7 @@ KiCad's DRC judges the board the routes are written into.
 1. **power**: the nets of every class but the first (Default), alone, with neck-down
    off. A router that may neck narrows a wide track along whole runs, not only into
    pins.
-2. everything left, around those, fixed, with neck-down on.
+2. everything left, around those, fixed, necking where the job lets a track neck.
 3. **cross**, only on a board with planes: whatever the corridors between the pours
    left unconnected, which may now cross a signal net's pour and never a power one.
 
@@ -105,7 +105,9 @@ def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
     The job's ``class_clearances`` hold from the second stage on, between the first
     stage's copper and the rest. Its planes are ones every other net keeps out of
     until the last stage. Each stage says which nets it routes and how: what *job*
-    has for ``only``, ``neck_down``, ``cross_planes`` and ``quick`` is not read.
+    has for ``only``, ``cross_planes`` and ``quick`` is not read. Its ``neck_down`` is
+    whether a track may neck at all: the power stage never does, and the others do
+    only where it is set.
     """
     power = frozenset(n for c in job.netclasses[1:] for n in job.members.get(c.name, ()))
     authored, vias = list(job.wires), list(job.vias)
@@ -151,7 +153,7 @@ def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
             only=None,
             wires=fixed_wires,
             vias=fixed_vias,
-            neck_down=True,
+            neck_down=job.neck_down,
             cross_planes=not planes,
             quick=quick,
         ),
@@ -178,7 +180,7 @@ def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
                 vias=routed_vias,
                 keepouts=[*keepouts, *((layer, poly) for n, layer, poly in planes if n in power)],
                 planes=[p for p in planes if p[0] not in power],
-                neck_down=True,
+                neck_down=job.neck_down,
                 cross_planes=True,
                 quick=quick,
             ),
