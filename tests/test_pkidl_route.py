@@ -107,6 +107,18 @@ def test_how_a_job_is_to_be_routed_is_said_in_the_routers_settings(tmp_path, stu
     assert args[args.index("--router.optimizer.max_threads=1") + 1 :] == options
 
 
+def test_a_jobs_hole_clearance_is_the_one_its_unplated_holes_are_kept_out_of_by(tmp_path, stub):
+    stub()
+    holed = parse(
+        '(footprint "H" (at 20 10) (property "Reference" "H1") '
+        '(pad "" np_thru_hole circle (at 0 0) (size 2 2) (drill 2) (layers "*.Cu")))'
+    )
+    job = Job([*FOOTPRINTS, holed], OUTLINE, CLASSES, {})
+    for asked, across in ((job, 2100), (replace(job, hole_clearance=0.5), 2600)):
+        Freerouting().route(asked, tmp_path, "b")
+        assert f'(keepout "" (circle signal {across} 0 0))' in (tmp_path / "b.dsn").read_text()
+
+
 def test_the_router_is_run_for_the_passes_it_was_made_with(tmp_path, stub):
     ran_with = stub()
     for router, passes in ((Freerouting(), "100"), (Freerouting(passes=7), "7")):

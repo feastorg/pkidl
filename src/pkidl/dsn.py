@@ -180,6 +180,17 @@ def _copper_keepouts(
     return out
 
 
+def _lengths(node: Node) -> list[float]:
+    """The lengths a ``(size ...)`` or ``(drill ...)`` has: two for an oval."""
+    found = []
+    for value in node[1:]:
+        try:
+            found.append(float(str(value)))
+        except ValueError:  # "oval", or an (offset ...) inside a drill
+            continue
+    return found
+
+
 def write_dsn(
     path: Path,
     footprints: list[Node],
@@ -188,6 +199,7 @@ def write_dsn(
     members: dict[str, list[str]],
     *,
     edge_clearance: float = 0.5,
+    hole_clearance: float = 0.25,
     only: set[str] | None = None,
     fixed: tuple[list[Wire], list[Via]] = ([], []),
     class_clearances: dict[tuple[str, str], float] | None = None,
@@ -199,6 +211,14 @@ def write_dsn(
     *outline* is the board edge as a closed polygon in board millimetres; the
     router is kept *edge_clearance* inside it. Netclasses and their members are
     as given to ``pkidl.project.write_project``: the first is Default.
+
+    An unplated hole is a keepout on every layer: a circle as wide as the hole or as
+    its pad, whichever is wider, since such a pad can have a ring round the hole that
+    is on no net; for a pad with corners, as wide as it is from corner to corner. The
+    router keeps a net's clearance from a keepout, and never less than the first
+    class's (Freerouting 2.5.0, measured). Where *hole_clearance*, what KiCad asks
+    between copper and a hole (0.25 mm unless a project says), is more than the first
+    class's clearance, the circle is wider by the rest.
 
     With *only*, just those nets are routed; every pin stays an obstacle. *fixed*
     routes (as ``read_ses`` returns them) are written as protected wiring: the
@@ -230,9 +250,14 @@ def write_dsn(
             lx, ly = _rot(float(pa[1]), float(pa[2]), rot)
             x, y = lx * 1000, -ly * 1000
             if str(pad[2]) == "np_thru_hole":
-                drill = find(pad, "drill")
+                drill, size = find(pad, "drill"), find(pad, "size")
                 assert drill is not None
-                keepouts.append(f'(keepout "" (circle signal {_n(float(drill[1]) * 1000)} '
+                ring = _lengths(size) if size is not None else []
+                if len(ring) == 2 and str(pad[3]) not in ("circle", "oval"):
+                    ring = [math.hypot(*ring)]  # a pad with corners, by its diagonal
+                across = max(_lengths(drill) + ring)
+                more = max(0.0, hole_clearance - netclasses[0].clearance)
+                keepouts.append(f'(keepout "" (circle signal {_n((across + 2 * more) * 1000)} '
                                 f"{_n(x)} {_n(y)}))")  # fmt: skip
                 continue
             angle = float(pa[3]) if len(pa) > 3 else 0.0

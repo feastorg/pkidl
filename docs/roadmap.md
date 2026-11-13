@@ -109,8 +109,9 @@ In order; each a PR with its tests:
    inputs by a path where the T0 board file uses `__file__`. `board.py` is committed
    with all 49 placed, and the board files show it, held to the same text.
 7. **Build and score**: its row in the scorecard under its reference, with DRC errors
-   no more than the reference's, which has none. Built here it has two: a track
-   0.023 mm from an unplated hole of the encoder, and a starved thermal.
+   no more than the reference's, which has none. Built here it has two, both
+   starved thermals where the ground pour meets a header's pin: the router is not told
+   of the pour (#19) and routes across it.
 
 ## Milestone 2b: a board with the library as it stands
 
