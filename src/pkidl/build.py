@@ -17,17 +17,19 @@ the outline as it is drawn; the routing does not yet.
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pkidl.dsn import Via, Wire
+from pkidl.fill import Cut, cut_off, prefill
 from pkidl.footprint import Placement, place
 from pkidl.intent import Route, Rules
 from pkidl.placement import Solution
 from pkidl.project import NetClass, write_project
 from pkidl.route import Freerouting
-from pkidl.routing import Job, Routed, Router, lay, staged
+from pkidl.routing import Job, Routed, Router, lay, poured
 from pkidl.sexpr import Node, find, num
 
 if TYPE_CHECKING:
@@ -121,9 +123,18 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
         if routes is not None:
             assert board.extent is not None  # a board with no outline has no solution
             x0, y0, x1, y1 = board.extent
+            outline = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+            unrouted = list(built.items)  # the board as it is before a track is laid
+
+            def cut(wires: Sequence[Wire], vias: Sequence[Via]) -> list[Cut]:
+                """What the board's pours would leave cut off with these laid."""
+                tried = replace(built, items=[], _uuids=set())
+                lay(tried, Routed(tuple(wires), tuple(vias), ()))
+                return cut_off(unrouted + tried.items, outline, rules.edge.mm)
+
             job = Job(
                 footprints=[item for item in built.items if item[0] == "footprint"],
-                outline=[(x0, y0), (x1, y0), (x1, y1), (x0, y1)],
+                outline=outline,
                 netclasses=classes,
                 members={},
                 edge_clearance=rules.edge.mm,
@@ -132,8 +143,12 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 # a pin is narrower than the rules allow, and so is a fan-out stub.
                 neck_down=False,
                 fan_out=False,
+                # Each pour as it fills round the parts before there is a track, sized
+                # as it is built: a net with a pour is joined through it where the
+                # routed board shows it still is.
+                planes=prefill(unrouted, outline, rules.edge.mm),
             )
-            routed = staged(router or Freerouting(), job, outdir, name)
+            routed = poured(router or Freerouting(), job, outdir, name, cut)
             lay(built, routed)
         project = write_project(
             outdir / f"{name}.kicad_pro",

@@ -279,10 +279,21 @@ def test_the_t0_board_file_builds_its_circuit_with_every_part_placed(tmp_path):
     assert mechanical(made) == json.loads((T0 / "mechanical.json").read_text())
     assert sorted(built.solution.poses) == sorted(p["ref"] for p in wanted["parts"])
     assert built.solution.free == () and built.solution.problems == ()
-    # The router is asked once, for the whole board, with the board file's rules and the
-    # antenna's area on both faces; this one proposed nothing, and nothing is laid.
-    ((stage, job, outdir, name),) = router.asked
+    # The router is asked for the whole board with the ground pour known, its fill one
+    # piece on the back. This one proposed nothing, which leaves the module's ground
+    # pad on the front joined to no other, so it is asked again with no pour.
+    (known, poured, _, _), (stage, job, outdir, name) = router.asked
+    assert known == "poured" and [(net, layer) for net, layer, _ in poured.planes] == [
+        ("GND", "B.Cu")
+    ]
+    assert built.routed is not None
+    assert [str(c).partition(":")[0] for c in built.routed.cut] == [
+        "U1.15 is cut off from the rest of GND"
+    ]
     assert (stage, outdir, name) == ("", tmp_path, "esp12-breakout_ESP12Breakout")
+    assert list(job.planes) == []
+    # Either way it has the board file's rules and the antenna's area on both faces,
+    # and nothing is laid.
     assert job.netclasses == [NetClass("Default", 0.2, 0.25)] and job.edge_clearance == 0.5
     # Its one track width is the least the rules allow, so no track may neck below it.
     assert job.neck_down is False and job.fan_out is False
@@ -305,7 +316,10 @@ def test_the_t0_board_file_is_routed_by_freerouting_with_nothing_left(tmp_path):
         pytest.skip(str(e))
     built = _board_file().build(tmp_path)
     assert built.routed is not None
-    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("", 0)]
+    # Routed once, with the ground pour known: nothing left unmade, and nothing the
+    # pour leaves cut off.
+    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("poured", 0)]
+    assert built.routed.cut == ()
     made = parse(built.board.read_text())
     wanted = json.loads((T0 / "circuit.json").read_text())
     assert circuit(made) == wanted
@@ -314,7 +328,10 @@ def test_the_t0_board_file_is_routed_by_freerouting_with_nothing_left(tmp_path):
     for part in wanted["parts"]:
         for net in part["pads"].values():
             pads[net] = pads.get(net, 0) + 1
+    # Ground is joined by its pour, with a track only where a pad on the front has to
+    # be brought to it.
     assert _nets(made, "segment") == {net for net, n in pads.items() if net and n > 1}
+    assert sum(1 for s in find_all(made, "segment") if find(s, "net")[1] == "GND") < 4  # type: ignore[index]
 
 
 def test_what_does_not_fit_on_the_t0_board_is_said():
@@ -482,7 +499,7 @@ def test_the_fan_controllers_board_file_places_every_part_by_what_it_says(fan_bu
 
 def test_the_fan_controller_is_routed_with_its_tracks_as_wide_as_its_rules_say(fan_built):
     _, _, router = fan_built
-    ((_, job, _, _),) = router.asked
+    *_, (_, job, _, _) = router.asked
     assert job.netclasses == [NetClass("Default", 0.2, 0.25)]
     assert job.neck_down is False and job.fan_out is False
 
@@ -496,7 +513,13 @@ def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_le
         pytest.skip(str(e))
     built = runpy.run_path(str(FAN / "board.py"))["board"].build(tmp_path)
     assert built.routed is not None
-    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("", 0)]
+    # With the ground pour known the router makes every connection by its own count,
+    # and tracks on the back leave pads of ground on pieces of the pour apart from the
+    # rest. That is found and said, and the board is routed again with ground carried
+    # by tracks: the routing that stands.
+    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("poured", 0), ("", 0)]
+    assert built.routed.cut and {c.net for c in built.routed.cut} == {"GND"}
+    assert all(c.layer == "B.Cu" and c.fenced for c in built.routed.cut)
     assert {wire.width for wire in built.routed.wires} == {0.25}
     made = parse(built.board.read_text())
     assert {float(str(w[1])) for s in find_all(made, "segment")

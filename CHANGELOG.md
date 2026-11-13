@@ -9,6 +9,15 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- A build routes a board with its pours known to the router, and checks the result.
+  `pkidl.routing.poured` routes with each pour carrying its net and free to be crossed,
+  then asks `pkidl.fill.cut_off` whether tracks across a pour have left pads of its
+  net on a piece apart from the rest. Where none are, that routing stands, with no
+  track where the pour joins a net. Where some are, `Routed.cut` says which pads, on
+  which layer, fenced in by which nets' tracks, and the board is routed again with
+  that net carried by tracks, as it was before. `pkidl.fill.fills` is a board's pours
+  as the pieces they fill in. A build of a board whose pour is cut takes two runs of
+  the router.
 - `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
   decouple a part. Each is across ground and one of the part's supplies, and is placed
   with its pad on that supply near one of the part's pins on it, one capacitor to a

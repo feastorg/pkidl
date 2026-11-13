@@ -15,7 +15,7 @@ import pytest
 from pkidl import Board, Edge, mm
 from pkidl.build import BuildError, Built
 from pkidl.dsn import Via, Wire
-from pkidl.footprint import footprint_path
+from pkidl.footprint import footprint_path, pad_xy
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.intent import Route, Rules, route, rules
 from pkidl.project import NetClass
@@ -489,3 +489,34 @@ def test_a_zone_drawn_by_hand_is_not_sized_by_the_rules(board, tmp_path):
     board.rules(track=0.25 * mm, clearance=0.2 * mm)
     board.zone("GND", "B.Cu", [(101.0, 51.0), (119.0, 51.0), (119.0, 69.0), (101.0, 69.0)])
     assert _pours(board.build(tmp_path / "out")) == {("GND", "B.Cu"): (0.4, 0.5)}
+
+
+def test_a_board_with_a_pour_is_routed_with_it_known_and_checked_with_what_was_proposed(
+    board, tmp_path
+):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    board.pour("GND", layer="B.Cu")
+    board.route()
+    # A router that proposes nothing leaves the two ground pads on the front joined to
+    # nothing: the header's pin is in the pour, through the board, and they are not.
+    nothing = Scripted()
+    built = board.build(tmp_path / "first", router=nothing)
+    assert built.routed is not None
+    assert [stage for stage, *_ in nothing.asked] == ["poured", ""]
+    assert [(net, layer) for net, layer, _ in nothing.asked[0][1].planes] == [("GND", "B.Cu")]
+    assert list(nothing.asked[1][1].planes) == []
+    assert [str(c) for c in built.routed.cut] == [
+        "R1.2 is cut off from the rest of GND: no pour reaches there",
+        "U1.3 is cut off from the rest of GND: no pour reaches there",
+    ]
+    # One that proposes a via down to the pour at each of them is taken at that: what
+    # it proposed is laid before the pour is asked about.
+    placed = {_ref(fp): fp for fp in find_all(parse(built.board.read_text()), "footprint")}
+    down = tuple(
+        Via("GND", VIA, pad_xy(placed[ref], pad)) for ref, pad in (("R1", "2"), ("U1", "3"))
+    )
+    joining = Scripted(Run((), down, 0))
+    built = board.build(tmp_path / "second", router=joining)
+    assert built.routed is not None
+    assert [stage for stage, *_ in joining.asked] == ["poured"]
+    assert built.routed.cut == () and built.routed.vias == down

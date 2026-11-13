@@ -9,8 +9,9 @@ import pytest
 
 from pkidl.board import Board
 from pkidl.dsn import Via, Wire
+from pkidl.fill import Cut
 from pkidl.project import NetClass
-from pkidl.routing import Job, Routed, Run, lay, staged
+from pkidl.routing import Job, Routed, Run, lay, poured, staged
 from pkidl.sexpr import find, find_all, parse
 
 FOOTPRINT = """(footprint "R" (at {x} 10) (property "Reference" "{ref}")
@@ -284,3 +285,88 @@ def test_what_was_routed_is_laid_as_a_track_a_segment_and_its_vias():
         ("10 8", "0.8", "0.4", "A"),
         ("27 10", "1", "0.5", "HV"),
     ]
+
+
+class InTurn:
+    """A router that hands back the next of its runs each time it is asked, and a check
+    that says the next of what it was told is cut off."""
+
+    def __init__(self, runs, cuts):
+        self.runs, self.cuts = list(runs), list(cuts)
+        self.asked: list[tuple[str, Job]] = []
+        self.checked: list[tuple[tuple[Wire, ...], tuple[Via, ...]]] = []
+
+    def route(self, job, outdir, name, stage=""):
+        self.asked.append((stage, job))
+        return self.runs.pop(0)
+
+    def cut(self, wires, vias):
+        self.checked.append((tuple(wires), tuple(vias)))
+        return self.cuts.pop(0)
+
+
+STRANDED = Cut("GND", ("C5.2",), "B.Cu", ("A",))
+
+
+def test_a_board_routed_with_its_pours_known_and_nothing_cut_off_is_routed_once(tmp_path):
+    first = Run((A_ROUTE, HV_ROUTE), (A_VIA,), 0)
+    router = InTurn([first], [[]])
+    whole = job(ONE_CLASS, planes=[GND_POUR], neck_down=False, fan_out=False)
+    routed = poured(router, whole, tmp_path, "b", router.cut)
+    # One run: the pour known and free to be crossed, without the optimising passes.
+    ((stage, asked),) = router.asked
+    assert stage == "poured" and asked.planes == [GND_POUR]
+    assert (asked.cross_planes, asked.quick, asked.neck_down, asked.fan_out) == (
+        True, True, False, False,
+    )  # fmt: skip
+    # The check was asked about what that run proposed, and found nothing.
+    assert router.checked == [((A_ROUTE, HV_ROUTE), (A_VIA,))]
+    assert routed == Routed((A_ROUTE, HV_ROUTE), (A_VIA,), (("poured", first),))
+
+
+def test_a_net_whose_pour_is_left_in_pieces_is_routed_again_by_tracks(tmp_path):
+    first, again = Run((A_ROUTE,), (A_VIA,), 0), Run((A_ROUTE, GND_ROUTE), (), 0)
+    router = InTurn([first, again], [[STRANDED]])
+    routed = poured(router, job(ONE_CLASS, planes=[GND_POUR]), tmp_path, "b", router.cut)
+    # The second run has no plane: ground is a net like any other, routed as on a
+    # board with no pour, and what it proposes is the routing.
+    assert [(stage, list(j.planes)) for stage, j in router.asked] == [
+        ("poured", [GND_POUR]),
+        ("", []),
+    ]
+    assert routed.wires == (A_ROUTE, GND_ROUTE) and routed.vias == ()
+    assert routed.runs == (("poured", first), ("", again))
+    # What was cut off is said, and nothing is asked of the run that has no pour.
+    assert routed.cut == (STRANDED,) and len(router.checked) == 1
+
+
+def test_only_the_net_that_was_cut_off_gives_up_its_pour(tmp_path):
+    runs = [Run((A_ROUTE,), (), 0), Run((A_ROUTE, GND_ROUTE), (), 0)]
+    router = InTurn(runs, [[STRANDED], []])
+    routed = poured(router, job(planes=[GND_POUR, HV_POUR]), tmp_path, "b", router.cut)
+    # The other pour is still known the second time, and that run stands.
+    assert [(stage, list(j.planes)) for stage, j in router.asked] == [
+        ("poured", [GND_POUR, HV_POUR]),
+        ("poured", [HV_POUR]),
+    ]
+    assert routed.wires == (A_ROUTE, GND_ROUTE) and routed.cut == (STRANDED,)
+    assert [stage for stage, _ in routed.runs] == ["poured", "poured"]
+
+
+def test_a_run_with_the_pours_known_that_leaves_a_connection_unmade_is_not_kept(tmp_path):
+    first, again = Run((A_ROUTE,), (), 2), Run((A_ROUTE, GND_ROUTE), (), 0)
+    router = InTurn([first, again], [[]])
+    routed = poured(router, job(ONE_CLASS, planes=[GND_POUR]), tmp_path, "b", router.cut)
+    assert [stage for stage, _ in router.asked] == ["poured", ""]
+    assert routed.wires == (A_ROUTE, GND_ROUTE) and routed.cut == ()
+    # A router that does not say what it left unmade is taken at the check's word.
+    router = InTurn([Run((A_ROUTE,), (), None)], [[]])
+    routed = poured(router, job(ONE_CLASS, planes=[GND_POUR]), tmp_path, "b", router.cut)
+    assert [stage for stage, _ in router.asked] == ["poured"]
+
+
+def test_a_board_with_no_pour_is_routed_in_its_stages(tmp_path):
+    router = InTurn([Run((A_ROUTE,), (), 0)], [])
+    routed = poured(router, job(ONE_CLASS), tmp_path, "b", router.cut)
+    assert [stage for stage, _ in router.asked] == [""] and router.checked == []
+    assert routed == staged(InTurn([Run((A_ROUTE,), (), 0)], []), job(ONE_CLASS), tmp_path, "b")

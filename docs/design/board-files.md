@@ -422,6 +422,30 @@ back a `Routed`: the tracks and vias proposed, each once, and each stage's run. 
 is on the board until `lay(board, routed)` puts it there. What a router says of its
 own work is reported and not trusted: KiCad's DRC judges the board.
 
+`poured(router, job, outdir, name, cut)` is how a build routes: with the board's pours
+known to the router, carrying their nets, where that can be shown to hold. A router
+told of a pour counts every pad on it as joined, and tracks across the pour can leave a
+piece of it apart with pads on it. So the run is checked: `pkidl.fill.cut_off` fills the
+pours round what was proposed and asks whether each poured net's pads, tracks, vias and
+pieces of pour are all joined. Where they are, that run is the routing. Where they are
+not, what was cut off is in the result (`Routed.cut`), and the board is routed again
+with that net carried by tracks and its pour beside them, as a board was before. Either
+way every connection is made by copper that was checked, not by the router's word.
+
+On the T0 board the first run stands: ground is its pour, with one track and a via
+bringing the module's ground pad to it, where it had seven tracks; KiCad finds the same
+eight errors and nothing unconnected. On the fan controller the first run makes every
+connection by the router's count and leaves three pads of ground cut off, which the
+build says:
+
+```
+P2.3 is cut off from the rest of GND: on a piece of its pour on B.Cu that is apart from the rest, fenced in by tracks of +5V, PGEC
+P5.1, Q3.2 are cut off from the rest of GND: on a piece of its pour on B.Cu that is apart from the rest, fenced in by tracks of /sense1, /sense2, /sense3
+```
+
+and the second run, with ground by tracks, is the routing it had: 204 wires and 23 vias.
+A build of it takes about four minutes for the two runs, where it took under two.
+
 A build routes with `neck_down` and `fan_out` off: the board file's one track width is
 the least its rules allow, so a track that narrows into a pin is an error, and in
 Freerouting 2.5.0 the fan-out stage narrows its stubs to three quarters of the track
@@ -484,17 +508,17 @@ Open after this:
   more clearance: it is between a pad and its own net. On the fan controller, whose rules say 0.2 mm, that is the
   difference between two ground pins of its headers with too few spokes into the pour
   and none.
-- **Telling the router of a pour was tried on the fan controller and is not built**
-  (#19). Kept off the pour until a last pass, Freerouting 2.5.0 left 2 connections
+- **Telling the router of a pour, on the fan controller** (#19), before `poured` was
+  built. Kept off the pour until a last pass, Freerouting 2.5.0 left 2 connections
   unmade: a whole layer of a two-layer board is the pour. Free to cross it, it made
   every connection by its own count and left the back with 16 short tracks and no
   ground track, and those tracks fenced off 26 mm2 of the pour with the via of a
   capacitor's ground pad inside it: unconnected, by KiCad's. Filling the pours
   round what was routed (`pkidl.fill.prefill`) finds that, and the router asked to
   join the pieces did not, with the other tracks fixed or free to move. Decided
-  2026-11-13: a build will route with the pours known, check each poured net is one
-  piece, and where it is not say what was cut off and route again with that net
-  carried by tracks.
+  2026-11-13: a build routes with the pours known, checks each poured net is one
+  piece, and where it is not says what was cut off and routes again with that net
+  carried by tracks. That is `poured`, above.
 - **Every net is in one class**, with the board's one track width and clearance.
   Classes, and so the stages, wait for words that say which nets carry power.
 - **The build does not run KiCad.** Refill and DRC are `just corpus`'s, on the files

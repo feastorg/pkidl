@@ -14,12 +14,18 @@ KiCad's DRC judges the board the routes are written into.
 3. **cross**, only on a board with planes: whatever the corridors between the pours
    left unconnected, which may now cross a signal net's pour and never a power one.
 
+``poured`` routes a board whose pours are to carry their nets: with the pours known to
+the router and free to be crossed, then checked. A router told of a pour counts every
+pad on it as joined, and tracks across the pour can leave a piece of it apart with
+pads on it. Where the check finds that, the board is routed again with that net
+carried by tracks, the pour beside them, and what was cut off is in the result.
+
 ``pkidl.route.Freerouting`` is the first router.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
@@ -30,10 +36,11 @@ from pkidl.sexpr import Node, find, find_all
 
 if TYPE_CHECKING:
     from pkidl.board import Board
+    from pkidl.fill import Cut
 
 Point = tuple[float, float]
 
-POWER, CROSS = "power", "cross"
+POWER, CROSS, POURED = "power", "cross", "poured"
 
 
 @dataclass(frozen=True)
@@ -101,6 +108,9 @@ class Routed:
     wires: tuple[Wire, ...]
     vias: tuple[Via, ...]
     runs: tuple[tuple[str, Run], ...]
+    # What a run with the pours known left cut off, for which the board was routed
+    # again with those nets carried by tracks (``poured``).
+    cut: tuple[Cut, ...] = ()
 
 
 def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
@@ -198,6 +208,43 @@ def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
         wires = [*last.wires, *(w for w in wires if w.net not in signal_nets)]
         routed_vias = [*last.vias, *(v for v in routed_vias if v.net not in signal_nets)]
     return Routed(tuple(_with(wires, authored)), tuple(routed_vias), tuple(runs))
+
+
+def poured(
+    router: Router,
+    job: Job,
+    outdir: Path,
+    name: str,
+    cut: Callable[[Sequence[Wire], Sequence[Via]], Sequence[Cut]],
+) -> Routed:
+    """Route the whole board *job* describes with its pours carrying their nets, where
+    they can be shown to (see the module).
+
+    The job's planes are the pours. A run of the ``poured`` stage routes everything with
+    them known and free to be crossed, without the router's optimising passes, which
+    cost minutes against a plane; *cut* is then asked what the wires and vias it
+    proposes leave cut off (``pkidl.fill.cut_off`` on the board with them laid). With
+    nothing cut off and nothing the router says it left unmade, that run is the
+    routing. Otherwise the nets cut off lose their planes and the board is routed
+    again, by ``staged`` once no plane is left: what is routed last is the routing,
+    and ``Routed.cut`` has what each earlier run left cut off.
+    """
+    planes, runs, cuts = list(job.planes), [], []
+    while planes:
+        run = router.route(replace(job, planes=planes, cross_planes=True, quick=True),
+                           outdir, name, POURED)  # fmt: skip
+        runs.append((POURED, run))
+        found = list(cut(run.wires, run.vias))
+        cuts += found
+        if not found and not run.unrouted:
+            return Routed(tuple(_with(list(run.wires), list(job.wires))), tuple(run.vias),
+                          tuple(runs), tuple(cuts))  # fmt: skip
+        # A run that left a connection unmade and cut nothing off has no net to blame:
+        # every pour gives way.
+        lost = {c.net for c in found} or {net for net, _, _ in planes}
+        planes = [p for p in planes if p[0] not in lost]
+    rest = staged(router, replace(job, planes=()), outdir, name)
+    return Routed(rest.wires, rest.vias, (*runs, *rest.runs), tuple(cuts))
 
 
 def lay(board: Board, routed: Routed) -> None:
