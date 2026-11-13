@@ -218,7 +218,7 @@ Unreleased. History before this file was reconstructed from the git log.
   controller a capacitor's pad was 0.036 mm from a pin of the processor. `Board.solve()`
   reports a pair that is closer, naming the two pads, and a part placed `near=`
   something looks only where its pads are clear. Pads on one net, and parts on a board
-  with no rules, may still touch.
+  with no rules, may still touch. (#31)
 - A `Problem` lists a statement once in `statements` where it listed it once for each
   part it placed, as an overlap of two parts of one row did. What it prints is the
   same. (#7)
