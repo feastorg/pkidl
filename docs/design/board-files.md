@@ -432,8 +432,8 @@ not, what was cut off is in the result (`Routed.cut`), and the board is routed a
 with that net carried by tracks and its pour beside them, as a board was before. Either
 way every connection is made by copper that was checked, not by the router's word.
 
-On the T0 board the first run stands: ground is its pour, with one track and a via
-bringing the module's ground pad to it, where it had seven tracks; KiCad finds the same
+On the T0 board the first run stands: ground is its pour, with one segment of track and
+a via bringing the module's ground pad to it, where it had seven segments; KiCad finds the same
 eight errors and nothing unconnected. On the fan controller the first run makes every
 connection by the router's count and leaves three pads of ground cut off, which the
 build says:
