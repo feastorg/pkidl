@@ -6,6 +6,7 @@ by its reference, a pin by its part and number, a net by its name. Two handles f
 same thing are equal, whichever board they came from.
 
 What a board file declares about the circuit is kept beside it: which nets are rails,
+and which of those are grounds,
 names for nets the schematic left anonymous, the named areas of a footprint that its
 annotation marks out, and names for a part's pins.
 
@@ -44,6 +45,11 @@ class Net:
     def is_rail(self) -> bool:
         self.circuit._rails_read = self.circuit._rails_read or f"{self}.is_rail"
         return self.name in self.circuit._rails
+
+    @property
+    def is_ground(self) -> bool:
+        """Whether the board file said this net is a ground, with ``ground``."""
+        return self.name in self.circuit._grounds
 
     def pins(self) -> tuple[Pin, ...]:
         """The pins on this net: part by part, each part's in its footprint's order."""
@@ -215,6 +221,7 @@ class Circuit:
             numbers = part["pads"] if pads is None else pads[part["footprint"]]
             self._pins[ref] = tuple(dict.fromkeys(n for n in numbers if n))
         self._rails: set[str] = set()
+        self._grounds: set[str] = set()
         self._rails_read: str | None = None  # the first thing that asked what a rail is
         self._given: dict[str, str] = {}  # the circuit's name for a net -> the board file's
         self._areas: dict[str, dict[str, Box]] = {}  # footprint name -> area name -> box
@@ -271,6 +278,13 @@ class Circuit:
             raise ValueError(f"rails declared after {self._rails_read} was read: "
                              "declare the rails first")  # fmt: skip
         self._rails |= {n.name for n in found}
+        return found
+
+    def ground(self, *nets: Net | str) -> tuple[Net, ...]:
+        """Declare *nets* as grounds: what a decoupling capacitor's other pin is on. A
+        ground is a rail too. Gives them back, in the order named."""
+        found = self.rails(*nets)
+        self._grounds |= {n.name for n in found}
         return found
 
     def annotate(

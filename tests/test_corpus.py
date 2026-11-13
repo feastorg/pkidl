@@ -406,3 +406,25 @@ def test_on_a_board_that_is_its_box_a_part_against_any_edge_is_on_the_board(d):
         tried.place(tried[part.ref], against=side)
         solution = tried.solve()
         assert solution.problems == (), (side, solution.problems)
+
+
+def test_the_fan_controllers_processor_is_decoupled_by_capacitors_on_its_own_supply():
+    """U1 has two pins on +5V, 13 and 28, and pin 20 alone on a net with C12. Three
+    capacitors are on +5V, C2, C8 and C9, and so is the regulator's output: one of the
+    three has no pin of U1, and the netlist does not say which is which. C1 is across
+    +12V and ground, which U1 is not on."""
+    board = Board.from_inputs(CORPUS / "t2" / "fan_controller_fan_controller")
+    board.rails("+12V", "+5V")
+    board.ground("GND")
+    board.place(board["U1"], centre=True)
+    board.decouple(board["U1"], board.parts("C2", "C8", "C9", "C12", "C1"), within=3 * mm)
+    solution = board.solve()
+    said = "decouple(U1, C2, C8, C9, C12, C1, within=3 mm)"
+    assert [p.text for p in solution.problems] == [
+        f"{said}: C1 is across +12V and GND, and U1 is not on +12V",
+        f"{said}: C9 has no pin of U1 on +5V left: C2 is by U1.13 and C8 is by U1.28",
+    ]
+    assert set(solution.poses) == {"C2", "C8", "C12", "U1"}
+    by = {line.split(":")[0]: line.partition(",")[0].split(" from ")[1]
+          for line in solution.chosen if " from " in line}  # fmt: skip
+    assert by == {"C2": "U1.13", "C8": "U1.28", "C12": "U1.20"}
