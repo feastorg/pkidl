@@ -6,6 +6,7 @@ footprint on a board, and not from the solver's own arithmetic.
 
 import math
 import random
+import re
 import sys
 
 import pytest
@@ -1469,3 +1470,169 @@ def test_toward_an_edge_a_parts_whole_outline_is_beyond_what_it_is_near():
     solution = board.solve()
     assert solution.ok
     assert _pads(board, solution, "T1")["1"] == pytest.approx((111.0, 60.5))
+
+
+def _rounded(r: float, **parts: str) -> Board:
+    """The 30 mm board with its corners rounded to radius *r*."""
+    board = _board(**parts)
+    board.outline_rounded_rect(100, 50, 130, 80, r)
+    return board
+
+
+def test_a_part_put_in_a_rounded_corner_is_outside_the_outline_and_is_said_to_be():
+    # A resistor in the corner of the box around the board. On a board that is that box
+    # it fits; with the corner rounded to 4 mm, the resistor's own corner is 4 mm from
+    # each edge of the arc's square and so 4 * sqrt(2) - 4 outside the arc.
+    def corner(board: Board) -> Solution:
+        board.place(board["R1"], against=Edge.LEFT)
+        board.place(board["R1"], against=Edge.TOP)
+        return board.solve()
+
+    assert corner(_board(R1="A B")).ok
+    solution = corner(_rounded(4, R1="A B"))
+    (problem,) = solution.problems
+    far, where = re.fullmatch(
+        r"R1 does not fit on the board: it reaches ([\d.]+) mm outside the outline at (.*)",
+        problem.text,
+    ).groups()  # pyright: ignore[reportOptionalMemberAccess]
+    assert float(far) == pytest.approx(4 * math.sqrt(2) - 4, abs=1e-3)
+    assert where == "(100 mm, 50 mm)" and len(problem.statements) == 2
+    # It is said, and the part is left where it was put.
+    assert "R1" in solution.poses
+    # Brought in from the corner, it is inside.
+    board = _rounded(4, R1="A B")
+    board.place(board["R1"], against=Edge.LEFT, inset=3 * mm)
+    board.place(board["R1"], against=Edge.TOP, inset=3 * mm)
+    assert board.solve().ok
+
+
+def test_a_part_that_looks_for_a_place_looks_inside_the_outline():
+    # Corners of 10 mm. A resistor near the arc, and a test point to its left: level
+    # with the resistor's pad it would be outside the arc, so it goes where it is not.
+    board = _rounded(10, R1="A B", T1="Z")
+    board.place(board["R1"], against=Edge.LEFT, inset=2.6 * mm)
+    board.place(board["R1"], against=Edge.TOP, inset=6 * mm)
+    board.place(board["T1"], near=board["R1"], within=3 * mm, toward=Edge.LEFT)
+    solution = board.solve()
+    assert solution.ok
+    x, y = _pads(board, solution, "T1")["1"]
+    assert x <= 101.3 + 1e-6 and y > 56.0
+    # On the box around that board the nearest place is level with the pad.
+    box = _board(R1="A B", T1="Z")
+    box.place(box["R1"], against=Edge.LEFT, inset=2.6 * mm)
+    box.place(box["R1"], against=Edge.TOP, inset=6 * mm)
+    box.place(box["T1"], near=box["R1"], within=3 * mm, toward=Edge.LEFT)
+    assert _pads(box, box.solve(), "T1")["1"] == pytest.approx((101.3, 56.0))
+
+
+def test_a_part_over_a_mounting_hole_is_said_and_one_that_looks_for_a_place_avoids_it():
+    board = _board(U1="A B C D GND", T1="A")
+    hole = board.hole("Mech:Hole", (115, 65))
+    assert (hole.label, hole.footprint, hole.x.mm, hole.y.mm) == ("Hole at (115, 65)", "Mech:Hole",
+                                                                  115, 65)  # fmt: skip
+    assert board.fixed == [hole]
+    board.place(board["U1"], centre=True)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [f"U1 is over Hole at (115, 65) ({HERE}:{line})"]
+    assert not solution.ok and "U1" in solution.poses
+    # Without the hole, the nearest clear place to the module's pin 1 is on its left,
+    # level with the pin. A hole there, 2 mm across, sends the test point elsewhere.
+    board = _board(U1="A B C D GND", T1="A")
+    board.hole("Mech:Hole", (109, 65))
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.place(board["T1"], near=board["U1"].pin(1), within=5 * mm)
+    solution = board.solve()
+    assert solution.ok
+    # The hole is from 108 to 110 mm across and 64 to 66 down, and the test point 1 mm.
+    x, y = _pads(board, solution, "T1")["1"]
+    assert not (107.5 < x < 110.5 and 63.5 < y < 66.5)
+    with pytest.raises(ValueError, match="no footprint 'Mech:Nowhere' in the board's library"):
+        board.hole("Mech:Nowhere", (0, 0))
+
+
+def test_what_is_fixed_takes_the_face_it_is_on_unless_it_has_holes_and_turns_as_a_part_does():
+    # A resistor's footprint fixed on the back: a part on the front is clear of it, one
+    # on the back is not.
+    for side, told in ((Side.FRONT, []), (Side.BACK, ["Q1 is over R at (115, 65)"])):
+        board = _board(Q1="A B")
+        board.hole("Device:R", (115, 65), back=True)
+        board.place(board["Q1"], centre=True, side=side)
+        assert [p.text for p in board.solve().problems] == told
+    # A header fixed across the board is clear of a test point 7 mm above its pins;
+    # turned a quarter turn it runs up the board, under the test point.
+    for rot, told in ((0, []), (90, ["T1 is over H at (115, 65)"])):
+        board = _board(T1="A")
+        board.hole("Conn:H", (115, 65), rot=rot)
+        board.place(board["T1"], against=Edge.TOP, inset=8 * mm)
+        assert [p.text for p in board.solve().problems] == told
+
+
+def test_a_row_spreads_over_what_mounting_holes_leave_clear_of_its_edge():
+    # Holes 2 mm across, 2 mm in from the bottom corners: in the strip the resistors
+    # take up, the edge is clear from 103 to 127 mm. Four gaps of 3.3 mm.
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.hole("Mech:Hole", (102, 78))
+    board.hole("Mech:Hole", (128, 78))
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.ok
+    assert _xs(board, solution, "R1", "R2", "R3") == pytest.approx(
+        [107.1, 109.1, 114.0, 116.0, 120.9, 122.9]
+    )
+    assert solution.chosen[-1] == (
+        'row(R1, R2, R3, along=Edge.BOTTOM, pitch="even"): over the 24 mm of the bottom edge '
+        "that is clear, of 30 mm"
+    )
+    # Holes further in than the resistors reach leave the whole edge.
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.hole("Mech:Hole", (102, 70))
+    board.hole("Mech:Hole", (128, 70))
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    solution = board.solve()
+    assert _xs(board, solution, "R1", "R2", "R3") == pytest.approx(
+        [105.6, 107.6, 114.0, 116.0, 122.4, 124.4]
+    )
+    assert not any("clear" in line for line in solution.chosen)
+
+
+def test_a_row_spreads_over_the_straight_of_an_edge_between_rounded_corners():
+    # Corners of 4 mm: the bottom edge is straight from 104 to 126 mm. Four gaps of 2.8.
+    board = _rounded(4, R1="A B", R2="C D", R3="E F")
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.ok
+    assert _xs(board, solution, "R1", "R2", "R3") == pytest.approx(
+        [107.6, 109.6, 114.0, 116.0, 120.4, 122.4]
+    )
+
+
+def test_a_row_that_does_not_fit_what_is_clear_is_said_with_how_much_is():
+    # Holes at 109 and 121 mm leave 10 mm between them, and 8 mm either side.
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.hole("Mech:Hole", (109, 79))
+    board.hole("Mech:Hole", (121, 79))
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.poses == {} and [p.text for p in solution.problems] == [
+        'row(R1, R2, R3, along=Edge.BOTTOM, pitch="even") does not fit: its parts are 10.8 mm '
+        "along what is clear of the bottom edge, which is 10 mm"
+    ]
+
+
+def test_a_row_with_a_pitch_is_about_the_middle_of_what_is_clear():
+    # One hole, at the left: the edge is clear from 103 to 130 mm, its middle at 116.5.
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.hole("Mech:Hole", (102, 78))
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM, pitch=5 * mm)
+    solution = board.solve()
+    assert solution.ok
+    assert [solution.poses[ref].x.mm for ref in ("R1", "R2", "R3")] == [111.5, 116.5, 121.5]
+    # Too far apart for what is clear, though not for the edge.
+    board = _board(R1="A B", R2="C D", R3="E F")
+    board.hole("Mech:Hole", (102, 78))
+    board.row(board.parts("R1..R3"), along=Edge.BOTTOM, pitch=12 * mm)
+    assert [p.text for p in board.solve().problems] == [
+        "row(R1, R2, R3, along=Edge.BOTTOM, pitch=12 mm) does not fit: at that pitch R1 reaches "
+        "0.3 mm past the end of what is clear of the bottom edge"
+    ]

@@ -17,13 +17,16 @@ from typing import TYPE_CHECKING, Any
 
 from pkidl import annotations, intent
 from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
+from pkidl.edge import shape as edge_shape
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
 from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Route, Row, Rules, Side, Statement
-from pkidl.placement import Solution, solve
+from pkidl.placement import Fixed, Solution, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 from pkidl.units import Length, length, mm
 
 if TYPE_CHECKING:
+    from shapely.geometry import Polygon
+
     from pkidl.build import Built
     from pkidl.routing import Router
 
@@ -133,6 +136,10 @@ class Board:
     # What the board file has said about the layout, each statement once.
     _statements: dict[Statement, None] = field(default_factory=dict, repr=False)
     name: str = ""  # what its files are called: from_inputs gives its directory's name
+    # The outline as it was drawn, item by item, and what is on the board that the board
+    # file does not place: its mounting holes.
+    _edge: list[dict[str, Any]] = field(default_factory=list, repr=False)
+    fixed: list[Fixed] = field(default_factory=list, repr=False)
 
     @classmethod
     def from_inputs(cls, where: Path | str) -> Board:
@@ -173,11 +180,27 @@ class Board:
                     board.circuit.unfitted[name] = str(e)
         board.outline(mech["outline"])
         for hole in mech["holes"]:
-            name, (x, y) = hole["footprint"], hole["at"]
-            at = Placement(name, hole["ref"], name.rpartition(":")[2], x, y, hole["rot"],
-                           hole["back"], board_only=True, uid=f"hole:{x},{y}")  # fmt: skip
-            board.footprint(place(board.library[name], at))
+            board.hole(hole["footprint"], tuple(hole["at"]), rot=hole["rot"], back=hole["back"],
+                       ref=hole["ref"])  # fmt: skip
         return board
+
+    def hole(self, footprint: str, at: Point, *, rot: float = 0.0, back: bool = False,
+             ref: str = "REF**") -> Fixed:  # fmt: skip
+        """Put a mounting hole on the board, or whatever else is fixed there and is no
+        part of the circuit: the library footprint named *footprint*, *at* a place in
+        board millimetres. Parts are kept clear of it, and a row along an edge spreads
+        over what it leaves clear. Gives back what the solver is told of it."""
+        if footprint not in self.library:
+            raise ValueError(f"no footprint {footprint!r} in the board's library")
+        x, y = at
+        name = footprint.rpartition(":")[2]
+        placed = Placement(footprint, ref, name, x, y, rot, back, board_only=True,
+                           uid=f"hole:{x},{y}")  # fmt: skip
+        self.footprint(place(self.library[footprint], placed))
+        fixed = Fixed(f"{name} at ({x:g}, {y:g})", footprint, Length(round(x * 1_000_000)),
+                      Length(round(y * 1_000_000)), float(rot), back)  # fmt: skip
+        self.fixed.append(fixed)
+        return fixed
 
     def __getitem__(self, ref: str) -> Part:
         """The part with this reference: ``board["U1"]``."""
@@ -321,7 +344,14 @@ class Board:
         """Where everything said puts each part: a pose for each part placed, the parts
         nothing places, and what was said that does not hold, with its lines. Nothing
         on the board moves. See ``pkidl.placement``."""
-        return solve(self.circuit, self.library, self.extent, self._statements)
+        return solve(self.circuit, self.library, self.extent, self._statements,
+                     edge=self.edge(), fixed=self.fixed)  # fmt: skip
+
+    def edge(self) -> Polygon | None:
+        """The area inside the board's outline, in board millimetres, or None for a
+        board whose outline was not drawn item by item (only its ``extent`` given).
+        See ``pkidl.edge``."""
+        return edge_shape(self._edge) if self._edge else None
 
     def build(self, outdir: Path | str, name: str | None = None, *,
               router: Router | None = None) -> Built:  # fmt: skip
@@ -377,6 +407,7 @@ class Board:
             uid = self._uuid("edge", kind, str(sorted(item.items())))
             node += [[Sym("layer"), "Edge.Cuts"], [Sym("uuid"), uid]]
             self.items.append(node)
+            self._edge.append(dict(item))
         if self.extent is not None:
             box += [self.extent[:2], self.extent[2:]]
         xs, ys = [round(x, 6) for x, _ in box], [round(y, 6) for _, y in box]
@@ -396,6 +427,7 @@ class Board:
                 [Sym("gr_line"), _xy(a, "start"), _xy(b, "end"), _stroke(w),
                  [Sym("layer"), "Edge.Cuts"], [Sym("uuid"), self._uuid("edge", str(a), str(b))]]
             )  # fmt: skip
+            self._edge.append({"type": "gr_line", "start": a, "end": b})
         k = r * (1 - math.sqrt(0.5))
         for start, mid, end in [
             ((x0, y0 + r), (x0 + k, y0 + k), (x0 + r, y0)),
@@ -408,6 +440,7 @@ class Board:
                  _stroke(w), [Sym("layer"), "Edge.Cuts"],
                  [Sym("uuid"), self._uuid("edge-arc", str(start), str(end))]]
             )  # fmt: skip
+            self._edge.append({"type": "gr_arc", "start": start, "mid": mid, "end": end})
 
     def track(self, start: Point, end: Point, width: float, net: str, layer: str = "F.Cu") -> None:
         self.items.append(
