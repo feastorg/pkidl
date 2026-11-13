@@ -236,21 +236,25 @@ def test_a_board_with_planes_and_one_class_is_routed_then_crossed(tmp_path):
     assert router.asked[1][1].only == {"A", "HV", "GND"}
 
 
-def test_each_stage_says_which_nets_and_how_whatever_the_job_has(tmp_path):
+def test_each_stage_says_which_nets_and_how_and_necks_only_where_the_job_lets_it(tmp_path):
     asked = dict(only=frozenset({"A"}), neck_down=False, cross_planes=False, quick=True)
     router = Scripted()
     staged(router, job(**asked), tmp_path, "b")
     assert [(j.only, how(j)) for _, j in router.asked] == [
         ({"HV", "M+"}, (False, True, False)),
-        (None, (True, True, False)),
+        (None, (False, True, False)),
     ]
     router = Scripted()
     staged(router, job(planes=[GND_POUR], neck_down=False, cross_planes=False), tmp_path, "b")
     assert [how(j) for _, j in router.asked] == [
         (False, False, False),
-        (True, False, True),
-        (True, True, True),
+        (False, False, True),
+        (False, True, True),
     ]
+    # A job that lets a track neck has it neck in every stage but the power one.
+    router = Scripted()
+    staged(router, job(planes=[GND_POUR]), tmp_path, "b")
+    assert [j.neck_down for _, j in router.asked] == [False, True, True]
 
 
 def test_what_was_routed_is_laid_as_a_track_a_segment_and_its_vias():

@@ -10,6 +10,12 @@ routed six times gave three different sessions. Both are set to one.
 ``$FREEROUTING`` overrides the command (default ``freerouting``, the pinned wrapper that
 runs the 2.5.0 jar headless).
 
+In 2.5.0 the fan-out stage narrows its stubs out of SMD pads to three quarters of the
+track width whatever ``automatic_neckdown`` is: on the fan controller, 13 paths at
+0.1874 mm under a 0.25 mm minimum with neck-down off, and none with fan-out off as
+well. A job says each on its own (``neck_down``, ``fan_out``): two boards with wide
+power tracks leave connections unmade when their power stage has no fan-out.
+
 What the router says of its own work is read from its log: the last
 ``(N unrouted and M violations)`` of its auto-routing stage, as 2.5.0 writes it.
 """
@@ -102,11 +108,12 @@ class Freerouting:
 
 def options(job: Job) -> list[str]:
     """Freerouting's settings for how *job* is to be routed."""
+    fanout_off = job.quick or not job.fan_out
     return [
         *(["--router.automatic_neckdown=false"] if not job.neck_down else []),
         *(["--router.plane_as_obstacle=true"] if not job.cross_planes else []),
-        *(["--router.fanout.enabled=false", "--router.optimizer.enabled=false"]
-          if job.quick else []),
+        *(["--router.fanout.enabled=false"] if fanout_off else []),
+        *(["--router.optimizer.enabled=false"] if job.quick else []),
     ]  # fmt: skip
 
 

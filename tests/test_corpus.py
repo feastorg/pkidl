@@ -284,6 +284,8 @@ def test_the_t0_board_file_builds_its_circuit_with_every_part_placed(tmp_path):
     ((stage, job, outdir, name),) = router.asked
     assert (stage, outdir, name) == ("", tmp_path, "esp12-breakout_ESP12Breakout")
     assert job.netclasses == [NetClass("Default", 0.2, 0.25)] and job.edge_clearance == 0.5
+    # Its one track width is the least the rules allow, so no track may neck below it.
+    assert job.neck_down is False and job.fan_out is False
     assert len(job.footprints) == len(wanted["parts"])
     (kept,) = built.solution.keepouts
     x0, y0, x1, y1 = (side.mm for side in kept.box)
