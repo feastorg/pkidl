@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 import pkidl
-from pkidl import Board, Edge, Side, align, inch, keepout, mil, mm, place, row
+from pkidl import Board, Edge, Side, align, decouple, inch, keepout, mil, mm, place, row
 from pkidl.circuit import Circuit
 from pkidl.intent import Align, Keepout, Place, canonical, conflicts
 from pkidl.sexpr import dumps
@@ -487,3 +487,49 @@ def test_the_centre_of_the_board_and_the_side_of_what_a_part_is_near_are_said(bo
     assert [str(c) for c in board.conflicts()] == [
         f"R1: side of U1 is the top edge ({HERE}:{first}) and the bottom edge ({HERE}:{first + 10})"
     ]
+
+
+def test_decoupling_is_a_statement_about_a_part_and_its_capacitors(board):
+    u1, r1, r2 = board.parts("U1", "R1", "R2")
+    a = decouple(u1, [r1, r2], within=2 * mm)
+    line = _line() - 1
+    assert a == decouple(u1, (r1, r2), within="2mm") and a.source is not None
+    assert (a.source.file.endswith(HERE), a.source.line) == (True, line)
+    # The order is which capacitor has the first pin: another order is another statement.
+    assert a != decouple(u1, [r2, r1], within=2 * mm)
+    assert a != decouple(u1, [r1, r2], within=3 * mm)
+    assert str(a) == "decouple(U1, R1, R2, within=2 mm)"
+    # It places the capacitors, and speaks of the part.
+    assert a.mentions() == (r1, r2, u1)
+    assert a.data() == {"decouple": "U1", "caps": ["R1", "R2"], "within": 2_000_000}
+    assert board.add(a) == (a,) and board.decouple(u1, [r1, r2], within=2 * mm) == a
+    assert board.statements() == (a,) == board.statements(about="R2") == board.statements("U1")
+    # A capacitor decouples one part, said once.
+    board.decouple(board["P1"], [r1], within=2 * mm)
+    assert [str(c) for c in board.conflicts()] == [
+        f"R1: decoupling is decouple(U1, R1, R2, within=2 mm) ({HERE}:{line}) and "
+        f"decouple(P1, R1, within=2 mm) ({HERE}:{line + 14})"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("make", "error", "message"),
+    [
+        (lambda b: decouple(b["U1"], [], within=mm), ValueError,
+         r"decouple\(U1\) names no capacitor"),
+        (lambda b: decouple(b["U1"], [b["R1"], b["R1"]], within=mm), ValueError,
+         r"decouple\(U1\) has R1 twice"),
+        (lambda b: decouple(b["U1"], [b["R1"], b["U1"]], within=mm), ValueError,
+         r"decouple\(U1\): U1 is the part itself"),
+        (lambda b: decouple(b["U1"], ["R1"], within=mm), TypeError,
+         r"decouple\(\) takes a part and its capacitors"),
+        (lambda b: decouple("U1", [b["R1"]], within=mm), TypeError,
+         r"decouple\(\) takes a part and its capacitors"),
+        (lambda b: decouple(b["U1"], [b["R1"]], within=0 * mm), ValueError,
+         r"decouple\(U1\): within= 0 mm leaves no room"),
+        (lambda b: decouple(b["U1"], [b["R1"]], within=2), TypeError, "2 has no unit"),
+    ],
+)  # fmt: skip
+def test_decoupling_that_does_not_say_it_is_refused(board, make, error, message):
+    with pytest.raises(error, match=message):
+        make(board)

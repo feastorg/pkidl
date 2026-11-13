@@ -35,6 +35,13 @@ What each statement means here:
   but for a part that is ``facing=`` an edge. The turn is counted from how each part
   lies along the edge with its length running the way the row runs, so a part drawn
   on end and one drawn across are in one row with pin 1 of each at the same end.
+- ``decouple`` a part with capacitors: each capacitor is placed as ``near=`` one pin of
+  the part has it, within the distance given. The capacitor is across two nets the
+  part is on, its supply and ground, and the pin is on the one with fewer pins on it
+  in the whole circuit, which the choices say. Capacitors take the part's pins on a
+  net one each, in the order named and the order of the pins, whichever statements
+  name them. One with no pin left is a problem, and so is one that is not across two
+  of the part's nets.
 - ``align``: the parts' first pins are a whole number of grid steps apart, across and
   along. It is checked, and moves nothing.
 - ``keepout`` of an area of a part: no other part's outline reaches into the area, on
@@ -74,7 +81,18 @@ from shapely.geometry import box as _area
 from shapely.prepared import prep
 
 from pkidl.circuit import Circuit, Pin, natural
-from pkidl.intent import Align, Edge, Keepout, Place, Row, Side, Statement, canonical, conflicts
+from pkidl.intent import (
+    Align,
+    Decouple,
+    Edge,
+    Keepout,
+    Place,
+    Row,
+    Side,
+    Statement,
+    canonical,
+    conflicts,
+)
 from pkidl.sexpr import Node, find, find_all
 from pkidl.units import Length
 
@@ -329,12 +347,56 @@ class _Solver:
                 raise ValueError(f"{part}: no footprint {part.footprint!r} to place")
             self.shapes[part.ref] = _shape(library[part.footprint])
             self.nets[part.ref] = {p.number: p.net.name for p in part.pins() if p.net is not None}
+        self.unordered: list[Problem] = []  # found once, before anything is placed
+        self.barred: set[str] = set()  # parts a statement names and cannot place
+        self.picked: dict[str, str] = {}  # what was settled for a part, to say each pass
+        self._decouple(circuit, [s for s in statements if isinstance(s, Decouple)])
         self.free = tuple(p.ref for p in circuit.parts() if p.ref not in self.asks)
         self.poses: dict[str, Pose] = {}
         self.problems: dict[Problem, None] = {}
         self.chosen: dict[str, None] = {}
-        self.unordered: list[Problem] = []  # parts no order places, found once
         self.turns: dict[Row, int] = {}  # the way round each row's parts are, this pass
+
+    def _decouple(self, circuit: Circuit, statements: list[Decouple]) -> None:
+        """Give each capacitor that decouples a part one of the part's pins to be near:
+        a pin on a net the two share, each pin to one capacitor."""
+        size: dict[str, int] = {}  # how many pins are on each net
+        for nets in self.nets.values():
+            for net in nets.values():
+                size[net] = size.get(net, 0) + 1
+        taken: dict[tuple[str, str], str] = {}  # (part, pin) -> the capacitor by it
+
+        def refuse(s: Decouple, cap: str, why: str) -> None:
+            self.barred.add(cap)
+            self.unordered.append(Problem((cap,), f"{s}: {why}", (s,)))
+
+        for s in statements:
+            part = circuit.part(s.part.ref)
+            its = set(self.nets[part.ref].values())
+            for cap in s.caps:
+                self.asks.setdefault(cap.ref, [])
+                self.said.setdefault(cap.ref, []).append(s)
+                across = sorted(set(self.nets[cap.ref].values()), key=lambda n: (size[n], n))
+                # A capacitor decouples a part it is across two nets of: its supply and
+                # its ground. One that shares a single net with it, ground say, is
+                # some other part's.
+                if len(across) < 2 or not set(across) <= its:
+                    off = " or ".join(n for n in across if n not in its) or "two nets of it"
+                    on = " and ".join(across) or "nothing"
+                    refuse(s, cap.ref, f"{cap.ref} is across {on}, and {part.ref} is not on {off}")
+                    continue
+                net, rest = across[0], across[1:]
+                pins = [n for n, on in self.nets[part.ref].items() if on == net]
+                pin = next((n for n in pins if (part.ref, n) not in taken), None)
+                if pin is None:
+                    by = " and ".join(f"{taken[part.ref, n]} is by {part.ref}.{n}" for n in pins)
+                    refuse(s, cap.ref, f"{cap.ref} has no pin of {part.ref} on {net} left: {by}")
+                    continue
+                taken[part.ref, pin] = cap.ref
+                self.picked[cap.ref] = (f"{cap.ref}: by {part.ref}.{pin} on {net}, which has "
+                                        f"fewer pins on it than {', '.join(rest)}")  # fmt: skip
+                self.asks[cap.ref].append(Place(circuit.part(cap.ref), near=part.pin(pin),
+                                                within=s.within, source=s.source))  # fmt: skip
 
     def solution(self) -> Solution:
         order = self._order()
@@ -389,6 +451,10 @@ class _Solver:
         return order
 
     def _place(self, ref: str, done: set[str]) -> Pose | None:
+        if ref in self.barred:
+            return None
+        if ref in self.picked:
+            self._chose(self.picked[ref])
         asks, rows = self.asks[ref], self.rows.get(ref, [])
         shape = self.shapes[ref]
         back, rots = self._back(ref), self._rots(ref)

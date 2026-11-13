@@ -349,6 +349,39 @@ On the fan controller, with the fan headers in their row, the processor at the c
 and each LED near its fan toward the top edge, the four LEDs are placed, each 1.6 mm
 from its header and above it.
 
+**As built, decoupling:** `decouple(part, caps, within=2 * mm)` is a statement, and
+`board.decouple` adds it. Each capacitor is placed as `near=` one pin of the part has
+it, within the distance given, and one capacitor to a pin: they take the part's pins on
+a net in the order they are named and the order of the pins, whichever statements name
+them.
+
+A capacitor decouples a part it is across two nets of, its supply and its ground. Its
+pin is on the one of the two with fewer pins on it in the whole circuit, which on a
+real board is the supply, and the solver says which it took (`C2: by U1.13 on +5V,
+which has fewer pins on it than GND`). That is a rule of thumb said out loud, not a
+fact about the circuit: on a board with little on its ground it picks ground.
+
+Neither of two things is settled silently. A capacitor with no pin left is a problem,
+not a second capacitor on a pin, and so is one that shares only one net with the part:
+
+```
+decouple(U1, C2, C8, C9, C12, C1, within=3 mm): C1 is across +12V and GND, and U1 is not on +12V
+decouple(U1, C2, C8, C9, C12, C1, within=3 mm): C9 has no pin of U1 on +5V left: C2 is by U1.13 and C8 is by U1.28
+```
+
+That is the fan controller. Its processor has two pins on +5V and three capacitors are
+on that net, with the regulator's output: the sketch below gives all three to the
+processor, and the third is the regulator's. C12, alone with the processor's pin 20,
+is its own and is not in the sketch.
+
+Open after this:
+
+- **`decouple(part)` with no capacitors named**, as the T1, T3 and T4 sketches write
+  it, would have to choose them from the circuit. Three capacitors on one net with two
+  parts is where that choice cannot be made from the netlist alone.
+- **Which pad of the capacitor is by the pin** is whichever makes its connections
+  shortest, as for any part placed `near=` something.
+
 **As built, routing** (`pkidl.routing`): a router is an engine behind one interface.
 It is given a `Job` (the placed footprints, the outline, the net classes, what copper
 is there already, the areas to keep out of, the pours, and how to route: `neck_down`,

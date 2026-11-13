@@ -19,7 +19,19 @@ from pkidl import annotations, intent
 from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
 from pkidl.edge import shape as edge_shape
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_xy, place
-from pkidl.intent import Align, Conflict, Edge, Keepout, Place, Route, Row, Rules, Side, Statement
+from pkidl.intent import (
+    Align,
+    Conflict,
+    Decouple,
+    Edge,
+    Keepout,
+    Place,
+    Route,
+    Row,
+    Rules,
+    Side,
+    Statement,
+)
 from pkidl.placement import Fixed, Problem, Solution, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 from pkidl.units import Length, length, mm
@@ -279,6 +291,13 @@ class Board:
         """Say that *parts* go in a row along an edge, in the order named, and get the
         statement back. See ``pkidl.row``."""
         statement = intent.row(parts, along=along, pitch=pitch, inset=inset)
+        self.add(statement)
+        return statement
+
+    def decouple(self, part: Part, caps: Iterable[Part], *, within: Length | str) -> Decouple:
+        """Say that *caps* decouple *part*, one by each of its supply pins, and get the
+        statement back. See ``pkidl.decouple``."""
+        statement = intent.decouple(part, caps, within=within)
         self.add(statement)
         return statement
 

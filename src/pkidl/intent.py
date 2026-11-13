@@ -11,6 +11,9 @@ conflict, reported with the line each was written on; neither wins.
 ``row(fans, along=Edge.BOTTOM)`` is about several parts at once: where they go along an
 edge, in the order they are named.
 
+``decouple(u1, caps, within=2 * mm)`` puts capacitors by a part's supply pins, one to
+a pin.
+
 ``keepout(u1.area("antenna"), copper=True)`` is a statement too, about an area of a
 part. It says nothing of where the part goes, so keepouts add up and never conflict.
 
@@ -276,6 +279,44 @@ class Row(Statement):
 
 
 @dataclass(frozen=True)
+class Decouple(Statement):
+    """Capacitors by the supply pins of a part, one to a pin. Made with ``decouple``."""
+
+    part: Part
+    caps: tuple[Part, ...]
+    within: Length
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "caps", tuple(self.caps))
+        if not isinstance(self.part, Part) or not all(isinstance(c, Part) for c in self.caps):
+            raise TypeError('decouple() takes a part and its capacitors, such as board["U1"] '
+                            f'and board.parts("C1", "C2"), not {self.part!r} and '
+                            f"{self.caps!r}")  # fmt: skip
+        if not self.caps:
+            raise ValueError(f"decouple({self.part}) names no capacitor")
+        if twice := [c.ref for c in dict.fromkeys(self.caps) if self.caps.count(c) > 1]:
+            raise ValueError(f"decouple({self.part}) has {', '.join(twice)} twice")
+        if self.part in self.caps:
+            raise ValueError(f"decouple({self.part}): {self.part} is the part itself")
+        if self.within <= Length(0):
+            raise ValueError(f"decouple({self.part}): within= {self.within} leaves no room")
+
+    def __str__(self) -> str:
+        caps = ", ".join(c.ref for c in self.caps)
+        return f"decouple({self.part.ref}, {caps}, within={self.within})"
+
+    def mentions(self) -> tuple[Part, ...]:
+        return (*self.caps, self.part)
+
+    def claims(self) -> dict[tuple[str, str], object]:
+        return {(cap.ref, "decoupling"): str(self) for cap in self.caps}
+
+    def data(self) -> dict[str, Any]:
+        return {"decouple": self.part.ref, "caps": [c.ref for c in self.caps],
+                "within": self.within.nm}  # fmt: skip
+
+
+@dataclass(frozen=True)
 class Keepout(Statement):
     """What stays out of an area of a part. Made with ``keepout``."""
 
@@ -395,6 +436,17 @@ def row(parts: Iterable[Part], *, along: Edge, pitch: Length | str = "even",
     and the row is about the middle of the edge."""
     return Row(tuple(parts), along, pitch if pitch == "even" else length(pitch),
                None if inset is None else length(inset), source=_written_at())  # fmt: skip
+
+
+def decouple(part: Part, caps: Iterable[Part], *, within: Length | str) -> Decouple:
+    """Say that *caps* decouple *part*: each goes by one of the part's pins that it
+    shares a net with, *within* a distance of it as ``place(near=, within=)`` has it,
+    and one capacitor to a pin, in the order named and the order of the pins. A
+    capacitor is across two nets of the part, its supply and ground, and the pin is on
+    the one with fewer pins on it. A capacitor with no pin left is a problem, not a second
+    capacitor on a pin, and so is one that is not across two of the part's nets: either
+    belongs by some other part."""
+    return Decouple(part, tuple(caps), length(within), source=_written_at())
 
 
 def keepout(area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:

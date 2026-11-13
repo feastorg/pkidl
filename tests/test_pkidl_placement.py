@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-from pkidl import Board, Edge, Side, align, keepout, mm, place, row
+from pkidl import Board, Edge, Side, align, decouple, keepout, mm, place, row
 from pkidl.circuit import Circuit
 from pkidl.footprint import Placement, pad_xy, pads
 from pkidl.footprint import place as put
@@ -1733,4 +1733,105 @@ def test_a_part_in_a_notch_drawn_on_the_boards_edge_is_off_the_board():
     board.place(board["R1"], against=Edge.LEFT)
     assert [p.text for p in board.solve().problems] == [
         "R1 does not fit on the board: it reaches 3.2 mm outside the outline at (101.8 mm, 66.8 mm)"
+    ]
+
+
+def _supplied(**more: str) -> Board:
+    """A module with two pins on VCC (1 and 3) and one on GND at the centre of the
+    board, three capacitors across VCC and GND, and two test points that make GND the
+    net with more pins on it."""
+    board = _board(U1="VCC X VCC Y GND", R1="VCC GND", R2="VCC GND", R3="VCC GND",
+                   T1="GND", T2="GND", **more)  # fmt: skip
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    return board
+
+
+def test_capacitors_decouple_a_part_one_by_each_of_its_supply_pins():
+    board = _supplied()
+    board.decouple(board["U1"], board.parts("R1", "R2"), within=3 * mm)
+    solution = board.solve()
+    assert solution.problems == () and solution.free == ("R3", "T1", "T2")
+    assert [line for line in solution.chosen if " by " in line] == [
+        "R1: by U1.1 on VCC, which has fewer pins on it than GND",
+        "R2: by U1.3 on VCC, which has fewer pins on it than GND",
+    ]
+    assert [line.partition(",")[0].split(" from ")[1] for line in solution.chosen
+            if " from " in line] == ["U1.1", "U1.3"]  # fmt: skip
+    # Each has a pad within the distance of its pin: pin 1 is at (111, 65), pin 3 at
+    # (119, 67).
+    for ref, pin in (("R1", (111.0, 65.0)), ("R2", (119.0, 67.0))):
+        assert min(math.dist(pad, pin) for pad in _pads(board, solution, ref).values()) <= 3
+    # Said in two statements, the second capacitor still has the second pin.
+    apart = _supplied()
+    apart.decouple(apart["U1"], [apart["R1"]], within=3 * mm)
+    apart.decouple(apart["U1"], [apart["R2"]], within=3 * mm)
+    assert apart.solve().poses == solution.poses
+
+
+def test_a_capacitor_with_no_pin_left_is_said_and_is_not_put_by_a_pin_that_has_one():
+    board = _supplied()
+    board.decouple(board["U1"], board.parts("R1..R3"), within=3 * mm)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [
+        "decouple(U1, R1, R2, R3, within=3 mm): R3 has no pin of U1 on VCC left: R1 is by "
+        f"U1.1 and R2 is by U1.3 ({HERE}:{line})"
+    ]
+    # It is asked for and not placed; the two with pins are.
+    assert sorted(solution.poses) == ["R1", "R2", "U1"] and "R3" not in solution.free
+
+
+def test_a_capacitor_that_is_not_across_two_of_the_parts_nets_does_not_decouple_it():
+    # R4 shares ground with the module and nothing else: it is some other part's.
+    board = _supplied(R4="V2 GND")
+    board.decouple(board["U1"], board.parts("R1", "R4"), within=3 * mm)
+    solution = board.solve()
+    assert [p.text for p in solution.problems] == [
+        "decouple(U1, R1, R4, within=3 mm): R4 is across V2 and GND, and U1 is not on V2"
+    ]
+    assert "R4" not in solution.poses and "R1" in solution.poses
+
+
+def test_the_pin_a_capacitor_goes_by_is_on_the_net_with_fewer_pins_and_that_is_said():
+    # With nothing else on ground, ground is the net with fewer pins, and the module
+    # has one pin on it: the first capacitor goes there and the second has none.
+    board = _board(U1="VCC X VCC Y GND", R1="VCC GND", R2="VCC GND")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.decouple(board["U1"], board.parts("R1", "R2"), within=3 * mm)
+    solution = board.solve()
+    assert "R1: by U1.5 on GND, which has fewer pins on it than VCC" in solution.chosen
+    assert [p.text for p in solution.problems] == [
+        "decouple(U1, R1, R2, within=3 mm): R2 has no pin of U1 on GND left: R1 is by U1.5"
+    ]
+
+
+def test_decoupling_does_not_depend_on_when_it_was_said_and_is_the_capacitors_one_place():
+    def said(board: Board) -> list:
+        return [decouple(board["U1"], board.parts("R1", "R2"), within=3 * mm),
+                place(board["R3"], near=board["R1"], within=3 * mm)]  # fmt: skip
+
+    first, second = _supplied(), _supplied()
+    first.add(*said(first))
+    second.add(*reversed(said(second)))
+    solution = first.solve()
+    assert solution.problems == () and solution == second.solve()
+    # A capacitor that decouples a part and is put somewhere else as well is in two
+    # places.
+    board = _supplied()
+    board.decouple(board["U1"], [board["R1"]], within=3 * mm)
+    board.place(board["R1"], against=Edge.TOP)
+    assert [p.text for p in board.solve().problems] == [
+        "R1: near= is solved alone: one near=, and no against= or between= beside it"
+    ]
+
+
+def test_a_decoupling_capacitor_is_within_the_distance_said_of_its_pin_or_has_no_place():
+    # Pin 1 is 1 mm inside the module's outline: nothing clear of the module is within
+    # 0.3 mm of it.
+    board = _supplied()
+    board.decouple(board["U1"], [board["R1"]], within=0.3 * mm)
+    line = _line_no() - 1
+    assert _told(board.solve()) == [
+        "R1 has no place within 0.3 mm of U1.1 that is on the front of the board and clear "
+        f"of the other parts ({HERE}:{line})"
     ]

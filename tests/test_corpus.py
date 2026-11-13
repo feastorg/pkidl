@@ -406,3 +406,24 @@ def test_on_a_board_that_is_its_box_a_part_against_any_edge_is_on_the_board(d):
         tried.place(tried[part.ref], against=side)
         solution = tried.solve()
         assert solution.problems == (), (side, solution.problems)
+
+
+def test_the_fan_controllers_processor_is_decoupled_by_the_capacitors_that_are_its_own():
+    """U1 has two pins on +5V, 13 and 28, and pin 20 alone on a net with C12. Three
+    capacitors are on +5V, C2, C8 and C9, and the regulator's output is too: the third
+    has no pin of U1. C1 is across +12V and ground, and is the regulator's."""
+    board = Board.from_inputs(CORPUS / "t2" / "fan_controller_fan_controller")
+    board.place(board["U1"], centre=True)
+    board.decouple(board["U1"], board.parts("C2", "C8", "C9", "C12", "C1"), within=3 * mm)
+    solution = board.solve()
+    said = "decouple(U1, C2, C8, C9, C12, C1, within=3 mm)"
+    assert [p.text for p in solution.problems] == [
+        f"{said}: C1 is across +12V and GND, and U1 is not on +12V",
+        f"{said}: C9 has no pin of U1 on +5V left: C2 is by U1.13 and C8 is by U1.28",
+    ]
+    assert set(solution.poses) == {"C2", "C8", "C12", "U1"}
+    assert [line for line in solution.chosen if " by " in line] == [
+        "C2: by U1.13 on +5V, which has fewer pins on it than GND",
+        "C8: by U1.28 on +5V, which has fewer pins on it than GND",
+        "C12: by U1.20 on Net-(C12-Pad1), which has fewer pins on it than GND",
+    ]
