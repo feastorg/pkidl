@@ -512,6 +512,17 @@ def test_decoupling_is_a_statement_about_a_part_and_its_capacitors(board):
     ]
 
 
+def test_a_part_has_one_decoupling_statement(board):
+    u1, r1, r2 = board.parts("U1", "R1", "R2")
+    board.decouple(u1, [r1], within=2 * mm)
+    line = _line() - 1
+    board.decouple(u1, [r2], within=2 * mm)
+    assert [str(c) for c in board.conflicts()] == [
+        f"U1: decoupling is decouple(U1, R1, within=2 mm) ({HERE}:{line}) and "
+        f"decouple(U1, R2, within=2 mm) ({HERE}:{line + 2})"
+    ]
+
+
 @pytest.mark.parametrize(
     ("make", "error", "message"),
     [
@@ -528,6 +539,8 @@ def test_decoupling_is_a_statement_about_a_part_and_its_capacitors(board):
         (lambda b: decouple(b["U1"], [b["R1"]], within=0 * mm), ValueError,
          r"decouple\(U1\): within= 0 mm leaves no room"),
         (lambda b: decouple(b["U1"], [b["R1"]], within=2), TypeError, "2 has no unit"),
+        (lambda b: decouple(b["U1"], b["R1"], within=mm), TypeError,
+         r"decouple\(U1\) takes its capacitors together, as in decouple\(U1, \[R1\], within=...\)"),
     ],
 )  # fmt: skip
 def test_decoupling_that_does_not_say_it_is_refused(board, make, error, message):

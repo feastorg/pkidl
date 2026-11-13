@@ -10,11 +10,13 @@ Unreleased. History before this file was reconstructed from the git log.
 ### Added
 
 - `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
-  decouple a part. Each is placed near one pin of the part on a net the two share, one
-  capacitor to a pin, in the order named. A capacitor is across two of the part's
-  nets, and its pin is on the one with fewer pins on it, which `Board.solve()` says. A
-  capacitor with no pin left, or one that shares a single net with the part, is a
-  problem and is not placed. (#7)
+  decouple a part. Each is across ground and one of the part's supplies, and is placed
+  with its pad on that supply near one of the part's pins on it, one capacitor to a
+  pin, in the order named and the order of the pin numbers. A part's capacitors are
+  said in one statement. A capacitor with no pin left, or not across ground and a net
+  the part is on, is a problem and is not placed. (#7)
+- `Board.ground("GND")` declares which nets are ground, and `Net.is_ground` reads it.
+  A ground is a rail as well. `decouple` needs it said. (#7)
 - Parts are kept inside the board's outline as it is drawn, and clear of its mounting
   holes. `Board.edge()` is the area the outline encloses, rounded corners and cut-outs
   included (`pkidl.edge`); `Board.hole(footprint, at)` puts a mounting hole on the

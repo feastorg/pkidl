@@ -106,6 +106,16 @@ LIBRARY = {
     ),
     # A diode with one pad, 2 by 1 mm, turned 45 degrees.
     "Device:D": _footprint("D", "", _smd(1, 0, 0, 2, 1, " 45")),
+    # A chip whose footprint lists its pads out of order: 10, then 2, then 3, in a row
+    # 4 mm apart, in a courtyard 12 by 4 mm.
+    "Chip:Z": _footprint(
+        "Z",
+        "(fp_rect (start -2 -2) (end 10 2) (stroke (width 0.05) (type solid)) (fill no) "
+        '(layer "F.CrtYd"))',
+        _smd(10, 0, 0, 1, 1),
+        _smd(2, 4, 0, 1, 1),
+        _smd(3, 8, 0, 1, 1),
+    ),
     # A mounting hole: 2 mm across, unplated, with no number.
     "Mech:Hole": _footprint(
         "Hole",
@@ -117,7 +127,7 @@ LIBRARY = {
 }  # fmt: skip
 _KINDS = {"P": "Conn:H", "R": "Device:R", "U": "RF:M", "F": "Mech:Dot", "T": "Test:TP",
           "Q": "Device:Q", "K": "Sensor:K", "D": "Device:D", "H": "Mech:Hole",
-          "N": "Mech:Nothing", "V": "Conn:V"}  # fmt: skip
+          "N": "Mech:Nothing", "V": "Conn:V", "Z": "Chip:Z"}  # fmt: skip
 
 
 def _board(**parts: str) -> Board:
@@ -1736,12 +1746,17 @@ def test_a_part_in_a_notch_drawn_on_the_boards_edge_is_off_the_board():
     ]
 
 
+def _by(solution: Solution) -> dict[str, str]:
+    """Which pin each part that looked for a place was put by."""
+    return {line.split(":")[0]: line.partition(",")[0].split(" from ")[1]
+            for line in solution.chosen if " from " in line}  # fmt: skip
+
+
 def _supplied(**more: str) -> Board:
     """A module with two pins on VCC (1 and 3) and one on GND at the centre of the
-    board, three capacitors across VCC and GND, and two test points that make GND the
-    net with more pins on it."""
-    board = _board(U1="VCC X VCC Y GND", R1="VCC GND", R2="VCC GND", R3="VCC GND",
-                   T1="GND", T2="GND", **more)  # fmt: skip
+    board, and three capacitors across VCC and GND, which the board says is ground."""
+    board = _board(U1="VCC X VCC Y GND", R1="VCC GND", R2="VCC GND", R3="VCC GND", **more)
+    board.ground("GND")
     board.place(board["U1"], centre=True, facing=Edge.TOP)
     return board
 
@@ -1750,22 +1765,34 @@ def test_capacitors_decouple_a_part_one_by_each_of_its_supply_pins():
     board = _supplied()
     board.decouple(board["U1"], board.parts("R1", "R2"), within=3 * mm)
     solution = board.solve()
-    assert solution.problems == () and solution.free == ("R3", "T1", "T2")
-    assert [line for line in solution.chosen if " by " in line] == [
-        "R1: by U1.1 on VCC, which has fewer pins on it than GND",
-        "R2: by U1.3 on VCC, which has fewer pins on it than GND",
-    ]
+    assert solution.problems == () and solution.free == ("R3",)
     assert [line.partition(",")[0].split(" from ")[1] for line in solution.chosen
             if " from " in line] == ["U1.1", "U1.3"]  # fmt: skip
-    # Each has a pad within the distance of its pin: pin 1 is at (111, 65), pin 3 at
-    # (119, 67).
+    # Each has its own pad on the supply, pad 1, within the distance of its pin: pin 1
+    # is at (111, 65), pin 3 at (119, 67). The pad on ground may be anywhere.
     for ref, pin in (("R1", (111.0, 65.0)), ("R2", (119.0, 67.0))):
-        assert min(math.dist(pad, pin) for pad in _pads(board, solution, ref).values()) <= 3
-    # Said in two statements, the second capacitor still has the second pin.
-    apart = _supplied()
-    apart.decouple(apart["U1"], [apart["R1"]], within=3 * mm)
-    apart.decouple(apart["U1"], [apart["R2"]], within=3 * mm)
-    assert apart.solve().poses == solution.poses
+        assert math.dist(_pads(board, solution, ref)["1"], pin) <= 3
+    # Ground has fewer pins on it than the supply here, and that does not matter: the
+    # board file said which is ground.
+    assert len(board.net("GND").pins()) < len(board.net("VCC").pins())
+
+
+def test_a_parts_decoupling_is_said_once_so_that_the_order_named_is_the_order():
+    # Two statements for one part would leave which capacitor has the first pin to
+    # which was written first, or where.
+    board = _supplied()
+    board.decouple(board["U1"], [board["R1"]], within=3 * mm)
+    line = _line_no() - 1
+    board.decouple(board["U1"], [board["R2"]], within=3 * mm)
+    solution = board.solve()
+    assert solution.poses == {} and _told(solution) == [
+        f"U1: decoupling is decouple(U1, R1, within=3 mm) ({HERE}:{line}) and "
+        f"decouple(U1, R2, within=3 mm) ({HERE}:{line + 2})"
+    ]
+    # The order named is the order of the pins: the other way round, the other pins.
+    swapped = _supplied()
+    swapped.decouple(swapped["U1"], swapped.parts("R2", "R1"), within=3 * mm)
+    assert _by(swapped.solve()) == {"R2": "U1.1", "R1": "U1.3"}
 
 
 def test_a_capacitor_with_no_pin_left_is_said_and_is_not_put_by_a_pin_that_has_one():
@@ -1779,30 +1806,37 @@ def test_a_capacitor_with_no_pin_left_is_said_and_is_not_put_by_a_pin_that_has_o
     ]
     # It is asked for and not placed; the two with pins are.
     assert sorted(solution.poses) == ["R1", "R2", "U1"] and "R3" not in solution.free
+    # The problem is the statement the board file wrote.
+    assert solution.problems[0].statements == board.statements()[-1:]
 
 
-def test_a_capacitor_that_is_not_across_two_of_the_parts_nets_does_not_decouple_it():
-    # R4 shares ground with the module and nothing else: it is some other part's.
-    board = _supplied(R4="V2 GND")
-    board.decouple(board["U1"], board.parts("R1", "R4"), within=3 * mm)
+def test_a_capacitor_that_is_not_across_ground_and_one_of_the_parts_supplies_is_said():
+    board = _supplied(R4="V2 GND", R5="X Y", R6="GND GND")
+    board.decouple(board["U1"], board.parts("R1", "R4", "R5", "R6"), within=3 * mm)
     solution = board.solve()
+    said = "decouple(U1, R1, R4, R5, R6, within=3 mm)"
     assert [p.text for p in solution.problems] == [
-        "decouple(U1, R1, R4, within=3 mm): R4 is across V2 and GND, and U1 is not on V2"
+        # On ground and a supply the module is not on: it is some other part's.
+        f"{said}: R4 is across GND and V2, and U1 is not on V2",
+        f"{said}: R5 is across X and Y, neither of them ground",
+        f"{said}: R6 is across GND, not ground and one supply",
     ]
-    assert "R4" not in solution.poses and "R1" in solution.poses
+    assert sorted(solution.poses) == ["R1", "U1"]
 
 
-def test_the_pin_a_capacitor_goes_by_is_on_the_net_with_fewer_pins_and_that_is_said():
-    # With nothing else on ground, ground is the net with fewer pins, and the module
-    # has one pin on it: the first capacitor goes there and the second has none.
-    board = _board(U1="VCC X VCC Y GND", R1="VCC GND", R2="VCC GND")
+def test_decoupling_needs_to_be_told_which_net_is_ground():
+    board = _board(U1="VCC X VCC Y GND", R1="VCC GND")
+    board.rails("VCC")
     board.place(board["U1"], centre=True, facing=Edge.TOP)
-    board.decouple(board["U1"], board.parts("R1", "R2"), within=3 * mm)
-    solution = board.solve()
-    assert "R1: by U1.5 on GND, which has fewer pins on it than VCC" in solution.chosen
-    assert [p.text for p in solution.problems] == [
-        "decouple(U1, R1, R2, within=3 mm): R2 has no pin of U1 on GND left: R1 is by U1.5"
+    board.decouple(board["U1"], [board["R1"]], within=3 * mm)
+    assert [p.text for p in board.solve().problems] == [
+        "decouple(U1, R1, within=3 mm): R1 is across GND and VCC, and no net is said to be "
+        'ground: say which is, as in ground("GND")'
     ]
+    # A ground is a rail, and is given back as the rails are.
+    (gnd,) = board.ground("GND")
+    assert gnd.is_ground and gnd.is_rail and not board.net("VCC").is_ground
+    assert board.solve().problems == ()
 
 
 def test_decoupling_does_not_depend_on_when_it_was_said_and_is_the_capacitors_one_place():
@@ -1829,9 +1863,29 @@ def test_a_decoupling_capacitor_is_within_the_distance_said_of_its_pin_or_has_no
     # Pin 1 is 1 mm inside the module's outline: nothing clear of the module is within
     # 0.3 mm of it.
     board = _supplied()
-    board.decouple(board["U1"], [board["R1"]], within=0.3 * mm)
+    said = board.decouple(board["U1"], [board["R1"]], within=0.3 * mm)
     line = _line_no() - 1
-    assert _told(board.solve()) == [
+    solution = board.solve()
+    assert _told(solution) == [
         "R1 has no place within 0.3 mm of U1.1 that is on the front of the board and clear "
         f"of the other parts ({HERE}:{line})"
     ]
+    # The problem is of the statement the board file wrote, not of what was made of it.
+    assert solution.problems[0].statements == (said,)
+
+
+def test_capacitors_take_a_parts_pins_in_the_order_of_their_numbers():
+    # The chip's footprint lists pad 10 before pad 2, and "10" sorts before "2" as
+    # text. The first capacitor named has pin 2.
+    cap = {"value": "100n", "footprint": "Device:R", "pads": {"1": "VCC", "2": "GND"}}
+    listed = [{"ref": "Z1", "value": "Z1", "footprint": "Chip:Z",
+               "pads": {"10": "VCC", "2": "VCC", "3": "GND"}},
+              {"ref": "R1", **cap}, {"ref": "R2", **cap}]  # fmt: skip
+    board = Board(circuit=Circuit({"parts": listed, "nets": ["GND", "VCC"]}),
+                  library=dict(LIBRARY), extent=(100.0, 50.0, 130.0, 80.0))  # fmt: skip
+    assert [p.number for p in board["Z1"].pins()] == ["10", "2", "3"]
+    board.ground("GND")
+    board.place(board["Z1"], centre=True, facing=Edge.TOP)
+    board.decouple(board["Z1"], board.parts("R1", "R2"), within=4 * mm)
+    solution = board.solve()
+    assert solution.problems == () and _by(solution) == {"R1": "Z1.2", "R2": "Z1.10"}

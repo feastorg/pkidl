@@ -351,36 +351,44 @@ from its header and above it.
 
 **As built, decoupling:** `decouple(part, caps, within=2 * mm)` is a statement, and
 `board.decouple` adds it. Each capacitor is placed as `near=` one pin of the part has
-it, within the distance given, and one capacitor to a pin: they take the part's pins on
-a net in the order they are named and the order of the pins, whichever statements name
-them.
+it, and one capacitor to a pin: they take the part's pins on a supply in the order
+they are named and the order of the pin numbers. A part's capacitors are said in one
+statement, so that the order named is the only order there is: two statements for one
+part are a conflict.
 
-A capacitor decouples a part it is across two nets of, its supply and its ground. Its
-pin is on the one of the two with fewer pins on it in the whole circuit, which on a
-real board is the supply, and the solver says which it took (`C2: by U1.13 on +5V,
-which has fewer pins on it than GND`). That is a rule of thumb said out loud, not a
-fact about the circuit: on a board with little on its ground it picks ground.
+A capacitor decouples a part by being across one of its supplies and ground, and
+which net is ground is for the board file to say, once: `board.ground("GND")`. A ground
+is a rail as well. The capacitor goes by the part's pin on the supply, with its own pad
+on that supply the one within the distance; its ground pad may be further off.
 
-Neither of two things is settled silently. A capacitor with no pin left is a problem,
-not a second capacitor on a pin, and so is one that shares only one net with the part:
+Nothing is settled silently. Each of these is a problem, and the capacitor is not
+placed:
 
 ```
 decouple(U1, C2, C8, C9, C12, C1, within=3 mm): C1 is across +12V and GND, and U1 is not on +12V
 decouple(U1, C2, C8, C9, C12, C1, within=3 mm): C9 has no pin of U1 on +5V left: C2 is by U1.13 and C8 is by U1.28
+decouple(U1, R1, within=3 mm): R1 is across GND and VCC, and no net is said to be ground: say which is, as in ground("GND")
 ```
 
-That is the fan controller. Its processor has two pins on +5V and three capacitors are
-on that net, with the regulator's output: the sketch below gives all three to the
-processor, and the third is the regulator's. C12, alone with the processor's pin 20,
-is its own and is not in the sketch.
+The first two are the fan controller. Its processor has two pins on +5V, and three
+capacitors are on that net with the regulator's output: the sketch below gives all
+three to the processor, and one of them has no pin. The netlist does not say which of
+the three is the regulator's, since they are the same part on the same nets; the board
+file does, by which two it names for the processor. C12, alone with the processor's
+pin 20, is its own and is not in the sketch.
+
+The pin was first chosen as the one on whichever of the capacitor's two nets had fewer
+pins on it in the whole circuit, taking that for the supply. On a module with five
+pull-ups and a header, ground is the smaller net.
 
 Open after this:
 
-- **`decouple(part)` with no capacitors named**, as the T1, T3 and T4 sketches write
-  it, would have to choose them from the circuit. Three capacitors on one net with two
-  parts is where that choice cannot be made from the netlist alone.
-- **Which pad of the capacitor is by the pin** is whichever makes its connections
-  shortest, as for any part placed `near=` something.
+- **The sketches below write `board.decouple(u1, caps)` with no `within=`**, which is
+  required, and `decouple(part)` with no capacitors, as T1, T3 and T4 have it. Choosing
+  them from the circuit is where three capacitors on one net with two parts cannot be
+  told apart.
+- **A capacitor is whatever the board file names**: one across ground and an input
+  pin's net, a filter, is placed by that pin like any other.
 
 **As built, routing** (`pkidl.routing`): a router is an engine behind one interface.
 It is given a `Job` (the placed footprints, the outline, the net classes, what copper

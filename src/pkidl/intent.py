@@ -309,7 +309,13 @@ class Decouple(Statement):
         return (*self.caps, self.part)
 
     def claims(self) -> dict[tuple[str, str], object]:
-        return {(cap.ref, "decoupling"): str(self) for cap in self.caps}
+        # A capacitor decouples one part, and a part's capacitors are said once: which
+        # of them has which pin is the order they are named in, in the one statement.
+        return {(ref, "decoupling"): str(self) for ref in (self.part.ref, *self.refs)}
+
+    @property
+    def refs(self) -> tuple[str, ...]:
+        return tuple(cap.ref for cap in self.caps)
 
     def data(self) -> dict[str, Any]:
         return {"decouple": self.part.ref, "caps": [c.ref for c in self.caps],
@@ -439,13 +445,16 @@ def row(parts: Iterable[Part], *, along: Edge, pitch: Length | str = "even",
 
 
 def decouple(part: Part, caps: Iterable[Part], *, within: Length | str) -> Decouple:
-    """Say that *caps* decouple *part*: each goes by one of the part's pins that it
-    shares a net with, *within* a distance of it as ``place(near=, within=)`` has it,
-    and one capacitor to a pin, in the order named and the order of the pins. A
-    capacitor is across two nets of the part, its supply and ground, and the pin is on
-    the one with fewer pins on it. A capacitor with no pin left is a problem, not a second
-    capacitor on a pin, and so is one that is not across two of the part's nets: either
-    belongs by some other part."""
+    """Say that *caps* decouple *part*. Each is across one of the part's supplies and
+    ground, which ``board.ground`` declares, and goes by one of the part's pins on that
+    supply: its own pad on the supply *within* that distance of the pin, and one
+    capacitor to a pin, in the order named and the order of the pin numbers. A part's
+    capacitors are said in one statement. A capacitor with no pin left is a problem,
+    not a second capacitor on a pin, and so is one that is not across ground and a net
+    the part is on: either belongs by some other part."""
+    if isinstance(caps, Part):
+        raise TypeError(f"decouple({part}) takes its capacitors together, as in "
+                        f"decouple({part}, [{caps}], within=...)")  # fmt: skip
     return Decouple(part, tuple(caps), length(within), source=_written_at())
 
 

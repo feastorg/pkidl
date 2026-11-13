@@ -237,6 +237,12 @@ class Board:
         out. See ``Circuit.rails``."""
         return self.circuit.rails(*nets)
 
+    def ground(self, *nets: Net | str) -> tuple[Net, ...]:
+        """Declare which nets are ground, and get them back: ``board.ground("GND")``.
+        ``decouple`` puts a capacitor by the pin on its other net. A ground is a rail
+        as well. See ``Circuit.ground``."""
+        return self.circuit.ground(*nets)
+
     def name_nets(self, names: Mapping[str, str]) -> tuple[Net, ...]:
         """Give anonymous nets a name to write and read, and get them back:
         ``vin, sw = board.name_nets({"Net-(C106-Pad1)": "VIN", "Net-(C105-Pad1)": "SW"})``.
