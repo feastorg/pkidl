@@ -150,7 +150,10 @@ the board is the build's.
   drawing. A footprint with neither a courtyard nor a fabrication drawing has its body
   on the silk, as older libraries draw it, and its outline takes that in: seven of the
   fan controller's ten footprints are such, its fan headers among them, whose housing
-  reaches 2.4 mm past their pads.
+  reaches 2.4 mm past their pads. What follows from it and is not settled: a connector
+  drawn to overhang the board's edge is now off the board (#34), a through-hole part's
+  housing on the front keeps parts off the back beneath it (#35), and a row moved in
+  for its copper can meet a hole it cleared (#36).
 - `align`: the parts' first pins are a whole number of grid steps apart. Checked, not
   moved to.
 - `keepout` of an area of a part: no other part's outline reaches into it, on the
@@ -289,7 +292,7 @@ and reported where the two are apart (`R1 is put in two places 4.8 mm apart acro
 board`). `near=` is still solved alone, so not beside a row.
 
 On the fan controller, `row(fans, along=Edge.BOTTOM)` first put the four headers,
-9.398 mm each, along the whole 60 mm edge with five gaps of 4.48 mm, the end two over
+then taken as 9.398 mm each by their pads, along the whole 60 mm edge with five gaps of 4.48 mm, the end two over
 the mounting holes 4 mm in from the corners. A row spreads over what the holes leave
 clear (decided 2026-11-11), and now does: below.
 
@@ -326,8 +329,9 @@ the edge to the far side of its parts: clear of the holes that reach into that s
 and of where the outline is cut back from the edge. Its gaps are equal within that stretch, and a pitch is about
 its middle. Only what is fixed narrows a row, never another part, so where a row's
 parts go still does not depend on where anything is placed. The fan headers are
-3.684 mm deep and the holes reach to 2.349 mm from the edge, so the bottom edge is clear
-for 48.698 mm between them: five gaps of 2.2212 mm, and the solver says so
+6.095 mm deep and 10.3 mm long with their housings, and the holes reach to 2.349 mm
+from the edge, so the bottom edge is clear
+for 48.698 mm between them: five gaps of 1.4996 mm, and the solver says so
 (`row(P3, P4, P5, P6, along=Edge.BOTTOM, pitch="even"): over the 48.698 mm of the bottom
 edge that is clear, of 60 mm`).
 
@@ -356,7 +360,7 @@ what it is near has more of itself on, it has to be longer: a module whose body
 reaches 4 mm above its pads leaves a part no place above it within 4 mm.
 
 On the fan controller, with the fan headers in their row, the processor at the centre
-and each LED near its fan toward the top edge, the four LEDs are placed, each 1.6 mm
+and each LED near its fan toward the top edge, the four LEDs are placed, each 1.3 mm
 from its header and above it.
 
 **As built, decoupling:** `decouple(part, caps, within=2 * mm)` is a statement, and

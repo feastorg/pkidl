@@ -461,6 +461,16 @@ class _Solver:
                 break
         else:
             self._problem(tuple(order), "the placement does not settle: each pass moves a part")
+        # A part against an edge with no inset that is in from it is there for its copper.
+        for ref in sorted(self.poses if self.margin else (), key=natural):
+            box = self._box(ref)
+            for edge, s in self._edges(ref).items():
+                held = {Edge.LEFT: box[0] - self.board[0], Edge.RIGHT: self.board[2] - box[2],
+                        Edge.TOP: box[1] - self.board[1],
+                        Edge.BOTTOM: self.board[3] - box[3]}[edge]  # fmt: skip
+                if s.inset is None and held > 0:
+                    self._chose(f"{ref}: {Length(held)} in from the {edge.value} edge, to "
+                                f"keep its copper {Length(self.margin)} from it")  # fmt: skip
         self._check()
         problems = sorted(self.problems, key=lambda p: ([natural(r) for r in p.parts], p.text))
         kept = tuple(Kept(s, (Length(box[0]), Length(box[1]), Length(box[2]), Length(box[3])),
@@ -717,17 +727,6 @@ class _Solver:
         )  # fmt: skip
         for edge, s in edges.items():
             d = None if s.inset is None else s.inset.nm
-            if d is None and (bx0, by0, bx1, by1) != (
-                min(bx0, cx0),
-                min(by0, cy0),
-                max(bx1, cx1),
-                max(by1, cy1),
-            ):
-                held = {Edge.LEFT: bx0 - cx0, Edge.RIGHT: cx1 - bx1,
-                        Edge.TOP: by0 - cy0, Edge.BOTTOM: cy1 - by1}[edge]  # fmt: skip
-                if held > 0:
-                    self._chose(f"{ref}: {Length(held)} in from the {edge.value} edge, to "
-                                f"keep its copper {Length(self.margin)} from it")  # fmt: skip
             if edge is Edge.LEFT:
                 xs.append((x0 - min(bx0, cx0) if d is None else x0 + d - min(px), s))
             elif edge is Edge.RIGHT:
@@ -846,8 +845,12 @@ class _Solver:
                 d = min(pad[0] - self.board[0], pad[1] - self.board[1],
                         self.board[2] - pad[2], self.board[3] - pad[3])  # fmt: skip
             else:
+                # By a slanted or rounded edge the box grown by the margin reaches
+                # outside before the pad is that near: the distance itself says.
                 d = round(self.edge.boundary.distance(_area(*pad)))
                 d = d if self.within.covers(_area(*pad)) else 0
+                if d >= m:
+                    continue
             d = max(d, 0)
             if worst is None or (d, natural(n)) < (worst[0], natural(worst[1])):
                 worst = (d, n)

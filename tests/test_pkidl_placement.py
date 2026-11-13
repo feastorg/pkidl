@@ -1976,15 +1976,13 @@ def test_against_an_edge_is_as_near_it_as_the_rules_let_the_parts_copper_be(edge
     board.place(board["T1"], against=edge)
     solution = board.solve()
     assert solution.problems == () and _pads(board, solution, "T1") == {"1": at}
-    assert solution.chosen[0] == (
-        f"T1: 0.5 mm in from the {edge.value} edge, to keep its copper 0.5 mm from it"
-    )
+    said = f"T1: 0.5 mm in from the {edge.value} edge, to keep its copper 0.5 mm from it"
+    assert said in solution.chosen
     # A resistor's courtyard reaches 0.3 mm past its pads, so it comes in 0.2 mm.
     board = _ruled(R1="A B")
     board.place(board["R1"], against=edge)
-    assert board.solve().chosen[0] == (
-        f"R1: 0.2 mm in from the {edge.value} edge, to keep its copper 0.5 mm from it"
-    )
+    said = f"R1: 0.2 mm in from the {edge.value} edge, to keep its copper 0.5 mm from it"
+    assert said in board.solve().chosen
 
 
 def test_a_board_with_no_rules_has_a_part_against_an_edge_on_the_edge():
@@ -2055,3 +2053,58 @@ def test_a_placed_parts_outline_is_where_the_part_is_now():
     # Asked again once the part has moved, as it is between one pass and the next.
     solver.poses["T1"] = Pose(120 * mm, 60 * mm)
     assert solver._box("T1") == (119_500_000, 59_500_000, 120_500_000, 60_500_000)
+
+
+def _moved_in(solution: Solution) -> list[str]:
+    return [line for line in solution.chosen if " in from " in line]
+
+
+def test_a_part_is_said_to_be_in_from_an_edge_only_where_it_ends_up_in_from_it():
+    # The module's pads are by the side that is down in its footprint, and its drawing
+    # reaches 4 mm above them. Turned either way against the top edge, only one way
+    # has copper at the edge, and it is the other way that is taken.
+    board = _ruled(U1="A B C D E")
+    board.place(board["U1"], against=Edge.TOP)
+    solution = board.solve()
+    assert solution.poses["U1"].rot == 0 and _moved_in(solution) == []
+    # Turned the way that has, it is moved in and said to be.
+    board = _ruled(U1="A B C D E")
+    board.place(board["U1"], against=Edge.TOP, facing=Edge.BOTTOM)
+    assert _moved_in(board.solve()) == [
+        "U1: 0.5 mm in from the top edge, to keep its copper 0.5 mm from it"
+    ]
+    # A part that is not placed is not said to be anywhere.
+    board = _ruled(T1="A")
+    board.place(board["T1"], against=Edge.LEFT)
+    board.place(board["T1"], centre=True)
+    solution = board.solve()
+    assert solution.poses == {} and solution.chosen == ()
+
+
+def test_by_a_slanted_edge_copper_is_as_far_from_it_as_it_is_and_not_as_its_box_is():
+    def by_the_corner(inset: float) -> list[str]:
+        # The board's top right corner is cut off at 45 degrees, 6 mm along each edge.
+        made = _board(T1="A")
+        board = Board(circuit=made.circuit, library=made.library)
+        corners = [(100, 50), (124, 50), (130, 56), (130, 80), (100, 80)]
+        board.outline({"type": "gr_line", "start": a, "end": b}
+                      for a, b in zip(corners, corners[1:] + corners[:1], strict=True))  # fmt: skip
+        board.rules(track=0.25 * mm, clearance=0.2 * mm)
+        board.place(board["T1"], against=Edge.TOP, inset=inset * mm)
+        board.place(board["T1"], against=Edge.RIGHT, inset=inset * mm)
+        return [p.text for p in board.solve().problems]
+
+    # The pad's corner is 0.566 mm from the cut: the box 0.5 mm around the pad reaches
+    # past the cut, and the pad is still further from it than the rules ask.
+    assert by_the_corner(3.9) == []
+    assert by_the_corner(3.8) == [
+        "T1.1 is 0.424264 mm from the board's edge, and the rules keep copper 0.5 mm from it"
+    ]
+
+
+def test_a_hole_of_a_part_too_near_the_edge_is_called_a_hole():
+    board = _ruled(H1="")
+    board.place(board["H1"], against=Edge.LEFT, inset=1.2 * mm)  # 2 mm across
+    assert [p.text for p in board.solve().problems] == [
+        "a hole of H1 is 0.2 mm from the board's edge, and the rules keep copper 0.5 mm from it"
+    ]

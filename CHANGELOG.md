@@ -216,7 +216,10 @@ Unreleased. History before this file was reconstructed from the git log.
 - A footprint with no courtyard and no fabrication drawing has its body on the silk,
   and a part's outline takes that in. Such a part was taken as the box around its
   pads: a fan header's housing hung off the board's edge, and other parts were placed
-  inside it. (#33)
+  inside it. Which side of such a part is longer can change with it, and so which way
+  it lies against an edge or in a row: a two-pin header whose housing is deeper than
+  its pins are apart now lies with its pins across the edge. A connector whose silk
+  overhangs the board's edge is reported as off the board. (#33)
 - A pad is no nearer the board's edge than the board's `rules(edge=)`. A part
   `against=` an edge with no `inset=` is as far in as keeps its copper that far from
   it, and `Board.solve()` says so in its choices; an `inset=` that puts a pad nearer
