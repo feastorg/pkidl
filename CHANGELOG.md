@@ -17,7 +17,7 @@ Unreleased. History before this file was reconstructed from the git log.
   which layer, fenced in by which nets' tracks, and the board is routed again with
   that net carried by tracks, as it was before. `pkidl.fill.fills` is a board's pours
   as the pieces they fill in. A build of a board whose pour is cut takes two runs of
-  the router.
+  the router. (#43)
 - `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
   decouple a part. Each is across ground and one of the part's supplies, and is placed
   with its pad on that supply near one of the part's pins on it, one capacitor to a
