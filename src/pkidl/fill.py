@@ -7,6 +7,10 @@ the zone's clearance, less higher-priority pours of other nets and no-pour rule
 areas, with pieces that touch no pad or via of the net dropped (KiCad's default
 island removal). The result steers the router; DRC on KiCad's own fill decides.
 
+``cut_off`` asks the same fill a question once a board is routed: is each poured net
+still one piece, or have tracks across a pour left some of its pads joined to nothing
+but each other.
+
 Pads are modelled by their size and rotation as rectangles, ovals and circles;
 custom pad primitives are taken as their bounding rectangle.
 """
@@ -14,6 +18,7 @@ custom pad primitives are taken as their bounding rectangle.
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 from shapely import affinity
 from shapely.geometry import LineString, Polygon, box
@@ -23,6 +28,7 @@ from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
 
 from pkidl.board import Point
+from pkidl.circuit import natural
 from pkidl.footprint import pad_xy
 from pkidl.sexpr import Node, find, find_all
 
@@ -145,16 +151,16 @@ def _slit(poly: Polygon) -> list[Point]:
     return ring
 
 
-def prefill(
+def fills(
     items: list[Node], outline: list[Point], edge: float, clearances: dict[str, float] | None = None
-) -> list[Plane]:
-    """Each pour's fill before routing, as hole-free planes: (net, layer, polygon).
+) -> list[tuple[str, str, Polygon]]:
+    """Each pour's fill, as the pieces it is in: (net, layer, piece), holes and all.
 
     *items* are the board's nodes (footprints, tracks, vias, zones); *outline* the board
     edge, kept *edge* away from. Zones are filled highest priority first; a pour of
     another net already filled is copper to keep clear of. *clearances* (net: mm) are
     the nets' class clearances: a pour keeps the larger of its own and the other net's,
-    as KiCad does.
+    as KiCad does. A piece that touches no pad, track or via of its net is left out.
     """
     cl = clearances or {}
     board = Polygon(outline).buffer(-edge)
@@ -165,7 +171,7 @@ def prefill(
     }
     copper = {layer: _copper(items, layer) for layer in ("F.Cu", "B.Cu")}
     filled: dict[str, list[tuple[str, BaseGeometry]]] = {"F.Cu": [], "B.Cu": []}
-    planes: list[Plane] = []
+    found: list[tuple[str, str, Polygon]] = []
     pours = [z for z in zones if find(z, "keepout") is None and _net(z)]
     for zone in sorted(pours, key=lambda z: -_num(z, "priority")):
         net = _net(zone)
@@ -188,6 +194,116 @@ def prefill(
             ]
             kept = [p for p in pieces if p.intersects(own)]
             filled[layer].extend((net, p) for p in kept)
-            for p in kept:
-                planes.append((net, layer, [(round(x, 4), round(y, 4)) for x, y in _slit(p)]))
-    return planes
+            found.extend((net, layer, p) for p in kept)
+    return found
+
+
+def prefill(
+    items: list[Node], outline: list[Point], edge: float, clearances: dict[str, float] | None = None
+) -> list[Plane]:
+    """Each pour's fill before routing, as hole-free planes: (net, layer, polygon).
+    The pieces are ``fills``'s, each written as one outline that reaches its holes by
+    slits."""
+    return [(net, layer, [(round(x, 4), round(y, 4)) for x, y in _slit(piece)])
+            for net, layer, piece in fills(items, outline, edge, clearances)]  # fmt: skip
+
+
+@dataclass(frozen=True)
+class Cut:
+    """Pads of a poured net that the board's copper joins to each other and not to the
+    rest of their net: which *pads*, as ``C5.2``; the *layer* of the piece of pour they
+    are on, or None where no pour reaches them; and the nets whose tracks run beside
+    that piece, *fenced* in by them."""
+
+    net: str
+    pads: tuple[str, ...]
+    layer: str | None = None
+    fenced: tuple[str, ...] = ()
+
+    def __str__(self) -> str:
+        pads = ", ".join(self.pads)
+        are = "is" if len(self.pads) == 1 else "are"
+        if self.layer is None:
+            return f"{pads} {are} cut off from the rest of {self.net}: no pour reaches there"
+        by = f", fenced in by tracks of {', '.join(self.fenced)}" if self.fenced else ""
+        return (f"{pads} {are} cut off from the rest of {self.net}: on a piece of its pour "
+                f"on {self.layer} that is apart from the rest{by}")  # fmt: skip
+
+
+def cut_off(
+    items: list[Node], outline: list[Point], edge: float, clearances: dict[str, float] | None = None
+) -> list[Cut]:
+    """What the pours of a routed board leave cut off: for each net that has a pour,
+    the pads that its pads, tracks, vias and pieces of pour join to each other and not
+    to the most of its pads. Arguments as for ``fills``. Nothing, where every poured
+    net is one piece."""
+    zones = [z for z in items if str(z[0]) == "zone" and find(z, "keepout") is None and _net(z)]
+    pieces = fills(items, outline, edge, clearances)
+    cuts: list[Cut] = []
+    for net in sorted({_net(z) for z in zones}):
+        # What is on the net: its name where it is a pad, and its copper on each layer.
+        nodes: list[tuple[str, dict[str, BaseGeometry]]] = []
+        for item in items:
+            head = str(item[0])
+            if head == "footprint":
+                ref = next(str(p[2]) for p in find_all(item, "property") if p[1] == "Reference")
+                for pad in find_all(item, "pad"):
+                    if _net(pad) == net and find(pad, "size") is not None:
+                        shape = _pad_shape(item, pad)
+                        nodes.append((f"{ref}.{pad[1]}", dict.fromkeys(_layers(pad), shape)))
+            elif head == "segment" and _net(item) == net:
+                line = LineString([_xy(item, "start"), _xy(item, "end")])
+                nodes.append(("", {_layers(item)[0]: line.buffer(_num(item, "width") / 2)}))
+            elif head == "via" and _net(item) == net:
+                dot = SPoint(_xy(item, "at")).buffer(_num(item, "size") / 2)
+                nodes.append(("", dict.fromkeys(("F.Cu", "B.Cu"), dot)))
+        poured = [(layer, piece) for n, layer, piece in pieces if n == net]
+        first = len(nodes)
+        for layer, piece in poured:
+            nodes.append(("", {layer: piece}))
+        group = list(range(len(nodes)))
+
+        def root(i: int, group: list[int] = group) -> int:
+            while group[i] != i:
+                group[i] = group[group[i]]
+                i = group[i]
+            return i
+
+        for i, (_, mine) in enumerate(nodes):
+            for j in range(i + 1, len(nodes)):
+                theirs = nodes[j][1]
+                if root(i) != root(j) and any(
+                    layer in theirs and mine[layer].intersects(theirs[layer]) for layer in mine
+                ):
+                    group[root(j)] = root(i)
+        together: dict[int, list[int]] = {}
+        for i in range(len(nodes)):
+            together.setdefault(root(i), []).append(i)
+        padded = {r: sorted((nodes[i][0] for i in members if nodes[i][0]), key=natural)
+                  for r, members in together.items()}  # fmt: skip
+        padded = {r: pads for r, pads in padded.items() if pads}
+        if len(padded) < 2:
+            continue
+        most = max(padded, key=lambda r: (len(padded[r]), [-ord(c) for c in padded[r][0]]))
+        for r, pads in sorted(padded.items(), key=lambda kv: natural(kv[1][0])):
+            if r == most:
+                continue
+            on = [(layer, piece) for i in together[r] if i >= first
+                  for layer, piece in [poured[i - first]]]  # fmt: skip
+            if not on:
+                cuts.append(Cut(net, tuple(pads)))
+                continue
+            layer, piece = on[0]
+            zone = next(z for z in zones if _net(z) == net and layer in _layers(z))
+            near = _num(zone, "connect_pads", "clearance", 0.5) + _num(
+                zone, "min_thickness", default=0.25
+            )
+            beside = sorted(
+                {other for item in items if str(item[0]) == "segment"
+                 and layer in _layers(item) and (other := _net(item)) != net
+                 and LineString([_xy(item, "start"), _xy(item, "end")])
+                 .buffer(_num(item, "width") / 2).distance(piece) <= near},
+                key=natural,
+            )  # fmt: skip
+            cuts.append(Cut(net, tuple(pads), layer, tuple(beside)))
+    return cuts

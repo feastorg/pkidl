@@ -4,7 +4,7 @@ from shapely.geometry import Point as SPoint
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
-from pkidl.fill import prefill
+from pkidl.fill import Cut, cut_off, fills, prefill
 from pkidl.sexpr import parse
 
 OUTLINE = [(0.0, 0.0), (30.0, 0.0), (30.0, 30.0), (0.0, 30.0)]
@@ -141,3 +141,73 @@ def test_a_nets_class_clearance_wins_when_larger():
     fill = _covered(prefill(items, OUTLINE, 0.5, {"HV": 1.25}), "GND")
     hv = SPoint(20, 15).buffer(0.5, cap_style="square")
     assert fill.distance(hv) >= 1.25 - TOL
+
+
+def _track(net: str, a: tuple[float, float], b: tuple[float, float], width: float = 0.5) -> str:
+    return (f"(segment (start {a[0]} {a[1]}) (end {b[0]} {b[1]}) (width {width}) "
+            f'(layer "F.Cu") (net "{net}"))')  # fmt: skip
+
+
+# Two parts with a ground pad each, 20 mm apart across the middle of the pour.
+TWO = [_fp("C1", 5, 15, [("1", 0, 0, 1, "GND")]), _fp("C2", 25, 15, [("1", 0, 0, 1, "GND")])]
+WALL = _track("SIG", (15, 1), (15, 29))  # a track across the whole pour between them
+
+
+def test_a_poured_net_whose_pads_the_pour_joins_is_one_piece():
+    assert cut_off(_items(*TWO, _zone("GND", SQUARE)), OUTLINE, 0.5) == []
+    # A track part of the way across leaves the pour one piece round its end.
+    part_way = _track("SIG", (15, 1), (15, 20))
+    assert cut_off(_items(*TWO, _zone("GND", SQUARE), part_way), OUTLINE, 0.5) == []
+
+
+def test_pads_on_a_piece_of_pour_that_a_track_cuts_from_the_rest_are_said_with_the_track():
+    more = _fp("C3", 8, 20, [("1", 0, 0, 1, "GND")])  # two pads one side, one the other
+    cuts = cut_off(_items(*TWO, more, _zone("GND", SQUARE), WALL), OUTLINE, 0.5)
+    assert cuts == [Cut("GND", ("C2.1",), "F.Cu", ("SIG",))]
+    assert str(cuts[0]) == (
+        "C2.1 is cut off from the rest of GND: on a piece of its pour on F.Cu that is "
+        "apart from the rest, fenced in by tracks of SIG"
+    )
+    # The two pieces are there in the fill: it is the pads that say which is the net.
+    assert len(fills(_items(*TWO, more, _zone("GND", SQUARE), WALL), OUTLINE, 0.5)) == 2
+
+
+def test_a_track_of_the_net_across_the_cut_makes_it_one_piece_again():
+    # Ground carried over the wall on the other layer and back is one net: a via each
+    # side, each in its piece of the pour, and a track between them on the back.
+    over = (
+        '(via (at 13 15) (size 0.8) (net "GND"))',
+        '(via (at 17 15) (size 0.8) (net "GND"))',
+        '(segment (start 13 15) (end 17 15) (width 0.5) (layer "B.Cu") (net "GND"))',
+    )
+    cut = _items(*TWO, _zone("GND", SQUARE), WALL)
+    assert [c.pads for c in cut_off(cut, OUTLINE, 0.5)] == [("C2.1",)]
+    assert cut_off(_items(*TWO, _zone("GND", SQUARE), WALL, *over), OUTLINE, 0.5) == []
+    # A via each side with no track between them joins nothing.
+    assert [c.pads for c in cut_off([*cut, *_items(*over[:2])], OUTLINE, 0.5)] == [("C2.1",)]
+
+
+def test_a_pad_no_pour_reaches_and_no_track_joins_is_said_so():
+    # The pour is the left half of the board; C2's pad is outside it.
+    left = [(2.0, 2.0), (14.0, 2.0), (14.0, 28.0), (2.0, 28.0)]
+    more = _fp("C3", 8, 20, [("1", 0, 0, 1, "GND")])
+    cuts = cut_off(_items(*TWO, more, _zone("GND", left)), OUTLINE, 0.5)
+    assert cuts == [Cut("GND", ("C2.1",))]
+    assert str(cuts[0]) == "C2.1 is cut off from the rest of GND: no pour reaches there"
+    # Joined by a track it is on the net, though the pour is not under it.
+    assert cut_off(_items(*TWO, more, _zone("GND", left), _track("GND", (5, 15), (25, 15))),
+                   OUTLINE, 0.5) == []  # fmt: skip
+
+
+def test_a_net_with_no_pour_is_not_asked_about():
+    assert cut_off(_items(*TWO), OUTLINE, 0.5) == []
+    assert cut_off(_items(*TWO, _zone("SIG", SQUARE), _fp("R1", 15, 5, [("1", 0, 0, 1, "SIG")])),
+                   OUTLINE, 0.5) == []  # fmt: skip
+
+
+def test_the_planes_are_the_fills_pieces_each_as_one_outline():
+    items = _items(*TWO, _zone("GND", SQUARE), WALL)
+    planes, pieces = prefill(items, OUTLINE, 0.5), fills(items, OUTLINE, 0.5)
+    assert [(n, layer) for n, layer, _ in planes] == [(n, layer) for n, layer, _ in pieces]
+    for (_, _, outline), (_, _, piece) in zip(planes, pieces, strict=True):
+        assert abs(Polygon(outline).area - piece.area) < 0.01
