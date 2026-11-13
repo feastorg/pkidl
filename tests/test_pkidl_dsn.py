@@ -69,3 +69,37 @@ def test_planes_are_written_closed_in_the_structure(tmp_path):
     )
     assert plane in text
     assert text.index(plane) < text.index("  (placement")  # in the structure
+
+
+HOLED = """(footprint "SW" (at 10 10) (property "Reference" "SW1")
+  (pad "1" thru_hole circle (at 0 5) (size 2 2) (drill 1) (layers "*.Cu") (net "A"))
+  (pad "" np_thru_hole circle (at 3 0) (size {size} {size}) (drill {drill})
+    (layers "*.Cu" "*.Mask")))"""
+
+
+def _hole(tmp_path, size, drill, **said):
+    """The keepout written for an unplated hole 3 mm right of its part's origin."""
+    footprints = [parse(HOLED.format(size=size, drill=drill))]
+    text = write_dsn(tmp_path / "b.dsn", footprints, OUTLINE, CLASSES, MEMBERS, **said).read_text()
+    (line,) = [line.strip() for line in text.splitlines() if "(circle signal" in line]
+    return line
+
+
+def test_an_unplated_hole_is_kept_out_of_as_far_as_kicad_asks_of_a_hole(tmp_path):
+    # The least clearance of the classes is 0.2 mm, which the router keeps from a
+    # keepout, and KiCad asks 0.25 mm from a hole: the circle is 0.05 mm wider each side.
+    assert _hole(tmp_path, 1.27, 1.27) == '(keepout "" (circle signal 1370 3000 0))'
+    # Where the router's clearance is already as much, the hole is its own width.
+    assert _hole(tmp_path, 1.27, 1.27, hole_clearance=0.2) == (
+        '(keepout "" (circle signal 1270 3000 0))'
+    )
+    assert _hole(tmp_path, 1.27, 1.27, hole_clearance=0.1) == (
+        '(keepout "" (circle signal 1270 3000 0))'
+    )
+
+
+def test_an_unplated_hole_with_a_ring_round_it_is_kept_out_of_as_wide_as_its_pad(tmp_path):
+    # A 2.1 mm hole in a 3.1 mm pad: the ring is copper on no net.
+    assert _hole(tmp_path, 3.1, 2.1) == '(keepout "" (circle signal 3200 3000 0))'
+    # A slot is taken by its longer side.
+    assert _hole(tmp_path, 1, "oval 1 2.5") == '(keepout "" (circle signal 2600 3000 0))'
