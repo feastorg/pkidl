@@ -392,6 +392,15 @@ class _Solver:
                         cap.ref,
                         f"{cap.ref} is across {across}, and {part.ref} is not on {supplies[0]}",
                     )
+                elif off := [
+                    n for n in on if n in grounds and n not in self.nets[part.ref].values()
+                ]:
+                    # A ground of some other part's: an analogue ground, say.
+                    refuse(
+                        s,
+                        cap.ref,
+                        f"{cap.ref} is across {across}, and {part.ref} is not on {off[0]}",
+                    )
                 else:
                     net = supplies[0]
                     there = [n for n in pins if self.nets[part.ref][n] == net]

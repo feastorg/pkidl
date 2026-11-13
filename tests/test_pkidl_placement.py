@@ -1811,15 +1811,18 @@ def test_a_capacitor_with_no_pin_left_is_said_and_is_not_put_by_a_pin_that_has_o
 
 
 def test_a_capacitor_that_is_not_across_ground_and_one_of_the_parts_supplies_is_said():
-    board = _supplied(R4="V2 GND", R5="X Y", R6="GND GND")
-    board.decouple(board["U1"], board.parts("R1", "R4", "R5", "R6"), within=3 * mm)
+    board = _supplied(R4="V2 GND", R5="X Y", R6="GND GND", R7="VCC AGND")
+    board.ground("AGND")
+    board.decouple(board["U1"], board.parts("R1", "R4", "R5", "R6", "R7"), within=3 * mm)
     solution = board.solve()
-    said = "decouple(U1, R1, R4, R5, R6, within=3 mm)"
+    said = "decouple(U1, R1, R4, R5, R6, R7, within=3 mm)"
     assert [p.text for p in solution.problems] == [
         # On ground and a supply the module is not on: it is some other part's.
         f"{said}: R4 is across GND and V2, and U1 is not on V2",
         f"{said}: R5 is across X and Y, neither of them ground",
         f"{said}: R6 is across GND, not ground and one supply",
+        # On a supply of the module's and a ground it is not on.
+        f"{said}: R7 is across AGND and VCC, and U1 is not on AGND",
     ]
     assert sorted(solution.poses) == ["R1", "U1"]
 

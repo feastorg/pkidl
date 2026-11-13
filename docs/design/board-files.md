@@ -359,7 +359,9 @@ part are a conflict.
 A capacitor decouples a part by being across one of its supplies and ground, and
 which net is ground is for the board file to say, once: `board.ground("GND")`. A ground
 is a rail as well. The capacitor goes by the part's pin on the supply, with its own pad
-on that supply the one within the distance; its ground pad may be further off.
+on that supply the one within the distance; its ground pad may be further off. The
+part is on both nets: a capacitor to a ground the part is not on is refused. A ground
+the board file did not declare is taken for a supply.
 
 Nothing is settled silently. Each of these is a problem, and the capacitor is not
 placed:
@@ -384,7 +386,8 @@ pull-ups and a header, ground is the smaller net.
 Open after this:
 
 - **The sketches below write `board.decouple(u1, caps)` with no `within=`**, which is
-  required, and `decouple(part)` with no capacitors, as T1, T3 and T4 have it. Choosing
+  required, and none says `board.ground(...)`, so each would be told no net is said to
+  be ground. T1, T3 and T4 write `decouple(part)` with no capacitors. Choosing
   them from the circuit is where three capacitors on one net with two parts cannot be
   told apart.
 - **A capacitor is whatever the board file names**: one across ground and an input
