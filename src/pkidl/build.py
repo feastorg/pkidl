@@ -56,7 +56,9 @@ class Built:
 
 def _sized(item: Node, unsized: Mapping[str, tuple[str, ...]], clearance: float) -> Node:
     """*item*, or where it is a pour whose clearance or thermal gap was not said, a copy
-    with them as the board's rules have its *clearance*."""
+    with them as the board's rules have its *clearance*. The thermal gap is between a
+    pad and its own net's pour, which no rule widens: it is the clearance where that is
+    less than the gap the zone was drawn with, and never more."""
     uid = find(item, "uuid") if item[0] == "zone" else None
     unsaid = unsized.get(str(uid[1]), ()) if uid is not None else ()
     if not unsaid:
@@ -66,7 +68,8 @@ def _sized(item: Node, unsized: Mapping[str, tuple[str, ...]], clearance: float)
         holder = find(sized, inside)
         value = find(holder, key) if holder is not None else None
         if key in unsaid and value is not None:
-            value[1] = num(clearance)
+            drawn = float(str(value[1]))
+            value[1] = num(min(clearance, drawn) if key == "thermal_gap" else clearance)
     return sized
 
 
@@ -86,7 +89,8 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
     if problems:
         raise BuildError(name, problems)
 
-    built = replace(board, items=list(board.items), _uuids=set(board._uuids))
+    built = replace(board, items=list(board.items), _uuids=set(board._uuids),
+                    _unsized=dict(board._unsized))  # fmt: skip
     for ref, pose in solution.poses.items():
         part = board[ref]
         nets = {pin.number: pin.net.name for pin in part.pins() if pin.net is not None}

@@ -464,6 +464,27 @@ def test_what_a_pour_says_of_its_own_clearance_or_thermal_gap_is_kept(board, tmp
     }
 
 
+def test_rules_that_ask_more_clearance_do_not_widen_a_pours_thermal_gap(board, tmp_path):
+    # The gap is between a pad and its own net's pour: a wider one starves the spokes.
+    board.rules(track=0.25 * mm, clearance=0.8 * mm)
+    board.pour("GND", layer="B.Cu")
+    assert _pours(board.build(tmp_path / "out")) == {("GND", "B.Cu"): (0.8, 0.5)}
+
+
+def test_a_pour_around_parts_is_sized_as_one_over_the_whole_board_is(board, tmp_path):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    part = ('(footprint "R" (at {x} 60) (property "Reference" "{ref}") '
+            '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net "A")))')  # fmt: skip
+    around = [parse(part.format(x=105, ref="R8")), parse(part.format(x=110, ref="R9"))]
+    board.pour("A", layer="F.Cu", around=around, margin=0.5)
+    board.pour("A", layer="F.Cu", around=around, margin=1.0)  # and a second, the same net
+    written = parse(board.build(tmp_path / "out").board.read_text())
+    sized = [(float(str(find(find(z, "connect_pads") or [], "clearance")[1])),  # type: ignore[index]
+              float(str(find(find(z, "fill") or [], "thermal_gap")[1])))  # type: ignore[index]
+             for z in find_all(written, "zone") if find(z, "keepout") is None]  # fmt: skip
+    assert sized == [(0.2, 0.2), (0.2, 0.2)]
+
+
 def test_a_zone_drawn_by_hand_is_not_sized_by_the_rules(board, tmp_path):
     board.rules(track=0.25 * mm, clearance=0.2 * mm)
     board.zone("GND", "B.Cu", [(101.0, 51.0), (119.0, 51.0), (119.0, 69.0), (101.0, 69.0)])

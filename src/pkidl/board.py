@@ -543,7 +543,8 @@ class Board:
         A pour whose ``clearance`` or ``thermal_gap`` is not said has them from the
         board's ``rules`` when the board is built: both the rules' clearance, so the
         pour is as near other copper, and as near the pads it joins, as a track may
-        be. On a board with no rules, and until it is built, they are ``zone``'s own."""
+        be. The thermal gap is never made wider than ``zone``'s own. On a board with
+        no rules, and until it is built, both are ``zone``'s own."""
         if around is None:
             if self.extent is None:
                 raise ValueError("pour over the whole board before its outline is drawn")

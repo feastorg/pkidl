@@ -480,15 +480,16 @@ Open after this:
   track; KiCad fills the pour around what was routed. A build does size it: a pour
   that does not say its clearance or its thermal gap has both from the board's rules,
   as near other copper and its own pads as a track may be, where a zone drawn by hand
-  has 0.4 and 0.5 mm. On the fan controller, whose rules say 0.2 mm, that is the
+  has 0.4 and 0.5 mm. The thermal gap is not made wider than that by rules that ask
+  more clearance: it is between a pad and its own net. On the fan controller, whose rules say 0.2 mm, that is the
   difference between two ground pins of its headers with too few spokes into the pour
   and none.
 - **Telling the router of a pour was tried on the fan controller and is not built**
   (#19). Kept off the pour until a last pass, Freerouting 2.5.0 left 2 connections
   unmade: a whole layer of a two-layer board is the pour. Free to cross it, it made
   every connection by its own count and left the back with 16 short tracks and no
-  ground track, and four of those tracks fenced off 26 mm2 of the pour with the via
-  of a capacitor's ground pad inside it: unconnected, by KiCad's. Filling the pours
+  ground track, and those tracks fenced off 26 mm2 of the pour with the via of a
+  capacitor's ground pad inside it: unconnected, by KiCad's. Filling the pours
   round what was routed (`pkidl.fill.prefill`) finds that, and the router asked to
   join the pieces did not, with the other tracks fixed or free to move. Decided
   2026-11-13: a build will route with the pours known, check each poured net is one
