@@ -67,6 +67,10 @@ Unreleased. History before this file was reconstructed from the git log.
 - `Board.name`: the name a board's files are written under. `Board.from_inputs()`
   sets it to the name of the directory the inputs are in; `build(name=)` gives
   another. (#17)
+- `corpus/t2/fan_controller_fan_controller/board.py`: the second corpus board file,
+  49 parts with its four fan channels placed by one function, shown in
+  `docs/design/board-files.md` as committed. `just corpus` builds and scores it, and
+  `just test` solves and routes it, which takes the tests from half a minute to two.
 - `corpus/t0/esp12-breakout_ESP12Breakout/board.py`: the first corpus board file, the
   one `docs/design/board-files.md` shows. `python scripts/corpus.py build DIR` builds
   every corpus `board.py`, and `just corpus` has KiCad refill and check what was

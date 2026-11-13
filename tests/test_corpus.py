@@ -456,15 +456,23 @@ def test_the_fan_controllers_board_file_places_every_part_by_what_it_says(fan_bu
     board, built, _ = fan_built
     wanted = json.loads((FAN / "circuit.json").read_text())
     assert len(wanted["parts"]) == 49
+    # A build refuses a board with a problem or a part left free: this one built.
     assert sorted(built.solution.poses) == sorted(p["ref"] for p in wanted["parts"])
-    assert built.solution.free == () and built.solution.problems == ()
     made = parse(built.board.read_text())
     assert circuit(made) == wanted
     assert mechanical(made) == json.loads((FAN / "mechanical.json").read_text())
-    # The four fan channels are one function's statements, six for each fan.
+    # Each fan has the same six statements about its own parts, from one function.
     said = [str(s) for s in board.statements()]
-    for fan, driver in zip(("P3", "P4", "P5", "P6"), ("Q2", "Q3", "Q4", "Q5"), strict=True):
-        assert f"place({driver}, near={fan}.4, within=6 mm)" in said
+    channel = runpy.run_path(str(FAN / "board.py"))["fan_channel"]
+    for refs in zip(("P3", "P4", "P5", "P6"), ("Q2", "Q3", "Q4", "Q5"),
+                    ("R15", "R16", "R17", "R18"), ("R10", "R11", "R12", "R13"),
+                    ("D1", "D2", "D3", "D4"), ("R7", "R8", "R9", "R19"),
+                    ("C3", "C4", "C5", "C6"), strict=True):  # fmt: skip
+        mine = [str(s) for s in channel(*(board[ref] for ref in refs))]
+        assert len(mine) == 6 and all(line in said for line in mine)
+    # A tach pull-up is behind its header, not in the gap between two housings.
+    for fan, pull_up in (("P3", "R10"), ("P4", "R11"), ("P5", "R12"), ("P6", "R13")):
+        assert built.solution.poses[pull_up].y < built.solution.poses[fan].y - 3 * mm
     # The regulator's tab and the encoder's lug are in from the edge for their copper.
     assert [line for line in built.solution.chosen if " in from " in line] == [
         "SW1: 0.5 mm in from the right edge, to keep its copper 0.5 mm from it",

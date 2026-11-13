@@ -15,7 +15,7 @@ def fan_channel(fan, driver, base_r, tach_r, led, led_r, cap):
     return [
         place(driver, near=fan.pin(4), within=6 * mm),
         place(base_r, near=driver.pin("B"), within=4 * mm),
-        place(tach_r, near=fan.pin(3), within=6 * mm),
+        place(tach_r, near=fan.pin(3), toward=Edge.TOP, within=6 * mm),
         place(cap, near=fan.pin(2), within=5 * mm),
         place(led, near=fan, toward=Edge.TOP, within=7 * mm),
         place(led_r, near=led, within=3 * mm),

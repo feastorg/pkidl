@@ -350,7 +350,7 @@ Open after this:
 part's outline at the middle of the board. It is one place, so an edge or `between=`
 beside it is held to it and reported where they are apart.
 
-`place(led, near=fan, toward=Edge.TOP, within=5 * mm)` says which side of what it is
+`place(led, near=fan, toward=Edge.TOP, within=7 * mm)` says which side of what it is
 near the part is on: its whole outline is beyond that part's outline on the side toward
 the edge. `side=` stays the face of the board. `toward=` goes with `near=`, is said
 once for what it is near, and a part with no place on that side is told so (`R1 has no
@@ -515,7 +515,8 @@ What it has that the first sketch had not: the fifth channel, the fan input from
 host; the two headers on the top edge as a row, since each alone is centred on the
 edge; ground declared, and the capacitors that are the regulator's; `rules(...)`; and
 distances behind the fan headers that leave room for their housings, 5 to 7 mm where
-the sketch said 2 to 5. The encoder is against the right edge where the sketch had it
+the sketch said 2 to 5, with each tach pull-up said to be on the side of its header
+toward the top edge: nearest its pin, it went into the gap between two housings. The encoder is against the right edge where the sketch had it
 at the top, which the input header has. It solves in about half a minute (#18), and
 what KiCad says of the built board is #12.
 
@@ -547,7 +548,7 @@ def fan_channel(fan, driver, base_r, tach_r, led, led_r, cap):
     return [
         place(driver, near=fan.pin(4), within=6 * mm),
         place(base_r, near=driver.pin("B"), within=4 * mm),
-        place(tach_r, near=fan.pin(3), within=6 * mm),
+        place(tach_r, near=fan.pin(3), toward=Edge.TOP, within=6 * mm),
         place(cap, near=fan.pin(2), within=5 * mm),
         place(led, near=fan, toward=Edge.TOP, within=7 * mm),
         place(led_r, near=led, within=3 * mm),
