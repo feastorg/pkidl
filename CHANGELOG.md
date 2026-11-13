@@ -16,7 +16,7 @@ Unreleased. History before this file was reconstructed from the git log.
   `Board.fixed` lists them. `Board.solve()` reports a part outside the outline or over
   a hole, has a part placed `near=` something look only where it is clear of both, and
   spreads a row over the longest stretch of its edge that holes and the outline leave
-  clear, saying how long that is.
+  clear, saying how long that is. (#4)
 - `place(part, centre=True)`: the middle of the part's outline at the middle of the
   board. `place(part, near=, within=, toward=Edge.TOP)`: on the side of what it is near
   that is toward an edge, its whole outline beyond that part's outline. `side=` is
@@ -206,7 +206,7 @@ Unreleased. History before this file was reconstructed from the git log.
 
 - A board with rounded corners or mounting holes can now have problems where it had
   none: a part in a rounded corner, or over a hole, was placed without a word. A row
-  along an edge with holes near it is narrower than it was.
+  along an edge with holes near it is narrower than it was. (#4)
 - pkidl is licensed under Apache-2.0, where it was MIT. `spike/` is GPL-3.0-or-later.
   (#3)
 - The library, its tests and their fixtures moved from `spike/` to the repository root,
