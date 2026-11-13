@@ -265,7 +265,7 @@ Unreleased. History before this file was reconstructed from the git log.
   pad. `pkidl.dsn.write_dsn` wrote such a hole as a keepout of its drill's width: a
   track could cross the ring of a pad wider than its hole, and came within the
   router's own clearance of a hole where KiCad asks 0.25 mm. `write_dsn` takes
-  `hole_clearance=`.
+  `hole_clearance=`. (#40)
 - A built board has no track narrower than its `rules(track=)`. The build let the
   router neck tracks into pins, below the width it then gave KiCad as the least
   allowed. A build routes with neck-down off, and `staged` necks in its later stages
