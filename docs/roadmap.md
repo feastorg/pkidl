@@ -58,7 +58,11 @@ means here.
 **Done when** `corpus/t2/fan_controller_fan_controller/board.py` builds a board that
 `just corpus` scores: the netlist matches `circuit.json`, 0 unconnected, DRC errors no
 more than the reference's own, every one of its 49 parts placed by a stated relation,
-the four fan channels placed by one block function, and the board file under 60 lines.
+and the four fan channels placed by one block function.
+
+How long the board file is goes in the scorecard and is not a bar to pass. A line
+that says which capacitor goes to which pin is worth more than its absence, and a
+target on length is a reason to leave it out.
 
 In order; each a PR with its tests:
 
@@ -98,6 +102,28 @@ In order; each a PR with its tests:
 7. **Build and score**: `board.py` committed, held to the text in the board files, and
    its row in the scorecard under its reference.
 
+## Milestone 2b: a board with the library as it stands
+
+Every step of milestones 1 and 2 changed pkidl for the board it was made for. That is
+how the language gets built, and it is not evidence that the language carries over.
+The evidence is a board written afterwards with nothing added.
+
+Once fan_controller builds, `corpus/t0/qrp_swr_meter_swr_meter_rev_a/board.py` is
+written from its circuit and its mechanical inputs with no change under `src/pkidl`:
+21 parts, four mounting holes, and an arc bitten out of each corner. It is a different
+board from the two that shaped the library, in a tier the library already claims.
+
+**Done when** that board file is committed as far as it can be written, and this file
+lists what it could not say: each thing the board needed that pkidl did not have, one
+line each, with the statement that would have said it. The count is the measure, and
+it goes beside the board's row in the scorecard. Nothing on the list is built in that
+PR.
+
+What the count means is decided before it is known. None or one: the next board is
+written the same way, from the next tier down the list. More than a few of one kind,
+as with relations the solver cannot hold together: that kind is the next milestone,
+ahead of copper for current.
+
 ## Milestone 3: T1, copper for current
 
 OpenMPPT: `path(..., current=)` sizing copper and checking the narrowest neck on the
@@ -118,3 +144,10 @@ templates), and `spike/`'s boards rewritten in the language.
   time is a hand step on the machine it was written on. CI runs the same checks.
 - **Whether agents should edit the intent model's data form or the Python**: tested once
   milestone 1's model exists (charter, open questions).
+- **The placement solver places one part at a time**, each after what it is placed by,
+  and goes round until nothing moves. It reports what it cannot hold together and does
+  not search for it: `near=` is solved alone, and a placement that does not settle is
+  said to be one. Milestone 2b says how much that costs on a board it was not built for.
+- **Verification in the language of intent is one measure**, of pours
+  (`pkidl.measure`). KiCad's DRC judges everything else, and DRC does not say whether
+  a board carries its current. Milestone 3 is where that starts.
