@@ -9,6 +9,22 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- A build routes a board with its pours known to the router, and checks the result.
+  `pkidl.routing.poured` routes with each pour carrying its net and free to be crossed,
+  then asks `pkidl.fill.cut_off` whether tracks across a pour have left pads of its
+  net on a piece apart from the rest. Where none are, that routing stands, with no
+  track where the pour joins a net. Where some are, `Routed.cut` says which pads, on
+  which layer, fenced in by which nets' tracks, and the board is routed again with
+  that net carried by tracks, as it was before. `pkidl.fill.fills` is a board's pours
+  as the pieces they fill in. A build of a board whose pour is cut takes two runs of
+  the router. `fills`, `prefill` and `cut_off` take the outline as its corners or as
+  the area inside it, cut-outs as holes, and keep the clearance given for `""` from
+  what is on no net. `pkidl.footprint.pad_at(footprint, pad)` is where a pad is. (#43)
+- Where KiCad is installed (`$KICAD_CLI`, default `kicad-cli`), it is KiCad that says
+  what a build's pours leave unconnected, from its own fill of the proposed routing
+  (`pkidl.kicad.unconnected`), with any pad it joins by fewer spokes than it asks,
+  and pkidl's model answers only where it is not.
+  `Routed.judge` says which, and `scripts/corpus.py build` prints it. (#43)
 - `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
   decouple a part. Each is across ground and one of the part's supplies, and is placed
   with its pad on that supply near one of the part's pins on it, one capacitor to a
@@ -266,6 +282,12 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- A pad that shares its number with another in its footprint, as a shield's or a tab's
+  pads do, is where it is. `pkidl.fill`, `pkidl.measure`, `pkidl.silk`, `pkidl.stitch`
+  and `Board.pour(around=)` took each to be where the first of that number is: a pour
+  was filled over the others, and a stitch or a label was placed by the wrong pad. A
+  pad whose copper is off its hole, by its drill's offset, is where its copper is in
+  `pkidl.fill`. (#43)
 - A router is kept off an unplated hole as far as KiCad asks, and off the whole of its
   pad. `pkidl.dsn.write_dsn` wrote such a hole as a keepout of its drill's width: a
   track could cross the ring of a pad wider than its hole, and came within the

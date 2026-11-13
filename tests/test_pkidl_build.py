@@ -15,9 +15,11 @@ import pytest
 from pkidl import Board, Edge, mm
 from pkidl.build import BuildError, Built
 from pkidl.dsn import Via, Wire
-from pkidl.footprint import footprint_path
+from pkidl.fill import Cut
+from pkidl.footprint import footprint_path, pad_xy
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.intent import Route, Rules, route, rules
+from pkidl.kicad import KicadError
 from pkidl.project import NetClass
 from pkidl.routing import Job, Run
 from pkidl.sexpr import Node, dumps, find, find_all, parse
@@ -489,3 +491,213 @@ def test_a_zone_drawn_by_hand_is_not_sized_by_the_rules(board, tmp_path):
     board.rules(track=0.25 * mm, clearance=0.2 * mm)
     board.zone("GND", "B.Cu", [(101.0, 51.0), (119.0, 51.0), (119.0, 69.0), (101.0, 69.0)])
     assert _pours(board.build(tmp_path / "out")) == {("GND", "B.Cu"): (0.4, 0.5)}
+
+
+def test_a_board_with_a_pour_is_routed_with_it_known_and_checked_with_what_was_proposed(
+    board, tmp_path
+):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    board.pour("GND", layer="B.Cu")
+    board.route()
+    # A router that proposes nothing leaves the two ground pads on the front joined to
+    # nothing: the header's pin is in the pour, through the board, and they are not.
+    nothing = Scripted()
+    built = board.build(tmp_path / "first", router=nothing)
+    assert built.routed is not None
+    assert [stage for stage, *_ in nothing.asked] == ["poured", ""]
+    assert [(net, layer) for net, layer, _ in nothing.asked[0][1].planes] == [("GND", "B.Cu")]
+    assert list(nothing.asked[1][1].planes) == []
+    assert [str(c) for c in built.routed.cut] == [
+        "R1.2 is cut off from the rest of GND: no pour reaches there",
+        "U1.3 is cut off from the rest of GND: no pour reaches there",
+    ]
+    # One that proposes a via down to the pour at each of them is taken at that: what
+    # it proposed is laid before the pour is asked about.
+    placed = {_ref(fp): fp for fp in find_all(parse(built.board.read_text()), "footprint")}
+    down = tuple(
+        Via("GND", VIA, pad_xy(placed[ref], pad)) for ref, pad in (("R1", "2"), ("U1", "3"))
+    )
+    joining = Scripted(Run((), down, 0))
+    built = board.build(tmp_path / "second", router=joining)
+    assert built.routed is not None
+    assert [stage for stage, *_ in joining.asked] == ["poured"]
+    assert built.routed.cut == () and built.routed.vias == down
+
+
+def test_the_pour_the_router_is_told_of_keeps_the_rules_edge_and_kicads_hole_clearance(
+    board, tmp_path
+):
+    from shapely.geometry import Point as At
+    from shapely.geometry import Polygon
+
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, edge=1 * mm)
+    board.pour("GND", layer="B.Cu")
+    board.route()
+    router = Scripted()
+    board.build(tmp_path, router=router)
+    ((_, _, outline),) = router.asked[0][1].planes
+    plane = Polygon(outline)
+    # 1 mm in from the 40 by 30 mm board's edge, as the rules say.
+    assert [round(v, 3) for v in plane.bounds] == [101.0, 51.0, 139.0, 79.0]
+    # And 0.25 mm from the mounting hole, 3.2 mm across at (136, 76), where the rules'
+    # own clearance is 0.2 mm: the corner of the pour is cut back round it.
+    assert abs(plane.distance(At(136, 76)) - (1.6 + 0.25)) < 0.005
+
+
+KICAD_STUB = """import json, sys
+from pathlib import Path
+args = sys.argv[1:]
+Path(__file__).with_suffix(".args").write_text("\\n".join(args))
+Path(args[args.index("-o") + 1]).write_text(json.dumps({report}))
+"""
+LEFT = {"unconnected_items": [{"items": [
+    {"description": "Zone [GND] on B.Cu, priority 0"},
+    {"description": "PTH pad 3 [GND] of P1"},
+]}]}  # fmt: skip
+
+
+@pytest.fixture
+def kicad(tmp_path, monkeypatch):
+    """Stand a script in for KiCad's command line: it writes *report* as its DRC report
+    and leaves the arguments it was run with to be read back."""
+
+    def stand_in(report: dict):
+        script = tmp_path / "kicad.py"
+        script.write_text(KICAD_STUB.format(report=report))
+        monkeypatch.setenv("KICAD_CLI", f"{sys.executable} {script}")
+        return lambda: script.with_suffix(".args").read_text().split("\n")
+
+    return stand_in
+
+
+def _poured(board: Board) -> Board:
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    board.pour("GND", layer="B.Cu")
+    board.route()
+    return board
+
+
+def test_where_kicad_is_installed_it_is_kicad_that_says_what_a_pour_leaves_cut_off(
+    board, tmp_path, kicad
+):
+    ran_with = kicad({"unconnected_items": []})
+    router = Scripted()
+    built = _poured(board).build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    # This router proposed nothing, which the model calls two pads cut off. KiCad was
+    # asked, said nothing is unconnected, and its word stands: one run.
+    assert [stage for stage, *_ in router.asked] == ["poured"]
+    assert built.routed.cut == () and built.routed.judge == "KiCad"
+    # It was given the board as proposed, with its project, and asked to fill it.
+    args = ran_with()
+    asked = tmp_path / "out" / "breakout-poured-check.kicad_pcb"
+    assert args[:3] == ["pcb", "drc", "--refill-zones"] and args[-1] == str(asked)
+    assert "--severity-all" in args and args[args.index("--format") + 1] == "json"
+    assert asked.exists() and asked.with_suffix(".kicad_pro").exists()
+    assert _pours(Built(asked, None, built.solution, None)) == {("GND", "B.Cu"): (0.2, 0.2)}
+
+
+def test_what_kicad_leaves_unconnected_is_said_in_its_words_and_routed_again(
+    board, tmp_path, kicad
+):
+    kicad(LEFT)
+    router = Scripted()
+    built = _poured(board).build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    assert [stage for stage, *_ in router.asked] == ["poured", ""]
+    (cut,) = built.routed.cut
+    assert (cut.net, cut.pads) == ("GND", ("P1.3",))
+    assert str(cut) == ("KiCad, of GND: Zone [GND] on B.Cu, priority 0 and PTH pad 3 [GND] of P1")
+    assert built.routed.judge == "KiCad"
+
+
+def test_where_kicad_is_not_installed_the_model_says_and_the_result_says_it_was(board, tmp_path):
+    built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None
+    assert built.routed.judge == "model" and len(built.routed.cut) == 2
+    assert not (tmp_path / "out" / "breakout-poured-check.kicad_pcb").exists()
+
+
+def test_a_board_with_no_pour_asks_nobody(board, tmp_path, kicad):
+    kicad(LEFT)
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    board.route()
+    built = board.build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None and built.routed.judge == "" and built.routed.cut == ()
+
+
+def test_kicad_that_is_there_and_gives_no_report_stops_the_build(board, tmp_path, monkeypatch):
+    script = tmp_path / "broken.py"
+    script.write_text("import sys; print('no display'); sys.exit(3)")
+    monkeypatch.setenv("KICAD_CLI", f"{sys.executable} {script}")
+    with pytest.raises(KicadError, match="exited 3 with no report:\nno display"):
+        _poured(board).build(tmp_path / "out", router=Scripted())
+
+
+def test_kicads_report_is_read_for_the_net_and_the_pads_it_names():
+    from pkidl.kicad import cuts
+
+    # As KiCad 10.0.6 wrote them, of three boards.
+    report = {"unconnected_items": [
+        {"items": [{"description": "Zone [GND] on F.Cu, priority 0"},
+                   {"description": "Pad 1 [GND] of A on F.Cu"}]},
+        {"items": [{"description": "Track [GND] on F.Cu, length 0.5767 mm"},
+                   {"description": "Track [GND] on F.Cu, length 0.7204 mm"}]},
+        {"items": [{"description": "Pad 1 [Net-(Q5-Pad1)] of Q5 on F.Cu"},
+                   {"description": "Track [Net-(Q5-Pad1)] on F.Cu, length 0.7767 mm"}]},
+    ]}  # fmt: skip
+    assert [(c.net, c.pads) for c in cuts(report)] == [
+        ("GND", ("A.1",)), ("GND", ()), ("Net-(Q5-Pad1)", ("Q5.1",)),
+    ]  # fmt: skip
+    assert cuts({"unconnected_items": []}) == [] and cuts({}) == []
+    # A pad on one spoke is connected, by KiCad, and an error by its DRC: a pour that
+    # leaves one so does not carry its net as the board's rules ask.
+    one_spoke = {"violations": [
+        {"type": "silk_overlap", "description": "x", "items": []},
+        {"type": "starved_thermal",
+         "description": "Thermal relief connection to zone incomplete (layer F.Cu; zone "
+                        "min spoke count 2; actual 1)",
+         "items": [{"description": "Zone [G1] on F.Cu, priority 0"},
+                   {"description": "Pad 1 [G1] of A1 on F.Cu"}]},
+    ]}  # fmt: skip
+    (cut,) = cuts(one_spoke)
+    assert (cut.net, cut.pads) == ("G1", ("A1.1",)) and "actual 1" in str(cut)
+
+
+def test_kicad_that_does_not_finish_leaves_the_model_to_say(board, tmp_path, monkeypatch):
+    from pkidl.kicad import unconnected
+
+    slow = tmp_path / "slow.py"
+    slow.write_text("import time; time.sleep(30)")
+    monkeypatch.setenv("KICAD_CLI", f"{sys.executable} {slow}")
+    asked = tmp_path / "b.kicad_pcb"
+    asked.write_text("(kicad_pcb)")
+    assert unconnected(asked, timeout=0.5) is None
+    # And a build then has the model's word, and says it is the model's.
+    monkeypatch.setattr("pkidl.build.unconnected", lambda path: None)
+    built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None
+    assert built.routed.judge == "model" and len(built.routed.cut) == 2
+
+
+def test_the_judge_named_is_the_one_asked_last_and_an_old_report_is_not_read(
+    board, tmp_path, monkeypatch
+):
+    from pkidl.kicad import unconnected
+
+    # A report left from an earlier run is not this run's: KiCad that writes none fails.
+    broken = tmp_path / "broken.py"
+    broken.write_text("import sys; sys.exit(3)")
+    monkeypatch.setenv("KICAD_CLI", f"{sys.executable} {broken}")
+    asked = tmp_path / "b.kicad_pcb"
+    asked.write_text("(kicad_pcb)")
+    (tmp_path / "b-drc.json").write_text('{"unconnected_items": []}')
+    with pytest.raises(KicadError):
+        unconnected(asked)
+    # KiCad answers the first time and does not finish the second: the second is the
+    # model's word, and the result says so.
+    answers = iter([[Cut("GND", ("P1.3",), seen="x")], None])
+    monkeypatch.setattr("pkidl.build.unconnected", lambda path: next(answers))
+    board.pour("A", layer="F.Cu")
+    built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None and built.routed.judge == "model"

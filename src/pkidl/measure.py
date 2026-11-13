@@ -14,7 +14,7 @@ from pathlib import Path
 
 from shapely.geometry import Point, Polygon
 
-from pkidl.footprint import pad_xy
+from pkidl.footprint import pad_at
 from pkidl.sexpr import Node, find, find_all, parse
 
 
@@ -51,7 +51,7 @@ def regions(board: Node, nets: set[str] | None = None) -> dict[str, Regions]:
         for pad in find_all(fp, "pad"):
             n = find(pad, "net")
             if n is not None and str(pad[2]) == "thru_hole":
-                joints.setdefault(str(n[-1]), []).append(pad_xy(fp, str(pad[1])))
+                joints.setdefault(str(n[-1]), []).append(pad_at(fp, pad))
     out = {}
     for net, ps in sorted(pieces.items()):
         parent = list(range(len(ps)))

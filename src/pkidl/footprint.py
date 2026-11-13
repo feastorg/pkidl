@@ -321,8 +321,14 @@ def pads(footprint: Node) -> list[Node]:
 
 
 def pad_xy(footprint: Node, number: str) -> tuple[float, float]:
-    """Board position of a placed footprint's pad *number*."""
-    pad = next(p for p in pads(footprint) if p[1] == number)
+    """Board position of a placed footprint's pad *number*: of the first, where several
+    pads have the number, as the pads of a shield or a tab do. With the pad itself in
+    hand, ``pad_at`` is its own position."""
+    return pad_at(footprint, next(p for p in pads(footprint) if p[1] == number))
+
+
+def pad_at(footprint: Node, pad: Node) -> tuple[float, float]:
+    """Board position of *pad*, a pad of the placed *footprint*."""
     pa = find(pad, "at")
     assert pa is not None
     return board_xy(footprint, float(pa[1]), float(pa[2]))
