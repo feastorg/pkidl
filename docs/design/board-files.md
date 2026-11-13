@@ -140,7 +140,9 @@ the board is the build's.
   centre to centre. `toward=` an edge: on that side of what it is near.
 - `centre=True`: the middle of its outline at the middle of the board.
 - `side="back"`: the face it is on. Parts on one face may touch and not overlap; a part
-  with holes takes both faces.
+  with holes takes both faces. Where the board has `rules(...)`, pads of two parts on
+  different nets are no closer than its clearance: a pair that is closer is reported
+  by its two pads, and a part placed `near=` something looks only where it is clear.
 - `align`: the parts' first pins are a whole number of grid steps apart. Checked, not
   moved to.
 - `keepout` of an area of a part: no other part's outline reaches into it, on the
