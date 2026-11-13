@@ -9,7 +9,8 @@ What each statement means here:
 
 - ``against=`` an edge: the part lies along it, its longer side to the edge. ``inset=`` is
   from the edge to the centres of the part's pads nearest it, or to its outline when it
-  has no pads; with no inset the part's outline touches the edge from inside. Along the
+  has no pads; with no inset the part's outline touches the edge from inside, or the
+  part is as far in as the rules keep its copper from the edge. Along the
   edge it is centred, unless a second edge makes a corner, where it may lie along either.
 - ``facing=`` an edge: the side of the part that is up in its footprint, as a library
   draws it, is turned to that edge of the board as the front shows it, whichever face
@@ -49,10 +50,14 @@ What each statement means here:
 
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest. A part's outline is the box around its pads, courtyard and fabrication
-drawing; two parts on one face may touch and not overlap, and a part with holes takes
-both faces. Pads of two parts on different nets are no closer than the clearance the
-board's ``rules`` say, each pad taken as the box around it: a pair that is closer is
-reported, and a part that looks for a place looks only where its pads are clear.
+drawing, or around its pads and what its silk draws where the footprint has neither,
+as an older library draws a part's body; two parts on one face may touch and not
+overlap, and a part with holes takes both faces. Pads of two parts on different nets
+are no closer than the clearance the board's ``rules`` say, each pad taken as the box
+around it: a pair that is closer is reported, and a part that looks for a place looks
+only where its pads are clear.
+A pad is no nearer the board's edge than the rules' edge clearance, held the same way,
+and a part ``against=`` an edge with no inset is as far in as that takes.
 
 A part lies inside the board's outline as it is drawn (``pkidl.edge``), rounded corners
 and cut-outs included, and clear of what is fixed on the board: its mounting holes, each
@@ -102,6 +107,7 @@ STEP = Length(100_000)  # how finely a place near something is looked for
 
 Box = tuple[int, int, int, int]  # x0, y0, x1, y1
 _BODY = {"F.CrtYd", "B.CrtYd", "F.Fab", "B.Fab"}
+_SILK = {"F.SilkS", "B.SilkS"}  # where an older footprint draws its body, and nowhere else
 _ROTATIONS = (0, 90, 180, 270)
 
 
@@ -203,11 +209,13 @@ def _shape(footprint: Node) -> _Shape:
         ys += [y - (h + 1) // 2, y + (h + 1) // 2]
         copper.append((str(pad[1]), (xs[-2], ys[-2], xs[-1], ys[-1])))
         through = through or pad[2] in ("thru_hole", "np_thru_hole")
-    for item in footprint[2:]:
-        if not isinstance(item, list) or not str(item[0]).startswith("fp_"):
-            continue
-        layer = find(item, "layer")
-        if layer is None or layer[1] not in _BODY:
+    drawn = [(item, layer[1]) for item in footprint[2:]
+             if isinstance(item, list) and str(item[0]).startswith("fp_") and item[0] != "fp_text"
+             and (layer := find(item, "layer")) is not None]  # fmt: skip
+    # A footprint with no courtyard and no fabrication drawing has its body on the silk.
+    body = _BODY if any(layer in _BODY for _, layer in drawn) else _SILK
+    for item, layer in drawn:
+        if layer not in body:
             continue
         points = [p for k in ("start", "mid", "end") if (p := find(item, k)) is not None]
         points += find_all(find(item, "pts") or [], "xy")
@@ -334,6 +342,9 @@ class _Solver:
         # How far apart the board's rules keep copper on different nets, if it has rules.
         self.rules = [s for s in statements if isinstance(s, Rules)]
         self.gap = max((s.clearance.nm for s in self.rules), default=0)
+        # And how far they keep copper from the board's edge.
+        self.margin = max((s.edge.nm for s in self.rules), default=0)
+        self._boxes: dict[str, tuple[Pose, Box]] = {}
         self.asks: dict[str, list[Place]] = {}
         self.aligns = [s for s in statements if isinstance(s, Align)]
         # Each area kept clear, as this circuit has it, whichever board's part the
@@ -450,6 +461,16 @@ class _Solver:
                 break
         else:
             self._problem(tuple(order), "the placement does not settle: each pass moves a part")
+        # A part against an edge with no inset that is in from it is there for its copper.
+        for ref in sorted(self.poses if self.margin else (), key=natural):
+            box = self._box(ref)
+            for edge, s in self._edges(ref).items():
+                held = {Edge.LEFT: box[0] - self.board[0], Edge.RIGHT: self.board[2] - box[2],
+                        Edge.TOP: box[1] - self.board[1],
+                        Edge.BOTTOM: self.board[3] - box[3]}[edge]  # fmt: skip
+                if s.inset is None and held > 0:
+                    self._chose(f"{ref}: {Length(held)} in from the {edge.value} edge, to "
+                                f"keep its copper {Length(self.margin)} from it")  # fmt: skip
         self._check()
         problems = sorted(self.problems, key=lambda p: ([natural(r) for r in p.parts], p.text))
         kept = tuple(Kept(s, (Length(box[0]), Length(box[1]), Length(box[2]), Length(box[3])),
@@ -695,16 +716,25 @@ class _Solver:
             if s.centre:
                 xs.append(((x0 + x1) // 2 - (bx0 + bx1) // 2, s))
                 ys.append(((y0 + y1) // 2 - (by0 + by1) // 2, s))
+        # With no inset, against the edge: its outline on the edge, or as near as the
+        # rules let its copper be, whichever is further in.
+        cx0, cy0, cx1, cy1 = (
+            (min(c[1][0] for c in turned.copper) - self.margin,
+             min(c[1][1] for c in turned.copper) - self.margin,
+             max(c[1][2] for c in turned.copper) + self.margin,
+             max(c[1][3] for c in turned.copper) + self.margin)
+            if turned.copper else turned.box
+        )  # fmt: skip
         for edge, s in edges.items():
             d = None if s.inset is None else s.inset.nm
             if edge is Edge.LEFT:
-                xs.append((x0 - bx0 if d is None else x0 + d - min(px), s))
+                xs.append((x0 - min(bx0, cx0) if d is None else x0 + d - min(px), s))
             elif edge is Edge.RIGHT:
-                xs.append((x1 - bx1 if d is None else x1 - d - max(px), s))
+                xs.append((x1 - max(bx1, cx1) if d is None else x1 - d - max(px), s))
             elif edge is Edge.TOP:
-                ys.append((y0 - by0 if d is None else y0 + d - min(py), s))
+                ys.append((y0 - min(by0, cy0) if d is None else y0 + d - min(py), s))
             else:
-                ys.append((y1 - by1 if d is None else y1 - d - max(py), s))
+                ys.append((y1 - max(by1, cy1) if d is None else y1 - d - max(py), s))
         # An edge says how far from it, and between= the place along it; edges that
         # make a corner leave between= nothing to say, so it is held to both.
         across, along = not xs or bool(ys), not ys or bool(xs)
@@ -745,7 +775,13 @@ class _Solver:
 
     def _box(self, ref: str) -> Box:
         pose = self.poses[ref]
-        return _moved(_turned(self.shapes[ref], pose.rot, pose.back).box, pose.x.nm, pose.y.nm)
+        # Asked of every placed part for every place a part might go: kept for as long
+        # as the part is where it was.
+        if (kept := self._boxes.get(ref)) is not None and kept[0] is pose:
+            return kept[1]
+        box = _moved(_turned(self.shapes[ref], pose.rot, pose.back).box, pose.x.nm, pose.y.nm)
+        self._boxes[ref] = (pose, box)
+        return box
 
     def _pads(self, ref: str) -> list[tuple[str, int, int]]:
         pose = self.poses[ref]
@@ -791,6 +827,35 @@ class _Solver:
             return True
         return self.within.covers(_area(*box))
 
+    def _shy(self, turned: _Shape, x: int, y: int) -> tuple[int, str] | None:
+        """The pad of a part, turned and put there, that is nearer the board's edge than
+        the rules keep copper from it: how near, and which, the nearest."""
+        m = self.margin
+        if not m:
+            return None
+        box = _moved(turned.box, x, y)
+        if self._on((box[0] - m, box[1] - m, box[2] + m, box[3] + m)):
+            return None
+        worst: tuple[int, str] | None = None
+        for n, pad in turned.copper:
+            pad = _moved(pad, x, y)
+            if self._on((pad[0] - m, pad[1] - m, pad[2] + m, pad[3] + m)):
+                continue
+            if self.edge is None:
+                d = min(pad[0] - self.board[0], pad[1] - self.board[1],
+                        self.board[2] - pad[2], self.board[3] - pad[3])  # fmt: skip
+            else:
+                # By a slanted or rounded edge the box grown by the margin reaches
+                # outside before the pad is that near: the distance itself says.
+                d = round(self.edge.boundary.distance(_area(*pad)))
+                d = d if self.within.covers(_area(*pad)) else 0
+                if d >= m:
+                    continue
+            d = max(d, 0)
+            if worst is None or (d, natural(n)) < (worst[0], natural(worst[1])):
+                worst = (d, n)
+        return worst
+
     def _over(self, box: Box, back: bool, through: bool) -> Fixed | None:
         """What is fixed on the board that *box*, on that face, overlaps: the first."""
         for f, taken, holed in self.fixed:
@@ -831,6 +896,8 @@ class _Solver:
         the part's shape and where it is, its pads are as far from theirs as the rules
         say as well."""
         if not self._on(box) or self._over(box, back, through) is not None:
+            return False
+        if at is not None and self._shy(*at) is not None:
             return False
         for _, kept, faces in self._kept(of if keeps else ()):
             if (through or back in faces) and _overlap(box, kept):
@@ -939,6 +1006,17 @@ class _Solver:
             pose = self.poses[ref]
             if (f := self._over(box, pose.back, self.shapes[ref].through)) is not None:
                 self._problem((ref,), f"{ref} is over {f.label}", *self.said[ref])
+            turned = _turned(self.shapes[ref], pose.rot, pose.back)
+            if (
+                max(over) <= 0
+                and self._on(box)
+                and (shy := self._shy(turned, pose.x.nm, pose.y.nm)) is not None
+            ):
+                d, n = shy
+                pad = f"{ref}.{n}" if n else f"a hole of {ref}"
+                self._problem((ref,), f"{pad} is {Length(d)} from the board's edge, and the "
+                              f"rules keep copper {Length(self.margin)} from it",
+                              *self.said[ref], *self.rules)  # fmt: skip
         for i, a in enumerate(placed):
             for b in placed[i + 1 :]:
                 shares = (self.shapes[a].through or self.shapes[b].through

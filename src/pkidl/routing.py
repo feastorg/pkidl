@@ -109,7 +109,8 @@ def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
     until the last stage. Each stage says which nets it routes and how: what *job*
     has for ``only``, ``cross_planes`` and ``quick`` is not read. Its ``neck_down`` is
     whether a track may neck at all: the power stage never does, and the others do
-    only where it is set.
+    only where it is set. With ``fan_out`` off no stage fans out, the power stage
+    included; with it on, the stages that are quick still do not.
     """
     power = frozenset(n for c in job.netclasses[1:] for n in job.members.get(c.name, ()))
     authored, vias = list(job.wires), list(job.vias)
