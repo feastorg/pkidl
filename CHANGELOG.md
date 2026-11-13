@@ -17,12 +17,6 @@ Unreleased. History before this file was reconstructed from the git log.
   the part is on, is a problem and is not placed. (#7)
 - `Board.ground("GND")` declares which nets are ground, and `Net.is_ground` reads it.
   A ground is a rail as well. `decouple` needs it said. (#7)
-
-### Changed
-
-- A `Problem` lists a statement once in `statements` where it listed it once for each
-  part it placed, as an overlap of two parts of one row did. What it prints is the
-  same. (#7)
 - Parts are kept inside the board's outline as it is drawn, and clear of its mounting
   holes. `Board.edge()` is the area the outline encloses, rounded corners and cut-outs
   included (`pkidl.edge`); `Board.hole(footprint, at)` puts a mounting hole on the
@@ -219,6 +213,15 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- Pads of two parts on different nets are kept as far apart as the board's rules say
+  (`rules(clearance=)`). Two parts could touch, and their pads with them: on the fan
+  controller a capacitor's pad was 0.036 mm from a pin of the processor. `Board.solve()`
+  reports a pair that is closer, naming the two pads, and a part placed `near=`
+  something looks only where its pads are clear. Pads on one net, and parts on a board
+  with no rules, may still touch. (#31)
+- A `Problem` lists a statement once in `statements` where it listed it once for each
+  part it placed, as an overlap of two parts of one row did. What it prints is the
+  same. (#7)
 - A board with rounded corners or mounting holes can now have problems where it had
   none: a part in a rounded corner, or over a hole, was placed without a word. A row
   along an edge with holes near it is narrower than it was. (#4)

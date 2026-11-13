@@ -1892,3 +1892,68 @@ def test_capacitors_take_a_parts_pins_in_the_order_of_their_numbers():
     board.decouple(board["Z1"], board.parts("R1", "R2"), within=4 * mm)
     solution = board.solve()
     assert solution.problems == () and _by(solution) == {"R1": "Z1.2", "R2": "Z1.10"}
+
+
+def _apart(inset: float, *, rules: bool = True, nets: str = "A B") -> Board:
+    """Two test points against the left edge, each a pad 1 mm square and nothing else:
+    the first 1 mm in, the second *inset* mm in, so 2 mm is touching."""
+    one, two = nets.split()
+    board = _board(T1=one, T2=two)
+    board.place(board["T1"], against=Edge.LEFT, inset=1 * mm)
+    board.place(board["T2"], against=Edge.LEFT, inset=inset * mm)
+    if rules:
+        board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    return board
+
+
+def test_pads_on_different_nets_closer_than_the_rules_say_are_a_problem():
+    solution = _apart(2.1).solve()
+    (problem,) = solution.problems
+    assert problem.text == "T1.1 is 0.1 mm from T2.1, and the rules keep copper 0.2 mm apart"
+    assert problem.parts == ("T1", "T2")
+    # It is about both places and the rules, any of which could be what changes.
+    assert [str(s) for s in problem.statements] == [
+        "place(T1, against=Edge.LEFT, inset=1 mm)",
+        "place(T2, against=Edge.LEFT, inset=2.1 mm)",
+        "rules(track=0.25 mm, clearance=0.2 mm, edge=0.5 mm)",
+    ]
+    # Touching is closer than the rules say too, and as far apart as they say is not.
+    assert [p.text for p in _apart(2.0).solve().problems] == [
+        "T1.1 is 0 mm from T2.1, and the rules keep copper 0.2 mm apart"
+    ]
+    assert _apart(2.2).solve().problems == ()
+
+
+def test_pads_may_be_as_close_as_they_like_on_one_net_or_on_a_board_with_no_rules():
+    assert _apart(2.1, nets="A A").solve().problems == ()
+    assert _apart(2.1, rules=False).solve().problems == ()
+
+
+def test_a_part_that_looks_for_its_place_keeps_its_pads_as_far_off_as_the_rules_say():
+    def gap(rules: bool, nets: str) -> float:
+        one, two = nets.split()
+        board = _board(T1=one, T2=two)
+        board.place(board["T1"], centre=True)
+        board.place(board["T2"], near=board["T1"], within=3 * mm)
+        if rules:
+            board.rules(track=0.25 * mm, clearance=0.2 * mm)
+        solution = board.solve()
+        assert solution.problems == ()
+        (x1, y1), (x2, y2) = _pads(board, solution, "T1")["1"], _pads(board, solution, "T2")["1"]
+        return round(math.dist((x1, y1), (x2, y2)) - 1, 6)  # each pad is 1 mm square
+
+    assert gap(False, "A B") == 0  # touching, as two parts may
+    assert gap(True, "A B") == 0.2
+    assert gap(True, "A A") == 0
+
+
+def test_a_hole_of_a_part_is_kept_as_far_from_another_parts_pad_as_the_rules_say():
+    board = _board(H1="", T1="A")
+    # The hole is 2 mm across with its middle 1 mm in, and the pad 1 mm square with its
+    # middle 2.6 mm in: 0.1 mm between them.
+    board.place(board["H1"], against=Edge.LEFT, inset=1 * mm)
+    board.place(board["T1"], against=Edge.LEFT, inset=2.6 * mm)
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    assert [p.text for p in board.solve().problems] == [
+        "a hole of H1 is 0.1 mm from T1.1, and the rules keep copper 0.2 mm apart"
+    ]

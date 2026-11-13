@@ -50,7 +50,9 @@ What each statement means here:
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest. A part's outline is the box around its pads, courtyard and fabrication
 drawing; two parts on one face may touch and not overlap, and a part with holes takes
-both faces.
+both faces. Pads of two parts on different nets are no closer than the clearance the
+board's ``rules`` say, each pad taken as the box around it: a pair that is closer is
+reported, and a part that looks for a place looks only where its pads are clear.
 
 A part lies inside the board's outline as it is drawn (``pkidl.edge``), rounded corners
 and cut-outs included, and clear of what is fixed on the board: its mounting holes, each
@@ -87,6 +89,7 @@ from pkidl.intent import (
     Keepout,
     Place,
     Row,
+    Rules,
     Side,
     Statement,
     canonical,
@@ -171,11 +174,13 @@ class Solution:
 
 @dataclass(frozen=True)
 class _Shape:
-    """A footprint's pads (number and centre) and outline, about its origin."""
+    """A footprint's pads (number and centre) and outline, about its origin, and the
+    box around each pad's copper."""
 
     pads: tuple[tuple[str, int, int], ...]
     box: Box
     through: bool
+    copper: tuple[tuple[str, Box], ...] = ()
 
 
 def _nm(value: object) -> int:
@@ -183,7 +188,7 @@ def _nm(value: object) -> int:
 
 
 def _shape(footprint: Node) -> _Shape:
-    pads, xs, ys = [], [], []
+    pads, copper, xs, ys = [], [], [], []
     through = False
     for pad in find_all(footprint, "pad"):
         at, size = find(pad, "at"), find(pad, "size")
@@ -196,6 +201,7 @@ def _shape(footprint: Node) -> _Shape:
         pads.append((str(pad[1]), x, y))
         xs += [x - (w + 1) // 2, x + (w + 1) // 2]
         ys += [y - (h + 1) // 2, y + (h + 1) // 2]
+        copper.append((str(pad[1]), (xs[-2], ys[-2], xs[-1], ys[-1])))
         through = through or pad[2] in ("thru_hole", "np_thru_hole")
     for item in footprint[2:]:
         if not isinstance(item, list) or not str(item[0]).startswith("fp_"):
@@ -214,7 +220,7 @@ def _shape(footprint: Node) -> _Shape:
         ys += [_nm(p[2]) for p in points]
     if not xs:  # nothing drawn: a point
         return _Shape((), (0, 0, 0, 0), False)
-    return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), through)
+    return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), through, tuple(copper))
 
 
 def _turn(x: int, y: int, rot: int, back: bool) -> tuple[int, int]:
@@ -231,7 +237,12 @@ def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
     x0, y0, x1, y1 = shape.box
     corners = [_turn(x, y, rot, back) for x in (x0, x1) for y in (y0, y1)]
     xs, ys = [c[0] for c in corners], [c[1] for c in corners]
-    return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), shape.through)
+    copper = []
+    for number, (px0, py0, px1, py1) in shape.copper:
+        (ax, ay), (bx, by) = _turn(px0, py0, rot, back), _turn(px1, py1, rot, back)
+        copper.append((number, (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))))
+    return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), shape.through,
+                  tuple(copper))  # fmt: skip
 
 
 def _moved(box: Box, x: int, y: int) -> Box:
@@ -320,6 +331,9 @@ class _Solver:
             self.fixed.append((f, _moved(_spun(shape.box, f.rot, f.back), f.x.nm, f.y.nm),
                                shape.through))  # fmt: skip
         self.runs: dict[Row, tuple[int, int]] = {}  # the clear stretch of each row's edge
+        # How far apart the board's rules keep copper on different nets, if it has rules.
+        self.rules = [s for s in statements if isinstance(s, Rules)]
+        self.gap = max((s.clearance.nm for s in self.rules), default=0)
         self.asks: dict[str, list[Place]] = {}
         self.aligns = [s for s in statements if isinstance(s, Align)]
         # Each area kept clear, as this circuit has it, whichever board's part the
@@ -784,10 +798,38 @@ class _Solver:
                 return f
         return None
 
+    def _tight(self, ref: str, turned: _Shape, x: int, y: int,
+               other: str) -> tuple[int, str, str] | None:  # fmt: skip
+        """The pad of this part, turned and put there, and the pad of *other* that are
+        closer than the rules keep copper on different nets: how far apart, and which
+        two, the nearest pair."""
+        box, theirs = _moved(turned.box, x, y), self._box(other)
+        if not self.gap or not _overlap(
+            (box[0] - self.gap, box[1] - self.gap, box[2] + self.gap, box[3] + self.gap), theirs
+        ):
+            return None
+        pose = self.poses[other]
+        there = _turned(self.shapes[other], pose.rot, pose.back)
+        worst: tuple[int, str, str] | None = None
+        for n, a in turned.copper:
+            a, net = _moved(a, x, y), self.nets[ref].get(n)
+            for m, b in there.copper:
+                if net is not None and net == self.nets[other].get(m):
+                    continue
+                b = _moved(b, pose.x.nm, pose.y.nm)
+                dx, dy = max(a[0] - b[2], b[0] - a[2], 0), max(a[1] - b[3], b[1] - a[3], 0)
+                d = math.isqrt(dx * dx + dy * dy)
+                if d < self.gap and (worst is None or (d, natural(n), natural(m)) <
+                                     (worst[0], natural(worst[1]), natural(worst[2]))):  # fmt: skip
+                    worst = (d, n, m)
+        return worst
+
     def _clear(self, ref: str, box: Box, back: bool, through: bool, of: Iterable[str],
-               keeps: bool = True) -> bool:  # fmt: skip
+               keeps: bool = True, at: tuple[_Shape, int, int] | None = None) -> bool:  # fmt: skip
         """Inside the board, over nothing fixed on it, overlapping none *of* the parts
-        placed and, with *keeps*, in no area of theirs that is kept clear."""
+        placed and, with *keeps*, in no area of theirs that is kept clear. With *at*,
+        the part's shape and where it is, its pads are as far from theirs as the rules
+        say as well."""
         if not self._on(box) or self._over(box, back, through) is not None:
             return False
         for _, kept, faces in self._kept(of if keeps else ()):
@@ -798,6 +840,8 @@ class _Solver:
                 continue
             shares = through or self.shapes[other].through or self.poses[other].back == back
             if shares and _overlap(box, self._box(other)):
+                return False
+            if shares and at is not None and self._tight(ref, *at, other) is not None:
                 return False
         return True
 
@@ -840,8 +884,9 @@ class _Solver:
                         for tx, ty in targets:
                             x, y = tx + dx - px, ty + dy - py
                             box = _moved(turned.box, x, y)
+                            at = (turned, x, y)
                             if not (beyond(box) and self._clear(ref, box, back, shape.through,
-                                                                done, keeps)):  # fmt: skip
+                                                                done, keeps, at)):  # fmt: skip
                                 continue
                             key = (self._wires(ref, turned, x, y), rot, y, x)
                             if best is None or key < best[0]:
@@ -900,6 +945,17 @@ class _Solver:
                           or self.poses[a].back == self.poses[b].back)  # fmt: skip
                 if shares and _overlap(self._box(a), self._box(b)):
                     self._problem((a, b), f"{a} and {b} overlap", *self.said[a], *self.said[b])
+                elif shares:
+                    pose = self.poses[a]
+                    turned = _turned(self.shapes[a], pose.rot, pose.back)
+                    if (tight := self._tight(a, turned, pose.x.nm, pose.y.nm, b)) is not None:
+                        d, n, m = tight
+                        one, two = (
+                            f"{r}.{k}" if k else f"a hole of {r}" for r, k in ((a, n), (b, m))
+                        )
+                        self._problem((a, b), f"{one} is {Length(d)} from {two}, and the "
+                                      f"rules keep copper {Length(self.gap)} apart",
+                                      *self.said[a], *self.said[b], *self.rules)  # fmt: skip
         for s, kept, faces in self._kept(placed):
             owner = s.area.part.ref
             for ref in placed:
