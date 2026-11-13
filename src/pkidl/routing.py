@@ -49,9 +49,10 @@ class Job:
     polygon) hold every track and via out. *planes* (net, layer, hole-free polygon, as
     ``pkidl.fill.prefill`` makes them) are pours the router may connect through.
 
-    How: *neck_down* lets a track narrow into a pin; *cross_planes* lets another net's
-    track cross a plane; *quick* leaves out the router's fan-out and its optimising
-    passes.
+    How: *neck_down* lets a track narrow into a pin; *fan_out* lets the router lead
+    each SMD pad out to a via before it routes, which a router may do with a narrower
+    track whatever *neck_down* is; *cross_planes* lets another net's track cross a
+    plane; *quick* leaves out the router's fan-out and its optimising passes.
     """
 
     footprints: Sequence[Node]
@@ -66,6 +67,7 @@ class Job:
     keepouts: Sequence[tuple[str, Sequence[Point]]] = ()
     planes: Sequence[tuple[str, str, Sequence[Point]]] = ()
     neck_down: bool = True
+    fan_out: bool = True
     cross_planes: bool = True
     quick: bool = False
 

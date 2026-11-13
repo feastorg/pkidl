@@ -248,8 +248,8 @@ Unreleased. History before this file was reconstructed from the git log.
   router neck tracks into pins, below the width it then gave KiCad as the least
   allowed. A build routes with neck-down off, and `staged` necks in its later stages
   only where the job's `neck_down` says a track may: it necked there whatever the job
-  said. With neck-down off, `pkidl.route.Freerouting` leaves out Freerouting's fan-out
-  stage as well, which narrows its stubs whatever the setting is. (#32)
+  said. A `Job` has `fan_out`, and a build routes with it off as well: Freerouting's
+  fan-out stage narrows its stubs whatever the neck-down setting is. (#32)
 - `pkidl.footprint.place()` flips a text's mirror flag when a footprint goes to the
   back. A text the library already mirrored was left mirrored. (#9)
 - `pkidl.importer.mechanical()` reads each drill of a hole where it is. Drills were

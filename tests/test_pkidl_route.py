@@ -91,8 +91,10 @@ QUICK = [FANOUT, "--router.optimizer.enabled=false"]
     ("how", "options"),
     [
         ({}, []),
-        # Fan-out necks whatever the neck-down setting is, so it goes with it.
-        ({"neck_down": False}, [NECK, FANOUT]),
+        ({"neck_down": False}, [NECK]),
+        # Fan-out narrows its stubs whatever the neck-down setting is: said on its own.
+        ({"fan_out": False}, [FANOUT]),
+        ({"fan_out": False, "quick": True}, QUICK),
         ({"cross_planes": False}, [OBSTACLE]),
         ({"quick": True}, QUICK),
         ({"neck_down": False, "cross_planes": False, "quick": True}, [NECK, OBSTACLE, *QUICK]),

@@ -398,7 +398,7 @@ Open after this:
 **As built, routing** (`pkidl.routing`): a router is an engine behind one interface.
 It is given a `Job` (the placed footprints, the outline, the net classes, what copper
 is there already, the areas to keep out of, the pours, and how to route: `neck_down`,
-`cross_planes`, `quick`) and hands back a `Run`: wires, vias, and how many connections
+`fan_out`, `cross_planes`, `quick`) and hands back a `Run`: wires, vias, and how many connections
 it says it left unmade. `pkidl.route.Freerouting` is the first; it writes the job as a
 DSN file, runs Freerouting on it and reads the session and the log.
 
@@ -410,10 +410,10 @@ back a `Routed`: the tracks and vias proposed, each once, and each stage's run. 
 is on the board until `lay(board, routed)` puts it there. What a router says of its
 own work is reported and not trusted: KiCad's DRC judges the board.
 
-A build routes with `neck_down` off: the board file's one track width is the least its
-rules allow, so a track that narrows into a pin is an error. With it off Freerouting's
-fan-out stage is off too, since in 2.5.0 that stage narrows its stubs to three quarters
-of the track width whatever the neck-down setting is. On the fan controller the 27
+A build routes with `neck_down` and `fan_out` off: the board file's one track width is
+the least its rules allow, so a track that narrows into a pin is an error, and in
+Freerouting 2.5.0 the fan-out stage narrows its stubs to three quarters of the track
+width whatever the neck-down setting is. On the fan controller the 27
 tracks KiCad found at 0.1874 mm under a 0.25 mm minimum are none.
 
 The stages are the ones `spike/` routed its boards in, moved; its boards are built
