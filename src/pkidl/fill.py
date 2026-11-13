@@ -298,14 +298,18 @@ class Cut:
     """Pads of a poured net that the board's copper joins to each other and not to the
     rest of their net: which *pads*, as ``C5.2``; the *layer* of the piece of pour they
     are on, or None where no pour reaches them; and the nets whose tracks run beside
-    that piece, *fenced* in by them."""
+    that piece, *fenced* in by them. One that KiCad reported has what KiCad said it
+    *seen* as, in its own words, and no layer."""
 
     net: str
     pads: tuple[str, ...]
     layer: str | None = None
     fenced: tuple[str, ...] = ()
+    seen: str = ""
 
     def __str__(self) -> str:
+        if self.seen:
+            return f"KiCad leaves unconnected on {self.net}: {self.seen}"
         pads = ", ".join(self.pads)
         are = "is" if len(self.pads) == 1 else "are"
         if self.layer is None:

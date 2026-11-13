@@ -20,6 +20,10 @@ Unreleased. History before this file was reconstructed from the git log.
   the router. `fills`, `prefill` and `cut_off` take the outline as its corners or as
   the area inside it, cut-outs as holes, and keep the clearance given for `""` from
   what is on no net. `pkidl.footprint.pad_at(footprint, pad)` is where a pad is. (#43)
+- Where KiCad is installed (`$KICAD_CLI`, default `kicad-cli`), it is KiCad that says
+  what a build's pours leave unconnected, from its own fill of the proposed routing
+  (`pkidl.kicad.unconnected`), and pkidl's model answers only where it is not.
+  `Routed.judge` says which, and `scripts/corpus.py build` prints it. (#43)
 - `decouple(part, caps, within=)` and `Board.decouple()`: a statement that capacitors
   decouple a part. Each is across ground and one of the part's supplies, and is placed
   with its pad on that supply near one of the part's pins on it, one capacitor to a

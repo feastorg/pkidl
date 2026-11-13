@@ -425,18 +425,26 @@ own work is reported and not trusted: KiCad's DRC judges the board.
 `poured(router, job, outdir, name, cut)` is how a build routes: with the board's pours
 known to the router, carrying their nets, where that can be shown to hold. A router
 told of a pour counts every pad on it as joined, and tracks across the pour can leave a
-piece of it apart with pads on it. So the run is checked: `pkidl.fill.cut_off` fills the
-pours round what was proposed and asks whether each poured net's pads, tracks, vias and
-pieces of pour are all joined. Where they are, that run is the routing. Where they are
+piece of it apart with pads on it. So the run is checked: the pours are filled
+round what was proposed and each poured net's pads, tracks, vias and pieces of pour are
+asked to be all joined. Where they are, that run is the routing. Where they are
 not, what was cut off is in the result (`Routed.cut`), and the board is routed again
 with that net carried by tracks and its pour beside them, as a board was before.
+
+Who checks: KiCad, where it is installed. A build writes the board with what was
+proposed laid, has `kicad-cli pcb drc --refill-zones` fill it to the board's own rules,
+and takes what KiCad reports unconnected (`pkidl.kicad.unconnected`): its word decides,
+since its fill is the one the board will have. Where KiCad is not installed, or does not
+finish, `pkidl.fill.cut_off` answers from pkidl's model of that fill, below, and
+`Routed.judge` says which it was: `KiCad` or `model`. Decided 2026-11-13, after the model
+was twice found to pass a pad KiCad leaves unconnected.
 
 So a net is left to its pour only where its pour was checked to carry it. The check is
 of the nets that have pours. What the router says it left unmade of the others, and
 of a board routed again with no pour, is in each run and is the router's word, as it
 was: KiCad's DRC judges the board.
 
-The check is a model of KiCad's fill, and a model can be wrong. It is meant to be wrong
+The model is of KiCad's fill, and a model can be wrong. It is meant to be wrong
 only toward calling a pad cut off that KiCad joins, which costs a second run of the
 router and not a board with a pad left unconnected. What it models:
 

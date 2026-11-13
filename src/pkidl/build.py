@@ -28,6 +28,7 @@ from pkidl.dsn import Via, Wire
 from pkidl.fill import Cut, cut_off, prefill
 from pkidl.footprint import Placement, place
 from pkidl.intent import Route, Rules
+from pkidl.kicad import kicad_command, unconnected
 from pkidl.placement import Solution
 from pkidl.project import NetClass, write_project
 from pkidl.route import Freerouting
@@ -56,6 +57,9 @@ class Built:
     project: Path | None
     solution: Solution
     routed: Routed | None
+
+
+KICAD, MODEL = "KiCad", "model"  # whose word a build's pours are checked by
 
 
 def _sized(item: Node, unsized: Mapping[str, tuple[str, ...]], clearance: float) -> Node:
@@ -122,6 +126,18 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
     project = routed = None
     if rules is not None:
         classes = [NetClass("Default", rules.clearance.mm, rules.track.mm)]
+
+        def projected(path: Path) -> Path:
+            """The board's rules as a KiCad project at *path*."""
+            return write_project(
+                path,
+                netclasses=classes,
+                members={},
+                rules={"min_clearance": rules.clearance.mm, "min_track_width": rules.track.mm,
+                       "min_copper_edge_clearance": rules.edge.mm},
+                severities={},
+            )  # fmt: skip
+
         if routes is not None:
             assert board.extent is not None  # a board with no outline has no solution
             x0, y0, x1, y1 = board.extent
@@ -133,11 +149,23 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
             # Said once, so the pour the router is told of and the one checked are one.
             fill_as = (inside, rules.edge.mm, {"": Job.hole_clearance})
 
+            judged: list[str] = []  # who was asked, each time
+
             def cut(wires: Sequence[Wire], vias: Sequence[Via]) -> list[Cut]:
-                """What the board's pours would leave cut off with these laid."""
-                tried = replace(built, items=[], _uuids=set())
+                """What the board's pours would leave cut off with these laid: by
+                KiCad's own fill where KiCad is installed, and by pkidl's model of it
+                where it is not or does not finish."""
+                tried = replace(built, items=list(unrouted), _uuids=set(built._uuids))
                 lay(tried, Routed(tuple(wires), tuple(vias), ()))
-                return cut_off(unrouted + tried.items, *fill_as)
+                if kicad_command() is not None:
+                    # KiCad fills to the board's own rules: its project goes with it.
+                    projected(outdir / f"{name}-poured-check.kicad_pro")
+                    found = unconnected(tried.write(outdir / f"{name}-poured-check.kicad_pcb"))
+                    if found is not None:
+                        judged.append(KICAD)
+                        return found
+                judged.append(MODEL)
+                return cut_off(tried.items, *fill_as)
 
             job = Job(
                 footprints=[item for item in built.items if item[0] == "footprint"],
@@ -156,13 +184,7 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 planes=prefill(unrouted, *fill_as),
             )
             routed = poured(router or Freerouting(), job, outdir, name, cut)
+            routed = replace(routed, judge=judged[-1] if judged else "")
             lay(built, routed)
-        project = write_project(
-            outdir / f"{name}.kicad_pro",
-            netclasses=classes,
-            members={},
-            rules={"min_clearance": rules.clearance.mm, "min_track_width": rules.track.mm,
-                   "min_copper_edge_clearance": rules.edge.mm},
-            severities={},
-        )  # fmt: skip
+        project = projected(outdir / f"{name}.kicad_pro")
     return Built(built.write(outdir / f"{name}.kicad_pcb"), project, solution, routed)
