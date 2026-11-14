@@ -8,7 +8,9 @@ import math
 import random
 import re
 import sys
+from fractions import Fraction
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -2601,3 +2603,372 @@ def test_a_part_in_a_row_whose_way_round_matters_has_to_be_told_it_too():
     assert [p.parts for p in solved(False).problems] == [("U1",), ("U2",)]
     assert all("way round matters" in p.text for p in solved(False).problems)
     assert solved(True).ok
+
+
+def _span(board: Board, solution: Solution, ref: str, edge: Edge) -> tuple[float, float]:
+    """How far along *edge*, from its top end or its left end, *ref*'s outline starts
+    and ends."""
+    pose = solution.poses[ref]
+    x0, y0, x1, y1 = (v / 1_000_000 for v in _shape(board.library[board[ref].footprint]).box)
+    # Turned counter-clockwise as the front shows it, y down the board.
+    x0, y0, x1, y1 = {0: (x0, y0, x1, y1), 90: (y0, -x1, y1, -x0), 180: (-x1, -y1, -x0, -y0),
+                      270: (-y1, x0, -y0, x1)}[pose.rot]  # fmt: skip
+    if edge in (Edge.LEFT, Edge.RIGHT):
+        return pose.y.mm + y0 - 50, pose.y.mm + y1 - 50
+    return pose.x.mm + x0 - 100, pose.x.mm + x1 - 100
+
+
+def _middle(board: Board, solution: Solution, ref: str, edge: Edge) -> float:
+    start, end = _span(board, solution, ref, edge)
+    return (start + end) / 2
+
+
+@pytest.mark.parametrize("edge", list(Edge))
+@pytest.mark.parametrize(("along", "at"), [(1 / 3, 10), (0.5, 15), (0.9, 27), (12 * mm, 12),
+                                           ("4.5 mm", 4.5)])  # fmt: skip
+def test_a_part_against_an_edge_is_as_far_along_it_as_is_said(edge, along, at):
+    # The board is 30 mm each way: a share of an edge is that share of 30 mm, from the
+    # top end of the left and right edges and the left end of the top and bottom.
+    board = _board(R1="A B", U1="A B C D E")
+    for part in board.parts("R1", "U1"):
+        board.place(part, against=edge, along=along)
+    solution = board.solve()
+    assert solution.poses.keys() == {"R1", "U1"}  # both, though at one place they overlap
+    for ref in ("R1", "U1"):
+        assert _middle(board, solution, ref, edge) == pytest.approx(at, abs=1e-6)
+    assert not any("centred" in note for note in solution.chosen)
+    # And against the edge as it was: with nothing said of where along, centred.
+    plain = _board(R1="A B")
+    plain.place(plain["R1"], against=edge)
+    centred = plain.solve()
+    assert _middle(plain, centred, "R1", edge) == pytest.approx(15)
+    across = (lambda p: p.x.mm) if edge in (Edge.LEFT, Edge.RIGHT) else (lambda p: p.y.mm)
+    assert across(solution.poses["R1"]) == across(centred.poses["R1"])
+
+
+def test_along_an_edge_is_one_place_and_what_else_says_where_has_to_agree():
+    board = _board(T1="A")
+    t1 = board["T1"]
+    board.place(t1, against=Edge.LEFT, along=1 / 3)
+    board.place(t1, against=Edge.LEFT, along=1 / 2)
+    line = _line_no() - 1
+    assert _told(board.solve()) == [
+        f"T1: place along the left edge is 0.3333333333333333 ({HERE}:{line - 1}) and 0.5 "
+        f"({HERE}:{line})"
+    ]
+    # A second edge makes a corner, which is another place along the first.
+    board = _board(T1="A")
+    board.place(board["T1"], against=Edge.LEFT, along=1 / 3)
+    board.place(board["T1"], against=Edge.TOP)
+    (problem,) = board.solve().problems
+    assert problem.text == "T1 is put in two places 9.5 mm apart along the board"
+    # Off the end of the edge it does not fit, and is said not to.
+    board = _board(T1="A")
+    board.place(board["T1"], against=Edge.LEFT, along=0.0)
+    (problem,) = board.solve().problems
+    assert problem.text == "T1 does not fit on the board: it reaches 0.5 mm past the top edge"
+
+
+@pytest.mark.parametrize("edge", list(Edge))
+def test_a_part_after_or_before_another_along_an_edge_is_next_to_it_on_that_side(edge):
+    def solved(**how) -> tuple[Board, Solution]:
+        board = _board(U1="A B C D E", R1="A B")
+        beside: dict[str, Any] = {k: board["U1"] for k in how}
+        board.place(board["R1"], against=edge, **beside)
+        board.place(board["U1"], centre=True, facing=Edge.TOP)  # said after, placed first
+        return board, board.solve()
+
+    board, solution = solved(after=True)
+    assert solution.ok and f"R1: after U1 along the {edge.value} edge" in solution.chosen
+    # The resistor lies along the edge, 3.6 mm long: its near end where the module's
+    # outline stops along the edge, as near as two parts may be.
+    start, end = _span(board, solution, "U1", edge)
+    assert 5 < start < end < 25
+    assert _span(board, solution, "R1", edge) == pytest.approx((end, end + 3.6))
+    board, solution = solved(before=True)
+    assert solution.ok and f"R1: before U1 along the {edge.value} edge" in solution.chosen
+    assert _span(board, solution, "R1", edge) == pytest.approx((start - 3.6, start))
+
+
+def test_after_one_part_and_before_another_is_between_them_and_past_what_is_in_the_way():
+    board = _board(T1="A", T2="B", T3="C", R1="A B")
+    t1, t2, t3, r1 = board.parts("T1", "T2", "T3", "R1")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t2, against=Edge.LEFT, along=20 * mm)
+    board.place(t3, against=Edge.LEFT, after=t1)
+    board.place(r1, against=Edge.LEFT, after=t1, before=t2)
+    solution = board.solve()
+    assert solution.ok
+    assert "R1: after T1 and before T2 along the left edge" in solution.chosen
+    # The resistor is placed first and is hard after T1, from 5.5 to 9.1 mm; T3, after
+    # T1 as well, is the next clear place past the resistor.
+    assert _span(board, solution, "R1", Edge.LEFT) == pytest.approx((5.5, 9.1))
+    assert _span(board, solution, "T3", Edge.LEFT) == pytest.approx((9.1, 10.1))
+    # With no room between them it has no place, and is told so.
+    board = _board(T1="A", T2="B", R1="A B")
+    t1, t2, r1 = board.parts("T1", "T2", "R1")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t2, against=Edge.LEFT, along=8 * mm)
+    board.place(r1, against=Edge.LEFT, after=t1, before=t2)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [
+        "R1 has no place against the left edge after T1 and before T2 that is on the board "
+        f"and clear of the other parts ({HERE}:{line})"
+    ]
+    assert "R1" not in solution.poses
+    # After a part that has no place of its own, it has none either.
+    board = _board(T1="A", T2="B")
+    board.place(board["T1"], near=board["T2"], within=1 * mm)
+    board.place(board["T2"], against=Edge.TOP, after=board["T1"])
+    assert "T2 is placed by T1, which is placed by it in turn" in str(board.solve().problems)
+    board = _board(K1="A B", T1="A", T2="B")
+    board.place(board["K1"], centre=True)
+    board.place(board["T1"], near=board["K1"], within=0.1 * mm)  # inside the sensor
+    board.place(board["T2"], against=Edge.TOP, after=board["T1"])
+    solution = board.solve()
+    assert [p.text.split(":")[0] for p in solution.problems if p.parts == ("T2",)] == [
+        "T2 is placed by T1, which is not placed"
+    ]
+    assert solution.poses.keys() == {"K1"}
+
+
+def test_a_part_put_somewhere_along_an_edge_by_a_corner_is_held_to_after_and_before():
+    def solved(**how) -> Solution:
+        board = _board(T1="A", T2="B")
+        board.place(board["T1"], against=Edge.LEFT)
+        beside: dict[str, Any] = {k: board["T1"] for k in how}
+        board.place(board["T2"], against=Edge.LEFT, **beside)
+        board.place(board["T2"], against=Edge.TOP)  # the top left corner
+        return board.solve()
+
+    assert solved(before=True).ok
+    (problem,) = solved(after=True).problems
+    assert problem.text == "T2 is not after T1 along the left edge where it is put"
+    assert problem.parts == ("T2",) and len(problem.statements) == 2
+
+
+def test_where_along_an_edge_is_said_with_the_edge_and_one_way():
+    board = _board(T1="A", T2="B")
+    t1, t2 = board.parts("T1", "T2")
+    statement = place(t1, against=Edge.RIGHT, after=t2)
+    assert str(statement) == "place(T1, against=Edge.RIGHT, after=T2)"
+    assert statement.data() == {"place": "T1", "against": "right", "after": "T2"}
+    assert statement.mentions() == (t1, t2)
+    assert place(t1, against=Edge.TOP, along=0.25).data() == {
+        "place": "T1", "against": "top", "along": 0.25,
+    }  # fmt: skip
+    assert str(place(t1, against=Edge.TOP, along=12 * mm)) == (
+        "place(T1, against=Edge.TOP, along=12 mm)"
+    )
+    # A share written as a fraction is the share, and either end of the edge is one.
+    third = place(t1, against=Edge.TOP, along=Fraction(1, 3))
+    assert third.along == pytest.approx(1 / 3) and type(third.along) is float
+    assert third == place(t1, against=Edge.TOP, along=1 / 3)
+    assert type(place(t1, against=Edge.TOP, along=1).along) is float
+    assert (
+        place(t1, against=Edge.TOP, along=0).along,
+        place(t1, against=Edge.TOP, along=1).along,
+    ) == (0.0, 1.0)
+    for how, error, said in [
+        ({"along": 0.5}, ValueError, "along= says where along an edge the part is: give against="),
+        ({"after": t2}, ValueError, "after= says where along an edge the part is: give against="),
+        ({"near": t2, "within": 1 * mm, "before": t2}, ValueError, "before= says where along"),
+        ({"against": Edge.TOP, "along": 0.5, "after": t2}, ValueError, "give one"),
+        ({"against": Edge.TOP, "along": 1.5}, ValueError, "a share of the edge, from 0 to 1"),
+        ({"against": Edge.TOP, "along": -0.1}, ValueError, "a share of the edge, from 0 to 1"),
+        ({"against": Edge.TOP, "along": -1 * mm}, ValueError, "is off the edge"),
+        ({"against": Edge.TOP, "along": True}, TypeError, "along= takes a share of the edge"),
+        ({"against": Edge.TOP, "along": float("nan")}, ValueError, "a share of the edge"),
+        ({"against": Edge.TOP, "along": 12}, ValueError, "a distance has its unit: 12 \\* mm"),
+        ({"against": Edge.TOP, "along": Edge.LEFT}, TypeError, "along= takes a share"),
+        ({"against": Edge.TOP, "after": t1}, ValueError, "after= T1 is the part itself"),
+        ({"against": Edge.TOP, "after": "T2"}, TypeError, "after= takes a part"),
+        ({"against": Edge.TOP, "after": t2, "before": t2}, ValueError, "both after and before"),
+    ]:
+        with pytest.raises(error, match=said):
+            place(t1, **how)
+
+
+def test_what_is_said_of_after_and_before_in_two_statements_is_all_held():
+    def solved(first: float, second: float, **how: str) -> tuple[Board, Solution]:
+        board = _board(T1="A", T2="B", R1="A B")
+        t1, t2, r1 = board.parts("T1", "T2", "R1")
+        board.place(t1, against=Edge.LEFT, along=first * mm)
+        board.place(t2, against=Edge.LEFT, along=second * mm)
+        for word, other in how.items():
+            beside: dict[str, Any] = {word: board[other]}
+            board.place(r1, against=Edge.LEFT, **beside)
+        return board, board.solve()
+
+    # After one part in one statement and before another in the next: between them,
+    # and with no room between them no place, as if one statement had said both.
+    board, solution = solved(5, 20, after="T1", before="T2")
+    assert solution.ok and _span(board, solution, "R1", Edge.LEFT) == pytest.approx((5.5, 9.1))
+    board, solution = solved(5, 7, after="T1", before="T2")
+    assert [p.text.split(" that is")[0] for p in solution.problems] == [
+        "R1 has no place against the left edge after T1 and before T2"
+    ]
+    assert len(solution.problems[0].statements) == 2 and "R1" not in solution.poses
+
+
+def test_after_two_parts_is_after_the_further_of_them():
+    board = _board(T1="A", T2="B", R1="A B")
+    t1, t2, r1 = board.parts("T1", "T2", "R1")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t2, against=Edge.LEFT, along=20 * mm)
+    board.place(r1, against=Edge.LEFT, after=t1)
+    board.place(r1, against=Edge.LEFT, after=t2)
+    solution = board.solve()
+    assert solution.ok and _span(board, solution, "R1", Edge.LEFT) == pytest.approx((20.5, 24.1))
+    assert "R1: after T1 and after T2 along the left edge" in solution.chosen
+    # Whichever is which; and before two parts is before the nearer end of them.
+    for words, at in ((("after", "after"), (20.5, 24.1)), (("before", "before"), (0.9, 4.5))):
+        for first, second in (("T1", "T2"), ("T2", "T1")):
+            board = _board(T1="A", T2="B", R1="A B")
+            board.place(board[first], against=Edge.LEFT, along=5 * mm)
+            board.place(board[second], against=Edge.LEFT, along=20 * mm)
+            for word, other in zip(words, (first, second), strict=True):
+                beside: dict[str, Any] = {word: board[other]}
+                board.place(board["R1"], against=Edge.LEFT, **beside)
+            solution = board.solve()
+            assert solution.ok, (words, first)
+            assert _span(board, solution, "R1", Edge.LEFT) == pytest.approx(at)
+
+
+def test_a_part_looked_for_along_an_edge_is_placed_after_those_whose_place_is_given():
+    # Whatever the parts are called: the one that looks is clear of the ones that are
+    # put, and was on top of T5 when it was placed before it by its name.
+    board = _board(T1="A", T5="B", R1="A B")
+    t1, t5, r1 = board.parts("T1", "T5", "R1")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t5, against=Edge.LEFT, along=7 * mm)
+    board.place(r1, against=Edge.LEFT, after=t1)
+    solution = board.solve()
+    assert solution.ok and _span(board, solution, "R1", Edge.LEFT) == pytest.approx((7.5, 11.1))
+    # And one that looks back from a part: clear of T7, which it sorts before and
+    # was ready to be placed before, once T5 was.
+    board = _board(T7="A", T5="B", R1="A B")
+    t1, t5, r1 = board.parts("T7", "T5", "R1")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t5, against=Edge.LEFT, along=7 * mm)
+    board.place(r1, against=Edge.LEFT, before=t5)
+    solution = board.solve()
+    assert solution.ok and _span(board, solution, "R1", Edge.LEFT) == pytest.approx((0.9, 4.5))
+
+
+def test_a_part_free_to_turn_is_turned_the_way_that_has_a_place_along_the_edge():
+    def solved(second: float, first: str = "A", last: str = "B") -> tuple[Board, Solution]:
+        board = _ruled(T1=first, T2=last, Q1="A B")
+        t1, t2, q1 = board.parts("T1", "T2", "Q1")
+        board.place(t1, against=Edge.LEFT, along=5 * mm)
+        board.place(t2, against=Edge.LEFT, along=second * mm)
+        board.place(q1, against=Edge.LEFT, after=t1, before=t2)
+        return board, board.solve()
+
+    # A part 3 mm square in a gap of 3 mm, on a board whose rules keep pads of different
+    # nets apart: it fits some ways round and not others, and is turned a way it fits.
+    board, solution = solved(9)
+    assert solution.ok and _span(board, solution, "Q1", Edge.LEFT) == pytest.approx((5.5, 8.5))
+    # With the nets the other way about, the way that has no place is the last tried:
+    # nothing of it is left in what is said.
+    board, solution = solved(9, "B", "A")
+    assert solution.ok and solution.poses["Q1"].rot == 90
+    # Where no way round has a place it is said once, and nothing is said of where
+    # the part went, for it went nowhere.
+    board, solution = solved(7)
+    assert len(solution.problems) == 1 and "Q1" not in solution.poses
+    assert not any(note.startswith("Q1") for note in solution.chosen)
+
+
+def test_the_place_found_along_an_edge_is_clear_of_all_a_place_has_to_be_clear_of():
+    def beside(make=_board, hole: tuple | None = None, back: bool = False, **nets: str):
+        board = make(T1="A", T2=nets.get("T2", "B"))
+        board.place(board["T1"], against=Edge.LEFT, along=5 * mm)
+        if hole is not None:
+            board.hole(*hole, back=back)
+        board.place(board["T2"], against=Edge.LEFT, after=board["T1"])
+        return _span(board, board.solve(), "T2", Edge.LEFT)[0]
+
+    assert beside() == pytest.approx(5.5)  # touching, with no rules
+    # The board's rules keep pads of different nets 0.2 mm apart, and not pads of one.
+    assert beside(_ruled) == pytest.approx(5.7)
+    assert beside(_ruled, T2="A") == pytest.approx(5.5)
+    # A hole is gone past; a pad fixed on the back only is not in a front part's way.
+    assert beside(hole=("Mech:Hole", (100.5, 56.5))) > 6.5
+    assert beside(hole=("Test:TP", (100.5, 56.5)), back=True) == pytest.approx(5.5)
+    assert beside(hole=("Test:TP", (100.5, 56.5))) == pytest.approx(7)
+
+    def behind(ref: str, nets: str, **how: Any) -> float:
+        board = _board(T1="A", **{ref: nets})
+        board.place(board["T1"], against=Edge.LEFT, along=5 * mm)
+        board.hole("Test:TP", (100.5, 56.5), back=True)
+        board.place(board[ref], against=Edge.LEFT, after=board["T1"], **how)
+        return _span(board, board.solve(), ref, Edge.LEFT)[0]
+
+    # That pad on the back is in the way of a part on the back, and of one with holes.
+    assert behind("T2", "B", side="back") == pytest.approx(7)
+    assert behind("P1", "B C") == pytest.approx(7)
+    # An area kept clear is gone past too.
+    board = _board(U1="A B C D E", T1="A", T2="B")
+    u1, t1, t2 = board.parts("U1", "T1", "T2")
+    (keep,) = board.annotate(t1, keep=((-0.5 * mm, 0.5 * mm), (0.5 * mm, 3 * mm)))
+    board.keepout(keep, copper=True)
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t2, against=Edge.LEFT, after=t1)
+    assert _span(board, board.solve(), "T2", Edge.LEFT)[0] == pytest.approx(8)
+    del u1
+
+
+def test_before_a_part_is_looked_for_back_from_it_past_what_is_in_the_way():
+    board = _board(T1="A", T2="B", T3="C")
+    t1, t2, t3 = board.parts("T1", "T2", "T3")
+    board.place(t1, against=Edge.LEFT, along=20 * mm)
+    board.place(t2, against=Edge.LEFT, along=19 * mm)  # hard before it already
+    board.place(t3, against=Edge.LEFT, before=t1)
+    solution = board.solve()
+    assert solution.ok and _span(board, solution, "T3", Edge.LEFT) == pytest.approx((17.5, 18.5))
+
+
+def test_a_gap_that_is_just_the_parts_size_and_off_the_grid_is_found():
+    board = _board(T1="A", T2="B", T3="C", T5="D")
+    t1, t2, t3, t5 = board.parts("T1", "T2", "T3", "T5")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t2, against=Edge.LEFT, along=6.025 * mm)
+    board.place(t3, against=Edge.LEFT, along=8.025 * mm)
+    board.place(t5, against=Edge.LEFT, after=t1, before=t3)
+    solution = board.solve()
+    assert solution.ok
+    assert _span(board, solution, "T5", Edge.LEFT) == pytest.approx((6.525, 7.525))
+    # And one against something fixed on the board, not a part.
+    board = _board(T1="A", T3="C", T5="D")
+    t1, t3, t5 = board.parts("T1", "T3", "T5")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.hole("Test:TP", (100.5, 56.025))
+    board.place(t3, against=Edge.LEFT, along=8.025 * mm)
+    board.place(t5, against=Edge.LEFT, after=t1, before=t3)
+    solution = board.solve()
+    assert solution.ok
+    assert _span(board, solution, "T5", Edge.LEFT) == pytest.approx((6.525, 7.525))
+
+
+def test_a_part_with_no_place_any_way_round_leaves_what_was_said_of_its_row_and_not_of_it():
+    # A row at a pitch that does not fit what a hole leaves clear of its edge: neither
+    # header is placed, and the row still says how much of the edge it had.
+    board = _board(P1="A B C D", P2="A B C D")
+    board.hole("Mech:Hole", (104, 51.5))
+    board.row(board.parts("P1", "P2"), along=Edge.TOP, pitch=14 * mm)
+    solution = board.solve()
+    assert solution.poses == {} and solution.problems
+    assert (
+        "row(P1, P2, along=Edge.TOP, pitch=14 mm): over the 25 mm of the top edge that is "
+        "clear, of 30 mm"
+    ) in solution.chosen
+    assert all(note.startswith("row(") for note in solution.chosen)
+    # A part against the top edge and the bottom is in two places down the board and is
+    # not placed: nothing is said of where across the board it was centred.
+    board = _board(T1="A")
+    board.place(board["T1"], against=Edge.TOP)
+    board.place(board["T1"], against=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.poses == {} and len(solution.problems) == 1 and solution.chosen == ()
