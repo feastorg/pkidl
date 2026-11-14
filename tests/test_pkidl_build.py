@@ -609,6 +609,32 @@ def test_what_kicad_leaves_unconnected_is_said_in_its_words_and_routed_again(
     assert (cut.net, cut.pads) == ("GND", ("P1.3",))
     assert str(cut) == ("KiCad, of GND: Zone [GND] on B.Cu, priority 0 and PTH pad 3 [GND] of P1")
     assert built.routed.judge == "KiCad"
+    # The board routed again still has its pour drawn, and is checked too: what KiCad
+    # says of that one is of the board that was written.
+    assert built.routed.left == (cut,)
+
+
+def test_the_board_checked_again_has_the_last_routing_and_none_of_the_first(board, tmp_path, kicad):
+    class Twice:
+        """A track and a via on the back with the pour known, a track on the front without."""
+
+        def route(self, job: Job, outdir: Path, name: str, stage: str = "") -> Run:
+            return Run((B_ROUTE,), (B_VIA,)) if stage == "poured" else Run((A_ROUTE,), ())
+
+    kicad(LEFT)
+    built = _poured(board).build(tmp_path / "out", router=Twice())
+    assert built.routed is not None and built.routed.wires == (A_ROUTE,)
+    # What KiCad was shown last is the board that was written, with its pour: the first
+    # run's track and via are not on it.
+    checked = parse((tmp_path / "out" / "breakout-poured-check.kicad_pcb").read_text())
+    written = parse(built.board.read_text())
+
+    def nets(made: Node, kind: str) -> list[str]:
+        return [str(net[1]) for item in find_all(made, kind)
+                if (net := find(item, "net")) is not None]  # fmt: skip
+
+    assert nets(checked, "segment") == nets(written, "segment") == ["A", "A"]
+    assert find_all(checked, "via") == [] and nets(checked, "zone") == ["GND"]
 
 
 def test_where_kicad_is_not_installed_the_model_says_and_the_result_says_it_was(board, tmp_path):
@@ -694,10 +720,16 @@ def test_the_judge_named_is_the_one_asked_last_and_an_old_report_is_not_read(
     (tmp_path / "b-drc.json").write_text('{"unconnected_items": []}')
     with pytest.raises(KicadError):
         unconnected(asked)
-    # KiCad answers the first time and does not finish the second: the second is the
-    # model's word, and the result says so.
-    answers = iter([[Cut("GND", ("P1.3",), seen="x")], None])
+    # KiCad answers the first time, does not finish the second, and answers the third,
+    # of the board routed again: each check asks afresh, and the judge named is the one
+    # that answered last.
+    answers = iter([[Cut("GND", ("P1.3",), seen="x")], None, []])
     monkeypatch.setattr("pkidl.build.unconnected", lambda path: next(answers))
     board.pour("A", layer="F.Cu")
     built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None and built.routed.judge == "KiCad"
+    assert built.routed.left == () and len(built.routed.cut) > 1
+    # And the model's where it was the last to answer.
+    answers = iter([[Cut("GND", ("P1.3",), seen="x")], None, None])
+    built = _poured(board).build(tmp_path / "again", router=Scripted())
     assert built.routed is not None and built.routed.judge == "model"

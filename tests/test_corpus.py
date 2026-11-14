@@ -536,6 +536,8 @@ def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_le
     assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("poured", 0), ("", 0)]
     assert built.routed.cut and {c.net for c in built.routed.cut} == {"GND"}
     assert all(c.layer == "B.Cu" and c.fenced for c in built.routed.cut)
+    # The board routed again is checked with its pour beside the tracks: nothing left.
+    assert built.routed.left == ()
     assert {wire.width for wire in built.routed.wires} == {0.25}
     made = parse(built.board.read_text())
     assert {float(str(w[1])) for s in find_all(made, "segment")
