@@ -1085,7 +1085,7 @@ class _Solver:
                 ""
                 if not most
                 else (
-                    (", with " if where else ": ")
+                    (", with " if where else ": with ")
                     + (most[0] if len(most) == 1 else ", ".join(most[:-1]) + " and " + most[-1])
                     + " in the way"
                 )

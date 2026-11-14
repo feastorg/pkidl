@@ -2297,7 +2297,9 @@ def test_a_part_with_no_place_three_times_as_far_or_10_mm_off_is_said_to_have_no
         board.place(board["R1"], near=board["U1"].pin(1), within=within * mm, toward=Edge.TOP)
         (problem,) = board.solve().problems
         if reach is None:
-            assert "there is none" not in problem.text and "the nearest" not in problem.text
+            assert problem.text.endswith(
+                "clear of the other parts: with the board's edge in the way"
+            )
         else:
             assert f": there is none within {reach} mm either" in problem.text
 
