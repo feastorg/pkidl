@@ -57,3 +57,5 @@ include = ["src", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--strict-markers"
+markers = ["slow: runs the router on a whole board; left out of `just test`"]
