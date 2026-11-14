@@ -295,6 +295,11 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- The bench supply's board file is written again with what milestone 2d added: both
+  LM317s on the heatsink, the panel's parts at points, the sense resistors in two banks
+  beside their switch, and `assembly="hand"`. Its test no longer runs with the slow
+  ones.
+
 - A placement that goes round is kept at one of the placements it goes round, the one
   with the fewest problems and of those the first, and the choices name the parts:
   `K1 and R1: each is placed by where the others are, and they go round 2 placements`.
