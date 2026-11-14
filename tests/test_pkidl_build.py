@@ -609,6 +609,9 @@ def test_what_kicad_leaves_unconnected_is_said_in_its_words_and_routed_again(
     assert (cut.net, cut.pads) == ("GND", ("P1.3",))
     assert str(cut) == ("KiCad, of GND: Zone [GND] on B.Cu, priority 0 and PTH pad 3 [GND] of P1")
     assert built.routed.judge == "KiCad"
+    # The board routed again still has its pour drawn, and is checked too: what KiCad
+    # says of that one is of the board that was written.
+    assert built.routed.left == (cut,)
 
 
 def test_where_kicad_is_not_installed_the_model_says_and_the_result_says_it_was(board, tmp_path):
@@ -694,9 +697,9 @@ def test_the_judge_named_is_the_one_asked_last_and_an_old_report_is_not_read(
     (tmp_path / "b-drc.json").write_text('{"unconnected_items": []}')
     with pytest.raises(KicadError):
         unconnected(asked)
-    # KiCad answers the first time and does not finish the second: the second is the
-    # model's word, and the result says so.
-    answers = iter([[Cut("GND", ("P1.3",), seen="x")], None])
+    # KiCad answers the first time and does not finish after: the last is the model's
+    # word, of the board routed again, and the result says so.
+    answers = iter([[Cut("GND", ("P1.3",), seen="x")], None, None])
     monkeypatch.setattr("pkidl.build.unconnected", lambda path: next(answers))
     board.pour("A", layer="F.Cu")
     built = _poured(board).build(tmp_path / "out", router=Scripted())

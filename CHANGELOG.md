@@ -236,6 +236,11 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A board routed again without its pours is checked as the run with them was, and what
+  the check finds is in the result as `Routed.left`: the pours are still drawn round
+  the tracks, and can leave a pad on a relief that joins an island of pour, which
+  KiCad's DRC rejects. The board is written as before and nothing is changed for what
+  is found. `scripts/corpus.py build` prints each as `left on the board as built`.
 - `Board.solve()` is faster where parts are placed `near=` something: the next-bus
   clock's 26 parts in 1.8 s where it took 47.5 s, the fan controller's 49 in 0.3 s
   where it took 21.7 s, with the same poses, choices and problems. The places a part
