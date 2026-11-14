@@ -2178,6 +2178,56 @@ def test_the_places_sifted_all_at_once_are_the_ones_found_trying_each_in_turn(mo
     assert any(s.problems for s in solved) and sum(len(s.poses) for s in solved) > 50
 
 
+def _notched(**parts: str) -> Board:
+    """A board 60 mm square with a notch 40 mm wide cut 50 mm down from its top edge,
+    and its bottom right corner cut off on a slant."""
+    made = _board(**parts)
+    board = Board(circuit=made.circuit, library=made.library)
+    corners = [(100, 50), (110, 50), (110, 100), (150, 100), (150, 50), (160, 50),
+               (160, 103), (153, 110), (100, 110)]  # fmt: skip
+    board.outline({"type": "gr_line", "start": a, "end": b}
+                  for a, b in zip(corners, corners[1:] + corners[:1], strict=True))  # fmt: skip
+    return board
+
+
+def test_places_off_a_drawn_outline_are_sifted_out_and_the_same_places_are_found(monkeypatch):
+    import pkidl.placement as placement
+
+    def solved(within: float, toward: Edge, inset: float = 8, up: float = 3) -> Solution:
+        board = _notched(T1="A", T2="B", R1="A X", R2="B Y", R3="B Z")
+        board.place(board["T1"], against=Edge.LEFT, inset=inset * mm)
+        board.place(board["R1"], near=board["T1"], within=within * mm, toward=toward)
+        # And a part by the slanted corner, with two that look for places round it.
+        board.place(board["T2"], against=Edge.RIGHT, inset=8 * mm)
+        board.place(board["T2"], against=Edge.BOTTOM, inset=up * mm)
+        board.place(board["R2"], near=board["T2"], within=within * mm, toward=Edge.RIGHT)
+        board.place(board["R3"], near=board["T2"], within=within * mm)
+        return board.solve()
+
+    # Toward the notch there is no board: each place there was tried in full, one at a
+    # time, thousands of them. Sifted by their corners, few are.
+    tried = []
+    clear = placement._Solver._clear
+    monkeypatch.setattr(placement._Solver, "_clear",
+                        lambda self, *a, **k: tried.append(1) or clear(self, *a, **k))  # fmt: skip
+    assert "R1 has no place within 4 mm of T1, toward the right edge" in str(
+        solved(4, Edge.RIGHT).problems
+    )
+    assert len(tried) < 500
+    # And what is found is what trying each in turn finds, by the notch and by the slant.
+    monkeypatch.setattr(placement, "_FURTHER", Length(0))
+    # The parts they are near are moved a step at a time, so that some of the places
+    # found are hard against the notch and the slant.
+    cases = [(4, Edge.RIGHT, 8, 3), (8, Edge.BOTTOM, 8, 3), (12, Edge.RIGHT, 8, 3)]
+    cases += [(3, Edge.RIGHT, 5 + i / 5, 0.5 + i / 5) for i in range(25)]
+    cases += [(3, Edge.BOTTOM, 5 + i / 5, 0.5 + i / 5) for i in range(25)]
+    for case in cases:
+        monkeypatch.setattr(placement, "_SIFT", False)
+        plain = solved(*case)
+        monkeypatch.setattr(placement, "_SIFT", True)
+        assert solved(*case) == plain, case
+
+
 def test_what_is_fixed_on_the_back_is_not_in_the_way_of_a_place_on_the_front():
     def beside(fixed: str | None, back: bool = True) -> tuple[float, float]:
         board = _board(T1="A", T2="A")
@@ -2220,6 +2270,16 @@ def test_the_distance_said_to_be_the_nearest_is_one_that_would_do():
         assert board.solve().problems == ()
         assert "has no place" in _no_place(round(off - 0.1, 1))[1]
 
+    # A nearest place that is not a whole step off is given to the next step up.
+    def by_the_notch(within: float) -> tuple[Problem, ...]:
+        board = _notched(T1="A", R1="A X")
+        board.place(board["T1"], against=Edge.LEFT, inset=8 * mm)
+        board.place(board["R1"], near=board["T1"], within=within * mm, toward=Edge.RIGHT)
+        return board.solve().problems
+
+    assert ": the nearest is 20.9 mm from it" in by_the_notch(12)[0].text
+    assert by_the_notch(20.9) == () and by_the_notch(20.8) != ()
+
 
 def test_a_part_with_no_place_three_times_as_far_or_10_mm_off_is_said_to_have_none():
     # Toward the top edge of a module that is against it: no place is on that side, so
@@ -2230,12 +2290,16 @@ def test_a_part_with_no_place_three_times_as_far_or_10_mm_off_is_said_to_have_no
     (problem,) = board.solve().problems
     assert problem.text.endswith(": there is none within 10 mm either")
     # Past 10 mm it looks three times as far as was said, and no further than 30 mm.
-    for within, reach in ((5, 15), (12, 30), (40, 40)):
+    # Said 30 mm or more, it has looked as far as it looks, and says no more.
+    for within, reach in ((5, 15), (12, 30), (30, None), (40, None)):
         board = _board(U1="A B C D E", R1="A X")
         board.place(board["U1"], against=Edge.TOP, facing=Edge.TOP)
         board.place(board["R1"], near=board["U1"].pin(1), within=within * mm, toward=Edge.TOP)
         (problem,) = board.solve().problems
-        assert f": there is none within {reach} mm either" in problem.text
+        if reach is None:
+            assert "there is none" not in problem.text and "the nearest" not in problem.text
+        else:
+            assert f": there is none within {reach} mm either" in problem.text
 
 
 def test_what_is_most_in_the_way_is_named_the_three_that_take_the_most_places():

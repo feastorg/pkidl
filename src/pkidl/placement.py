@@ -83,6 +83,7 @@ from dataclasses import dataclass
 from functools import cache, lru_cache
 
 import numpy as np
+from shapely import intersects_xy, prepare
 from shapely.geometry import Polygon
 from shapely.geometry import box as _area
 from shapely.prepared import prep
@@ -256,12 +257,12 @@ def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
 
 _AT_A_TIME = 4096  # the offsets a place near something is looked for at, at once
 _FURTHER = Length(30_000_000)  # as far as a place is looked for to say how far off it is
-EDGE = "the board's edge"
+_EDGE = "the board's edge"
 _Grid = tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]
 _SIFT = True  # whether those are sifted all at once first: off, each is tried in turn
 
 
-@lru_cache(maxsize=4)  # a 20 mm distance is 20 MB of them
+@lru_cache(maxsize=4)  # a 30 mm distance is 46 MB of them
 def _offsets(limit: int, step: int) -> _Grid:
     """Every offset on a grid of *step* within *limit*, nearest first: each as its
     distance squared, dy and dx, and the dx and dy of them all as arrays."""
@@ -340,6 +341,9 @@ class _Solver:
                               for ring in edge.interiors])  # fmt: skip
             if not inside.equals(_area(*self.board)):
                 self.edge, self.within = inside, prep(inside)
+                # A hair larger, for sifting: no corner of a box on the board is off it.
+                self.roomy = inside.buffer(2)
+                prepare(self.roomy)
         # Where the box around the outline is not board, piece by piece: a part clear
         # of the box around each piece is on the board without looking further.
         self.cuts: list[Box] = []
@@ -1008,6 +1012,16 @@ class _Solver:
             ok = on_board(x0, y0, x1, y1) & on_side(x0, y0, x1, y1)
             for t0, t1, t2, t3 in out:
                 ok &= ~((x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1))
+            # Where the outline is drawn in from its box, a box by one of the pieces cut
+            # away is on the board only if its corners are.
+            by_cut = np.zeros(ok.shape, dtype=bool)
+            for t0, t1, t2, t3 in self.cuts:
+                by_cut |= (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+            at = np.nonzero(ok & by_cut)
+            if at[0].size:
+                xa, ya, xb, yb = (np.broadcast_to(v, ok.shape)[at] for v in (x0, y0, x1, y1))
+                on = intersects_xy(self.roomy, xa, ya) & intersects_xy(self.roomy, xb, ya)
+                ok[at] = on & intersects_xy(self.roomy, xa, yb) & intersects_xy(self.roomy, xb, yb)
             return ok
 
         def nearest(keeps: bool, grid: _Grid = within) -> tuple[Pose | None, int]:
@@ -1048,18 +1062,20 @@ class _Solver:
             # than 10 mm nor more than 30, and what is most in the way within the
             # distance said.
             reach = max(limit, min(max(3 * limit, _FURTHER.nm // 3), _FURTHER.nm))
-            _, further = nearest(True, _offsets(reach, step))
+            looked = reach > limit and bool(ways)  # further than was said, for a place
+            further = nearest(True, _offsets(reach, step))[1] if looked else -1
             # To the next step up, so that the distance given is one that would do.
             off = math.isqrt(max(further, 0)) // step * step
             off += step if off * off < further else 0
-            where = (f"the nearest is {Length(off)} from it" if further >= 0
-                     else f"there is none within {Length(reach)} either")  # fmt: skip
+            where = (f": the nearest is {Length(off)} from it" if further >= 0
+                     else f": there is none within {Length(reach)} either" if looked
+                     else "")  # fmt: skip
             blocked: dict[str, int] = {}
             for a in range(0, len(within[0]) if ways else 0, _AT_A_TIME):
                 x0, y0, x1, y1 = boxes_at(within, a, a + _AT_A_TIME)
                 side = on_side(x0, y0, x1, y1)
                 on = on_board(x0, y0, x1, y1)
-                blocked[EDGE] = blocked.get(EDGE, 0) + int((side & ~on).sum())
+                blocked[_EDGE] = blocked.get(_EDGE, 0) + int((side & ~on).sum())
                 for name, (t0, t1, t2, t3) in named:
                     over = side & on & (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
                     blocked[name] = blocked.get(name, 0) + int(over.sum())
@@ -1069,7 +1085,7 @@ class _Solver:
                 ""
                 if not most
                 else (
-                    ", with "
+                    (", with " if where else ": ")
                     + (most[0] if len(most) == 1 else ", ".join(most[:-1]) + " and " + most[-1])
                     + " in the way"
                 )
@@ -1078,7 +1094,7 @@ class _Solver:
                           f"that is on the {'back' if back else 'front'} of the board and "
                           f"clear of the other parts{holes}"
                           + (" and of what is kept clear" if kept else "")
-                          + f": {where}{way}",
+                          + f"{where}{way}",
                           s, *kept)  # fmt: skip
             return None
         self._chose(f"{ref}: {Length(math.isqrt(found))} from {s.near}, turned "
