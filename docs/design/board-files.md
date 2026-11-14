@@ -174,8 +174,15 @@ front. Solved on the board's inputs, neither holds, and both are reported
 ```
 P1 does not fit on the board: it reaches 0.48 mm past the left edge
 align(P1, P2, grid=2.54 mm) does not hold: P1 and P2 are 24.13 mm apart across the board, 9.5 steps
-R1 has no place within 3 mm of U1.1 that is on the front of the board and clear of the other parts
+R1 has no place within 3 mm of U1.1 that is on the front of the board and clear of the other parts: the nearest is 3.5 mm from it, with U1, P1 and the board's edge in the way
 ```
+
+A part with no place is told how far off the nearest one is, to the next 0.1 mm up,
+and the three things that take the most of the places it was tried in. The distance is
+the one that would do with every other part where it is; a part placed by its wires
+can turn once this one has a place, and the distance is then another. It is looked for
+three times as far as was said, no less than 10 mm and no more than 30, and not at all
+where 30 mm or more was said.
 
 The board is 1.05 inch wide, so rows 0.9 inch apart are 0.075 inch in from each edge;
 and with the module between the headers, 0.48 mm of the front is left between its pads
@@ -355,7 +362,8 @@ near the part is on: its whole outline is beyond that part's outline on the side
 the edge. `side=` stays the face of the board. `toward=` goes with `near=`, is said
 once for what it is near, and a part with no place on that side is told so (`R1 has no
 place within 4 mm of P1, toward the bottom edge, that is on the front of the board and
-clear of the other parts`). `within=` is still from pad to pad, so toward a side that
+clear of the other parts: there is none within 12 mm either, with the board's edge in
+the way`). `within=` is still from pad to pad, so toward a side that
 what it is near has more of itself on, it has to be longer: a module whose body
 reaches 4 mm above its pads leaves a part no place above it within 4 mm.
 

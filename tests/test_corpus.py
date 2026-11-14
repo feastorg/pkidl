@@ -346,8 +346,12 @@ def test_what_does_not_fit_on_the_t0_board_is_said():
         "align(P1, P2, grid=2.54 mm) does not hold: P1 and P2 are 24.13 mm apart across "
         "the board, 9.5 steps",
         "P2 does not fit on the board: it reaches 0.48 mm past the right edge",
+        # Each says how far off its nearest place is, and what is most in the way.
         *(f"R{n} has no place within 3 mm of U1.{pin} that is on the front of the board "
-          "and clear of the other parts" for n, pin in enumerate((1, 3, 18, 17, 16), 1)),
+          f"and clear of the other parts: the nearest is {off} mm from it, with U1, {header} "
+          "and the board's edge in the way"
+          for n, (pin, off, header) in enumerate(
+              ((1, 3.5, "P1"), (3, 7.1, "P1"), (18, 10, "P2"), (17, 8, "P2"), (16, 6, "P2")), 1)),
     ]  # fmt: skip
     assert set(solution.poses) == {"P1", "P2", "U1"} and solution.free == ()
 
