@@ -9,6 +9,15 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- A part at a point of the board. `place(pot, at=(72 * mm, 76 * mm), facing=Edge.TOP)`
+  puts the footprint's origin two lengths across and down from the board's top left
+  corner, and `of=pot.pin(1)` puts that pin there instead, whichever way round the part
+  is. It is not looked for: off the board, over a hole or on another part it is a
+  problem. Two different points for one part are a conflict.
+- A part on something fixed on the board. `sink = board.fixed("530002B02500G")` has a
+  fixed thing by its footprint or its label, and `place(limit, on=sink, at=(12.7 * mm,
+  0 * mm))` puts the part at a point of it, in the thing's own coordinates and turned
+  as the thing is. The part may overlap that thing, and nothing else.
 - An area of the board, and parts said to be inside it. `left = board.area(Edge.LEFT,
   share=1 / 3)` or `board.area(box=((0 * mm, 0 * mm), (30 * mm, 40 * mm)))` makes one,
   and `board.inside(left, [jack, reg5, c1])` keeps each part's whole outline in it:

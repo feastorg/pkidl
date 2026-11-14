@@ -82,6 +82,23 @@ def _written_at() -> Source | None:
 
 
 @dataclass(frozen=True)
+class Fixed:
+    """Something on the board that the board file does not place, a mounting hole say:
+    what it is called in a problem, its footprint's name in the library, where its
+    origin is, its rotation in degrees and whether it is on the back."""
+
+    label: str
+    footprint: str
+    x: Length
+    y: Length
+    rot: float = 0.0
+    back: bool = False
+
+    def __str__(self) -> str:
+        return self.label
+
+
+@dataclass(frozen=True)
 class Statement:
     """Something said about the layout. Two statements that say the same thing are equal,
     wherever they were written."""
@@ -126,10 +143,39 @@ class Place(Statement):
     after: Part | None = None
     before: Part | None = None
     at_least: Length | None = None
+    at: tuple[Length, Length] | None = None
+    of: Pin | None = None
+    on: Fixed | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.part, Part):
             raise TypeError(f'place() takes a part, such as board["U1"], not {self.part!r}')
+        if self.on is not None:
+            if not isinstance(self.on, Fixed):
+                raise TypeError(f"{self.part}: on= takes something fixed on the board, as "
+                                f"board.fixed(name) gives it, not {self.on!r}")  # fmt: skip
+            if self.at is None:  # on a thing is at its origin, where nothing says
+                object.__setattr__(self, "at", (Length(0), Length(0)))
+        if self.at is not None:
+            if not (isinstance(self.at, tuple | list) and len(self.at) == 2
+                    and all(isinstance(v, Length) for v in self.at)):  # fmt: skip
+                raise TypeError(f"{self.part}: at= takes two lengths, across and down, such "
+                                f"as (72 * mm, 76 * mm), not {self.at!r}")  # fmt: skip
+            object.__setattr__(self, "at", tuple(self.at))
+            word = "at" if self.on is None else "on"
+            for name in ("against", "between", "centre", "near", "along", "after", "before"):
+                if getattr(self, name) not in (None, False):
+                    raise ValueError(f"{self.part}: {word}= says where the part is, and so "
+                                     f"does {name}=: give one")  # fmt: skip
+        if self.of is not None:
+            if not isinstance(self.of, Pin):
+                raise TypeError(f"{self.part}: of= takes a pin of the part, not {self.of!r}")
+            if self.at is None:
+                raise ValueError(f"{self.part}: of= says which pin of the part is at a point: "
+                                 "give at= or on=")  # fmt: skip
+            if self.of.part != self.part:
+                raise ValueError(f"{self.part}: of= takes a pin of the part itself, such as "
+                                 f"{self.part}.pin(1), not {self.of}")  # fmt: skip
         for name, other in (("after", self.after), ("before", self.before)):
             if other is None:
                 continue
@@ -177,9 +223,9 @@ class Place(Statement):
         if not isinstance(self.centre, bool):
             raise TypeError(f"{self.part}: centre= takes True, not {self.centre!r}")
         if not (self.against or self.between or self.centre or self.facing or self.near
-                or self.side):  # fmt: skip
-            raise ValueError(f"place({self.part}) does not say where: give against=, "
-                             "between=, centre=True, facing=, near= or side=")  # fmt: skip
+                or self.side or self.at):  # fmt: skip
+            raise ValueError(f"place({self.part}) does not say where: give against=, at=, "
+                             "between=, centre=True, facing=, near=, on= or side=")  # fmt: skip
         if self.toward is not None and self.near is None:
             raise ValueError(f"{self.part}: toward= says which side of what it is near: "
                              "give near=")  # fmt: skip
@@ -215,9 +261,9 @@ class Place(Statement):
             object.__setattr__(self, "between", tuple(sorted(pair, key=_by_ref)))
 
     def _said(self) -> Iterator[tuple[str, Any]]:
-        for name in ("against", "inset", "between", "facing", "near", "within", "side",
-                     "toward", "centre", "outward", "along", "after", "before",
-                     "at_least"):  # fmt: skip
+        for name in ("on", "at", "of", "against", "inset", "between", "facing", "near",
+                     "within", "side", "toward", "centre", "outward", "along", "after",
+                     "before", "at_least"):  # fmt: skip
             if (value := getattr(self, name)) is not None and value is not False:
                 yield name, value
 
@@ -245,15 +291,36 @@ class Place(Statement):
             claims[self.part.ref, f"side of {self.near}"] = self.toward
         if self.side is not None:
             claims[self.part.ref, "side"] = self.side
+        if self.at is not None:
+            # The point, which of the part is at it, and what it is a point of.
+            where = _shown(self.at)
+            where = where if self.of is None else f"{self.of} at {where}"
+            if (on := self.on) is not None:
+                # All that makes it the thing it is: two may go by one label.
+                x, y = (str(v).removesuffix(" mm") for v in (on.x, on.y))
+                turn = on.rot if float(f"{on.rot:g}") != on.rot else f"{on.rot:g}"
+                where = (f"{where} on {on.footprint} at ({x}, {y}) turned {turn} degrees on "
+                         f"the {'back' if on.back else 'front'}")  # fmt: skip
+            claims[self.part.ref, "place on the board"] = where
         return claims
 
     def data(self) -> dict[str, Any]:
-        return {"place": self.part.ref, **{name: _data(value) for name, value in self._said()}}
+        data = {"place": self.part.ref, **{name: _data(value) for name, value in self._said()}}
+        if self.at is not None:
+            data["at"] = [v.nm for v in self.at]
+        if self.of is not None:
+            data["of"] = self.of.number
+        if self.on is not None:
+            data["on"] = {"footprint": self.on.footprint, "x": self.on.x.nm, "y": self.on.y.nm,
+                          "rot": self.on.rot, "back": self.on.back}  # fmt: skip
+        return data
 
     def check(self, circuit: Circuit) -> None:
         super().check(circuit)
         if isinstance(self.near, Pin):
             circuit.part(self.near.part.ref).pin(self.near.number)
+        if self.of is not None:
+            circuit.part(self.part.ref).pin(self.of.number)
         if self.outward is not None:
             circuit.part(self.part.ref).side(self.outward)
 
@@ -566,8 +633,15 @@ def place(
     after: Part | None = None,
     before: Part | None = None,
     at_least: Length | str | None = None,
+    at: tuple[Length | str, Length | str] | None = None,
+    of: Pin | None = None,
+    on: Fixed | None = None,
 ) -> Place:
-    """Say where *part* goes: *against* an edge of the board, *inset* from it, with the
+    """Say where *part* goes: *at* a point of the board, two lengths across and down
+    from its top left corner, where the footprint's origin goes, or the pin *of* the
+    part that is named; *on* something fixed on the board, as ``board.fixed`` gives it,
+    *at* a point of that thing in its own footprint's coordinates, and free to overlap
+    it; *against* an edge of the board, *inset* from it, with the
     side of it named *outward* to that edge (``annotate(sides=)`` names a part's sides),
     and *along* the edge by a share of it, ``1 / 3``, or a distance, ``12 * mm``, from
     its top end or its left end to the part's middle, or *after* or *before* another
@@ -581,12 +655,14 @@ def place(
     within = None if within is None else length(within)
     if isinstance(side, str) and side in ("front", "back"):
         side = Side(side)
+    if isinstance(at, tuple | list) and len(at) == 2:
+        at = tuple(length(v) if isinstance(v, str) else v for v in at)  # type: ignore[assignment]
     return Place(part, against, inset, between, facing, near, within, side,  # type: ignore[arg-type]
                  toward, centre, outward,
                  length(along) if isinstance(along, str)
                  else float(along) if isinstance(along, Fraction) else along,
                  after, before, None if at_least is None else length(at_least),
-                 source=_written_at())  # fmt: skip
+                 at=at, of=of, on=on, source=_written_at())  # type: ignore[arg-type]  # fmt: skip
 
 
 def align(*parts: Part, grid: Length | str) -> Align:

@@ -162,6 +162,33 @@ the board is the build's.
   the rules keep round it is found only where a step lands on it. A
   part that something else puts along the edge is held to what was said, and is a
   problem where it is not.
+- `at=` a point of the board: `place(pot, at=(72 * mm, 76 * mm), facing=Edge.TOP)`. The
+  point is two lengths, across and down from the top left corner of the box around
+  the outline, where `board.area(box=)` measures from, and the footprint's origin
+  goes there: the point KiCad's position is of. `of=` a pin of the part puts that pin
+  there instead, `place(post, at=(40 * mm, 92 * mm), of=post.pin(1))`, whichever way
+  round the part is. A point says nothing of the way round: `facing=` does, and with
+  neither the part is turned for its shortest connections, about its origin, or about
+  the pin where one is named. The point is of the board as the front shows it, on
+  either face. It is for what a drawing fixes, a control behind a panel or a post a
+  lead reaches, and is not looked for: a part put off the board, over a hole, on
+  another part or outside its area is the problem it would be wherever its place was
+  given. A point says where both ways, so a statement that gives one gives no
+  `against=`, `between=`, `centre=True` or `near=` beside it. Two statements that
+  give a part different points are a conflict, and a point and an edge said apart
+  that do not agree are two places (decided 2026-11-14).
+- `on=` something fixed on the board: `sink = board.fixed("530002B02500G")`, then
+  `place(limit, on=sink, at=(12.7 * mm, 0 * mm), facing=Edge.TOP)`. `board.fixed` gives
+  the one thing fixed on the board with that footprint or that label, and for several
+  of a kind the one `at=` a place in board millimetres. The point is then one of that
+  thing, in its own footprint's coordinates as a footprint editor shows them, and it
+  turns and mirrors with the thing as it sits on the board; with no `at=` it is the
+  thing's origin. `of=` a pin is as before. The part may overlap that thing, which is
+  what being on it is, and nothing else: a second fixed thing or another part in the
+  way is still a problem, and a part that looks for its place keeps off both the
+  thing and the part on it. Which face the part is on is still `side=`'s to say.
+  `board.fixed` is still the list of what is fixed that it was, to go through or
+  count, and called with a name it gives one of them (decided 2026-11-14).
 - An area of the board is made once and named, and parts are said to be inside it:
   `left = board.area(Edge.LEFT, share=1 / 3)`, the left third of the box around the
   outline, or `board.area(box=((0 * mm, 0 * mm), (30 * mm, 40 * mm)))`, two corners

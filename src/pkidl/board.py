@@ -26,6 +26,7 @@ from pkidl.intent import (
     Conflict,
     Decouple,
     Edge,
+    Fixed,
     Inside,
     Keepout,
     Place,
@@ -36,7 +37,7 @@ from pkidl.intent import (
     Side,
     Statement,
 )
-from pkidl.placement import Fixed, Problem, Solution, solve
+from pkidl.placement import Problem, Solution, _listed, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 from pkidl.units import Length, length, mm
 
@@ -119,6 +120,43 @@ def _stroke(width: float) -> Node:
     return [Sym("stroke"), [Sym("width"), num(width)], [Sym("type"), Sym("solid")]]
 
 
+class _Things(list[Fixed]):
+    """What is fixed on a board, as a list, and one of them by its name when called:
+    ``board.fixed("530002B02500G")``."""
+
+    def __call__(self, name: str, *, at: Point | None = None) -> Fixed:
+        """The one thing fixed on the board that goes by *name*: its footprint's name,
+        with its library or without, or what a problem calls it, ``"Hole at (115,
+        65)"``. Of several of one kind, the one *at* that place in board millimetres,
+        as ``hole`` takes it. It is what a part is placed ``on=``."""
+        found = [f for f in self
+                 if name in (f.footprint, f.footprint.rpartition(":")[2], f.label)]  # fmt: skip
+        if at is not None:
+            numbers = (
+                isinstance(at, tuple | list)
+                and len(at) == 2
+                and not any(isinstance(v, bool) or not isinstance(v, int | float) for v in at)
+            )
+            if not numbers:
+                raise TypeError(f"fixed({name!r}): at= is a place in board millimetres, as "
+                                "numbers, as board.hole takes it, such as at=(125, 55), not "
+                                f"{at!r}")  # fmt: skip
+            x, y = (round(v * 1_000_000) for v in at)
+            found = [f for f in found if (f.x.nm, f.y.nm) == (x, y)]
+        if len(found) == 1:
+            return found[0]
+        asked = repr(name) + ("" if at is None else f" at ({at[0]:g}, {at[1]:g})")
+        if not found:
+            there = sorted(self, key=lambda f: (f.x.nm, f.y.nm, f.label))
+            raise LookupError(f"nothing fixed on the board is {asked}: " + (
+                f"there is {_listed([f.label for f in there])}" if there
+                else "nothing is fixed on it"))  # fmt: skip
+        first = found[0]
+        raise LookupError(f"{len(found)} things fixed on the board are {asked}: "
+                          f"{_listed([f.label for f in found])}: say which, as in "
+                          f"fixed({name!r}, at=({first.x.mm:g}, {first.y.mm:g}))")  # fmt: skip
+
+
 @dataclass
 class Board:
     thickness: float = 1.6
@@ -135,10 +173,17 @@ class Board:
     # The outline as it was drawn, item by item, and what is on the board that the board
     # file does not place: its mounting holes.
     _edge: list[dict[str, Any]] = field(default_factory=list, repr=False)
-    fixed: list[Fixed] = field(default_factory=list, repr=False)
+    # A list, and called with a name it gives the one that goes by it.
+    fixed: _Things = field(default_factory=_Things, repr=False)
     # Each pour whose clearance or thermal gap was not said, by its zone's UUID: a build
     # takes them from the board's rules.
     _unsized: dict[str, tuple[str, ...]] = field(default_factory=dict, repr=False)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        # A plain list given for what is fixed is still had by name.
+        if name == "fixed" and not isinstance(value, _Things):
+            value = _Things(value)
+        super().__setattr__(name, value)
 
     @classmethod
     def from_inputs(cls, where: Path | str) -> Board:
@@ -247,6 +292,11 @@ class Board:
                 statement.check(self.circuit)
             except LookupError as e:
                 raise LookupError(f"{statement}: {e.args[0]}") from None
+            on = statement.on if isinstance(statement, Place) else None
+            if on is not None and on not in self.fixed:
+                there = _listed([f.label for f in self.fixed]) if self.fixed else "nothing"
+                raise LookupError(f"{statement}: {on} is not fixed on this board, which "
+                                  f"has {there}")  # fmt: skip
         for statement in statements:
             self._statements.setdefault(statement)
         return statements
@@ -269,12 +319,16 @@ class Board:
         after: Part | None = None,
         before: Part | None = None,
         at_least: Length | str | None = None,
+        at: tuple[Length | str, Length | str] | None = None,
+        of: Pin | None = None,
+        on: Fixed | None = None,
     ) -> Place:
         """Say where *part* goes, and get the statement back. See ``pkidl.place``."""
         statement = intent.place(part, against=against, inset=inset, between=between,
                                  facing=facing, near=near, within=within, side=side,
                                  toward=toward, centre=centre, outward=outward, along=along,
-                                 after=after, before=before, at_least=at_least)  # fmt: skip
+                                 after=after, before=before, at_least=at_least, at=at, of=of,
+                                 on=on)  # fmt: skip
         self.add(statement)
         return statement
 
