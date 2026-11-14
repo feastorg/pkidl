@@ -635,19 +635,23 @@ class _Solver:
                           for s in asks)
                  for ref, asks in self.asks.items()}  # fmt: skip
         # A row beside a part looks for its place as one thing, after that part, where
-        # the first of its references comes among the parts that look for a place: its
+        # the lowest of its references comes among the parts that look for a place: its
         # parts follow one another, and what is placed by one of them waits for all.
         first: dict[str, str] = {}
-        for row in dict.fromkeys(r for rows in self.rows.values() for r in rows if r.beside):
-            assert row.beside is not None
-            members = {p.ref for p in row.parts}
-            for ref in needs:
-                if ref in members:
-                    needs[ref].add(row.beside.ref)
-                    looks[ref] = True
-                    first.setdefault(ref, min(members, key=natural))
-                elif needs[ref] & members:
-                    needs[ref] |= members
+        banks = [(row.beside.ref, {p.ref for p in row.parts})
+                 for row in dict.fromkeys(r for rows in self.rows.values() for r in rows)
+                 if row.beside is not None]  # fmt: skip
+        for by, members in banks:
+            for ref in members & set(needs):
+                needs[ref].add(by)
+                looks[ref] = True
+                first.setdefault(ref, min(members, key=natural))
+        # Once every row has said what it is beside, so that the order the rows were
+        # said in does not matter: a row beside a part of another row waits for that row.
+        for _, members in banks:
+            for ref, by in needs.items():
+                if ref not in members and by & members:
+                    by |= members
         order: list[str] = []
         while ready := sorted((r for r in needs if r not in order and needs[r] <= set(order)),
                               key=lambda r: (looks[r], natural(first.get(r, r)),
@@ -805,8 +809,10 @@ class _Solver:
                 wires = 0
                 if row.beside is not None:
                     # Where the row first looks, which is where it is with nothing in
-                    # the way.
-                    stood = self._stood(row, turn)[0]
+                    # the way, at the least pitch this way round: the way round it is
+                    # does not depend on the pitch said, so the least pitch it is told
+                    # of when that is too small is one that does.
+                    stood = self._stood(row, turn, False)[0]
                     (dx, dy), _ = self._out(row, stood)
                     for ref in refs:
                         turned, x, y = stood[ref]
@@ -834,10 +840,12 @@ class _Solver:
                             "for the shortest connections")  # fmt: skip
         return self.turns[row]
 
-    def _stood(self, row: Row,
-               turn: int) -> tuple[_Stood, int, tuple[str, str], tuple[int, int]]:  # fmt: skip
+    def _stood(
+        self, row: Row, turn: int, said: bool = True
+    ) -> tuple[_Stood, int, tuple[str, str], tuple[int, int]]:
         """The parts of a row beside a part, the row turned *turn*, where they are with
-        the row touching the part and level with it: each part's shape and its origin.
+        the row touching the part and level with it: each part's shape and its origin,
+        at the pitch *said* if one is, or else at the least.
         With them the least pitch that keeps them clear of each other, the two parts
         that need it, and how far the row is across the board and down it."""
         assert row.beside is not None
@@ -871,7 +879,7 @@ class _Solver:
             each = -(-need // (j - i))  # the parts between them are at the one pitch too
             if each > least:
                 least, pair = each, (refs[i], refs[j])
-        pitch = row.pitch.nm if isinstance(row.pitch, Length) else least
+        pitch = row.pitch.nm if said and isinstance(row.pitch, Length) else least
         along = [k * pitch - mid for k, mid in enumerate(mids)]
         lo = min(o + t.box[a] for o, t in zip(along, shapes, strict=True))
         hi = max(o + t.box[a + 2] for o, t in zip(along, shapes, strict=True))
@@ -967,6 +975,17 @@ class _Solver:
                 x0, y0, x1, y1 = (c + d for c, d in zip(_moved(turned.box, x, y),
                                                         (dx, dy, dx, dy), strict=True))  # fmt: skip
                 on = (x0 >= b0) & (y0 >= b1) & (x1 <= b2) & (y1 <= b3)
+                # Where the outline is drawn in from its box, an outline by one of the
+                # pieces cut away is on the board only if its corners are.
+                by_cut = np.zeros(o.shape, dtype=bool)
+                for t0, t1, t2, t3 in self.cuts:
+                    by_cut |= (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+                at = np.flatnonzero(on & by_cut)
+                if at.size:
+                    xa, ya, xb, yb = x0[at], y0[at], x1[at], y1[at]
+                    on[at] = (intersects_xy(self.roomy, xa, ya) & intersects_xy(self.roomy, xb, ya)
+                              & intersects_xy(self.roomy, xa, yb)
+                              & intersects_xy(self.roomy, xb, yb))  # fmt: skip
                 room = np.ones(o.shape, dtype=bool)
                 for _, (r0, r1, r2, r3), _ in self.areas.get(ref, []):
                     room &= (x0 >= r0) & (y0 >= r1) & (x1 <= r2) & (y1 <= r3)

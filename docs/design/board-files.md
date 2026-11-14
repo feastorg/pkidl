@@ -407,7 +407,8 @@ stands across the row, the shorter side of its outline along the row's line and 
 length away from the part, like the rungs of a ladder, so the row is as short as it
 can be. The sides of their outlines nearest the part are in one line. They are turned
 the same way, the way that makes the row's connections shortest where the row first
-looks for its place, which is said once for the row; a part of it that is `facing=` an
+looks for its place at its least pitch, whatever pitch is given, which is said once
+for the row; a part of it that is `facing=` an
 edge keeps to that, whichever way that lays it, and a square part may stand either
 way, as in a row along an edge.
 
@@ -418,7 +419,8 @@ copper: outlines touching, where no rules are said or the pads are well inside. 
 one pitch for the whole row, that of the two parts that need the most. A pitch given
 that is less than that is a problem, and none of the row is placed (`row(R1, R2, R3,
 beside=Q1, toward=Edge.RIGHT, pitch=1.7 mm) does not fit: R1 and R2 are clear of each
-other at a pitch of 1.8 mm or more`).
+other at a pitch of 1.8 mm or more`). The pitch it names is the one the row has when
+none is given: given, it places the row as none does.
 
 The row is wholly on that side of the part's outline, and never over it. It first
 looks touching the part, or as far off it as keeps their pads the rules' clearance
@@ -442,9 +444,10 @@ parts: it is 3.6 mm across the board and 5.4 mm down it, with the board's edge i
 way`).
 
 The row is placed after the part it is beside, and with the parts that look for a
-place, after those whose place is given: among them it comes where the first of its
-references does, its parts one after another, and a part placed by one of its parts
-waits for them all. So a part placed `near=` something whose reference comes before
+place, after those whose place is given: among them it comes where the lowest of its
+references does, as references are ordered (R2 before R10), whichever part is named
+first, its parts one after another, and a part placed by one of its parts waits for
+them all, a row beside one of them too. So a part placed `near=` something whose reference comes before
 the row's is there first, and the row goes round it. Its parts are on one face, the one
 their place statements say, and a row said to be on both is a problem. A place
 statement may say `side=` or `facing=` of a part of the row. One that says where the
