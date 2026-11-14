@@ -841,3 +841,320 @@ def test_the_judge_named_is_the_one_asked_last_and_an_old_report_is_not_read(
     answers = iter([[Cut("GND", ("P1.3",), seen="x")], None, None])
     built = _poured(board).build(tmp_path / "again", router=Scripted())
     assert built.routed is not None and built.routed.judge == "model"
+
+
+# Three parts with a ground pad each: two through the board, as the next-bus clock's
+# C5 and ESP1 are, and one on the front.
+CLOCK = """(kicad_pcb
+  (gr_rect (start 100 50) (end 140 80) (layer "Edge.Cuts"))
+  (footprint "RF:M" (layer "F.Cu") (at 0 0)
+    (property "Reference" "U1" (at 0 0) (layer "F.SilkS"))
+    (property "Value" "M" (at 0 0) (layer "F.Fab"))
+    (fp_rect (start -1 -4) (end 9 3) (stroke (width 0.05) (type solid)) (fill no)
+      (layer "F.CrtYd"))
+    (pad "1" smd rect (at 0 0) (size 2 1) (layers "F.Cu") (net "A"))
+    (pad "2" smd rect (at 0 2) (size 2 1) (layers "F.Cu") (net "B"))
+    (pad "3" smd rect (at 8 2) (size 2 1) (layers "F.Cu") (net "GND")))
+  (footprint "Conn:H" (layer "F.Cu") (at 0 0)
+    (property "Reference" "ESP1" (at 0 0) (layer "F.SilkS"))
+    (property "Value" "H" (at 0 0) (layer "F.Fab"))
+    (fp_rect (start -1.75 -1.75) (end 6.83 1.75) (stroke (width 0.05) (type solid)) (fill no)
+      (layer "F.CrtYd"))
+    (pad "1" thru_hole circle (at 0 0) (size 1.7 1.7) (drill 1) (layers "*.Cu") (net "A"))
+    (pad "2" thru_hole circle (at 2.54 0) (size 1.7 1.7) (drill 1) (layers "*.Cu")
+      (net "GND"))
+    (pad "3" thru_hole circle (at 5.08 0) (size 1.7 1.7) (drill 1) (layers "*.Cu") (net "B")))
+  (footprint "Device:C" (layer "F.Cu") (at 0 0)
+    (property "Reference" "C5" (at 0 0) (layer "F.SilkS"))
+    (property "Value" "100n" (at 0 0) (layer "F.Fab"))
+    (fp_rect (start -2.2 -1.2) (end 2.2 1.2) (stroke (width 0.05) (type solid)) (fill no)
+      (layer "F.CrtYd"))
+    (pad "1" thru_hole rect (at -1.25 0) (size 1.2 1.2) (drill 0.7) (layers "*.Cu") SAID
+      (net "GND"))
+    (pad "2" thru_hole circle (at 1.25 0) (size 1.2 1.2) (drill 0.7) (layers "*.Cu")
+      (net "B"))))"""
+GROUND = (("ESP1", "2"), ("C5", "1"), ("U1", "3"))
+
+
+def _clock(tmp_path: Path, said: str = "") -> Board:
+    """The board of CLOCK with a ground pour on the back, to be routed. *said* is
+    written on C5's ground pad in its footprint."""
+    d = tmp_path / f"clock{len(said)}"
+    source = parse(CLOCK.replace("SAID", said))
+    d.mkdir()
+    (d / "circuit.json").write_text(json.dumps(circuit(source)))
+    (d / "mechanical.json").write_text(json.dumps(mechanical(source)))
+    for name, lib in footprints(source)[0].items():
+        path = d / "footprints" / footprint_path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(dumps(lib) + "\n")
+    board = Board.from_inputs(d)
+    u1, esp1, c5 = board.parts("U1", "ESP1", "C5")
+    board.place(esp1, against=Edge.LEFT, inset=3 * mm)
+    board.place(u1, against=Edge.TOP, facing=Edge.TOP)
+    board.place(c5, near=u1.pin(2), within=6 * mm)
+    return _poured(board)
+
+
+def _ground_by_track(board: Board, tmp_path: Path, ground=GROUND) -> Scripted:
+    """A router that joins the three ground pads by a track on the front, whatever it
+    is asked: where the pads are is read from the board built once with nothing laid."""
+    plain = board.build(tmp_path / "placed", router=Scripted())
+    placed = {_ref(fp): fp for fp in find_all(parse(plain.board.read_text()), "footprint")}
+    at = [pad_xy(placed[ref], pad) for ref, pad in ground]
+    return Scripted(Run((Wire("GND", "F.Cu", 0.25, at),), (), 0))
+
+
+def _off_the_pour(written: Path) -> list[str]:
+    """The pads of the board at *written* that say they join no pour, as ``C5.1``."""
+    return [f"{_ref(fp)}.{pad[1]}" for fp in find_all(parse(written.read_text()), "footprint")
+            for pad in find_all(fp, "pad")
+            if (own := find(pad, "zone_connect")) is not None and str(own[1]) == "0"]  # fmt: skip
+
+
+def _starved_thermal(spokes: int, pad: str, ref: str) -> dict:
+    return {"type": "starved_thermal", "severity": "error",
+            "description": f"Thermal relief connection to zone incomplete (layer B.Cu; {spokes} "
+                           "spokes connected to isolated island)",
+            "items": [{"description": "Zone [GND] on B.Cu"},
+                      {"description": f"PTH pad {pad} [GND] of {ref}"}]}  # fmt: skip
+
+
+# As KiCad 10.0.6 reported the next-bus clock placed for hand assembly.
+STARVED_C5, STARVED_ESP1 = _starved_thermal(4, "1", "C5"), _starved_thermal(1, "2", "ESP1")
+KICAD_IN_TURN = """import json, sys
+from pathlib import Path
+args, here = sys.argv[1:], Path(__file__)
+count = here.with_suffix(".count")
+turn = int(count.read_text()) if count.exists() else 0
+count.write_text(str(turn + 1))
+here.with_suffix(f".{{turn}}.kicad_pcb").write_text(Path(args[-1]).read_text())
+reports = {reports}
+Path(args[args.index("-o") + 1]).write_text(json.dumps(reports[min(turn, len(reports) - 1)]))
+"""
+
+
+@pytest.fixture
+def kicad_in_turn(tmp_path, monkeypatch):
+    """Stand a script in for KiCad's command line that writes the next of *reports*
+    each time it is run, the last from then on, and keeps each board it was shown.
+    Gives back the boards shown so far, in order."""
+
+    def stand_in(*reports: dict):
+        script = tmp_path / "kicad.py"
+        script.write_text(KICAD_IN_TURN.format(reports=list(reports)))
+        monkeypatch.setenv("KICAD_CLI", f"{sys.executable} {script}")
+        return lambda: sorted(tmp_path.glob("kicad.*.kicad_pcb"))
+
+    return stand_in
+
+
+def test_kicads_starved_reliefs_are_read_with_the_layer_and_marked():
+    from pkidl.kicad import cuts
+
+    found = cuts({"violations": [STARVED_C5, STARVED_ESP1],
+                  "unconnected_items": [LEFT["unconnected_items"][0]]})  # fmt: skip
+    assert [(c.net, c.pads, c.layer, c.starved) for c in found] == [
+        ("GND", ("P1.3",), None, False),
+        ("GND", ("C5.1",), "B.Cu", True),
+        ("GND", ("ESP1.2",), "B.Cu", True),
+    ]
+    assert str(found[1]) == (
+        "KiCad, of GND: Thermal relief connection to zone incomplete (layer B.Cu; 4 spokes "
+        "connected to isolated island): Zone [GND] on B.Cu and PTH pad 1 [GND] of C5"
+    )
+    # One that names its layer only with the zone.
+    older = {"type": "starved_thermal", "description": "Thermal relief incomplete",
+             "items": [{"description": "Zone [G1] on F.Cu, priority 0"},
+                       {"description": "Pad 1 [G1] of A1 on F.Cu"}]}  # fmt: skip
+    (cut,) = cuts({"violations": [older]})
+    assert (cut.pads, cut.layer, cut.starved) == (("A1.1",), "F.Cu", True)
+
+
+def test_the_pads_kicad_says_are_starved_and_a_track_joins_are_taken_off_the_pour(
+    tmp_path, kicad_in_turn
+):
+    board = _clock(tmp_path)
+    router = _ground_by_track(board, tmp_path)
+    both = {"violations": [STARVED_C5, STARVED_ESP1]}
+    shown = kicad_in_turn(both, both, {"violations": []})
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None and built.routed.judge == "KiCad"
+    # KiCad was asked of the run with the pour known, which it did not pass, then of
+    # the board routed again, and then of that board with the two pads off the pour.
+    assert [stage for stage, *_ in router.asked[-2:]] == ["poured", ""]
+    assert [sorted(_off_the_pour(pcb)) for pcb in shown()] == [[], [], ["C5.1", "ESP1.2"]]
+    assert built.routed.unjoined == (
+        "C5.1 is taken off the pour of GND on B.Cu, which starved its relief: a track "
+        "joins it to the rest of GND",
+        "ESP1.2 is taken off the pour of GND on B.Cu, which starved its relief: a track "
+        "joins it to the rest of GND",
+    )
+    assert built.routed.left == () and len(built.routed.cut) == 2
+    # The board written is the one KiCad passed: the two pads off the pour, and every
+    # track and the pour as routed.
+    assert sorted(_off_the_pour(built.board)) == ["C5.1", "ESP1.2"]
+    assert built.board.read_text() == shown()[-1].read_text()
+    plain = shown()[1].read_text()
+    assert built.board.read_text().replace("\t\t\t(zone_connect 0)\n", "") == plain
+    assert plain.count("(segment") == 2 and plain.count("(zone") == 1
+
+
+def test_kicad_is_asked_again_of_each_board_with_the_pads_it_named_off(tmp_path, kicad_in_turn):
+    board = _clock(tmp_path)
+    router = _ground_by_track(board, tmp_path)
+    # With C5's pad off the pour it names ESP1's, and with both off, none.
+    first, then = {"violations": [STARVED_C5]}, {"violations": [STARVED_ESP1]}
+    shown = kicad_in_turn(first, first, then, {"violations": []})
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    assert [sorted(_off_the_pour(pcb)) for pcb in shown()] == [
+        [], [], ["C5.1"], ["C5.1", "ESP1.2"],
+    ]  # fmt: skip
+    assert [line.split()[0] for line in built.routed.unjoined] == ["C5.1", "ESP1.2"]
+    assert sorted(_off_the_pour(built.board)) == ["C5.1", "ESP1.2"] and built.routed.left == ()
+
+
+def test_a_pad_kicad_says_is_starved_that_no_track_joins_is_left_as_it_is(tmp_path, kicad_in_turn):
+    board = _clock(tmp_path)
+    shown = kicad_in_turn({"violations": [STARVED_C5, STARVED_ESP1]})
+    built = board.build(tmp_path / "out", router=Scripted())  # a router that lays nothing
+    assert built.routed is not None
+    # Asked of the run with the pour and of the board routed again, and no more: with
+    # no track to carry them the pads stay on the pour, and are said.
+    assert len(shown()) == 2
+    assert built.routed.unjoined == () and _off_the_pour(built.board) == []
+    assert [c.pads for c in built.routed.left] == [("C5.1",), ("ESP1.2",)]
+    assert "zone_connect" not in built.board.read_text()
+
+
+@pytest.mark.parametrize("said", ["(zone_connect 0)", "(zone_connect 2)"])
+def test_a_pad_that_says_how_it_joins_a_pour_is_not_taken_off_whatever_kicad_says(
+    tmp_path, kicad_in_turn, said
+):
+    board = _clock(tmp_path, said)
+    router = _ground_by_track(board, tmp_path)
+    both = {"violations": [STARVED_C5, STARVED_ESP1]}
+    shown = kicad_in_turn(both, both, {"violations": [STARVED_C5]})
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    assert [line.split()[0] for line in built.routed.unjoined] == ["ESP1.2"]
+    assert [c.pads for c in built.routed.left] == [("C5.1",)]
+    # C5's pad is as its footprint has it.
+    (c5,) = (fp for fp in find_all(parse(built.board.read_text()), "footprint") if _ref(fp) == "C5")
+    assert dumps(find(find_all(c5, "pad")[0], "zone_connect")) == said  # type: ignore[arg-type]
+    assert len(shown()) == 3
+
+
+def test_where_kicad_is_not_installed_the_model_finds_the_starved_pad_and_it_is_taken_off(
+    board, tmp_path
+):
+    board = _poured(board)
+    router = _ground_by_track(board, tmp_path, (("P1", "3"), ("R1", "2"), ("U1", "3")))
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None and built.routed.judge == "model"
+    # The track joins every pad of ground, so the model passes the run with the pour.
+    # The header's pin is the one pad of ground through the board: the pour on the back
+    # has nothing else of ground on it, and is an island that pin alone holds.
+    assert [stage for stage, *_ in router.asked[-1:]] == ["poured"]
+    assert built.routed.cut == () and built.routed.left == ()
+    assert built.routed.unjoined == (
+        "P1.3 is taken off the pour of GND on B.Cu, which starved its relief: a track "
+        "joins it to the rest of GND",
+    )
+    assert _off_the_pour(built.board) == ["P1.3"]
+    # No track is changed for it, and the pour is still drawn.
+    written = parse(built.board.read_text())
+    assert len(find_all(written, "segment")) == 2 and len(find_all(written, "zone")) == 1
+    # The board itself is as it was said: built again, it is the same file.
+    again = board.build(tmp_path / "again", router=router)
+    assert again.board.read_text() == built.board.read_text()
+
+
+def test_where_the_model_finds_a_starved_pad_that_only_the_pour_joins_it_is_left_and_said(
+    board, tmp_path
+):
+    built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None and built.routed.judge == "model"
+    assert built.routed.unjoined == () and "zone_connect" not in built.board.read_text()
+    assert [str(c) for c in built.routed.left if c.starved] == [
+        "P1.3 is starved of the pour of GND on B.Cu: fewer than 2 spokes of its relief "
+        "reach a piece of the pour that another pad or a via of GND is on"
+    ]
+    # With a via down to the pour beside each pad on the front it is no island.
+    placed = {_ref(fp): fp for fp in find_all(parse(built.board.read_text()), "footprint")}
+    down = tuple(
+        Via("GND", VIA, pad_xy(placed[ref], pad)) for ref, pad in (("R1", "2"), ("U1", "3"))
+    )
+    built = _poured(board).build(tmp_path / "joined", router=Scripted(Run((), down, 0)))
+    assert built.routed is not None
+    assert built.routed.left == () and built.routed.unjoined == ()
+    assert "zone_connect" not in built.board.read_text()
+
+
+def test_a_board_whose_pour_starves_no_pad_is_written_as_it_was_and_kicad_asked_once(
+    board, tmp_path, kicad_in_turn
+):
+    shown = kicad_in_turn({"unconnected_items": []})
+    built = _poured(board).build(tmp_path / "out", router=Scripted())
+    assert built.routed is not None
+    assert len(shown()) == 1 and built.routed.unjoined == () and built.routed.left == ()
+    assert built.board.read_text() == shown()[0].read_text()
+    assert "zone_connect" not in built.board.read_text()
+
+
+def test_the_corpus_build_says_each_pad_taken_off_its_pour(tmp_path, monkeypatch, capsys):
+    import importlib.util
+    from types import SimpleNamespace
+
+    from pkidl.routing import Routed
+
+    spec = importlib.util.spec_from_file_location(
+        "corpus_script", Path(__file__).parent.parent / "scripts" / "corpus.py"
+    )
+    assert spec is not None and spec.loader is not None
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    line = ("C5.1 is taken off the pour of GND on B.Cu, which starved its relief: a track "
+            "joins it to the rest of GND")  # fmt: skip
+    left = Cut("GND", ("ESP1.2",), "B.Cu", starved=True)
+    routed = Routed((), (), (("", Run((), (), 0)),), left=(left,), unjoined=(line,), judge="model")
+    made = SimpleNamespace(routed=routed, solution=SimpleNamespace(poses={}, chosen=()))
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "board.py").write_text(
+        "from types import SimpleNamespace\nboard = SimpleNamespace(build=lambda d, name: MADE)\n"
+    )
+    monkeypatch.setattr(script, "BOARDS", {"b": ("t0", "a board")})
+    monkeypatch.setattr(script, "board_dir", lambda board_id: tmp_path / "src")
+    monkeypatch.setattr("builtins.MADE", made, raising=False)
+    assert script.build(tmp_path / "out") == 0
+    said = json.loads((tmp_path / "out" / "b" / "built.json").read_text())
+    assert said["unjoined"] == [line] and said["left"] == [str(left)]
+    printed = capsys.readouterr().out.splitlines()
+    assert f"    {line}" in printed and f"    left on the board as built: {left}" in printed
+
+
+def test_the_model_is_asked_again_of_the_board_with_each_pad_it_named_off(
+    board, tmp_path, monkeypatch
+):
+    from pkidl import fill
+
+    board = _poured(board)
+    router = _ground_by_track(board, tmp_path, (("P1", "3"), ("R1", "2"), ("U1", "3")))
+    seen: list[list[str]] = []
+
+    def starved(items, *fill_as):
+        """The model's own word, and with the header's pin off the pour, the
+        resistor's pad as well: what it was shown each time is kept."""
+        off = [f"{_ref(fp)}.{pad[1]}" for fp in items if fp[0] == "footprint"
+               for pad in find_all(fp, "pad") if find(pad, "zone_connect") is not None]  # fmt: skip
+        seen.append(off)
+        more = [Cut("GND", ("R1.2",), "B.Cu", starved=True)] if off == ["P1.3"] else []
+        return [*fill.starved(items, *fill_as), *more]
+
+    monkeypatch.setattr("pkidl.build.starved", starved)
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None and built.routed.judge == "model"
+    assert seen == [[], ["P1.3"], ["P1.3", "R1.2"]]
+    assert [line.split()[0] for line in built.routed.unjoined] == ["P1.3", "R1.2"]
+    assert sorted(_off_the_pour(built.board)) == ["P1.3", "R1.2"] and built.routed.left == ()

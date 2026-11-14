@@ -20,12 +20,16 @@ pad on it as joined, and tracks across the pour can leave a piece of it apart wi
 pads on it. Where the check finds that, the board is routed again with that net
 carried by tracks, the pour beside them, and what was cut off is in the result.
 
+``relieved`` mends what the board that is written is then found to have wrong where it
+can be mended with no connection changed: a pad starved of its pour that a track joins
+to its net is taken off the pour.
+
 ``pkidl.route.Freerouting`` is the first router.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
@@ -41,6 +45,7 @@ if TYPE_CHECKING:
 Point = tuple[float, float]
 
 POWER, CROSS, POURED = "power", "cross", "poured"
+TURNS = 5  # the times a board's pours are checked again for pads taken off them
 
 
 @dataclass(frozen=True)
@@ -113,8 +118,12 @@ class Routed:
     cut: tuple[Cut, ...] = ()
     # What the same check finds of the board as it was routed last, where that was
     # without its pours: they are still drawn, round the tracks that carry their nets,
-    # and what they leave wrong is on the board that is written.
+    # and what they leave wrong is on the board that is written. Once ``relieved``, what
+    # the last check finds of the board that is written, however it was routed.
     left: tuple[Cut, ...] = ()
+    # Each pad taken off its pour (``relieved``), a line a pad: the pad, its net, the
+    # layer of the pour, and that a track joins it.
+    unjoined: tuple[str, ...] = ()
     # Whose word it is that the pours join what they are left to: ``KiCad``, or
     # ``model`` for pkidl's model of KiCad's fill. Empty where nothing was asked.
     judge: str = ""
@@ -260,6 +269,45 @@ def poured(
     rest = staged(router, replace(job, planes=()), outdir, name)
     left = tuple(cut(rest.wires, rest.vias)) if job.planes else ()
     return Routed(rest.wires, rest.vias, (*runs, *rest.runs), tuple(cuts), left)
+
+
+def relieved(
+    routed: Routed,
+    found: Sequence[Cut],
+    check: Callable[[Sequence[str]], Sequence[Cut]],
+    spare: Callable[[], Collection[str]],
+    turns: int = TURNS,
+) -> Routed:
+    """*routed* with each pad starved of its pour, and joined to its net without it,
+    taken off the pour (decided 2026-11-14).
+
+    *found* is what the check found of the board as routed. A pad it names as starved
+    (``Cut.starved``) that is among *spare*'s, the pads a pour can be spared with no
+    connection changed (``pkidl.fill.spare``), is taken off: *check* is asked what it
+    finds with those pads, as ``C5.1``, off their pours, and of what it finds the same
+    is asked, since a pad off a pour can change what another's relief reaches. It ends
+    when a check names no pad to take off, or after *turns* checks.
+
+    ``Routed.unjoined`` names each pad taken off, and ``Routed.left`` is what the last
+    check found: a starved pad that only the pour joins is there, left as it was. No
+    track or via is changed, and where nothing is taken off *check* is not asked."""
+    found, off, said = list(found), [], []
+    spared: Collection[str] | None = None
+    for _ in range(turns):
+        starved = {pad: c for c in found if c.starved for pad in c.pads if pad not in off}
+        if starved and spared is None:
+            spared = spare()
+        take = [pad for pad in starved if spared is not None and pad in spared]
+        if not take:
+            break
+        for pad in take:
+            c = starved[pad]
+            on = f" on {c.layer}" if c.layer else ""
+            said.append(f"{pad} is taken off the pour of {c.net}{on}, which starved its "
+                        f"relief: a track joins it to the rest of {c.net}")  # fmt: skip
+        off += take
+        found = list(check(tuple(off)))
+    return replace(routed, left=tuple(found), unjoined=tuple(said))
 
 
 def lay(board: Board, routed: Routed) -> None:
