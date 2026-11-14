@@ -83,6 +83,9 @@ Unreleased. History before this file was reconstructed from the git log.
 - `Board.name`: the name a board's files are written under. `Board.from_inputs()`
   sets it to the name of the directory the inputs are in; `build(name=)` gives
   another. (#17)
+- `corpus/t0/nextbusclock_NextBusClockV1/board.py`: the third corpus board file, 26
+  through-hole parts, written with the library as it stood to see what it could not
+  say (`docs/roadmap.md`, milestone 2b). `just corpus` builds and scores it.
 - `corpus/t2/fan_controller_fan_controller/board.py`: the second corpus board file,
   49 parts with its four fan channels placed by one function, shown in
   `docs/design/board-files.md` as committed. `just corpus` builds and scores it, and

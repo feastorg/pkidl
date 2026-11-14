@@ -534,3 +534,21 @@ def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_le
     made = parse(built.board.read_text())
     assert {float(str(w[1])) for s in find_all(made, "segment")
             if (w := find(s, "width")) is not None} == {0.25}  # fmt: skip
+
+
+def test_the_next_bus_clocks_board_file_places_every_part_with_nothing_added_to_pkidl():
+    """Milestone 2b: a board file written with the library as it stood. It says where
+    all 26 parts go, with statements the library had; what it could not say is in the
+    roadmap. Solving it takes most of a minute."""
+    clock = CORPUS / "t0" / "nextbusclock_NextBusClockV1"
+    board = runpy.run_path(str(clock / "board.py"))["board"]
+    solution = board.solve()
+    wanted = json.loads((clock / "circuit.json").read_text())
+    assert len(wanted["parts"]) == 26
+    assert sorted(solution.poses) == sorted(p["ref"] for p in wanted["parts"])
+    assert solution.free == () and solution.problems == ()
+    # The displays are upright and the two digits' parts come from one function.
+    assert solution.poses["DIG1"].rot == solution.poses["DIG2"].rot == 0
+    said = [str(s) for s in board.statements()]
+    assert "place(SR1, near=DIG1, within=15 mm, toward=Edge.BOTTOM)" in said
+    assert "place(SR2, near=DIG2, within=15 mm, toward=Edge.BOTTOM)" in said
