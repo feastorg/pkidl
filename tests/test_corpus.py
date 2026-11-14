@@ -544,10 +544,10 @@ def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_le
             if (w := find(s, "width")) is not None} == {0.25}  # fmt: skip
 
 
-def test_the_next_bus_clocks_board_file_places_every_part_with_nothing_added_to_pkidl():
-    """Milestone 2b: a board file written with the library as it stood. It says where
-    all 26 parts go, with statements the library had; what it could not say is in the
-    roadmap."""
+def test_the_next_bus_clocks_board_file_places_every_part_by_what_it_says():
+    """Milestone 2b's board file, written with the library as it stood and since given
+    what milestone 2c added for it: a side asked for outward, a display's way round.
+    It says where all 26 parts go."""
     clock = CORPUS / "t0" / "nextbusclock_NextBusClockV1"
     board = runpy.run_path(str(clock / "board.py"))["board"]
     solution = board.solve()

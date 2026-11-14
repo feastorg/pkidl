@@ -119,10 +119,18 @@ class Place(Statement):
     side: Side | None = None
     toward: Edge | None = None
     centre: bool = False
+    outward: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.part, Part):
             raise TypeError(f'place() takes a part, such as board["U1"], not {self.part!r}')
+        if self.outward is not None:
+            if not isinstance(self.outward, str) or not self.outward:
+                raise TypeError(f"{self.part}: outward= takes the name of a side of the "
+                                f"part, such as \"socket\", not {self.outward!r}")  # fmt: skip
+            if self.against is None:
+                raise ValueError(f"{self.part}: outward= says which side of the part is to "
+                                 "an edge: give against=")  # fmt: skip
         for name, edge in (("against", self.against), ("facing", self.facing),
                            ("toward", self.toward)):  # fmt: skip
             if not isinstance(edge, Edge | None):
@@ -165,7 +173,7 @@ class Place(Statement):
 
     def _said(self) -> Iterator[tuple[str, Any]]:
         for name in ("against", "inset", "between", "facing", "near", "within", "side",
-                     "toward", "centre"):  # fmt: skip
+                     "toward", "centre", "outward"):  # fmt: skip
             if (value := getattr(self, name)) is not None and value is not False:
                 yield name, value
 
@@ -198,6 +206,8 @@ class Place(Statement):
         super().check(circuit)
         if isinstance(self.near, Pin):
             circuit.part(self.near.part.ref).pin(self.near.number)
+        if self.outward is not None:
+            circuit.part(self.part.ref).side(self.outward)
 
 
 @dataclass(frozen=True)
@@ -412,9 +422,11 @@ def place(
     side: Side | str | None = None,
     toward: Edge | None = None,
     centre: bool = False,
+    outward: str | None = None,
 ) -> Place:
-    """Say where *part* goes: *against* an edge of the board, *inset* from it; *between*
-    two parts; *facing* an edge; *near* a pin or a part, *within* a distance of it, and
+    """Say where *part* goes: *against* an edge of the board, *inset* from it, with the
+    side of it named *outward* to that edge (``annotate(sides=)`` names a part's sides);
+    *between* two parts; *facing* an edge; *near* a pin or a part, *within* a distance of it, and
     on the side of it that is *toward* an edge; at the *centre* of the board; on which
     *side* of the board, ``Side.BACK`` or ``"back"``. One statement can say several.
     Nothing moves until the board is built."""
@@ -423,7 +435,7 @@ def place(
     if isinstance(side, str) and side in ("front", "back"):
         side = Side(side)
     return Place(part, against, inset, between, facing, near, within, side,  # type: ignore[arg-type]
-                 toward, centre, source=_written_at())  # fmt: skip
+                 toward, centre, outward, source=_written_at())  # fmt: skip
 
 
 def align(*parts: Part, grid: Length | str) -> Align:
@@ -538,6 +550,8 @@ def _shown(value: Any) -> str:
     """A value as the board file wrote it."""
     if isinstance(value, tuple):
         return f"({', '.join(map(str, value))})"
+    if isinstance(value, str):
+        return f'"{value}"'
     return str(value)
 
 

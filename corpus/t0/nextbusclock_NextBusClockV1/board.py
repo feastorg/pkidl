@@ -22,7 +22,8 @@ def digit(display, register, limit_a, limit_b):
 # The two digits are read left to right, along the top edge.
 digits = board.parts("DIG1", "DIG2")
 board.row(digits, along=Edge.TOP)
-for display in digits:  # upright, to be read
+for display in digits:
+    board.annotate(display, oriented=True)  # a display is read one way up
     board.place(display, facing=Edge.TOP)
 board.add(*digit(digits[0], board["SR1"], board["R3"], board["R4"]))
 board.add(*digit(digits[1], board["SR2"], board["R5"], board["R6"]))
@@ -41,7 +42,8 @@ board.place(board["SW1"], near=board["R2"], within=15 * mm)
 # Power comes in at the left edge: the jack, the 5 V regulator by it with a capacitor on
 # its input and one on its output, then the 3.3 V regulator and its capacitor.
 jack, reg5, reg33 = board["BJ1"], board["5V_REG1"], board["33V_REG1"]
-board.place(jack, against=Edge.LEFT, facing=Edge.TOP)  # its socket opens off the board
+board.annotate(jack, sides={"socket": Edge.LEFT})
+board.place(jack, against=Edge.LEFT, outward="socket")  # it opens off the board
 board.place(reg5, near=jack.pin(1), within=15 * mm)
 board.place(board["C1"], near=reg5.pin(1), within=10 * mm)
 board.place(board["C2"], near=reg5.pin(3), within=10 * mm)
@@ -53,7 +55,8 @@ board.place(board["R1"], near=board["D1"].pin(2), within=8 * mm)
 # The radio module in the bottom right corner, clear of the rest, with its two
 # pull-ups.
 esp = board["ESP1"]
-board.place(esp, against=Edge.RIGHT, facing=Edge.TOP)  # its antenna end at the edge
+board.annotate(esp, sides={"antenna": Edge.RIGHT})
+board.place(esp, against=Edge.RIGHT, outward="antenna")
 board.place(esp, against=Edge.BOTTOM)
 board.place(board["R7"], near=esp.pin(6), within=12 * mm)
 board.place(board["R8"], near=esp.pin(5), within=12 * mm)

@@ -378,6 +378,7 @@ class _Solver:
         # And how far they keep copper from the board's edge.
         self.margin = max((s.edge.nm for s in self.rules), default=0)
         self._boxes: dict[str, tuple[Pose, Box]] = {}
+        self.circuit = circuit
         self.asks: dict[str, list[Place]] = {}
         self.aligns = [s for s in statements if isinstance(s, Align)]
         # Each area kept clear, as this circuit has it, whichever board's part the
@@ -590,15 +591,33 @@ class _Solver:
         edges: dict[Edge, Place | Row] = {s.along: s for s in self.rows.get(ref, [])}
         return {**edges, **{s.against: s for s in self.asks[ref] if s.against}}
 
+    def _turned(self, ref: str) -> dict[int, Place]:
+        """The ways round *ref* is said to be, each with a statement that says it:
+        ``facing=`` an edge, the top of its footprint to it, and a side of it named
+        ``outward=`` to the edge it is against. More than one is a problem."""
+        turns = {Edge.TOP: 0, Edge.LEFT: 90, Edge.BOTTOM: 180, Edge.RIGHT: 270}
+        back, said = self._back(ref), {}
+        for s in self.asks.get(ref, []):
+            sides = [(Edge.TOP, s.facing)] if s.facing else []
+            if s.outward is not None and s.against is not None:
+                sides.append((Edge(self.circuit.part(ref).side(s.outward)), s.against))
+            for side, to in sides:
+                # On the back a footprint is mirrored top to bottom before it is turned.
+                if back and side in (Edge.TOP, Edge.BOTTOM):
+                    side = Edge.BOTTOM if side is Edge.TOP else Edge.TOP
+                said.setdefault((turns[to] - turns[side]) % 360, s)
+        if len(said) > 1:
+            self._problem((ref,), f"{ref} is turned {len(said)} ways by what is said of it: "
+                          + " and ".join(f"{rot} degrees" for rot in said),
+                          *said.values())  # fmt: skip
+        return said
+
     def _rots(self, ref: str) -> tuple[int, ...]:
         """The ways round *ref* may be. Whichever is taken, it is as long along an edge
         it lies against."""
         shape, edges = self.shapes[ref], self._edges(ref)
-        facing = next((s.facing for s in self.asks[ref] if s.facing), None)
-        if facing is not None:
-            turns = {Edge.TOP: 0, Edge.LEFT: 90, Edge.BOTTOM: 180, Edge.RIGHT: 270}
-            # On the back a footprint is mirrored top to bottom before it is turned.
-            return ((turns[facing] + 180 * self._back(ref)) % 360,)
+        if said := self._turned(ref):
+            return (next(iter(said)),)
         # A part in a row lies along the row's edge, whatever other edge it is against.
         lie = [s.along for s in self.rows.get(ref, [])] or list(edges)
         if len(lie) == 1 or ref in self.rows:
@@ -1115,6 +1134,10 @@ class _Solver:
             self.problems.setdefault(problem)
         placed = sorted(self.poses, key=natural)
         for ref in placed:
+            if self.circuit.part(ref).way_up_matters and not self._turned(ref):
+                self._problem((ref,), f"{ref}'s way round matters and nothing says it: give "
+                              "facing= an edge, or outward= a side of it",
+                              *self.said[ref])  # fmt: skip
             box, names = self._box(ref), ("left", "top", "right", "bottom")
             over = (self.board[0] - box[0], self.board[1] - box[1],
                     box[2] - self.board[2], box[3] - self.board[3])  # fmt: skip

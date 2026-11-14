@@ -17,7 +17,7 @@ Anything plural is a method that selects, and gives everything when asked for no
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -134,6 +134,23 @@ class Part:
         the footprint's order."""
         return tuple(self.pin(n) for n in numbers or self.circuit._pins[self.ref])
 
+    def side(self, name: str) -> str:
+        """The side of its footprint that goes by *name*, as the footprint is drawn:
+        ``left``, ``right``, ``top`` or ``bottom``."""
+        sides = self.circuit._sides.get(self.footprint, {})
+        if name not in sides:
+            why = (f"its footprint {self.footprint!r} has {', '.join(sides)}" if sides else
+                   f"name it with annotate(sides={{{name!r}: Edge.LEFT}}), by the side of its "
+                   f"footprint {self.footprint!r} it is as the footprint is drawn")  # fmt: skip
+            raise LookupError(f"{self.ref} has no side {name!r}: {why}")
+        return sides[name]
+
+    @property
+    def way_up_matters(self) -> bool:
+        """Whether which way round it is is the board file's to say and never chosen: a
+        part annotated ``oriented=True``, or with a side named for it."""
+        return self.ref in self.circuit._oriented
+
     def area(self, name: str) -> Area:
         """A named area of its footprint, as the footprint's annotation marks it out:
         ``u1.area("antenna")``."""
@@ -226,6 +243,9 @@ class Circuit:
         self._given: dict[str, str] = {}  # the circuit's name for a net -> the board file's
         self._areas: dict[str, dict[str, Box]] = {}  # footprint name -> area name -> box
         self._names: dict[str, dict[str, str]] = {}  # reference -> pin name -> number
+        # footprint name -> the name of a side of it -> which side, as it is drawn
+        self._sides: dict[str, dict[str, str]] = {}
+        self._oriented: set[str] = set()  # the parts whose way round is not to be chosen
         # A footprint whose shipped annotation is of some other footprint, and why.
         self.unfitted: dict[str, str] = {}
 
@@ -292,13 +312,30 @@ class Circuit:
         footprint: str,
         areas: Mapping[str, Box],
         pins: Mapping[str, Mapping[str, str]] | None = None,
+        sides: Mapping[str, str] | None = None,
+        oriented: Iterable[str] = (),
     ) -> None:
         """Give the footprint named *footprint* its named *areas*, each a box in the
         footprint's own coordinates, and each part in *pins*, by its reference, names
         for its pins, each with the pin's number. A name is a word: not all digits, which
         would be taken for a pin's number, and not the number of one of the part's pins.
         An area or a name is said once: one already there stays, and a different box or
-        pin for it is refused, with nothing of what was said kept."""
+        pin for it is refused, with nothing of what was said kept.
+
+        *sides* names sides of the footprint as it is drawn, each ``left``, ``right``,
+        ``top`` or ``bottom``, and every part with the footprint has them. *oriented*
+        is the parts, by reference, whose way round is not to be chosen for them."""
+        marked = [self.part(ref).ref for ref in oriented]
+        sided = self._sides.get(footprint, {})
+        for name, side in (sides or {}).items():
+            if not isinstance(name, str) or not name:
+                raise TypeError(f"{footprint}: a side's name is a word, such as socket, "
+                                f"not {name!r}")  # fmt: skip
+            if side not in ("left", "right", "top", "bottom"):
+                raise ValueError(f"{footprint}: side {name} is left, right, top or bottom of "
+                                 f"the footprint, not {side!r}")  # fmt: skip
+            if sided.get(name, side) != side:
+                raise ValueError(f"{footprint} has a side {name} already, the {sided[name]}")
         have = self._areas.get(footprint, {})
         for name, box in areas.items():
             if have.get(name, box) != box:
@@ -320,6 +357,9 @@ class Circuit:
                                      f"also be {number}")  # fmt: skip
         self._areas[footprint] = {**have, **areas}
         self._names.update(named)
+        if sides:
+            self._sides[footprint] = {**sided, **sides}
+        self._oriented.update(marked)
 
     def name_nets(self, names: Mapping[str, str]) -> tuple[Net, ...]:
         """Give nets the schematic left anonymous a name to write and read:

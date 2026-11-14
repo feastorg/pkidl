@@ -145,7 +145,8 @@ ahead of copper for current.
 
 ### The count: eight
 
-Done 2026-11-13. The board file is 63 lines, written with no change under `src/pkidl`.
+Done 2026-11-13. The board file was 63 lines, written with no change under `src/pkidl`;
+milestone 2c has changed it since, as it gives the board what it could not say.
 It places all 26 parts with no problem and builds a board with its circuit's netlist,
 routed with nothing left. KiCad 10.0.6 finds nothing unconnected and two DRC errors,
 where the reference has none: the bar is not met, and both errors are on the list.

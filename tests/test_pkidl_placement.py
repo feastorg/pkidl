@@ -2354,3 +2354,175 @@ def test_what_is_most_in_the_way_is_named_the_three_that_take_the_most_places():
     )
     # One thing in the way is named alone.
     assert _no_place(0.3)[1].endswith(": the nearest is 1.8 mm from it, with U1 in the way")
+
+
+_NEARER = {Edge.TOP: lambda x, y: -y, Edge.BOTTOM: lambda x, y: y,
+           Edge.LEFT: lambda x, y: -x, Edge.RIGHT: lambda x, y: x}  # fmt: skip
+
+
+@pytest.mark.parametrize("face", [Side.FRONT, Side.BACK])
+@pytest.mark.parametrize("edge", list(Edge))
+@pytest.mark.parametrize("named", list(Edge))
+def test_the_side_of_a_part_named_outward_is_the_one_at_the_edge_it_is_against(named, edge, face):
+    board = _board(U1="A B C D GND")
+    u1 = board["U1"]
+    board.annotate(u1, sides={"plug": named})
+    board.place(u1, against=edge, outward="plug", side=face)
+    solution = board.solve()
+    assert solution.ok and solution.poses["U1"].back is (face is Side.BACK)
+    # As the footprint is drawn, pads 1 and 4 are its top row, 1 at the left and 4 at
+    # the right, and pad 5 is at its bottom. The pads of the side named are the ones
+    # nearest the edge, on either face: they are the same pads of the same part.
+    near = {n: _NEARER[edge](*xy) for n, xy in _pads(board, solution, "U1").items()}
+    if named is Edge.TOP:
+        assert near["1"] == pytest.approx(near["4"]) == pytest.approx(max(near.values()))
+    elif named is Edge.BOTTOM:
+        assert near["5"] == pytest.approx(max(near.values())) and near["5"] > near["1"] + 2
+    elif named is Edge.LEFT:
+        assert near["1"] == pytest.approx(near["4"] + 8)
+    else:
+        assert near["4"] == pytest.approx(near["1"] + 8)
+    assert not any("turned" in note for note in solution.chosen)
+
+
+@pytest.mark.parametrize("face", [Side.FRONT, Side.BACK])
+@pytest.mark.parametrize("edge", list(Edge))
+def test_the_top_of_a_part_outward_is_the_part_facing_that_edge(edge, face):
+    def solved(**how) -> Solution:
+        board = _board(U1="A B C D GND")
+        board.annotate(board["U1"], sides={"top": Edge.TOP})
+        board.place(board["U1"], against=edge, side=face, **how)
+        return board.solve()
+
+    assert solved(outward="top").poses == solved(facing=edge).poses
+
+
+def test_a_side_is_named_once_by_a_side_of_the_footprint_and_asked_for_by_its_name():
+    board = _board(U1="A B C D GND", U2="A B C D GND", R1="A B")
+    u1, u2, r1 = board.parts("U1", "U2", "R1")
+    with pytest.raises(LookupError, match=r"U1 has no side 'plug': name it with annotate\(sides="):
+        board.place(u1, against=Edge.LEFT, outward="plug")
+    board.annotate(u1, sides={"plug": Edge.LEFT})
+    # Every part with the footprint has the side, and no other part has.
+    statement = board.place(u2, against=Edge.LEFT, outward="plug")
+    assert str(statement) == 'place(U2, against=Edge.LEFT, outward="plug")'
+    assert statement.data() == {"place": "U2", "against": "left", "outward": "plug"}
+    with pytest.raises(LookupError, match="R1 has no side 'plug'"):
+        board.place(r1, against=Edge.TOP, outward="plug")
+    with pytest.raises(LookupError, match="U1 has no side 'jack': its footprint .* has plug"):
+        board.place(u1, against=Edge.LEFT, outward="jack")
+    # Said again the same it stays; said to be another side it is refused. A second
+    # side named later is had with the first.
+    board.annotate(u2, sides={"plug": Edge.LEFT})
+    board.annotate(u2, sides={"lid": Edge.TOP})
+    assert (u1.side("plug"), u1.side("lid")) == ("left", "top")
+    with pytest.raises(ValueError, match="side wing is left, right, top or bottom"):
+        board.circuit.annotate(u1.footprint, {}, sides={"wing": "west"})
+    with pytest.raises(TypeError, match="a side's name is a word, such as socket"):
+        board.circuit.annotate(u1.footprint, {}, sides={"": "left"})
+    with pytest.raises(ValueError, match="has a side plug already, the left"):
+        board.annotate(u2, sides={"plug": Edge.TOP})
+    with pytest.raises(TypeError, match="side plug is a side of the footprint, such as Edge.LEFT"):
+        board.annotate(u1, sides={"plug": "left"})  # type: ignore[dict-item]
+    # A side goes to the edge the part is against, in the statement that says which.
+    with pytest.raises(ValueError, match="outward= says which side of the part is to an edge"):
+        place(u1, near=r1, within=3 * mm, outward="plug")
+    with pytest.raises(TypeError, match="outward= takes the name of a side"):
+        place(u1, against=Edge.LEFT, outward=Edge.LEFT)  # type: ignore[arg-type]
+
+
+def test_a_part_said_to_be_two_ways_round_is_reported_with_both_statements():
+    board = _board(U1="A B C D GND")
+    u1 = board["U1"]
+    board.annotate(u1, sides={"plug": Edge.LEFT})
+    board.place(u1, against=Edge.LEFT, outward="plug")
+    board.place(u1, facing=Edge.LEFT)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [
+        "U1 is turned 2 ways by what is said of it: 0 degrees and 90 degrees "
+        f"({HERE}:{line - 1}, {HERE}:{line})"
+    ]
+    assert solution.poses["U1"].rot == 0  # as it was said first
+    # Said two ways that are one way, it is no problem.
+    board = _board(U1="A B C D GND")
+    board.annotate(board["U1"], sides={"plug": Edge.LEFT})
+    board.place(board["U1"], against=Edge.LEFT, outward="plug")
+    board.place(board["U1"], facing=Edge.TOP)
+    assert board.solve().ok
+
+
+def test_a_part_whose_way_round_matters_is_never_turned_by_choice():
+    def solved(mark: dict, **how) -> Solution:
+        board = _board(U1="A B C D GND", U2="A B C D GND", R1="A B")
+        u1, u2, r1 = board.parts("U1", "U2", "R1")
+        board.annotate(u1, **mark)
+        board.place(u1, against=Edge.TOP, **how)
+        board.place(u2, centre=True, facing=Edge.TOP)
+        board.place(r1, against=Edge.BOTTOM)
+        return board.solve()
+
+    line = _line_no() - 5
+    unsaid = (f"U1's way round matters and nothing says it: give facing= an edge, or outward= "
+              f"a side of it ({HERE}:{line})")  # fmt: skip
+    # Unmarked, the solver turns it as it likes, and says which way it chose.
+    assert solved({}).ok and any(note.startswith("U1: turned") for note in solved({}).chosen)
+    # Marked, with nothing said: a problem, of the part that has no facing, not of the
+    # one with the same footprint that has, nor of a part of another footprint.
+    assert _told(solved({"oriented": True})) == [unsaid]
+    assert solved({"oriented": True}, facing=Edge.TOP).ok
+    # The word says the part has a way round, and not which.
+    assert solved({"oriented": True}, facing=Edge.LEFT).ok
+    # A part with a side named is such a part, whether or not the side is asked for.
+    assert _told(solved({"sides": {"plug": Edge.LEFT}})) == [unsaid]
+    assert solved({"sides": {"plug": Edge.LEFT}}, outward="plug").ok
+    assert solved({"sides": {"plug": Edge.LEFT}}, facing=Edge.LEFT).ok
+    with pytest.raises(TypeError, match="oriented= takes True"):
+        solved({"oriented": "yes"})
+
+
+def test_only_the_part_marked_has_to_say_its_way_round_not_others_with_its_footprint():
+    def solved(**mark) -> Solution:
+        board = _board(U1="A B C D GND", U2="A B C D GND", R1="A B")
+        u1, u2, r1 = board.parts("U1", "U2", "R1")
+        board.annotate(u1, **mark)
+        board.place(u1, against=Edge.TOP, facing=Edge.TOP)
+        board.place(u2, against=Edge.BOTTOM)  # its way round is left to the solver
+        board.place(r1, centre=True)
+        return board.solve()
+
+    for mark in ({"oriented": True}, {"sides": {"plug": Edge.LEFT}}):
+        solution = solved(**mark)
+        assert solution.ok and any(note.startswith("U2: turned") for note in solution.chosen)
+        assert solution.poses == solved().poses
+    # The side is the footprint's, and the other part may ask for it by its name.
+    board = _board(U1="A B C D GND", U2="A B C D GND")
+    board.annotate(board["U1"], sides={"plug": Edge.LEFT})
+    board.place(board["U1"], against=Edge.TOP, outward="plug")
+    board.place(board["U2"], against=Edge.BOTTOM, outward="plug")
+    assert board.solve().ok
+    # Marked itself, it has to say.
+    board.annotate(board["U2"], oriented=True)
+    assert board.solve().ok
+    board = _board(U1="A B C D GND", U2="A B C D GND")
+    board.annotate(board["U1"], sides={"plug": Edge.LEFT})
+    board.annotate(board["U2"], oriented=True)
+    board.place(board["U1"], against=Edge.TOP, outward="plug")
+    board.place(board["U2"], against=Edge.BOTTOM)
+    assert [p.parts for p in board.solve().problems] == [("U2",)]
+
+
+def test_a_part_in_a_row_whose_way_round_matters_has_to_be_told_it_too():
+    def solved(facing: bool) -> Solution:
+        board = _board(U1="A B C D GND", U2="A B C D GND")
+        digits = board.parts("U1", "U2")
+        for digit in digits:
+            board.annotate(digit, oriented=True)
+        board.row(digits, along=Edge.TOP)
+        for digit in digits if facing else ():
+            board.place(digit, facing=Edge.TOP)
+        return board.solve()
+
+    assert [p.parts for p in solved(False).problems] == [("U1",), ("U2",)]
+    assert all("way round matters" in p.text for p in solved(False).problems)
+    assert solved(True).ok
