@@ -339,6 +339,13 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- A pad's copper is where its drill's `(offset ...)` puts it. KiCad draws the copper
+  of such a pad off its hole, turned with the pad, and the solver took it as centred
+  on the hole: on the bench supply an LED's pad and a resistor's, 0.34 mm apart by
+  its reckoning, overlapped by 0.1 mm, and two regulators against the top edge had
+  their copper 0.15 mm from it where the rules say 0.5 mm. The clearance between
+  pads, their distance from the board's edge and a part's outline now take the copper
+  where it is. `near=`, `within=`, `at_least=` and `inset=` are still to the hole. (#68)
 - A footprint whose courtyard or body is drawn with an arc is as large as the arc. The
   solver took an arc for its two ends and the point between, so a round LED's
   courtyard was 1.65 mm short above and below, and a resistor's pad was placed inside

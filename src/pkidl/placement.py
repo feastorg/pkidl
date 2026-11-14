@@ -185,8 +185,8 @@ class Solution:
 
 @dataclass(frozen=True)
 class _Shape:
-    """A footprint's pads (number and centre) and outline, about its origin, and the
-    box around each pad's copper."""
+    """A footprint's pads (number and centre, which is its hole where it has one) and
+    outline, about its origin, and the box around each pad's copper."""
 
     pads: tuple[tuple[str, int, int], ...]
     box: Box
@@ -210,6 +210,13 @@ def _shape(footprint: Node) -> _Shape:
         cos, sin = abs(math.cos(turn)), abs(math.sin(turn))
         w, h = round(w * cos + h * sin), round(w * sin + h * cos)
         pads.append((str(pad[1]), x, y))
+        # A pad's place is its hole's. Its copper is off that by the drill's offset,
+        # which turns with the pad: counter-clockwise with y down.
+        drill = find(pad, "drill")
+        if drill is not None and (off := find(drill, "offset")) is not None:
+            ox, oy = _nm(off[1]), _nm(off[2])
+            x += round(ox * math.cos(turn) + oy * math.sin(turn))
+            y += round(oy * math.cos(turn) - ox * math.sin(turn))
         xs += [x - (w + 1) // 2, x + (w + 1) // 2]
         ys += [y - (h + 1) // 2, y + (h + 1) // 2]
         copper.append((str(pad[1]), (xs[-2], ys[-2], xs[-1], ys[-1])))

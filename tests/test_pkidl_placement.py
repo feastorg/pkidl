@@ -16,10 +16,11 @@ import pytest
 
 from pkidl import Board, Edge, Side, align, area, decouple, inside, keepout, mm, place, row
 from pkidl.circuit import Circuit
+from pkidl.fill import _pad_shape
 from pkidl.footprint import Placement, pad_xy, pads
 from pkidl.footprint import place as put
 from pkidl.intent import canonical
-from pkidl.placement import Pose, Problem, Solution, _shape, _Solver
+from pkidl.placement import Pose, Problem, Solution, _shape, _Solver, _turned
 from pkidl.sexpr import Node, dumps, parse
 from pkidl.units import Length
 
@@ -91,6 +92,13 @@ LIBRARY = {
     ),
     # A test point: one pad 1 mm square, and nothing drawn around it.
     "Test:TP": _footprint("TP", "", _smd(1, 0, 0, 1, 1)),
+    # A pin in a hole whose copper, 1 mm square, is 1 mm along +x from the hole.
+    "Test:Off": _footprint(
+        "Off",
+        "",
+        '(pad "1" thru_hole rect (at 0 0) (size 1 1) (drill 0.4 (offset 1 0)) '
+        '(layers "*.Cu" "*.Mask"))',
+    ),
     # A square part: pads 1 mm either side of the origin in a courtyard 3 mm square.
     "Device:Q": _footprint(
         "Q",
@@ -131,7 +139,7 @@ LIBRARY = {
 }  # fmt: skip
 _KINDS = {"P": "Conn:H", "R": "Device:R", "U": "RF:M", "F": "Mech:Dot", "T": "Test:TP",
           "Q": "Device:Q", "K": "Sensor:K", "D": "Device:D", "H": "Mech:Hole",
-          "N": "Mech:Nothing", "V": "Conn:V", "Z": "Chip:Z"}  # fmt: skip
+          "N": "Mech:Nothing", "V": "Conn:V", "Z": "Chip:Z", "O": "Test:Off"}  # fmt: skip
 
 
 def _board(**parts: str) -> Board:
@@ -152,6 +160,22 @@ def _pads(board: Board, solution: Solution, ref: str) -> dict[str, tuple[float, 
                  Placement(part.footprint, ref, part.value, pose.x.mm, pose.y.mm, pose.rot,
                            pose.back))  # fmt: skip
     return {str(pad[1]): pad_xy(placed, str(pad[1])) for pad in pads(placed)}
+
+
+def _copper(placed: Node) -> dict[str, tuple[float, ...]]:
+    """The box round the copper of each pad of a footprint put on a board, as the model
+    of the pour has it, which was checked against KiCad's fill."""
+    return {str(pad[1]): tuple(round(v, 6) for v in _pad_shape(placed, pad).bounds)
+            for pad in pads(placed)}  # fmt: skip
+
+
+def _copper_of(board: Board, solution: Solution, ref: str) -> tuple[float, ...]:
+    """The box round the copper of *ref*'s first pad, where *solution* puts the part."""
+    part, pose = board[ref], solution.poses[ref]
+    placed = put(board.library[part.footprint],
+                 Placement(part.footprint, ref, part.value, pose.x.mm, pose.y.mm, pose.rot,
+                           pose.back))  # fmt: skip
+    return _copper(placed)["1"]
 
 
 def _line_no() -> int:
@@ -2166,6 +2190,119 @@ def test_an_arc_of_a_footprints_body_is_all_of_the_arc_and_not_its_three_points(
                  / "footprints/LEDs.pretty/LED-5MM.kicad_mod").read_text())  # fmt: skip
     x0, y0, x1, y1 = mm_box(led)
     assert (y0, y1, x0, x1) == pytest.approx((-3.20039, 3.20039, -1.5, 4.50039), abs=2e-6)
+
+
+def _off_its_hole(angle: int) -> Node:
+    """A footprint of one pad and nothing drawn: a hole at (2, 1) whose copper, 3 by
+    1 mm, is 1 mm along the pad and 0.5 mm across it from the hole, the pad turned."""
+    return _footprint(
+        "Off",
+        "",
+        f'(pad "1" thru_hole rect (at 2 1 {angle}) (size 3 1) (drill 0.8 (offset 1 0.5)) '
+        '(layers "*.Cu" "*.Mask"))',
+    )
+
+
+@pytest.mark.parametrize(
+    ("angle", "box"),
+    [(0, (1.5, 1.0, 4.5, 2.0)), (90, (2.0, -1.5, 3.0, 1.5)),
+     (180, (-0.5, 0.0, 2.5, 1.0)), (270, (1.0, 0.5, 2.0, 3.5))],
+)  # fmt: skip
+def test_a_pads_copper_is_off_its_hole_by_its_drills_offset_turned_as_the_pad_is(angle, box):
+    # KiCad draws the copper about a point the drill's offset from the hole, and turns
+    # the offset with the pad: counter-clockwise with y down, so a quarter turn takes
+    # 1 mm along +x to 1 mm up the footprint.
+    shape = _shape(_off_its_hole(angle))
+    assert tuple(v / 1_000_000 for v in shape.copper[0][1]) == box
+    # Nothing else is drawn, so the copper is all the footprint is.
+    assert tuple(v / 1_000_000 for v in shape.box) == box
+    # The pad itself is its hole, which is where it was.
+    assert shape.pads == (("1", 2_000_000, 1_000_000),)
+
+
+@pytest.mark.parametrize("back", [False, True])
+@pytest.mark.parametrize("rot", [0, 90, 180, 270])
+@pytest.mark.parametrize("angle", [0, 90, 180, 270])
+def test_copper_off_its_hole_turns_with_its_footprint_and_is_mirrored_on_the_back(angle, rot, back):
+    footprint = _off_its_hole(angle)
+    turned = _turned(_shape(footprint), rot, back)
+    placed = put(footprint, Placement("Off", "X1", "x", 0.0, 0.0, rot, back))
+    there = _copper(placed)["1"]
+    assert tuple(v / 1_000_000 for v in turned.copper[0][1]) == there
+    assert tuple(v / 1_000_000 for v in turned.box) == there
+    assert [(x / 1_000_000, y / 1_000_000) for _, x, y in turned.pads] == [pad_xy(placed, "1")]
+
+
+def test_copper_off_its_hole_is_where_kicad_has_it_for_a_footprint_turned_or_on_the_back():
+    def mm_copper(rot: int, back: bool) -> tuple[float, ...]:
+        return tuple(
+            v / 1_000_000 for v in _turned(_shape(_off_its_hole(0)), rot, back).copper[0][1]
+        )
+
+    # From (1.5, 1) to (4.5, 2) as it is drawn. A quarter turn takes +x up the board.
+    assert mm_copper(90, False) == (1.0, -4.5, 2.0, -1.5)
+    assert mm_copper(180, False) == (-4.5, -2.0, -1.5, -1.0)
+    # On the back it is mirrored top to bottom, and then turned.
+    assert mm_copper(0, True) == (1.5, -2.0, 4.5, -1.0)
+    assert mm_copper(90, True) == (-2.0, -4.5, -1.0, -1.5)
+
+
+def test_pads_whose_copper_is_off_their_holes_are_kept_apart_by_their_copper():
+    def solved(inset: float) -> Solution:
+        # T1's pad is from 4.5 to 5.5 mm in. O1's hole is *inset* in, and its copper
+        # from 0.5 to 1.5 mm further in than that.
+        board = _ruled(T1="A", O1="B")
+        board.place(board["T1"], against=Edge.LEFT, inset=5 * mm)
+        board.place(board["O1"], against=Edge.LEFT, inset=inset * mm, facing=Edge.TOP)
+        solution = board.solve()
+        assert solution.poses["O1"].rot == 0
+        return solution
+
+    assert [p.text for p in solved(2.9).problems] == [
+        "O1.1 is 0.1 mm from T1.1, and the rules keep copper 0.2 mm apart"
+    ]
+    assert solved(2.8).problems == ()
+
+
+def test_a_part_that_looks_for_its_place_keeps_copper_off_its_hole_as_far_off_as_the_rules_say():
+    board = _ruled(T1="A", O1="B")
+    board.place(board["T1"], centre=True)
+    board.place(board["O1"], near=board["T1"], within=3 * mm, toward=Edge.LEFT)
+    solution = board.solve()
+    assert solution.problems == ()
+    ax0, ay0, ax1, ay1 = _copper_of(board, solution, "O1")
+    bx0, by0, bx1, by1 = _copper_of(board, solution, "T1")
+    apart = math.hypot(max(ax0 - bx1, bx0 - ax1, 0), max(ay0 - by1, by0 - ay1, 0))
+    assert apart == pytest.approx(0.2)
+
+
+@pytest.mark.parametrize("edge", list(Edge))
+def test_against_an_edge_copper_off_its_hole_is_as_near_it_as_the_rules_let_copper_be(edge):
+    board = _ruled(O1="A")
+    board.place(board["O1"], against=edge)
+    solution = board.solve()
+    assert solution.problems == ()
+    x0, y0, x1, y1 = _copper_of(board, solution, "O1")
+    near = {Edge.LEFT: x0 - 100, Edge.RIGHT: 130 - x1, Edge.TOP: y0 - 50, Edge.BOTTOM: 80 - y1}
+    assert near[edge] == pytest.approx(0.5)
+    said = f"O1: 0.5 mm in from the {edge.value} edge, to keep its copper 0.5 mm from it"
+    assert said in solution.chosen
+
+
+def test_copper_off_its_hole_nearer_the_edge_than_the_rules_say_is_a_problem():
+    def solved(inset: float) -> Solution:
+        # The hole is *inset* in from the right edge and the copper reaches 1.5 mm
+        # nearer the edge than the hole.
+        board = _ruled(O1="A")
+        board.place(board["O1"], against=Edge.RIGHT, inset=inset * mm, facing=Edge.TOP)
+        solution = board.solve()
+        assert solution.poses["O1"].rot == 0
+        return solution
+
+    assert [p.text for p in solved(1.8).problems] == [
+        "O1.1 is 0.3 mm from the board's edge, and the rules keep copper 0.5 mm from it"
+    ]
+    assert solved(2.0).problems == ()
 
 
 def test_a_placed_parts_outline_is_where_the_part_is_now():
