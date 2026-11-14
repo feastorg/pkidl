@@ -80,7 +80,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
-from functools import cache
+from functools import cache, lru_cache
 
 import numpy as np
 from shapely.geometry import Polygon
@@ -258,7 +258,7 @@ _AT_A_TIME = 4096  # the offsets a place near something is looked for at, at onc
 _SIFT = True  # whether those are sifted all at once first: off, each is tried in turn
 
 
-@cache
+@lru_cache(maxsize=4)  # a 20 mm distance is 20 MB of them
 def _offsets(limit: int, step: int) -> tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]:
     """Every offset on a grid of *step* within *limit*, nearest first: each as its
     distance squared, dy and dx, and the dx and dy of them all as arrays."""
