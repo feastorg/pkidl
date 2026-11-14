@@ -618,13 +618,22 @@ class Inside(Statement):
 BOARD = "the board"
 
 
+# How far apart each way of putting a board together keeps the pads of different parts,
+# and the parts themselves.
+ASSEMBLED = {"hand": (Length(1_270_000), Length(500_000)), "machine": (Length(0), Length(0))}
+
+
 @dataclass(frozen=True)
 class Rules(Statement):
-    """The widths the board's copper is held to. Made with ``rules``."""
+    """The widths the board's copper is held to, and how far apart its parts are kept
+    for the way it is assembled. Made with ``rules``."""
 
     track: Length
     clearance: Length
     edge: Length
+    assembly: str | None = None
+    pads_apart: Length | None = None
+    bodies_apart: Length | None = None
 
     def __post_init__(self) -> None:
         for name, value in (("track", self.track), ("clearance", self.clearance)):
@@ -632,20 +641,46 @@ class Rules(Statement):
                 raise ValueError(f"rules(): {name}= {value} is not a width")
         if self.edge < Length(0):
             raise ValueError(f"rules(): edge= {self.edge} is outside the board")
+        if self.assembly is not None and not (
+            isinstance(self.assembly, str) and self.assembly in ASSEMBLED
+        ):
+            words = " or ".join(_shown(word) for word in ASSEMBLED)
+            raise ValueError(f"rules(): assembly= {_shown(self.assembly)} is not how a board is "
+                             f"assembled: {words}")  # fmt: skip
+        for name, value in (("pads_apart", self.pads_apart), ("bodies_apart", self.bodies_apart)):
+            if value is not None and value < Length(0):
+                raise ValueError(f"rules(): {name}= {value} is not a distance")
 
     def __str__(self) -> str:
-        return f"rules(track={self.track}, clearance={self.clearance}, edge={self.edge})"
+        said = {"track": self.track, "clearance": self.clearance, "edge": self.edge,
+                "assembly": self.assembly, "pads_apart": self.pads_apart,
+                "bodies_apart": self.bodies_apart}  # fmt: skip
+        return f"rules({', '.join(f'{k}={_shown(v)}' for k, v in said.items() if v is not None)})"
 
     def mentions(self) -> tuple[Part, ...]:
         return ()
 
+    def apart(self) -> tuple[Length, Length]:
+        """How far apart the pads of different parts are kept, and the parts: each the
+        distance said, or else the one the way the board is assembled has."""
+        pads, bodies = ASSEMBLED[self.assembly] if self.assembly else (Length(0), Length(0))
+        return (pads if self.pads_apart is None else self.pads_apart,
+                bodies if self.bodies_apart is None else self.bodies_apart)  # fmt: skip
+
     def claims(self) -> dict[tuple[str, str], object]:
+        pads, bodies = self.apart()
+        word = {} if self.assembly is None else {(BOARD, "assembly"): _shown(self.assembly)}
         return {(BOARD, "track width"): self.track, (BOARD, "clearance"): self.clearance,
-                (BOARD, "clearance from the edge"): self.edge}  # fmt: skip
+                (BOARD, "clearance from the edge"): self.edge, **word,
+                (BOARD, "distance between the pads of different parts"): pads,
+                (BOARD, "distance between parts"): bodies}  # fmt: skip
 
     def data(self) -> dict[str, Any]:
+        said = {"assembly": self.assembly, "pads_apart": self.pads_apart,
+                "bodies_apart": self.bodies_apart}  # fmt: skip
         return {"rules": {"track": self.track.nm, "clearance": self.clearance.nm,
-                          "edge": self.edge.nm}}  # fmt: skip
+                          "edge": self.edge.nm,
+                          **{k: _data(v) for k, v in said.items() if v is not None}}}  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -791,14 +826,26 @@ def keepout(area: Area, *, copper: bool = False, both_sides: bool = False) -> Ke
     return Keepout(area, bool(copper), bool(both_sides), source=_written_at())
 
 
-def rules(*, track: Length | str, clearance: Length | str,
-          edge: Length | str = 0.5 * mm) -> Rules:  # fmt: skip
+def rules(*, track: Length | str, clearance: Length | str, edge: Length | str = 0.5 * mm,
+          assembly: str | None = None, pads_apart: Length | str | None = None,
+          bodies_apart: Length | str | None = None) -> Rules:  # fmt: skip
     """Say the widths the board's copper is held to: how wide a *track* is, the
     *clearance* between copper of two nets, and how far copper stays from the board's
     *edge*. They are the rules the router is given and the ones written into the
     project for KiCad's DRC. Each is said once: a second ``rules`` that gives one
-    differently is a conflict."""
-    return Rules(length(track), length(clearance), length(edge), source=_written_at())
+    differently is a conflict.
+
+    *assembly* is how the board is put together, ``"hand"`` or ``"machine"``, and says
+    how much room its parts are given: *pads_apart* between the copper of pads of
+    different parts, whatever their nets, and *bodies_apart* between the outlines of
+    different parts and of what is fixed on the board. By hand that is 1.27 mm and
+    0.5 mm, and by machine nothing, which is what a board that says none of it has.
+    Either distance may be said, with the word or without, and is then the one. They
+    are held where the parts are placed, and nothing is written to the project for them."""
+    return Rules(length(track), length(clearance), length(edge), assembly,
+                 None if pads_apart is None else length(pads_apart),
+                 None if bodies_apart is None else length(bodies_apart),
+                 source=_written_at())  # fmt: skip
 
 
 def route() -> Route:

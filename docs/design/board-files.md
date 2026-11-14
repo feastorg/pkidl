@@ -65,7 +65,7 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
-| `board.rules(...)` | design rules from intent | yes: a statement, said once; the build writes them into the project and routes to them |
+| `board.rules(...)` | design rules from intent | yes: a statement, said once; the build writes them into the project and routes to them. `assembly="hand"` keeps parts far enough apart to solder, which placement holds |
 | `board.pour("GND", layer=)` | whole-layer pour | yes (`Board.pour`) |
 | `board.route()` | staged routing | yes: a statement; the build has a router (`pkidl.route.Freerouting` unless given another) route the board, with its pours known and checked (`pkidl.routing`) |
 | the build and the scorecard | KiCad files, refill, DRC, measures | yes: `board.build(dir)` writes the board and its project; `just corpus` builds each `board.py`, has KiCad refill and check it, and scores it under its reference |
@@ -420,7 +420,10 @@ one pitch for the whole row, that of the two parts that need the most. A pitch g
 that is less than that is a problem, and none of the row is placed (`row(R1, R2, R3,
 beside=Q1, toward=Edge.RIGHT, pitch=1.7 mm) does not fit: R1 and R2 are clear of each
 other at a pitch of 1.8 mm or more`). The pitch it names is the one the row has when
-none is given: given, it places the row as none does.
+none is given: given, it places the row as none does. Where the rules keep parts
+apart for the way the board is assembled ("room between parts", below), the pitch
+with none given keeps that as well, and the one named is the least that may be said,
+which keeps the pads apart and lets the outlines touch.
 
 The row is wholly on that side of the part's outline, and never over it. It first
 looks touching the part, or as far off it as keeps their pads the rules' clearance
@@ -455,6 +458,75 @@ part is, an edge or a point, is the usual problem of two places, and `near=` is 
 solved alone. A part is in one row beside a part: a second is a conflict, and a row
 along an edge as well is a problem of that part (`R1 is in two rows`), with each row
 going on without it.
+
+**As built, room between parts:** the clearance in `rules` is between copper on two
+nets, 0.2 or 0.3 mm on the corpus boards, and it was the only distance kept between two
+parts that have nothing to do with each other: their outlines could touch. That is what
+a board may be electrically, and not how one is laid out to be soldered. Measured on
+two corpus boards as they were placed: an LED's pad 0.55 mm from a barrel jack's, pads
+on different nets 0.47 mm apart between two banks of resistors, a resistor's body
+0.13 mm from a binding post's outline, and resistor bodies shoulder to shoulder. So
+`rules` says how the board is assembled (decided 2026-11-14):
+
+```python
+board.rules(track=0.5 * mm, clearance=0.3 * mm, assembly="hand")
+board.rules(track=0.5 * mm, clearance=0.3 * mm, assembly="hand", pads_apart=1.5 * mm)
+board.rules(track=0.5 * mm, clearance=0.3 * mm, pads_apart=1 * mm, bodies_apart=0.3 * mm)
+```
+
+`assembly=` is a word, `"hand"` or `"machine"`, and any other is refused at the line
+that says it. It stands for two distances. `pads_apart` is between the copper of pads
+of different parts, whatever their nets, two pads on one net as well. The clearance
+between nets is unchanged and holds everywhere, and between two parts the larger of the
+two is kept. `bodies_apart` is between the outlines of different parts, and between a
+part's outline and the outline of what is fixed on the board. By hand they are 1.27 mm
+and 0.5 mm. By machine both are nothing, which is what a board that says none of this
+has: it is placed exactly as it was. Either distance may be said as a length, with the
+word or without, and is then the one kept. Two `rules` that give the word or either
+distance differently are a conflict, as for the widths.
+
+Two things are not held to `bodies_apart` with each other. The parts of one row whose
+pitch is said are as far apart as the pitch puts them, the pitch being the board
+file's word for it. A part placed `on=` something fixed may overlap that thing, and
+may be as near it as it likes. Each is an exemption from `bodies_apart` only, and only
+between those two: the pads of a row's parts are still `pads_apart` from each other,
+and both parts are held to both distances with everything else.
+
+A place that is looked for keeps both distances from every part already placed and
+from what is fixed: `near=`, `after=` and `before=` along an edge, and a row beside a
+part. A row beside a part with no pitch said takes the least pitch that keeps both
+between its parts, and first looks as far from the part it is beside as keeps both
+from it. A part with no place is told as before, and the distance it is told is the
+nearest is one that would do. Along an edge the place is tried hard against each
+thing in the way at `bodies_apart` from it, so that distance is kept exactly, and the
+pads' distance to the 0.1 mm step that first keeps it.
+
+A place that is given is not moved: against an edge, at a point, on a thing, between
+two parts, at the centre, in a row along an edge. Where it breaks either distance it is
+a problem of the solve, with the statements about both parts and the `rules` (`R1.2 is
+0.36 mm from J1.1, and the rules keep the pads of different parts 1.27 mm apart`, `R212
+is 0.13 mm from P101, and the rules keep parts 0.5 mm apart`). Two parts are one
+problem: that they overlap, or else their nearest pads that are too near, or else
+their outlines. Pads on two nets that are nearer than the clearance are told the
+larger of the two distances. A row spread evenly along an edge, whose gaps are all
+one size, does not fit where that size is less than `bodies_apart`, and none of it is
+placed (eight resistors 3.6 mm long along a 30 mm edge: `row(R1, R2, R3, R4, R5, R6,
+R7, R8, along=Edge.BOTTOM, pitch="even") does not fit: its parts are 28.8 mm along the
+bottom edge, which is 30 mm: that leaves 0.133333 mm between them, and the rules keep
+parts 0.5 mm apart`). Its pads are told pair by pair, as the clearance between them is.
+
+Both are measured as the clearance is: a pad as the box around its copper, a part as
+its outline, as far apart as the nearest points of the two boxes, between parts that
+share a face. A part's unplated hole is a pad here as it is there. The pads of what is
+fixed on the board are not measured, as they are not for the clearance: a part keeps
+off a fixed thing by its outline.
+
+`Solution.chosen` says once what is kept and where each number came from (`the rules
+keep the pads of different parts 1.5 mm apart (pads_apart=) and parts 0.5 mm apart
+(assembly="hand")`). KiCad's board setup has no rule for either distance, and
+nothing is written into the project for them, so its DRC does not check them: they are
+held where the parts are placed. Its custom rules could say both (`physical_clearance`,
+`courtyard_clearance`), and writing them is not done.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline

@@ -9,6 +9,21 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- Room between parts by how the board is assembled. `board.rules(track=0.5 * mm,
+  clearance=0.3 * mm, assembly="hand")` keeps the copper of pads of different parts
+  1.27 mm apart, whatever their nets, and the outlines of parts 0.5 mm from each other
+  and from what is fixed on the board. `pads_apart=` and `bodies_apart=` say either
+  distance as a length, with the word or without, and win over the word's.
+  `assembly="machine"` is nothing more than the clearance, as is a board that says none
+  of it, which is placed exactly as before. A part that looks for its place (`near=`,
+  `after=`, `before=`, a row beside a part) keeps both distances, and a row beside a
+  part with no pitch takes the least pitch that does. A place that is given is not
+  moved: where it breaks one it is a problem naming the two pads or the two parts
+  (`R1.2 is 0.36 mm from J1.1, and the rules keep the pads of different parts 1.27 mm
+  apart`). The parts of a row with a pitch said, and a part `on=` something fixed with
+  that thing, are not held to `bodies_apart` with each other. `Solution.chosen` says
+  what is kept. Neither distance is written into the project, so KiCad's DRC does not
+  check them. (#66)
 - A row of parts beside a part. `board.row(resistors, beside=switch, toward=Edge.RIGHT)`
   puts the parts side by side on the side of the part that is toward that edge, in the
   order named, from the top down or from the left. Each stands across the row, its

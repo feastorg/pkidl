@@ -79,6 +79,15 @@ only where its pads are clear.
 A pad is no nearer the board's edge than the rules' edge clearance, held the same way,
 and a part ``against=`` an edge with no inset is as far in as that takes.
 
+Where the rules say how the board is assembled, the pads of two parts are kept as far
+apart as they say whatever nets they are on, and so are the outlines of two parts, and
+of a part and what is fixed on the board, between those that share a face. A part that
+looks for a place looks only where both are kept; a row beside a part with no pitch
+said takes the least pitch that keeps them and first looks that far from the part; and
+a place that is given and breaks one is reported, a pair of parts once. The parts of a
+row whose pitch is said are as far apart as it puts their outlines, and a part ``on=``
+a thing as near that thing as it is put: their pads are held as any are.
+
 A part lies inside the board's outline as it is drawn (``pkidl.edge``), rounded corners
 and cut-outs included, and clear of what is fixed on the board: its mounting holes, each
 taken as the box around its own footprint, as a part is. Neither moves a part: one that
@@ -347,6 +356,37 @@ def _overlap(a: Box, b: Box) -> bool:
     return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
+def _off(a: Box, b: Box) -> int:
+    """How far apart two boxes are: nothing where they touch or overlap."""
+    dx, dy = max(a[0] - b[2], b[0] - a[2], 0), max(a[1] - b[3], b[1] - a[3], 0)
+    return math.isqrt(dx * dx + dy * dy)
+
+
+def _by(x0: np.ndarray, y0: np.ndarray, x1: np.ndarray, y1: np.ndarray, taken: Box,
+        room: int) -> np.ndarray:  # fmt: skip
+    """Whether each of the boxes overlaps *taken*, or with *room* is nearer it than that."""
+    t0, t1, t2, t3 = taken
+    if not room:
+        return (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+    # Within that of it both ways, which few are, and of those the ones by a corner
+    # of it are as far off as they are from the corner.
+    near = (x0 < t2 + room) & (t0 - room < x1) & (y0 < t3 + room) & (t1 - room < y1)
+    at = np.nonzero(near)
+    if at[0].size:
+        xa, ya, xb, yb = (np.broadcast_to(v, near.shape)[at] for v in (x0, y0, x1, y1))
+        dx = np.maximum(np.maximum(xa - t2, t0 - xb), 0)
+        dy = np.maximum(np.maximum(ya - t3, t1 - yb), 0)
+        near[at] = dx * dx + dy * dy < room * room
+    return near
+
+
+def _surely(taken: Box, room: int) -> Box:
+    """*taken* grown so that a box overlapping it is surely nearer *taken* than *room*,
+    by a corner too: what a sift may leave out without looking closer."""
+    by = math.isqrt(room * room // 2)
+    return (taken[0] - by, taken[1] - by, taken[2] + by, taken[3] + by)
+
+
 def solve(
     circuit: Circuit,
     library: Mapping[str, Node],
@@ -441,6 +481,10 @@ class _Solver:
         self.gap = max((s.clearance.nm for s in self.rules), default=0)
         # And how far they keep copper from the board's edge.
         self.margin = max((s.edge.nm for s in self.rules), default=0)
+        # And, for the way the board is assembled, the pads of different parts,
+        # whatever their nets, and the outlines of parts and of what is fixed.
+        self.pads_apart = max((s.apart()[0].nm for s in self.rules), default=0)
+        self.bodies_apart = max((s.apart()[1].nm for s in self.rules), default=0)
         self._boxes: dict[str, tuple[Pose, Box]] = {}
         self.circuit = circuit
         self.asks: dict[str, list[Place]] = {}
@@ -610,6 +654,17 @@ class _Solver:
                 if s.inset is None and held > 0:
                     self._chose(f"{ref}: {Length(held)} in from the {edge.value} edge, to "
                                 f"keep its copper {Length(self.margin)} from it")  # fmt: skip
+        if self.pads_apart or self.bodies_apart:
+            notes = []
+            for i, (what, name) in enumerate((("the pads of different parts", "pads_apart"),
+                                              ("parts", "bodies_apart"))):  # fmt: skip
+                word = next((s.assembly for s in self.rules if s.assembly), None)
+                by = (f"{name}=" if any(getattr(s, name) is not None for s in self.rules)
+                      else f'assembly="{word}"' if word else "not said")  # fmt: skip
+                notes.append(
+                    f"{what} {Length((self.pads_apart, self.bodies_apart)[i])} apart ({by})"
+                )
+            self._chose(f"the rules keep {' and '.join(notes)}")
         self._check()
         problems = sorted(self.problems, key=lambda p: ([natural(r) for r in p.parts], p.text))
         kept = tuple(Kept(s, (Length(box[0]), Length(box[1]), Length(box[2]), Length(box[3])),
@@ -862,19 +917,22 @@ class _Solver:
         off = [-(t.box[1 - a] if out else t.box[3 - a]) for t in shapes]
         mids = [(t.box[a] + t.box[a + 2]) // 2 for t in shapes]
         least, pair = 0, (refs[0], refs[1])
+        pitched = said and isinstance(row.pitch, Length)
         for i, j in combinations(range(len(refs)), 2):
             s, t = shapes[i], shapes[j]
+            # A pitch that is said is the distance between its parts' outlines, and
+            # one that is not keeps them as far apart as the rules keep parts.
             need = (s.box[a + 2] - mids[i]) - (t.box[a] - mids[j])
-            for n, p in s.copper if self.gap else ():
+            need += 0 if pitched else self.bodies_apart
+            for n, p in s.copper if self.gap or self.pads_apart else ():
                 net = self.nets[refs[i]].get(n)
                 for m, q in t.copper:
-                    if net is not None and net == self.nets[refs[j]].get(m):
-                        continue
+                    gap = self._kept_apart(net, self.nets[refs[j]].get(m))[0]
                     # Across the row the two pads are where they are, whatever the pitch.
                     across = max(p[1 - a] + off[i] - q[3 - a] - off[j],
                                  q[1 - a] + off[j] - p[3 - a] - off[i], 0)  # fmt: skip
-                    if across < self.gap:
-                        need = max(need, _apart(self.gap, across)
+                    if across < gap:
+                        need = max(need, _apart(gap, across)
                                    + (p[a + 2] - mids[i]) - (q[a] - mids[j]))  # fmt: skip
             each = -(-need // (j - i))  # the parts between them are at the one pitch too
             if each > least:
@@ -893,26 +951,27 @@ class _Solver:
 
     def _out(self, row: Row, stood: _Stood) -> tuple[tuple[int, int], int]:
         """Where a row beside a part first looks, from touching the part: off it as far
-        as keeps their pads as far apart as the rules say. Across and down, and how far."""
+        as the rules keep parts apart, and their pads. Across and down, and how far."""
         assert row.beside is not None
         a = 1 if row.toward in (Edge.LEFT, Edge.RIGHT) else 0
         by = row.beside.ref
         pose = self.poses[by]
         there = _turned(self.shapes[by], pose.rot, pose.back)
         far = 0
-        for ref, (turned, x, y) in stood.items() if self.gap else ():
+        kept = self.gap or self.pads_apart or self.bodies_apart
+        for ref, (turned, x, y) in stood.items() if kept else ():
             if not (turned.through or there.through or self._back(ref) == pose.back):
                 continue
+            far = max(far, self.bodies_apart)
             for n, p in turned.copper:
                 p, net = _moved(p, x, y), self.nets[ref].get(n)
                 for m, q in there.copper:
-                    if net is not None and net == self.nets[by].get(m):
-                        continue
+                    gap = self._kept_apart(net, self.nets[by].get(m))[0]
                     q = _moved(q, pose.x.nm, pose.y.nm)
                     along = max(p[a] - q[a + 2], q[a] - p[a + 2], 0)
                     across = max(p[1 - a] - q[3 - a], q[1 - a] - p[3 - a], 0)
-                    if along < self.gap:
-                        far = max(far, _apart(self.gap, along) - across)
+                    if along < gap:
+                        far = max(far, _apart(gap, along) - across)
         way = far if row.toward in (Edge.RIGHT, Edge.BOTTOM) else -far
         return ((way, 0) if a == 1 else (0, way)), far
 
@@ -939,7 +998,8 @@ class _Solver:
         back = bool(faces[True])
         stood, least, pair, (wide, high) = self._stood(row, self._turn_of(row))
         if isinstance(row.pitch, Length) and row.pitch.nm < least:
-            pads = f", their pads {Length(self.gap)} apart," if self.gap else ""
+            apart = max(self.gap, self.pads_apart)
+            pads = f", their pads {Length(apart)} apart," if apart else ""
             self._problem(refs, f"{row} does not fit: {pair[0]} and {pair[1]} are clear of "
                           f"each other{pads} at a pitch of {Length(least)} or more",
                           row)  # fmt: skip
@@ -950,16 +1010,18 @@ class _Solver:
         outs, alongs = _beyond(_FURTHER.nm, STEP.nm)
         # What each part may not overlap wherever the row is tried: what is fixed on
         # the board, the parts placed that share a face with it, and what they keep clear.
-        named: dict[str, list[tuple[str, Box]]] = {}
+        # With each, how far off the rules keep a part's outline: an area kept clear
+        # is only kept out of.
+        named: dict[str, list[tuple[str, Box, int]]] = {}
         for ref, (turned, _, _) in stood.items():
             holed = turned.through
-            named[ref] = [(f.label, taken) for f, taken, through in self.fixed
+            named[ref] = [(f.label, taken, self.bodies_apart) for f, taken, through in self.fixed
                           if holed or through or f.back == back]  # fmt: skip
-            named[ref] += [(other, self._box(other)) for other in done
+            named[ref] += [(other, self._box(other), self.bodies_apart) for other in done
                            if other in self.poses and other not in refs
                            and (holed or self.shapes[other].through
                                 or self.poses[other].back == back)]  # fmt: skip
-            named[ref] += [(f"{s.area.part.ref}'s {s.area.name} area", kept)
+            named[ref] += [(f"{s.area.part.ref}'s {s.area.name} area", kept, 0)
                            for s, kept, on in self._kept(done) if holed or back in on]  # fmt: skip
         b0, b1, b2, b3 = self.board
         blocked: dict[str, int] = {}
@@ -993,8 +1055,9 @@ class _Solver:
                 if count:
                     blocked[_EDGE] = blocked.get(_EDGE, 0) + int((~on).sum())
                     blocked[_AREA] = blocked.get(_AREA, 0) + int((on & ~room).sum())
-                for name, (t0, t1, t2, t3) in named[ref]:
-                    over = (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+                for name, taken, room_by in named[ref]:
+                    over = (_by(x0, y0, x1, y1, taken, room_by) if count
+                            else _by(x0, y0, x1, y1, _surely(taken, room_by), 0))  # fmt: skip
                     ok &= ~over
                     if count:
                         blocked[name] = blocked.get(name, 0) + int((on & room & over).sum())
@@ -1099,6 +1162,12 @@ class _Solver:
                               f"along {edge}, which is {Length(hi - lo)}", row)  # fmt: skip
                 return None
             gap = (hi - lo - sum(long)) // (len(long) + 1)
+            if gap < self.bodies_apart:
+                self._problem(refs, f"{row} does not fit: its parts are {Length(sum(long))} "
+                              f"along {edge}, which is {Length(hi - lo)}: that leaves "
+                              f"{Length(gap)} between them, and the rules keep parts "
+                              f"{Length(self.bodies_apart)} apart", row, *self.rules)  # fmt: skip
+                return None
             return lo + gap * (i + 1) + sum(long[:i]) - turned.box[axis]
         middles = [(lo + hi) // 2 + (2 * j - (len(long) - 1)) * row.pitch.nm // 2
                    for j in range(len(long))]  # fmt: skip
@@ -1281,6 +1350,9 @@ class _Solver:
         forward = any(word == "after" for word, _ in beside)
         ends = [box for f, box, _ in self.fixed]
         ends += [self._box(r) for r in done if r != ref and r in self.poses]
+        # And as far off each of those as the rules keep parts apart.
+        room = self.bodies_apart
+        ends += [(o[0] - room, o[1] - room, o[2] + room, o[3] + room) for o in ends if room]
         ends += [box for _, box, _ in self._kept(done)]
         tries = {(o[2] if level else o[3]) - b0 if forward else (o[0] if level else o[1]) - b1
                  for o in ends}  # fmt: skip
@@ -1404,39 +1476,70 @@ class _Solver:
                 return f
         return None
 
+    def _close(self, box: Box, back: bool, through: bool, ref: str = "") -> list[tuple[Fixed, int]]:
+        """What is fixed on the board that *box*, on that face, is not over and is
+        nearer than the rules keep parts apart, each with how near, leaving out what
+        *ref* is said to be on."""
+        if not self.bodies_apart:
+            return []
+        on = {s.on for s in self.asks.get(ref, [])}
+        return [(f, d) for f, taken, holed in self.fixed
+                if (through or holed or f.back == back) and f not in on
+                and not _overlap(box, taken)
+                and (d := _off(box, taken)) < self.bodies_apart]  # fmt: skip
+
+    def _pitched(self, a: str, b: str) -> bool:
+        """Whether the two parts are in one row whose pitch is said: how far apart
+        their outlines are is then what the board file said."""
+        return any(isinstance(row.pitch, Length) and any(p.ref == b for p in row.parts)
+                   for row in self.rows.get(a, ()))  # fmt: skip
+
+    def _kept_apart(self, one: str | None, two: str | None) -> tuple[int, str]:
+        """How far apart the rules keep two pads of different parts, by the nets they
+        are on, and what it is they keep that far apart: copper on different nets, or
+        the pads of different parts where that is more."""
+        gap = 0 if one is not None and one == two else self.gap
+        if gap >= self.pads_apart:
+            return gap, "copper"
+        return self.pads_apart, "the pads of different parts"
+
     def _tight(self, ref: str, turned: _Shape, x: int, y: int,
-               other: str) -> tuple[int, str, str] | None:  # fmt: skip
+               other: str) -> tuple[int, str, str, int, str] | None:  # fmt: skip
         """The pad of this part, turned and put there, and the pad of *other* that are
-        closer than the rules keep copper on different nets: how far apart, and which
-        two, the nearest pair."""
+        closer than the rules keep them, as copper on different nets or as the pads of
+        different parts: how far apart, which two, the nearest pair, and how far the
+        rules keep what."""
         box, theirs = _moved(turned.box, x, y), self._box(other)
-        if not self.gap or not _overlap(
-            (box[0] - self.gap, box[1] - self.gap, box[2] + self.gap, box[3] + self.gap), theirs
+        reach = max(self.gap, self.pads_apart)
+        if not reach or not _overlap(
+            (box[0] - reach, box[1] - reach, box[2] + reach, box[3] + reach), theirs
         ):
             return None
         pose = self.poses[other]
         there = _turned(self.shapes[other], pose.rot, pose.back)
-        worst: tuple[int, str, str] | None = None
+        worst: tuple[int, str, str, int, str] | None = None
         for n, a in turned.copper:
             a, net = _moved(a, x, y), self.nets[ref].get(n)
             for m, b in there.copper:
-                if net is not None and net == self.nets[other].get(m):
+                gap, what = self._kept_apart(net, self.nets[other].get(m))
+                if not gap:
                     continue
-                b = _moved(b, pose.x.nm, pose.y.nm)
-                dx, dy = max(a[0] - b[2], b[0] - a[2], 0), max(a[1] - b[3], b[1] - a[3], 0)
-                d = math.isqrt(dx * dx + dy * dy)
-                if d < self.gap and (worst is None or (d, natural(n), natural(m)) <
-                                     (worst[0], natural(worst[1]), natural(worst[2]))):  # fmt: skip
-                    worst = (d, n, m)
+                d = _off(a, _moved(b, pose.x.nm, pose.y.nm))
+                if d < gap and (worst is None or (d, natural(n), natural(m)) <
+                                (worst[0], natural(worst[1]), natural(worst[2]))):  # fmt: skip
+                    worst = (d, n, m, gap, what)
         return worst
 
     def _clear(self, ref: str, box: Box, back: bool, through: bool, of: Iterable[str],
                keeps: bool = True, at: tuple[_Shape, int, int] | None = None) -> bool:  # fmt: skip
         """Inside the board, over nothing fixed on it but what the part is on,
         overlapping none *of* the parts placed and, with *keeps*, in no area of theirs
-        that is kept clear. With *at*, the part's shape and where it is, its pads are
-        as far from theirs as the rules say as well."""
+        that is kept clear, and as far from each of those parts and things as the rules
+        keep parts apart. With *at*, the part's shape and where it is, its pads are as
+        far from theirs as the rules say as well."""
         if not self._on(box) or self._over(box, back, through, ref) is not None:
+            return False
+        if self._close(box, back, through, ref):
             return False
         if at is not None and self._shy(*at) is not None:
             return False
@@ -1448,6 +1551,9 @@ class _Solver:
                 continue
             shares = through or self.shapes[other].through or self.poses[other].back == back
             if shares and _overlap(box, self._box(other)):
+                return False
+            if (shares and self.bodies_apart and _off(box, self._box(other)) < self.bodies_apart
+                    and not self._pitched(ref, other)):  # fmt: skip
                 return False
             if shares and at is not None and self._tight(ref, *at, other) is not None:
                 return False
@@ -1497,7 +1603,6 @@ class _Solver:
                   if other != ref and other in self.poses
                   and (through or self.shapes[other].through
                        or self.poses[other].back == back)]  # fmt: skip
-        barred = [box for _, box in named]
         b0, b1, b2, b3 = self.board
 
         # Where each way puts the part's box, before the offset is added.
@@ -1534,7 +1639,9 @@ class _Solver:
             part's box there is on the board's box, on the side said, and over nothing
             it may not be over: every place that is clear is one of these, and they are
             found all at once."""
-            out = [*barred]
+            # An area kept clear is kept out of; a part or a thing is kept as far off
+            # as the rules keep parts apart, and here as far as is surely too near.
+            out = [_surely(box, self.bodies_apart) for _, box in named]
             if keeps:
                 out += [kept for _, kept, faces in self._kept(done) if through or back in faces]
             x0, y0, x1, y1 = boxes_at(grid, a, b)
@@ -1544,8 +1651,8 @@ class _Solver:
             if least:  # nearer than the least said, by the pad this way puts near
                 _, dxs, dys = grid
                 ok &= (dxs[a:b] * dxs[a:b] + dys[a:b] * dys[a:b]) >= least * least
-            for t0, t1, t2, t3 in out:
-                ok &= ~((x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1))
+            for taken in out:
+                ok &= ~_by(x0, y0, x1, y1, taken, 0)
             # Where the outline is drawn in from its box, a box by one of the pieces cut
             # away is on the board only if its corners are.
             by_cut = np.zeros(ok.shape, dtype=bool)
@@ -1615,8 +1722,8 @@ class _Solver:
                 blocked[_EDGE] = blocked.get(_EDGE, 0) + int((side & ~on).sum())
                 room = in_area(x0, y0, x1, y1)
                 blocked[_AREA] = blocked.get(_AREA, 0) + int((side & on & ~room).sum())
-                for name, (t0, t1, t2, t3) in named:
-                    over = side & on & room & (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+                for name, taken in named:
+                    over = side & on & room & _by(x0, y0, x1, y1, taken, self.bodies_apart)
                     blocked[name] = blocked.get(name, 0) + int(over.sum())
             most = sorted((name for name, n in blocked.items() if n),
                           key=lambda name: (-blocked[name], natural(name)))[:3]  # fmt: skip
@@ -1681,6 +1788,10 @@ class _Solver:
             pose = self.poses[ref]
             if (f := self._over(box, pose.back, self.shapes[ref].through, ref)) is not None:
                 self._problem((ref,), f"{ref} is over {f.label}", *self.said[ref])
+            for f, d in self._close(box, pose.back, self.shapes[ref].through, ref):
+                self._problem((ref,), f"{ref} is {Length(d)} from {f.label}, and the rules "
+                              f"keep parts {Length(self.bodies_apart)} apart",
+                              *self.said[ref], *self.rules)  # fmt: skip
             turned = _turned(self.shapes[ref], pose.rot, pose.back)
             if (
                 max(over) <= 0
@@ -1702,12 +1813,17 @@ class _Solver:
                     pose = self.poses[a]
                     turned = _turned(self.shapes[a], pose.rot, pose.back)
                     if (tight := self._tight(a, turned, pose.x.nm, pose.y.nm, b)) is not None:
-                        d, n, m = tight
+                        d, n, m, gap, what = tight
                         one, two = (
                             f"{r}.{k}" if k else f"a hole of {r}" for r, k in ((a, n), (b, m))
                         )
                         self._problem((a, b), f"{one} is {Length(d)} from {two}, and the "
-                                      f"rules keep copper {Length(self.gap)} apart",
+                                      f"rules keep {what} {Length(gap)} apart",
+                                      *self.said[a], *self.said[b], *self.rules)  # fmt: skip
+                    elif ((d := _off(self._box(a), self._box(b))) < self.bodies_apart
+                          and not self._pitched(a, b)):  # fmt: skip
+                        self._problem((a, b), f"{a} is {Length(d)} from {b}, and the rules "
+                                      f"keep parts {Length(self.bodies_apart)} apart",
                                       *self.said[a], *self.said[b], *self.rules)  # fmt: skip
         for s, kept, faces in self._kept(placed):
             owner = s.area.part.ref

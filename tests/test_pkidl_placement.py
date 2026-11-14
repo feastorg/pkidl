@@ -2377,15 +2377,17 @@ def test_a_hole_of_a_part_too_near_the_edge_is_called_a_hole():
     ]
 
 
-def _crowded(seed: int) -> Board:
+def _crowded(seed: int, **how: Any) -> Board:
     """A board with a module, a header, a mounting hole and a pad fixed on the back in
     the way, an area of the module kept clear, and six parts each to be near something,
-    at distances and on sides picked by *seed*."""
+    at distances and on sides picked by *seed*. *how* is what its rules say of how it
+    is assembled."""
     import random
 
     pick = random.Random(seed)
-    board = _ruled(U1="A B C D E", P1="A B C D", R1="A B", R2="B C", R3="C D", T1="A", T2="E",
+    board = _board(U1="A B C D E", P1="A B C D", R1="A B", R2="B C", R3="C D", T1="A", T2="E",
                    Q1="D E", H1="")  # fmt: skip
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, **how)
     board.place(board["U1"], centre=True, facing=pick.choice(list(Edge)))
     board.place(board["P1"], against=pick.choice([Edge.TOP, Edge.BOTTOM]), inset=3 * mm)
     board.place(board["H1"], against=Edge.LEFT, inset=pick.choice([3, 6]) * mm)
@@ -4588,3 +4590,556 @@ def test_a_row_beside_a_part_is_level_with_the_middle_of_its_outline_not_its_ori
     assert solution.ok, _told(solution)
     assert solution.poses["K1"].y.mm == pytest.approx(67)
     assert _box_of(board, solution, "R2") == pytest.approx((19, 14.1, 22.6, 15.9))
+
+
+HAND = {"assembly": "hand"}
+
+
+def _assembled(how: dict[str, Any], clearance: float = 0.2, **parts: str) -> Board:
+    """As ``_ruled``, and with what the rules say of how the board is assembled."""
+    board = _board(**parts)
+    board.rules(track=0.25 * mm, clearance=clearance * mm, **how)
+    return board
+
+
+def _pads_apart(board: Board, solution: Solution, a: str, b: str) -> float:
+    """How far the copper of *a*'s pads is from that of *b*'s, the nearest two, by the
+    footprints as they are placed and not by the solver's own reckoning."""
+
+    def copper(ref: str) -> list[Any]:
+        part, pose = board[ref], solution.poses[ref]
+        placed = put(board.library[part.footprint],
+                     Placement(part.footprint, ref, part.value, pose.x.mm, pose.y.mm, pose.rot,
+                               pose.back))  # fmt: skip
+        return [_pad_shape(placed, pad) for pad in pads(placed)]
+
+    return round(min(p.distance(q) for p in copper(a) for q in copper(b)), 6)
+
+
+def _bodies_apart(board: Board, solution: Solution, a: str, b: str | tuple) -> float:
+    """How far *a*'s outline is from *b*'s, or from a box given as ``_box_of`` gives one."""
+    one, two = _box_of(board, solution, a), b
+    if isinstance(two, str):
+        two = _box_of(board, solution, two)
+    dx = max(one[0] - two[2], two[0] - one[2], 0)
+    dy = max(one[1] - two[3], two[1] - one[3], 0)
+    return round(math.hypot(dx, dy), 6)
+
+
+@pytest.mark.parametrize("side", ["front", "back"])
+@pytest.mark.parametrize("nets", ["A B", "A A"])
+def test_a_part_that_looks_for_its_place_keeps_its_pads_from_another_parts_whatever_the_net(
+    side, nets
+):
+    one, two = nets.split()
+
+    def apart(how: dict[str, Any]) -> float:
+        board = _assembled(how, T1=one, T2=two)
+        board.place(board["T1"], centre=True, side=side)
+        board.place(board["T2"], near=board["T1"], within=5 * mm, side=side)
+        solution = board.solve()
+        assert solution.problems == ()
+        return _pads_apart(board, solution, "T1", "T2")
+
+    # With nothing said of assembly, the copper clearance between two nets and no more.
+    assert apart({}) == (0.2 if one != two else 0)
+    # By hand, 1.27 mm between the pads of two parts: the first 0.1 mm step that keeps it.
+    assert apart(HAND) == pytest.approx(1.3)
+    assert apart({"pads_apart": 0.8 * mm}) == pytest.approx(0.8)
+    assert apart({"assembly": "hand", "pads_apart": 0.8 * mm}) == pytest.approx(0.8)
+
+
+def test_parts_that_share_no_face_are_not_kept_apart_and_a_part_with_holes_shares_both():
+    # A pad on the back may sit under one on the front, however the board is assembled.
+    board = _assembled(HAND, T1="A", T2="B")
+    board.place(board["T1"], centre=True)
+    board.place(board["T2"], near=board["T1"], within=3 * mm, side="back")
+    solution = board.solve()
+    assert solution.ok and _pads_apart(board, solution, "T1", "T2") == 0
+    assert _bodies_apart(board, solution, "T1", "T2") == 0
+    # A pin in a hole is on both faces: a pad on the back keeps off its copper, to
+    # the first 0.1 mm step that does.
+    for how, least in (({}, 0.2), (HAND, 1.27)):
+        board = _assembled(how, O1="A", T1="X")
+        board.place(board["O1"], centre=True)
+        board.place(board["T1"], near=board["O1"], within=5 * mm, side="back")
+        solution = board.solve()
+        assert solution.problems == ()
+        assert least <= _pads_apart(board, solution, "O1", "T1") < least + 0.1
+
+
+def test_the_clearance_between_nets_still_holds_where_it_is_more_than_between_pads():
+    def apart(nets: str) -> float:
+        one, two = nets.split()
+        board = _assembled({"pads_apart": 0.3 * mm}, clearance=0.5, T1=one, T2=two)
+        board.place(board["T1"], centre=True)
+        board.place(board["T2"], near=board["T1"], within=5 * mm)
+        solution = board.solve()
+        assert solution.problems == ()
+        return _pads_apart(board, solution, "T1", "T2")
+
+    assert apart("A B") == pytest.approx(0.5) and apart("A A") == pytest.approx(0.3)
+
+    # And where places are given: each pair is told the distance it is held to.
+    def told(inset: float, nets: str) -> list[str]:
+        one, two = nets.split()
+        board = _assembled({"pads_apart": 0.3 * mm}, clearance=0.5, T1=one, T2=two)
+        board.place(board["T1"], against=Edge.LEFT, inset=1 * mm)
+        board.place(board["T2"], against=Edge.LEFT, inset=inset * mm)
+        return [p.text for p in board.solve().problems]
+
+    assert told(2.4, "A B") == ["T1.1 is 0.4 mm from T2.1, and the rules keep copper 0.5 mm apart"]
+    assert told(2.4, "A A") == [] and told(2.5, "A B") == []
+    assert told(2.2, "A A") == [
+        "T1.1 is 0.2 mm from T2.1, and the rules keep the pads of different parts 0.3 mm apart"
+    ]
+    # Where both are broken it is one problem: the larger distance, which mends both.
+    assert told(2.2, "A B") == ["T1.1 is 0.2 mm from T2.1, and the rules keep copper 0.5 mm apart"]
+
+
+def test_pads_whose_place_is_given_too_near_another_parts_are_one_problem_of_the_two_parts():
+    def given(inset: float, how: dict[str, Any], nets: str = "A A") -> tuple[Problem, ...]:
+        one, two = nets.split()
+        board = _board(T1=one, T2=two)
+        board.place(board["T1"], against=Edge.LEFT, inset=1 * mm)
+        board.place(board["T2"], against=Edge.LEFT, inset=inset * mm)
+        board.rules(track=0.25 * mm, clearance=0.2 * mm, **how)
+        return board.solve().problems
+
+    line = _line_no() - 5
+    (problem,) = given(2.36, HAND)
+    assert problem.text == ("T1.1 is 0.36 mm from T2.1, and the rules keep the pads of different "
+                            "parts 1.27 mm apart")  # fmt: skip
+    assert problem.parts == ("T1", "T2")
+    # It is about both places and the rules, any of which could be what changes.
+    assert [str(s) for s in problem.statements] == [
+        "place(T1, against=Edge.LEFT, inset=1 mm)",
+        "place(T2, against=Edge.LEFT, inset=2.36 mm)",
+        'rules(track=0.25 mm, clearance=0.2 mm, edge=0.5 mm, assembly="hand")',
+    ]
+    assert str(problem).endswith(f"apart ({HERE}:{line}, {HERE}:{line + 1}, {HERE}:{line + 2})")
+    # Nothing is moved to keep it: the parts are where they were said to be.
+    assert given(2.36, {}) == ()
+    # As far apart as the rules say is far enough, and a hair less is not.
+    assert given(3.27, HAND) == ()
+    assert [p.text for p in given(3.269999, HAND)] == [
+        "T1.1 is 1.269999 mm from T2.1, and the rules keep the pads of different parts 1.27 mm "
+        "apart"
+    ]
+    # Pads on two nets closer than the clearance as well are told the larger distance.
+    assert [p.text for p in given(2.1, HAND, "A B")] == [
+        "T1.1 is 0.1 mm from T2.1, and the rules keep the pads of different parts 1.27 mm apart"
+    ]
+    assert [p.text for p in given(2.5, {"pads_apart": 1 * mm})] == [
+        "T1.1 is 0.5 mm from T2.1, and the rules keep the pads of different parts 1 mm apart"
+    ]
+    # Two resistors side by side, 0.13 mm between their outlines and 0.73 between each
+    # pad of one and the pad of the other beside it: one problem, of the nearest pads.
+    board = _assembled(HAND, R1="A B", R2="C D")
+    board.place(board["R1"], at=(10 * mm, 15 * mm))
+    board.place(board["R2"], at=(10 * mm, 16.93 * mm))
+    assert [p.text for p in board.solve().problems] == [
+        "R1.1 is 0.73 mm from R2.1, and the rules keep the pads of different parts 1.27 mm apart"
+    ]
+
+
+def test_outlines_whose_place_is_given_too_near_each_other_or_what_is_fixed_are_a_problem():
+    def given(y: float, how: dict[str, Any]) -> tuple[Problem, ...]:
+        board = _board(R1="A B", R2="C D")
+        board.place(board["R1"], at=(10 * mm, 15 * mm))
+        board.place(board["R2"], at=(10 * mm, y * mm))
+        board.rules(track=0.25 * mm, clearance=0.2 * mm, **how)
+        return board.solve().problems
+
+    line = _line_no() - 5
+    # Two resistors, each 1.8 mm across, 0.13 mm between their outlines.
+    (problem,) = given(16.93, {"bodies_apart": 0.5 * mm})
+    assert problem.text == "R1 is 0.13 mm from R2, and the rules keep parts 0.5 mm apart"
+    assert problem.parts == ("R1", "R2")
+    assert [str(s) for s in problem.statements] == [
+        "place(R1, at=(10 mm, 15 mm))",
+        "place(R2, at=(10 mm, 16.93 mm))",
+        "rules(track=0.25 mm, clearance=0.2 mm, edge=0.5 mm, bodies_apart=0.5 mm)",
+    ]
+    assert str(problem).endswith(f"apart ({HERE}:{line}, {HERE}:{line + 1}, {HERE}:{line + 2})")
+    assert given(16.93, {}) == () and given(17.3, {"bodies_apart": 0.5 * mm}) == ()
+    # Touching is too near, and overlapping is what it was.
+    assert [p.text for p in given(16.8, {"bodies_apart": 0.5 * mm})] == [
+        "R1 is 0 mm from R2, and the rules keep parts 0.5 mm apart"
+    ]
+    assert [p.text for p in given(16.7, {"bodies_apart": 0.5 * mm})] == ["R1 and R2 overlap"]
+    # By hand their pads, 0.3 mm inside each outline, are what is too near at 1.1 mm:
+    # the pair is told once, of its pads.
+    assert [p.text for p in given(17.3, HAND)] == [
+        "R1.1 is 1.1 mm from R2.1, and the rules keep the pads of different parts 1.27 mm apart"
+    ]
+    assert given(17.47, HAND) == ()
+
+    # A corner of one by a corner of the other is as far as it is, not as far as it is
+    # across or down.
+    def cornered(off: float) -> list[str]:
+        board = _assembled({"bodies_apart": 0.5 * mm}, T1="A", T2="B")
+        board.place(board["T1"], at=(10 * mm, 15 * mm))
+        board.place(board["T2"], at=((11 + off) * mm, (16 + off) * mm))
+        return [p.text for p in board.solve().problems]
+
+    assert cornered(0.3) == ["T1 is 0.424264 mm from T2, and the rules keep parts 0.5 mm apart"]
+    assert cornered(0.4) == []
+
+    # A mounting hole, from 114 to 116 mm across: a test point 0.3 mm from it.
+    def by_a_hole(x: float, how: dict[str, Any], **hole: Any) -> tuple[Problem, ...]:
+        board = _board(T1="A")
+        board.hole(hole.pop("kind", "Mech:Hole"), (115, 65), **hole)
+        board.place(board["T1"], at=(x * mm, 15 * mm))
+        board.rules(track=0.25 * mm, clearance=0.2 * mm, **how)
+        return board.solve().problems
+
+    (problem,) = by_a_hole(16.8, {"bodies_apart": 0.5 * mm})
+    assert problem.text == ("T1 is 0.3 mm from Hole at (115, 65), and the rules keep parts "
+                            "0.5 mm apart")  # fmt: skip
+    assert problem.parts == ("T1",)
+    assert [str(s) for s in problem.statements] == [
+        "place(T1, at=(16.8 mm, 15 mm))",
+        "rules(track=0.25 mm, clearance=0.2 mm, edge=0.5 mm, bodies_apart=0.5 mm)",
+    ]
+    assert by_a_hole(16.8, {}) == () and by_a_hole(17, {"bodies_apart": 0.5 * mm}) == ()
+    # By hand it is the same: what is fixed is kept off by its outline, not by its pads.
+    assert [p.text for p in by_a_hole(16.8, HAND)] == [problem.text]
+    assert by_a_hole(17, HAND) == ()
+    assert [p.text for p in by_a_hole(16.2, HAND)] == ["T1 is over Hole at (115, 65)"]
+    # A pad fixed on the back, from 114.5 to 115.5 mm, is nothing to a part on the front.
+    assert by_a_hole(16.3, HAND, kind="Test:TP", back=True) == ()
+    assert len(by_a_hole(16.3, HAND, kind="Test:TP")) == 1
+
+
+def test_a_part_that_looks_for_its_place_keeps_its_outline_from_parts_and_from_what_is_fixed():
+    def solved(how: dict[str, Any], nets: str = "A A") -> tuple[Board, Solution]:
+        one, two = nets.split()
+        board = _assembled(how, T1=one, T2=two)
+        board.hole("Mech:Hole", (115, 65))  # from 114 to 116 mm across and 64 to 66 down
+        board.place(board["T1"], at=(12.5 * mm, 15 * mm))  # from 112 to 113, level with it
+        board.place(board["T2"], near=board["T1"], within=5 * mm, toward=Edge.RIGHT)
+        solution = board.solve()
+        assert solution.problems == ()
+        return board, solution
+
+    hole = (14, 14, 16, 16)
+    # With nothing said the test point touches the other, and the hole.
+    board, solution = solved({})
+    assert _bodies_apart(board, solution, "T2", "T1") == 0
+    assert _bodies_apart(board, solution, "T2", hole) == 0
+    # Kept 0.5 mm from both it goes round the hole, and is exactly that far from it.
+    board, solution = solved({"bodies_apart": 0.5 * mm})
+    assert _bodies_apart(board, solution, "T2", "T1") >= 0.5
+    assert _bodies_apart(board, solution, "T2", hole) == pytest.approx(0.5)
+    assert _box_of(board, solution, "T2") == pytest.approx((13, 12.5, 14, 13.5))
+    # By hand the pads are 1.27 mm apart too, and the hole is still 0.5 mm off.
+    board, solution = solved(HAND)
+    assert _pads_apart(board, solution, "T2", "T1") >= 1.27
+    assert _bodies_apart(board, solution, "T2", hole) >= 0.5
+    # With nothing fixed in the way it is 0.5 mm from the part it is near.
+    board = _assembled({"bodies_apart": 0.5 * mm}, T1="A", T2="B")
+    board.place(board["T1"], centre=True)
+    board.place(board["T2"], near=board["T1"], within=5 * mm)
+    solution = board.solve()
+    assert solution.ok and _bodies_apart(board, solution, "T1", "T2") == pytest.approx(0.5)
+
+
+def test_the_parts_of_a_row_with_a_pitch_are_as_far_apart_as_it_says_but_for_their_pads():
+    def beside(how: dict[str, Any], pitch: float) -> tuple[Board, Solution, str]:
+        board = _assembled(how, Q1="A B", R1="A X", R2="A Y", R3="A Z")
+        board.place(board["Q1"], centre=True, facing=Edge.TOP)
+        said = board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT,
+                         pitch=pitch * mm)  # fmt: skip
+        return board, board.solve(), str(said)
+
+    # Three resistors 1.8 mm across at a pitch of 1.8 mm touch, as the pitch says: the
+    # row is 0.5 mm from the part it is beside, which no pitch says anything of.
+    board, solution, said = beside({"bodies_apart": 0.5 * mm}, 1.8)
+    assert solution.ok, _told(solution)
+    assert [_bodies_apart(board, solution, a, b) for a, b in (("R1", "R2"), ("R2", "R3"))] == [0, 0]
+    assert [_box_of(board, solution, ref) for ref in ("R1", "R2", "R3")] == [
+        pytest.approx(box)
+        for box in [(17, 12.3, 20.6, 14.1), (17, 14.1, 20.6, 15.9), (17, 15.9, 20.6, 17.7)]
+    ]
+    assert f"{said}: 0.5 mm from Q1, level with it" in solution.chosen
+    # Their pads are held to the rules whatever pitch is said: 1.2 mm of pad and 1.27 mm.
+    board, solution, said = beside(HAND, 1.8)
+    assert list(solution.poses) == ["Q1"]
+    assert [p.text for p in solution.problems] == [
+        f"{said} does not fit: R1 and R2 are clear of each other, their pads 1.27 mm apart, at "
+        "a pitch of 2.47 mm or more"
+    ]
+    board, solution, said = beside(HAND, 2.47)
+    assert solution.ok, _told(solution)
+    assert _pads_apart(board, solution, "R1", "R2") == pytest.approx(1.27)
+    assert _pads_apart(board, solution, "R2", "Q1") == pytest.approx(1.27)
+    assert f"{said}: 0.97 mm from Q1, level with it" in solution.chosen
+
+    # A row along an edge the same: outlines touching at its pitch are what it said.
+    def along(how: dict[str, Any]) -> tuple[Board, Solution]:
+        board = _assembled(how, R1="A B", R2="C D", R3="E F")
+        board.row(board.parts("R1..R3"), along=Edge.BOTTOM, pitch=3.6 * mm)
+        return board, board.solve()
+
+    board, solution = along({"bodies_apart": 0.5 * mm})
+    assert solution.ok and _bodies_apart(board, solution, "R1", "R2") == 0
+    # By hand its pads, 0.6 mm apart from one part to the next, are told pair by pair.
+    board, solution = along(HAND)
+    assert [(p.parts, p.text.split(", and ")[1]) for p in solution.problems] == [
+        (pair, "the rules keep the pads of different parts 1.27 mm apart")
+        for pair in (("R1", "R2"), ("R2", "R3"))
+    ]
+    assert all(" is 0.6 mm from " in p.text for p in solution.problems)
+    assert _pads_apart(board, solution, "R1", "R2") == pytest.approx(0.6)
+
+
+def test_a_part_on_something_fixed_is_kept_from_all_but_that_thing():
+    # The module is from 114 to 124 mm across and 61 to 68 down.
+    def on_it(x: float, how: dict[str, Any], also=None, on: bool = True) -> list[str]:
+        board, thing, _ = _on_the_module(0, False, T1="A", T2="B")
+        board.rules(track=0.25 * mm, clearance=0.2 * mm, **how)
+        if on:
+            board.place(board["T1"], on=thing, at=(x * mm, 2 * mm))
+        else:
+            board.place(board["T1"], at=((15 + x) * mm, 17 * mm))
+        if also is not None:
+            also(board)
+        return [p.text for p in board.solve().problems]
+
+    apart = {"bodies_apart": 0.5 * mm}
+    # On it, half on it, and 0.3 mm off its side: none is too near the thing it is on.
+    assert on_it(8, apart) == on_it(9, apart) == on_it(9.8, apart) == []
+    assert on_it(8, HAND) == on_it(9.8, HAND) == []
+    # Not said to be on it, the same places are over it and too near it.
+    assert on_it(9, apart, on=False) == ["T1 is over M at (115, 65)"]
+    assert on_it(9.8, apart, on=False) == [
+        "T1 is 0.3 mm from M at (115, 65), and the rules keep parts 0.5 mm apart"
+    ]
+    # Something else fixed, from 124.8 mm across, is kept off as it is from any part.
+    assert on_it(9, apart, lambda board: board.hole("Mech:Hole", (125.8, 67))) == [
+        "T1 is 0.3 mm from Hole at (125.8, 67), and the rules keep parts 0.5 mm apart"
+    ]
+
+    # And so is another part, by its outline and by its pads.
+    def beside(board: Board) -> None:
+        board.place(board["T2"], at=(25.3 * mm, 17 * mm))
+
+    assert on_it(9, apart, beside) == [
+        "T1 is 0.3 mm from T2, and the rules keep parts 0.5 mm apart"
+    ]
+    assert on_it(9, HAND, beside) == [
+        "T1.1 is 0.3 mm from T2.1, and the rules keep the pads of different parts 1.27 mm apart"
+    ]
+    # A part that looks for its place keeps off the thing and off the part on it.
+    board, thing, _ = _on_the_module(0, False, T1="A", T2="A")
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, bodies_apart=0.5 * mm)
+    board.place(board["T1"], on=thing, at=(9 * mm, 0 * mm))  # from 123.5 to 124.5 mm across
+    board.place(board["T2"], near=board["T1"], within=3 * mm)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert _pads(board, solution, "T2")["1"] == pytest.approx((125.5, 65))
+
+
+def test_a_row_beside_a_part_with_no_pitch_said_is_as_close_as_the_way_it_is_assembled_lets_it():
+    def beside(how: dict[str, Any], nets: str = "X Y Z") -> tuple[Board, Solution, str]:
+        one, two, three = nets.split()
+        board = _assembled(how, Q1="A B", T1=one, T2=two, T3=three)
+        board.place(board["Q1"], centre=True, facing=Edge.TOP)
+        said = board.row(board.parts("T1..T3"), beside=board["Q1"], toward=Edge.RIGHT)
+        return board, board.solve(), str(said)
+
+    # Three test points, each a pad 1 mm square, beside a square whose second pad
+    # reaches its outline at 116.5 mm across. Outlines 0.5 mm apart:
+    board, solution, said = beside({"bodies_apart": 0.5 * mm}, "B B B")
+    assert solution.ok, _told(solution)
+    assert [_box_of(board, solution, ref) for ref in ("T1", "T2", "T3")] == [
+        pytest.approx(box) for box in [(17, 13, 18, 14), (17, 14.5, 18, 15.5), (17, 16, 18, 17)]
+    ]
+    assert f"{said}: 0.5 mm from Q1, level with it" in solution.chosen
+    # By hand, their pads 1.27 mm from each other and from the square's, on one net or not.
+    for nets in ("X Y Z", "B B B"):
+        board, solution, said = beside(HAND, nets)
+        assert solution.ok, _told(solution)
+        assert [_box_of(board, solution, ref) for ref in ("T1", "T2", "T3")] == [
+            pytest.approx(box)
+            for box in [(17.77, 12.23, 18.77, 13.23), (17.77, 14.5, 18.77, 15.5),
+                        (17.77, 16.77, 18.77, 17.77)]
+        ]  # fmt: skip
+        assert f"{said}: 1.27 mm from Q1, level with it" in solution.chosen
+        pairs = (("T1", "T2"), ("T2", "T3"), ("T2", "Q1"))
+        assert [_pads_apart(board, solution, a, b) for a, b in pairs] == [1.27, 1.27, 1.27]
+    # The outlines' distance where that is what takes the most room: resistors' pads
+    # are 0.3 mm inside their outlines, so outlines 1 mm apart have pads 1.6 mm apart.
+    board = _assembled({"assembly": "hand", "bodies_apart": 1 * mm}, Q1="A B", R1="A X", R2="A Y")
+    board.place(board["Q1"], centre=True, facing=Edge.TOP)
+    said = board.row(board.parts("R1", "R2"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert _bodies_apart(board, solution, "R1", "R2") == pytest.approx(1)
+    assert _bodies_apart(board, solution, "R1", "Q1") == pytest.approx(1)
+    assert f"{said}: 1 mm from Q1, level with it" in solution.chosen
+
+
+@pytest.mark.parametrize(("how", "nets", "after", "before"), [
+    ({}, "A A", (9, 10), (7, 8)),
+    ({}, "A B", (9.2, 10.2), (6.8, 7.8)),
+    ({"bodies_apart": 0.5 * mm}, "A A", (9.5, 10.5), (6.5, 7.5)),
+    # Hard against what is in the way, where that is not a whole 0.1 mm step.
+    ({"bodies_apart": 0.25 * mm}, "A A", (9.25, 10.25), (6.75, 7.75)),
+    # The pads' distance is come to a step at a time: 1.3 mm, the first that keeps 1.27.
+    (HAND, "A A", (10.3, 11.3), (5.7, 6.7)),
+    (HAND, "A B", (10.3, 11.3), (5.7, 6.7)),
+])  # fmt: skip
+def test_a_part_after_or_before_another_along_an_edge_is_as_far_from_it_as_parts_are_kept(
+    how, nets, after, before
+):
+    one, two = nets.split()
+    for word, span in (("after", after), ("before", before)):
+        board = _assembled(how, T1=one, T2=two)
+        board.place(board["T1"], against=Edge.LEFT, along=8.5 * mm)  # from 8 to 9 mm down
+        beside: dict[str, Any] = {word: board["T1"]}
+        board.place(board["T2"], against=Edge.LEFT, **beside)
+        solution = board.solve()
+        assert solution.problems == ()
+        assert _span(board, solution, "T2", Edge.LEFT) == pytest.approx(span)
+
+
+def test_a_row_spread_evenly_along_an_edge_that_cannot_keep_its_parts_apart_does_not_fit():
+    def along(count: int, how: dict[str, Any]) -> tuple[Board, Solution, str]:
+        parts = {f"R{n}": f"A{n} B{n}" for n in range(1, count + 1)}
+        board = _board(**parts)
+        board.rules(track=0.25 * mm, clearance=0.2 * mm, **how)
+        said = board.row(board.parts(f"R1..R{count}"), along=Edge.BOTTOM)
+        return board, board.solve(), str(said)
+
+    # Eight resistors, 3.6 mm each, along a 30 mm edge leave nine gaps of 0.133 mm.
+    apart = {"bodies_apart": 0.5 * mm}
+    board, solution, said = along(8, {})
+    assert len(solution.poses) == 8
+    assert _bodies_apart(board, solution, "R1", "R2") == pytest.approx(0.133333)
+    board, solution, said = along(8, apart)
+    assert solution.poses == {} and solution.free == ()
+    (problem,) = solution.problems
+    assert problem.text == (f"{said} does not fit: its parts are 28.8 mm along the bottom edge, "
+                            "which is 30 mm: that leaves 0.133333 mm between them, and the rules "
+                            "keep parts 0.5 mm apart")  # fmt: skip
+    assert problem.parts == tuple(f"R{n}" for n in range(1, 9))
+    assert [str(s) for s in problem.statements] == [
+        said, "rules(track=0.25 mm, clearance=0.2 mm, edge=0.5 mm, bodies_apart=0.5 mm)"
+    ]  # fmt: skip
+    # Seven leave eight gaps of 0.6 mm, which is room enough between outlines.
+    board, solution, said = along(7, apart)
+    assert solution.ok and _bodies_apart(board, solution, "R3", "R4") == pytest.approx(0.6)
+    # By hand that is 1.2 mm between the pads of one and the next: each pair is told,
+    # as pads too near are wherever a place is given. Six are far enough apart.
+    board, solution, said = along(7, HAND)
+    assert len(solution.poses) == 7
+    assert [p.parts for p in solution.problems] == [(f"R{n}", f"R{n + 1}") for n in range(1, 7)]
+    assert all(p.text.endswith("the rules keep the pads of different parts 1.27 mm apart")
+               and " is 1.2 mm from " in p.text for p in solution.problems)  # fmt: skip
+    assert along(6, HAND)[1].ok
+
+
+def test_what_the_way_a_board_is_assembled_keeps_apart_is_said_once_with_where_it_came_from():
+    def chosen(**how: Any) -> list[str]:
+        board = _assembled(how, T1="A", T2="B", T3="C")
+        board.place(board["T1"], centre=True)
+        board.place(board["T2"], near=board["T1"], within=5 * mm)
+        board.place(board["T3"], near=board["T2"], within=5 * mm)
+        solution = board.solve()
+        assert solution.ok
+        return [note for note in solution.chosen if note.startswith("the rules keep")]
+
+    assert chosen(assembly="hand") == [
+        'the rules keep the pads of different parts 1.27 mm apart (assembly="hand") and parts '
+        '0.5 mm apart (assembly="hand")'
+    ]
+    assert chosen(assembly="hand", pads_apart=1.5 * mm) == [
+        "the rules keep the pads of different parts 1.5 mm apart (pads_apart=) and parts "
+        '0.5 mm apart (assembly="hand")'
+    ]
+    assert chosen(pads_apart=1 * mm) == [
+        "the rules keep the pads of different parts 1 mm apart (pads_apart=) and parts 0 mm "
+        "apart (not said)"
+    ]
+    assert chosen(assembly="machine", bodies_apart="0.3mm") == [
+        'the rules keep the pads of different parts 0 mm apart (assembly="machine") and parts '
+        "0.3 mm apart (bodies_apart=)"
+    ]
+    # With neither more than nothing there is nothing to say.
+    assert chosen() == chosen(assembly="machine") == []
+    assert chosen(assembly="hand", pads_apart=0 * mm, bodies_apart=0 * mm) == []
+
+
+def test_a_board_assembled_by_machine_is_placed_as_one_that_says_nothing_of_it():
+    def told(solution: Solution) -> tuple:
+        return solution.poses, solution.free, solution.chosen, [p.text for p in solution.problems]
+
+    for seed in range(6):
+        plain = _crowded(seed).solve()
+        assert told(_crowded(seed, assembly="machine").solve()) == told(plain)
+        zero = _crowded(seed, assembly="hand", pads_apart=0 * mm, bodies_apart=0 * mm).solve()
+        assert told(zero) == told(plain)
+        # By hand it is not: the parts are kept apart, or have no place.
+        assert told(_crowded(seed, assembly="hand").solve()) != told(plain)
+
+
+def test_the_places_sifted_all_at_once_are_the_ones_found_in_turn_when_parts_are_kept_apart(
+    monkeypatch,
+):
+    import pkidl.placement as placement
+
+    monkeypatch.setattr(placement, "_FURTHER", Length(0))
+    for seed in range(4):
+        monkeypatch.setattr(placement, "_SIFT", False)
+        plain = _crowded(seed, assembly="hand").solve()
+        monkeypatch.setattr(placement, "_SIFT", True)
+        assert _crowded(seed, assembly="hand").solve() == plain, seed
+    assert sum(len(_crowded(seed, assembly="hand").solve().poses) for seed in range(4)) > 12
+
+
+def test_the_distance_said_to_be_the_nearest_is_one_that_would_do_for_parts_kept_apart():
+    def near(within: float) -> tuple[Board, Solution]:
+        board = _assembled(HAND, U1="A B C D E", R1="A X")
+        board.place(board["U1"], centre=True, facing=Edge.TOP)
+        board.place(board["R1"], near=board["U1"].pin(1), within=within * mm)
+        return board, board.solve()
+
+    (problem,) = near(1.0)[1].problems
+    assert problem.text.startswith("R1 has no place within 1 mm of U1.1 that is on the front")
+    off = float(problem.text.split("the nearest is ")[1].split(" mm from it")[0])
+    # Further than with nothing said of assembly, when it is 1.8 mm.
+    assert off > 1.8
+    board, solution = near(off)
+    assert solution.problems == ()
+    assert _pads_apart(board, solution, "R1", "U1") >= 1.27
+    assert _bodies_apart(board, solution, "R1", "U1") >= 0.5
+    assert "has no place" in near(round(off - 0.1, 1))[1].problems[0].text
+
+
+def test_what_a_sift_leaves_out_as_too_near_is_too_near_and_a_corner_is_as_far_as_it_is():
+    """Places are sifted by boxes, many at once. One nearer a part than parts are kept
+    is left out only where it surely is, and one off a corner of it is as far from it as
+    it is from the corner, which is further than it is across or down."""
+    import numpy as np
+
+    from pkidl.placement import _by, _off, _overlap, _surely
+
+    pick = random.Random(66)
+    taken, room = (0, 0, 2_000_000, 1_000_000), 500_000
+    boxes = []
+    for _ in range(4000):
+        x, y = pick.randrange(-2_000_000, 3_000_000), pick.randrange(-2_000_000, 2_000_000)
+        boxes.append((x, y, x + 1_000_000, y + 700_000))
+    near = [_overlap(box, taken) or _off(box, taken) < room for box in boxes]
+    x0, y0, x1, y1 = (np.array(side, dtype=np.int64) for side in zip(*boxes, strict=True))
+    assert _by(x0, y0, x1, y1, taken, room).tolist() == near
+    assert _by(x0, y0, x1, y1, taken, 0).tolist() == [_overlap(box, taken) for box in boxes]
+    sure = _by(x0, y0, x1, y1, _surely(taken, room), 0).tolist()
+    assert all(is_near for left_out, is_near in zip(sure, near, strict=True) if left_out)
+    # Some are off a corner, less than the distance across and down and as far in all.
+    grown = (taken[0] - room, taken[1] - room, taken[2] + room, taken[3] + room)
+    assert sum(_overlap(box, grown) and not is_near
+               for box, is_near in zip(boxes, near, strict=True)) > 10  # fmt: skip
+    assert sum(sure) > 1000 and sum(near) - sum(sure) > 10
