@@ -263,6 +263,13 @@ def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
                   tuple(copper))  # fmt: skip
 
 
+_PASSES = 12  # how many times everything is placed before a placement is said not to settle
+
+
+def _listed(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
 _AT_A_TIME = 4096  # the offsets a place near something is looked for at, at once
 _FURTHER = Length(30_000_000)  # as far as a place is looked for to say how far off it is
 _EDGE = "the board's edge"
@@ -482,7 +489,9 @@ class _Solver:
         order = self._order()
         # Which way round a part goes depends on where its neighbours are, so place
         # everything, then again until nothing moves.
-        for _ in range(4):
+        passes: list[tuple[dict, dict, dict, dict]] = []
+        before: dict[str, Pose] = {}
+        for _ in range(_PASSES):
             before, done = dict(self.poses), set()
             self.problems, self.chosen, self.turns = {}, {}, {}
             for ref in order:
@@ -493,8 +502,28 @@ class _Solver:
                     self.poses.pop(ref, None)
             if self.poses == before:
                 break
+            # A placement come round to one it has been at before goes round for good:
+            # parts that turn or move for each other, each pass undoing the last. Every
+            # pass leaves a placement that holds what was said, so one of those it goes
+            # round is kept: the one with the fewest problems, and the first of those.
+            again = next((i for i, seen in enumerate(passes) if seen[0] == self.poses), None)
+            if again is not None:
+                round_ = passes[again:]
+                kept = min(round_, key=lambda seen: len(seen[1]))
+                moved = sorted({ref for seen in round_ for ref in order
+                                if seen[0].get(ref) != kept[0].get(ref)}, key=natural)  # fmt: skip
+                self.poses, self.problems, self.chosen, self.turns = (dict(v) for v in kept)
+                self._chose(f"{_listed(moved)}: each is placed by where the others are, and "
+                            f"they go round {len(round_)} placements; kept as in the one with "
+                            "the fewest problems, the first of them")  # fmt: skip
+                break
+            passes.append((dict(self.poses), self.problems, self.chosen, self.turns))
         else:
-            self._problem(tuple(order), "the placement does not settle: each pass moves a part")
+            moved = sorted((ref for ref in order if self.poses.get(ref) != before.get(ref)),
+                           key=natural)  # fmt: skip
+            self._problem(tuple(moved), f"the placement does not settle: {_listed(moved)} still "
+                          f"moved on pass {_PASSES}, each placed by where the others are",
+                          *(s for ref in moved for s in self.said[ref]))  # fmt: skip
         # A part against an edge with no inset that is in from it is there for its copper.
         for ref in sorted(self.poses if self.margin else (), key=natural):
             box = self._box(ref)
