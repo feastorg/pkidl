@@ -291,6 +291,10 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- A footprint whose courtyard or body is drawn with an arc is as large as the arc. The
+  solver took an arc for its two ends and the point between, so a round LED's
+  courtyard was 1.65 mm short above and below, and a resistor's pad was placed inside
+  it: KiCad's `pth_inside_courtyard` on the next-bus clock.
 - `pkidl.fill.cut_off`, pkidl's model of what a pour joins, cuts the fill away round
   each pad of the net that has a thermal relief, as KiCad does: a pad in the only way
   through a wall parts the pour, and the model took it as whole. A pad is joined to

@@ -88,6 +88,7 @@ from shapely.geometry import box as _area
 from shapely.prepared import prep
 
 from pkidl.circuit import Circuit, Pin, natural
+from pkidl.edge import _arc
 from pkidl.intent import (
     Align,
     Decouple,
@@ -218,8 +219,14 @@ def _shape(footprint: Node) -> _Shape:
     for item, layer in drawn:
         if layer not in body:
             continue
-        points = [p for k in ("start", "mid", "end") if (p := find(item, k)) is not None]
+        points = [p for k in ("start", "end") if (p := find(item, k)) is not None]
         points += find_all(find(item, "pts") or [], "xy")
+        if (mid := find(item, "mid")) is not None and len(points) == 2:
+            # An arc is all of itself: it bulges past its ends and the point between.
+            start, end = ((float(p[1]), float(p[2])) for p in points)
+            along = _arc(start, (float(mid[1]), float(mid[2])), end)
+            xs += [_nm(x) for x, _ in along]
+            ys += [_nm(y) for _, y in along]
         centre = find(item, "center")
         if centre is not None and (end := find(item, "end")) is not None:
             r = round(math.dist((_nm(centre[1]), _nm(centre[2])), (_nm(end[1]), _nm(end[2]))))

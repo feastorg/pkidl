@@ -8,6 +8,7 @@ import math
 import random
 import re
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -2045,6 +2046,33 @@ def test_a_footprint_with_no_courtyard_or_fabrication_drawing_has_its_body_on_th
     text = '(fp_text value "x" (at 9 9) (layer "F.Fab"))'
     assert mm_box(_footprint("S", text + " " + drawn("F.SilkS", 3, 2), pad)) == (-3, -2, 3, 2)
     assert mm_box(_footprint("S", text, pad)) == (-0.5, -0.5, 0.5, 0.5)
+
+
+def test_an_arc_of_a_footprints_body_is_all_of_the_arc_and_not_its_three_points():
+    def arc(start: tuple[float, float], mid: tuple[float, float], end: tuple[float, float]) -> str:
+        return (f"(fp_arc (start {start[0]} {start[1]}) (mid {mid[0]} {mid[1]}) "
+                f"(end {end[0]} {end[1]}) (stroke (width 0.05) (type solid)) "
+                '(layer "F.CrtYd"))')  # fmt: skip
+
+    def mm_box(fp: Node) -> tuple[float, ...]:
+        return tuple(round(v / 1_000_000, 3) for v in _shape(fp).box)
+
+    pad = _smd(1, 0, 0, 1, 1)
+    # Three quarters of a circle of radius 3 about (1, 0), open to the left: it reaches
+    # 3 above and below its centre, where its three points reach 2.121.
+    k = round(3 * math.sqrt(0.5), 6)
+    round_body = arc((1 - k, -k), (4, 0), (1 - k, k))
+    assert mm_box(_footprint("S", round_body, pad)) == pytest.approx((1 - k, -3, 4, 3), abs=1e-3)
+    # The quarter that closes it bulges left only.
+    assert mm_box(_footprint("S", arc((1 - k, -k), (-2, 0), (1 - k, k)), pad)) == pytest.approx(
+        (-2, -k, 0.5, k), abs=1e-3
+    )
+    # The LED whose courtyard a resistor's pad was put in (#51): 3.2 mm above and below
+    # its centre line, where its ends are 1.55.
+    led = parse((Path(__file__).parent.parent / "corpus/t0/nextbusclock_NextBusClockV1"
+                 / "footprints/LEDs.pretty/LED-5MM.kicad_mod").read_text())  # fmt: skip
+    x0, y0, x1, y1 = mm_box(led)
+    assert (y0, y1, x0, x1) == pytest.approx((-3.2, 3.2, -1.5, 4.5), abs=5e-3)
 
 
 def test_a_placed_parts_outline_is_where_the_part_is_now():
