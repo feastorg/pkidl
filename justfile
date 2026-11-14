@@ -31,8 +31,12 @@ typecheck:
 # Format + lint + type-check (non-mutating — safe for CI)
 check: fmt-check lint typecheck
 
-# Run tests
+# Run tests, but for the ones that route a whole board
 test:
+    uv run pytest -m "not slow"
+
+# Run every test, as CI does
+test-all:
     uv run pytest
 
 # DRC every corpus reference, build and DRC every board.py, print the scorecard
