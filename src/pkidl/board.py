@@ -26,8 +26,10 @@ from pkidl.intent import (
     Conflict,
     Decouple,
     Edge,
+    Inside,
     Keepout,
     Place,
+    Region,
     Route,
     Row,
     Rules,
@@ -266,12 +268,13 @@ class Board:
         along: float | Fraction | Length | str | None = None,
         after: Part | None = None,
         before: Part | None = None,
+        at_least: Length | str | None = None,
     ) -> Place:
         """Say where *part* goes, and get the statement back. See ``pkidl.place``."""
         statement = intent.place(part, against=against, inset=inset, between=between,
                                  facing=facing, near=near, within=within, side=side,
                                  toward=toward, centre=centre, outward=outward, along=along,
-                                 after=after, before=before)  # fmt: skip
+                                 after=after, before=before, at_least=at_least)  # fmt: skip
         self.add(statement)
         return statement
 
@@ -341,6 +344,24 @@ class Board:
                               {name: edge.value for name, edge in (sides or {}).items()},
                               [part.ref] if oriented or sides else [])  # fmt: skip
         return tuple(part.area(name) for name in areas)
+
+    def area(
+        self,
+        edge: Edge | None = None,
+        *,
+        share: float | Fraction | None = None,
+        box: tuple[tuple[Length | str, Length | str], tuple[Length | str, Length | str]]
+        | None = None,
+    ) -> Region:
+        """An area of the board, for parts to be said to be inside. See ``pkidl.area``."""
+        return intent.area(edge, share=share, box=box)
+
+    def inside(self, area: Region, parts: Iterable[Part]) -> Inside:
+        """Say that parts go inside an area of the board, and get the statement back. See
+        ``pkidl.inside``."""
+        statement = intent.inside(area, parts)
+        self.add(statement)
+        return statement
 
     def keepout(self, area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
         """Say what stays out of an area of a part, and get the statement back. See
