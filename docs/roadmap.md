@@ -124,20 +124,67 @@ Every step of milestones 1 and 2 changed pkidl for the board it was made for. Th
 how the language gets built, and it is not evidence that the language carries over.
 The evidence is a board written afterwards with nothing added.
 
-Once fan_controller builds, `corpus/t0/qrp_swr_meter_swr_meter_rev_a/board.py` is
-written from its circuit and its mechanical inputs with no change under `src/pkidl`:
-21 parts, four mounting holes, and an arc bitten out of each corner. It is a different
-board from the two that shaped the library, in a tier the library already claims.
+The board is `corpus/t0/nextbusclock_NextBusClockV1`: 26 parts and 54 nets, all
+through-hole, two seven-segment displays, three DIP chips, a barrel jack and a radio
+module. It is a different kind of board from the two that shaped the library, in a tier
+the library already claims, and its reference has no DRC error and nothing
+unconnected, so the bar is plain. The SWR meter was the first choice, for its mounting
+holes and the arcs in its corners; its reference has 47 errors of its own, most of
+them one footprint stacked over others, which is no bar to hold a board to (decided
+2026-11-13).
 
 **Done when** that board file is committed as far as it can be written, and what it
 could not say is listed: each thing the board needed that pkidl did not have, one line
 each, with the statement that would have said it, and each filed as an issue. The
-count is the measure, and it goes beside the board's row in the scorecard. Nothing on the list is built in that
-PR.
+count is the measure. Nothing on the list is built in that PR.
 
 What the count means is decided before it is known. None or one: the next board is
 written the same way, from the next tier down the list. More than a few of one kind,
 as with relations the solver cannot hold together: that kind is the next milestone,
+ahead of copper for current.
+
+### The count: eight
+
+Done 2026-11-13. The board file is 63 lines, written with no change under `src/pkidl`.
+It places all 26 parts with no problem and builds a board with its circuit's netlist,
+routed with nothing left. KiCad 10.0.6 finds nothing unconnected and two DRC errors,
+where the reference has none: the bar is not met, and both errors are on the list.
+
+Everything the board needed was said with statements the library had: the two displays
+in a row, each with its shift register below it and a resistor by each common pin from
+one block; the processor along the bottom edge with its crystal, capacitors and reset;
+the jack at the left edge, its socket off the board, with the supplies by it; the radio
+module in a corner, its antenna end at the edge. It took six tries at the board file,
+each a solve of 43 s to 272 s.
+
+What it could not say, or got wrong:
+
+1. **Which side of a part goes to an edge.** The jack's socket, the module's antenna
+   end and the processor's crystal pins were each got the right way by reading the
+   footprint or by trying. Would have said it: `place(jack, against=Edge.LEFT,
+   outward="socket")` (#47).
+2. **That a display's way up matters.** The row turned both displays on their sides
+   for shorter wiring; one `facing=` line put them right, and nothing asked for it.
+   Would have said it: an annotation that a part's orientation is not the solver's to
+   choose (#48).
+3. **A placement that does not settle**, until three parts had their facing said
+   (#15).
+4. **How long a solve takes**: most of the work was waiting for it (#18).
+5. **How far is far enough.** "No place within 6 mm" does not say that 8 would do;
+   five of the six tries were that. Would have said it: the least distance at which
+   there is a place, in the problem (#49).
+6. **Where along an edge.** The middle or a corner. Would have said it:
+   `place(esp, against=Edge.RIGHT, after=other)` or a distance from a corner (#50).
+7. **Two things KiCad rejects that the build let through**: a resistor's pad inside the
+   LED's courtyard (#51), and an island of pour on a starved relief, on the board
+   routed again after its pour was found cut (#52).
+8. **Where a group of parts goes.** The supply parts are packed against the jack and a
+   third of the board is bare; every relation is one part to one thing. Would have
+   said it: `region(supply, Edge.LEFT, share=1 / 3)` (#53).
+
+Two of the eight were known (#15, #18) and six are new. Five are of one kind, placement
+and what the solver tells the person writing the board file (1, 2, 5, 6, 8), and two
+more are the solver itself (3, 4). By the rule above that kind is the next milestone,
 ahead of copper for current.
 
 ## Milestone 3: T1, copper for current
