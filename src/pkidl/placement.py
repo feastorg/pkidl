@@ -25,6 +25,13 @@ What each statement means here:
   still between pads, so it has to reach past as much of that part as lies between its
   pads and that side.
 - ``centre=True``: the middle of the part's outline is at the middle of the board.
+- ``at=`` a point: the footprint's origin is there, two lengths across and down from
+  the top left corner of the box around the outline, as the front shows the board
+  whichever face the part is on. With ``of=`` a pin of the part, that pin is there
+  and the origin is wherever that puts it, the way round the part is.
+- ``on=`` something fixed on the board: the point is one of that thing, in its own
+  footprint's coordinates, turned and mirrored as the thing is, and its origin where
+  none is given. The part may overlap that thing, and nothing else.
 - ``side=``: the face of the board it is on; the front when nothing says.
 - ``row`` along an edge: each part lies against the edge as ``against=`` has it, and
   they follow one another in the order named, from the left or from the top. With an
@@ -94,6 +101,7 @@ from pkidl.intent import (
     Align,
     Decouple,
     Edge,
+    Fixed,
     Inside,
     Keepout,
     Place,
@@ -124,20 +132,6 @@ class Pose:
     x: Length
     y: Length
     rot: int = 0
-    back: bool = False
-
-
-@dataclass(frozen=True)
-class Fixed:
-    """Something on the board that the board file does not place, a mounting hole say:
-    what it is called in a problem, its footprint's name in the library, where its
-    origin is, its rotation in degrees and whether it is on the back."""
-
-    label: str
-    footprint: str
-    x: Length
-    y: Length
-    rot: float = 0.0
     back: bool = False
 
 
@@ -330,6 +324,14 @@ def solve(
     return _Solver(circuit, library, extent, statements, edge, tuple(fixed)).solution()
 
 
+def _swung(x: int, y: int, rot: float, back: bool) -> tuple[int, int]:
+    """A point of a footprint turned *rot* degrees, any angle, as ``_turn`` turns it."""
+    if rot % 90 == 0:  # a right angle is exact
+        return _turn(x, y, int(rot) % 360, back)
+    a, y = math.radians(rot), -y if back else y
+    return round(x * math.cos(a) + y * math.sin(a)), round(y * math.cos(a) - x * math.sin(a))
+
+
 def _spun(box: Box, rot: float, back: bool) -> Box:
     """The box around *box* once its footprint is turned *rot* degrees, any angle, as
     KiCad turns it: mirrored in Y on the back, then counter-clockwise from the front."""
@@ -388,6 +390,7 @@ class _Solver:
             shape = _shape(library[f.footprint])
             self.fixed.append((f, _moved(_spun(shape.box, f.rot, f.back), f.x.nm, f.y.nm),
                                shape.through))  # fmt: skip
+        self.things = {f for f, _, _ in self.fixed}
         self.runs: dict[Row, tuple[int, int]] = {}  # the clear stretch of each row's edge
         # How far apart the board's rules keep copper on different nets, if it has rules.
         self.rules = [s for s in statements if isinstance(s, Rules)]
@@ -623,6 +626,10 @@ class _Solver:
                 self._problem((ref,), f"{ref}: near= is solved alone: one near=, and no "
                               "against= or between= beside it", *asks)  # fmt: skip
                 return None
+            if any(s.at for s in asks):
+                self._problem((ref,), f"{ref}: near= is solved alone: one near=, and no "
+                              "at= or on= beside it", *asks)  # fmt: skip
+                return None
             return self._near(ref, nears[0], rots, back, done)
         # Each way round is tried from what was said before any of them: what is said
         # of a way that is not taken is not said of the part, and a way with no place
@@ -843,6 +850,25 @@ class _Solver:
             if s.centre:
                 xs.append(((x0 + x1) // 2 - (bx0 + bx1) // 2, s))
                 ys.append(((y0 + y1) // 2 - (by0 + by1) // 2, s))
+            if s.at is not None:
+                # A point of the board, from the top left of the box around it, or of
+                # a thing fixed on it, turned as the thing is; and what of the part is
+                # there: its origin, or the pin said, where this way round has it.
+                ax, ay = (v.nm for v in s.at)
+                if s.on is None:
+                    ax, ay = x0 + ax, y0 + ay
+                elif s.on in self.things:
+                    tx, ty = _swung(ax, ay, s.on.rot, s.on.back)
+                    ax, ay = s.on.x.nm + tx, s.on.y.nm + ty
+                else:
+                    self._problem((ref,), f"{ref} is placed on {s.on}, which is not fixed "
+                                  "on the board", s)  # fmt: skip
+                    return None
+                ox, oy = 0, 0
+                if s.of is not None:
+                    ox, oy = next((x, y) for n, x, y in turned.pads if n == s.of.number)
+                xs.append((ax - ox, s))
+                ys.append((ay - oy, s))
         # With no inset, against the edge: its outline on the edge, or as near as the
         # rules let its copper be, whichever is further in.
         cx0, cy0, cx1, cy1 = (
@@ -1073,10 +1099,12 @@ class _Solver:
                 worst = (d, n)
         return worst
 
-    def _over(self, box: Box, back: bool, through: bool) -> Fixed | None:
-        """What is fixed on the board that *box*, on that face, overlaps: the first."""
+    def _over(self, box: Box, back: bool, through: bool, ref: str = "") -> Fixed | None:
+        """What is fixed on the board that *box*, on that face, overlaps: the first,
+        leaving out what *ref* is said to be on."""
+        on = {s.on for s in self.asks.get(ref, [])}
         for f, taken, holed in self.fixed:
-            if (through or holed or f.back == back) and _overlap(box, taken):
+            if (through or holed or f.back == back) and _overlap(box, taken) and f not in on:
                 return f
         return None
 
@@ -1108,11 +1136,11 @@ class _Solver:
 
     def _clear(self, ref: str, box: Box, back: bool, through: bool, of: Iterable[str],
                keeps: bool = True, at: tuple[_Shape, int, int] | None = None) -> bool:  # fmt: skip
-        """Inside the board, over nothing fixed on it, overlapping none *of* the parts
-        placed and, with *keeps*, in no area of theirs that is kept clear. With *at*,
-        the part's shape and where it is, its pads are as far from theirs as the rules
-        say as well."""
-        if not self._on(box) or self._over(box, back, through) is not None:
+        """Inside the board, over nothing fixed on it but what the part is on,
+        overlapping none *of* the parts placed and, with *keeps*, in no area of theirs
+        that is kept clear. With *at*, the part's shape and where it is, its pads are
+        as far from theirs as the rules say as well."""
+        if not self._on(box) or self._over(box, back, through, ref) is not None:
             return False
         if at is not None and self._shy(*at) is not None:
             return False
@@ -1355,7 +1383,7 @@ class _Solver:
                               f"{Length(round(far))} outside the outline at {where}",
                               *self.said[ref])  # fmt: skip
             pose = self.poses[ref]
-            if (f := self._over(box, pose.back, self.shapes[ref].through)) is not None:
+            if (f := self._over(box, pose.back, self.shapes[ref].through, ref)) is not None:
                 self._problem((ref,), f"{ref} is over {f.label}", *self.said[ref])
             turned = _turned(self.shapes[ref], pose.rot, pose.back)
             if (

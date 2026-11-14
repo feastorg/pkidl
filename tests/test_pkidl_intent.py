@@ -145,8 +145,8 @@ def test_a_statement_about_something_the_board_has_not_got_is_refused_whole(boar
     ("said", "error", "message"),
     [
         (lambda b: place(b["U1"]), ValueError,
-         r"place\(U1\) does not say where: give against=, between=, centre=True, facing=, "
-         "near= or side="),
+         r"place\(U1\) does not say where: give against=, at=, between=, centre=True, "
+         "facing=, near=, on= or side="),
         (lambda b: place(b["U1"], centre=False), ValueError, r"place\(U1\) does not say where"),
         (lambda b: place(b["U1"], centre=1), TypeError, "U1: centre= takes True, not 1"),
         (lambda b: place(b["R1"], against=Edge.TOP, toward=Edge.TOP), ValueError,

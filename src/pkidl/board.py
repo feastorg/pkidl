@@ -26,6 +26,7 @@ from pkidl.intent import (
     Conflict,
     Decouple,
     Edge,
+    Fixed,
     Inside,
     Keepout,
     Place,
@@ -36,7 +37,7 @@ from pkidl.intent import (
     Side,
     Statement,
 )
-from pkidl.placement import Fixed, Problem, Solution, solve
+from pkidl.placement import Problem, Solution, _listed, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
 from pkidl.units import Length, length, mm
 
@@ -202,6 +203,29 @@ class Board:
         self.fixed.append(fixed)
         return fixed
 
+    def thing(self, name: str, *, at: Point | None = None) -> Fixed:
+        """The one thing fixed on the board that goes by *name*: its footprint's name,
+        with its library or without, or what a problem calls it, ``"Hole at (115,
+        65)"``. Of several of one kind, the one *at* that place in board millimetres,
+        as ``hole`` takes it. It is what a part is placed ``on=``."""
+        found = [f for f in self.fixed
+                 if name in (f.footprint, f.footprint.rpartition(":")[2], f.label)]  # fmt: skip
+        if at is not None:
+            x, y = (round(v * 1_000_000) for v in at)
+            found = [f for f in found if (f.x.nm, f.y.nm) == (x, y)]
+        if len(found) == 1:
+            return found[0]
+        asked = repr(name) + ("" if at is None else f" at ({at[0]:g}, {at[1]:g})")
+        if not found:
+            there = sorted(self.fixed, key=lambda f: (f.x.nm, f.y.nm, f.label))
+            raise LookupError(f"nothing fixed on the board is {asked}: " + (
+                f"there is {_listed([f.label for f in there])}" if there
+                else "nothing is fixed on it"))  # fmt: skip
+        first = found[0]
+        raise LookupError(f"{len(found)} things fixed on the board are {asked}: "
+                          f"{_listed([f.label for f in found])}: say which, as in "
+                          f"thing({name!r}, at=({first.x.mm:g}, {first.y.mm:g}))")  # fmt: skip
+
     def __getitem__(self, ref: str) -> Part:
         """The part with this reference: ``board["U1"]``."""
         return self.circuit.part(ref)
@@ -247,6 +271,11 @@ class Board:
                 statement.check(self.circuit)
             except LookupError as e:
                 raise LookupError(f"{statement}: {e.args[0]}") from None
+            on = statement.on if isinstance(statement, Place) else None
+            if on is not None and on not in self.fixed:
+                there = _listed([f.label for f in self.fixed]) if self.fixed else "nothing"
+                raise LookupError(f"{statement}: {on} is not fixed on this board, which "
+                                  f"has {there}")  # fmt: skip
         for statement in statements:
             self._statements.setdefault(statement)
         return statements
@@ -269,12 +298,16 @@ class Board:
         after: Part | None = None,
         before: Part | None = None,
         at_least: Length | str | None = None,
+        at: tuple[Length | str, Length | str] | None = None,
+        of: Pin | None = None,
+        on: Fixed | None = None,
     ) -> Place:
         """Say where *part* goes, and get the statement back. See ``pkidl.place``."""
         statement = intent.place(part, against=against, inset=inset, between=between,
                                  facing=facing, near=near, within=within, side=side,
                                  toward=toward, centre=centre, outward=outward, along=along,
-                                 after=after, before=before, at_least=at_least)  # fmt: skip
+                                 after=after, before=before, at_least=at_least, at=at, of=of,
+                                 on=on)  # fmt: skip
         self.add(statement)
         return statement
 

@@ -3418,3 +3418,418 @@ def test_the_distance_said_to_be_the_nearest_keeps_the_least_distance_said():
     board, solution = solved(1.9)
     assert solution.ok
     assert any(note.startswith("R1: 1.9 mm from U1.1") for note in solution.chosen)
+
+
+_UP = {Edge.TOP: (0, -4), Edge.LEFT: (-4, 0), Edge.BOTTOM: (0, 4), Edge.RIGHT: (4, 0)}
+
+
+@pytest.mark.parametrize("side", ["front", "back"])
+@pytest.mark.parametrize("edge", list(_UP))
+def test_a_part_at_a_point_has_its_origin_there_whichever_way_it_faces_on_either_face(edge, side):
+    # The sensor's pad 1 is its origin, and its pad 2 is 4 mm up from it as it is drawn.
+    # The point is across and down from the board's top left corner, which is at
+    # (100, 50), and it is a point of the board as the front shows it: on the back the
+    # origin is at the same point, and the side that is up still faces where it is said.
+    board = _board(K1="A B")
+    said = board.place(board["K1"], at=(15 * mm, "12.5 mm"), facing=edge, side=side)
+    assert said.at == (15 * mm, 12.5 * mm)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    pose, (dx, dy) = solution.poses["K1"], _UP[edge]
+    assert (pose.x.mm, pose.y.mm, pose.back) == (115, 62.5, side == "back")
+    assert _pads(board, solution, "K1") == {"1": pytest.approx((115, 62.5)),
+                                            "2": pytest.approx((115 + dx, 62.5 + dy))}  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("to", "rot"), [((15, 5), 0), ((5, 15), 90), ((15, 25), 180), ((25, 15), 270)]
+)
+def test_a_part_at_a_point_is_turned_about_its_origin_for_the_shortest_connections(to, rot):
+    # Nothing says which way round: the sensor's pad 2 is turned to the test point it
+    # connects to, and its origin stays where it was put.
+    board = _board(K1="A B", T1="B")
+    board.place(board["K1"], at=(15 * mm, 15 * mm))
+    board.place(board["T1"], at=(to[0] * mm, to[1] * mm))
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    pose = solution.poses["K1"]
+    assert (pose.x.mm, pose.y.mm, pose.rot) == (115, 65, rot)
+    assert _pads(board, solution, "K1")["1"] == pytest.approx((115, 65))
+    assert (f"K1: turned {rot} degrees, of 0, 90, 180, 270, for the shortest connections"
+            in solution.chosen)  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("to", "rot", "origin"),
+    [((15, 27), 0, (115, 69)), ((27, 15), 90, (119, 65)), ((15, 3), 180, (115, 61)),
+     ((3, 15), 270, (111, 65))],
+)  # fmt: skip
+def test_a_pin_at_a_point_stays_there_and_the_origin_moves_as_the_part_is_turned(to, rot, origin):
+    # The sensor's pad 2 is at the point whichever way round the part is, and pad 1,
+    # its origin, goes round it to be near the test point it connects to.
+    board = _board(K1="A B", T1="A")
+    board.place(board["K1"], at=(15 * mm, 15 * mm), of=board["K1"].pin(2))
+    board.place(board["T1"], at=(to[0] * mm, to[1] * mm))
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    pose = solution.poses["K1"]
+    assert (pose.x.mm, pose.y.mm, pose.rot) == (*origin, rot)
+    assert _pads(board, solution, "K1") == {"1": pytest.approx(origin),
+                                            "2": pytest.approx((115, 65))}  # fmt: skip
+
+
+@pytest.mark.parametrize("side", ["front", "back"])
+@pytest.mark.parametrize("edge", list(_UP))
+@pytest.mark.parametrize("pin", [1, 2, 3, 4])
+def test_each_pin_of_a_part_can_be_the_one_at_the_point(pin, edge, side):
+    # A header's pins are 2.54 mm apart from pin 1 at its origin. Facing the top its
+    # pins run to the right on the front and, mirrored, to the left on the back; the
+    # other ways are that turned.
+    board = _board(P1="A B C D")
+    board.place(board["P1"], at=(15 * mm, 15 * mm), of=board["P1"].pin(pin), facing=edge,
+                side=side)  # fmt: skip
+    solution = board.solve()
+    assert [p.text for p in solution.problems] == []
+    pads = _pads(board, solution, "P1")
+    assert pads[str(pin)] == pytest.approx((115, 65))
+    run = 2.54 * (pin - 1) * (-1 if side == "back" else 1)
+    dx, dy = {Edge.TOP: (-run, 0), Edge.LEFT: (0, run), Edge.BOTTOM: (run, 0),
+              Edge.RIGHT: (0, -run)}[edge]  # fmt: skip
+    assert pads["1"] == pytest.approx((115 + dx, 65 + dy))
+    pose = solution.poses["P1"]
+    assert (pose.x.mm, pose.y.mm) == pytest.approx(pads["1"])
+
+
+def test_a_point_of_the_board_is_from_the_top_left_of_the_box_around_its_outline():
+    # An outline drawn from (20.5, 30.25): the point is from there, not from the page.
+    board = _drawn(20.5, 30.25, 60.5, 70.25, K1="A B", P1="A B C D")
+    board.place(board["K1"], at=("10mm", "8 mm"), facing=Edge.TOP)
+    board.place(board["P1"], at=(20 * mm, 30 * mm), of=board["P1"].pin(2), facing=Edge.TOP)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert _pads(board, solution, "K1")["1"] == pytest.approx((30.5, 38.25))
+    assert _pads(board, solution, "P1")["2"] == pytest.approx((40.5, 60.25))
+    assert _pads(board, solution, "P1")["1"] == pytest.approx((40.5 - 2.54, 60.25))
+
+
+def test_a_place_at_a_point_reads_as_it_was_written_and_is_the_same_however_it_was():
+    board = _board(K1="A B", T1="A")
+    k1, t1 = board.parts("K1", "T1")
+    thing = board.hole("RF:M", (115, 65))
+    one = place(k1, at=(15 * mm, "12.5 mm"), facing=Edge.TOP)
+    assert str(one) == "place(K1, at=(15 mm, 12.5 mm), facing=Edge.TOP)"
+    assert one.data() == {"place": "K1", "at": [15_000_000, 12_500_000], "facing": "top"}
+    assert one == place(k1, at=("15mm", 12.5 * mm), facing=Edge.TOP)
+    assert one != place(k1, at=(15 * mm, 12.6 * mm), facing=Edge.TOP)
+    pin = place(k1, at=(15 * mm, 15 * mm), of=k1.pin(2))
+    assert str(pin) == "place(K1, at=(15 mm, 15 mm), of=K1.2)"
+    assert pin.data() == {"place": "K1", "at": [15_000_000, 15_000_000], "of": "2"}
+    assert pin.mentions() == (k1,)
+    on = place(t1, on=thing, at=(8 * mm, 2 * mm), side="back")
+    assert str(thing) == "M at (115, 65)"
+    assert str(on) == "place(T1, on=M at (115, 65), at=(8 mm, 2 mm), side=Side.BACK)"
+    assert on.data() == {
+        "place": "T1",
+        "on": {"footprint": "RF:M", "x": 115_000_000, "y": 65_000_000, "rot": 0.0,
+               "back": False},
+        "at": [8_000_000, 2_000_000],
+        "side": "back",
+    }  # fmt: skip
+    # On a thing with no offset is at its origin, and says so.
+    assert place(t1, on=thing) == place(t1, on=thing, at=(0 * mm, "0 mm"))
+    assert str(place(t1, on=thing)) == "place(T1, on=M at (115, 65), at=(0 mm, 0 mm))"
+    assert place(t1, on=thing).mentions() == (t1,)
+    # What they say has one order, whatever order it was added in.
+    said = [one, pin, on, place(t1, on=thing)]
+    assert canonical(said) == canonical(reversed(said))
+
+
+def test_a_point_is_refused_beside_anything_else_that_says_where_at_the_line_that_says_it():
+    board = _board(K1="A B", T1="A", T2="B", P1="A B C D")
+    k1, t1, t2, p1 = board.parts("K1", "T1", "T2", "P1")
+    thing = board.hole("RF:M", (115, 65))
+    at = (15 * mm, 15 * mm)
+    cases: list[tuple[dict[str, Any], str]] = [
+        ({"against": Edge.LEFT}, "against"),
+        ({"between": (t1, t2)}, "between"),
+        ({"centre": True}, "centre"),
+        ({"near": t1, "within": 2 * mm}, "near"),
+        ({"against": Edge.LEFT, "along": 1 / 3}, "against"),
+        ({"against": Edge.LEFT, "after": t1}, "against"),
+        ({"against": Edge.LEFT, "before": t1}, "against"),
+    ]
+    for more, name in cases:
+        with pytest.raises(ValueError, match=f"K1: at= says where the part is, and so does "
+                                             f"{name}=: give one"):  # fmt: skip
+            board.place(k1, at=at, **more)
+        with pytest.raises(ValueError, match=f"K1: on= says where the part is, and so does "
+                                             f"{name}=: give one"):  # fmt: skip
+            board.place(k1, on=thing, **more)
+    with pytest.raises(ValueError, match="K1: outward= says which side of the part is to an "
+                                         "edge: give against="):  # fmt: skip
+        board.place(k1, at=at, outward="socket")
+    with pytest.raises(ValueError, match="K1: of= says which pin of the part is at a point: "
+                                         "give at= or on="):  # fmt: skip
+        board.place(k1, of=k1.pin(1), facing=Edge.TOP)
+    with pytest.raises(ValueError, match=r"K1: of= takes a pin of the part itself, such as "
+                                         r"K1.pin\(1\), not P1.3"):  # fmt: skip
+        board.place(k1, at=at, of=p1.pin(3))
+    with pytest.raises(TypeError, match="K1: of= takes a pin of the part, not 2"):
+        board.place(k1, at=at, of=2)  # type: ignore[arg-type]
+    with pytest.raises(LookupError, match="K1 has no pin 7"):
+        board.place(k1, at=at, of=k1.pin(7))
+    for bad in ((15, 15), (15 * mm,), (15 * mm, 15 * mm, 15 * mm), 15 * mm, "15 mm", [at]):
+        with pytest.raises(TypeError, match="K1: at= takes two lengths, across and down, such "
+                                            r"as \(72 \* mm, 76 \* mm\), not "):  # fmt: skip
+            board.place(k1, at=bad)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="'15' is not a length"):
+        board.place(k1, at=("15", "15 mm"))
+    for bad in ("M", thing.label, k1, (115, 65)):
+        with pytest.raises(TypeError, match="K1: on= takes something fixed on the board, as "
+                                            r"board.thing\(name\) gives it, not "):  # fmt: skip
+            board.place(k1, on=bad)  # type: ignore[arg-type]
+    # A thing of another board, or one never put on a board, is not on this one.
+    other = _board(K1="A B")
+    theirs = other.hole("RF:M", (120, 65))
+    with pytest.raises(LookupError, match=r"place\(K1, on=M at \(120, 65\), at=\(0 mm, 0 mm\)\): "
+                                          r"M at \(120, 65\) is not fixed on this board, which "
+                                          r"has M at \(115, 65\)"):  # fmt: skip
+        board.place(k1, on=theirs)
+    with pytest.raises(LookupError, match="is not fixed on this board, which has M at"):
+        board.add(place(k1, on=theirs, at=at))
+    assert board.statements() == ()
+    # And a thing taken off the board after it was said is a problem, not a place.
+    board.place(t1, on=thing)
+    line = _line_no() - 1
+    board.fixed.clear()
+    solution = board.solve()
+    assert _told(solution) == [f"T1 is placed on M at (115, 65), which is not fixed on the "
+                               f"board ({HERE}:{line})"]  # fmt: skip
+    assert "T1" not in solution.poses
+
+
+def test_a_part_given_two_points_is_a_conflict_with_both_lines():
+    board = _board(K1="A B", T1="A")
+    k1 = board["K1"]
+    board.place(k1, at=(15 * mm, 15 * mm))
+    board.place(k1, at=(15 * mm, 15 * mm), facing=Edge.TOP)  # the same point: no conflict
+    assert board.conflicts() == ()
+    board.place(k1, at=(15 * mm, 16 * mm))
+    line = _line_no() - 1
+    (conflict,) = board.conflicts()
+    assert str(conflict) == (f"K1: place on the board is (15 mm, 15 mm) ({HERE}:{line - 3}) "
+                             f"and (15 mm, 16 mm) ({HERE}:{line})")  # fmt: skip
+    solution = board.solve()
+    assert [p.text for p in solution.problems] == [str(conflict)] and not solution.poses
+    # The same point by another pin is another place, and so is one on a thing.
+    board = _board(K1="A B")
+    k1 = board["K1"]
+    thing = board.hole("Mech:Dot", (115, 65))
+    board.place(k1, at=(15 * mm, 15 * mm))
+    board.place(k1, at=(15 * mm, 15 * mm), of=k1.pin(2))
+    board.place(k1, on=thing)
+    assert [str(c).split(f" ({HERE}")[1:] for c in board.conflicts()] == [
+        [f":{_line_no() - 4}) and K1.2 at (15 mm, 15 mm)", f":{_line_no() - 3})"],
+        [f":{_line_no() - 5}) and (0 mm, 0 mm) on Dot at (115, 65)", f":{_line_no() - 3})"],
+    ]
+
+
+def test_a_point_and_another_place_said_apart_hold_together_or_are_two_places():
+    # A test point against the left edge has its middle 0.5 mm in: a point that agrees
+    # says how far down as well, and one that does not is a second place.
+    board = _board(T1="A")
+    board.place(board["T1"], against=Edge.LEFT)
+    board.place(board["T1"], at=(0.5 * mm, 4 * mm))
+    solution = board.solve()
+    assert solution.ok and _pads(board, solution, "T1")["1"] == pytest.approx((100.5, 54))
+    board = _board(T1="A")
+    board.place(board["T1"], against=Edge.LEFT)
+    board.place(board["T1"], at=(5 * mm, 4 * mm))
+    line = _line_no() - 1
+    assert _told(board.solve()) == [f"T1 is put in two places 4.5 mm apart across the board "
+                                    f"({HERE}:{line}, {HERE}:{line - 1})"]  # fmt: skip
+    # Near something is looked for, and a point is not.
+    for on in (False, True):
+        board = _board(T1="A", T2="A")
+        thing = board.hole("Mech:Dot", (115, 65))
+        board.place(board["T2"], at=(15 * mm, 4 * mm))
+        board.place(board["T1"], near=board["T2"], within=3 * mm)
+        board.place(board["T1"], at=(5 * mm, 4 * mm), on=thing if on else None)
+        line = _line_no() - 1
+        assert _told(board.solve()) == [
+            "T1: near= is solved alone: one near=, and no at= or on= beside it "
+            f"({HERE}:{line - 1}, {HERE}:{line})"
+        ]
+
+
+def test_a_part_at_a_point_is_not_moved_and_what_is_wrong_there_is_said():
+    # Off the board.
+    board = _board(T1="A")
+    board.place(board["T1"], at=(0 * mm, 15 * mm))
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [f"T1 does not fit on the board: it reaches 0.5 mm past the left "
+                               f"edge ({HERE}:{line})"]  # fmt: skip
+    assert _pads(board, solution, "T1")["1"] == pytest.approx((100, 65))
+    # Over what is fixed there.
+    board = _board(T1="A")
+    board.hole("Mech:Hole", (115, 65))
+    board.place(board["T1"], at=(15.5 * mm, 15 * mm))
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [f"T1 is over Hole at (115, 65) ({HERE}:{line})"]
+    assert _pads(board, solution, "T1")["1"] == pytest.approx((115.5, 65))
+    # Overlapping another part.
+    board = _board(Q1="A B", Q2="A B")
+    board.place(board["Q1"], at=(15 * mm, 15 * mm), facing=Edge.TOP)
+    board.place(board["Q2"], at=(17 * mm, 15 * mm), facing=Edge.TOP)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [f"Q1 and Q2 overlap ({HERE}:{line - 1}, {HERE}:{line})"]
+    assert (solution.poses["Q1"].x.mm, solution.poses["Q2"].x.mm) == (115, 117)
+    # Outside an area it is said to be inside.
+    board = _board(T1="A")
+    board.place(board["T1"], at=(15 * mm, 15 * mm))
+    board.inside(board.area(Edge.LEFT, share=1 / 4), [board["T1"]])
+    line = _line_no() - 1
+    solution = board.solve()
+    assert _told(solution) == [
+        "T1 is not inside area(Edge.LEFT, share=0.25): it reaches 8 mm past its right side "
+        f"({HERE}:{line}, {HERE}:{line - 1})"
+    ]
+    # A part whose way round matters is still told that nothing says it.
+    board = _board(K1="A B")
+    board.annotate(board["K1"], oriented=True)
+    board.place(board["K1"], at=(15 * mm, 15 * mm))
+    assert [p.text for p in board.solve().problems] == [
+        "K1's way round matters and nothing says it: give facing= an edge, or outward= a side of it"
+    ]
+
+
+def test_what_is_fixed_on_the_board_is_had_by_its_name():
+    board = _board(T1="A")
+    module = board.hole("RF:M", (115, 65), rot=90)
+    assert board.thing("M") is module and board.thing("RF:M") is module
+    assert board.thing("M at (115, 65)") is module
+    with pytest.raises(LookupError, match=r"nothing fixed on the board is 'Hole': there is "
+                                          r"M at \(115, 65\)"):  # fmt: skip
+        board.thing("Hole")
+    one, two = board.hole("Mech:Hole", (103, 53)), board.hole("Mech:Hole", (127.5, 53))
+    assert board.thing("M") is module
+    with pytest.raises(LookupError, match=r"2 things fixed on the board are 'Hole': Hole at "
+                                          r"\(103, 53\) and Hole at \(127.5, 53\): say which, "
+                                          r"as in thing\('Hole', at=\(103, 53\)\)"):  # fmt: skip
+        board.thing("Hole")
+    assert board.thing("Hole", at=(103, 53)) is one
+    assert board.thing("Mech:Hole", at=(127.5, 53)) is two
+    assert board.thing("Hole at (127.5, 53)") is two
+    with pytest.raises(LookupError, match=r"nothing fixed on the board is 'Hole' at \(1, 2\): "
+                                          r"there is Hole at \(103, 53\), M at \(115, 65\) and "
+                                          r"Hole at \(127.5, 53\)"):  # fmt: skip
+        board.thing("Hole", at=(1, 2))
+    with pytest.raises(LookupError, match="nothing fixed on the board is 'M': nothing is fixed "
+                                          "on it"):  # fmt: skip
+        _board(T1="A").thing("M")
+
+
+def _on_the_module(rot: float, back: bool, **parts: str) -> tuple[Board, Any, Node]:
+    """A board with the module fixed at (115, 65), turned and on that face: the board,
+    the thing, and its footprint as it is put there, to read its pads' places from."""
+    board = _board(**parts)
+    thing = board.hole("RF:M", (115, 65), rot=rot, back=back)
+    return board, thing, put(LIBRARY["RF:M"], Placement("RF:M", "M", "M", 115, 65, rot, back))
+
+
+@pytest.mark.parametrize("back", [False, True])
+@pytest.mark.parametrize("rot", [0, 90, 180, 270, 30])
+def test_a_part_on_something_fixed_is_at_a_point_of_it_turned_and_mirrored_as_it_is(rot, back):
+    # The module's pad 3 is at (8, 2) in its own footprint and its pad 5 at (4, 3).
+    # A test point put on the module at each is where that pad is, however the module
+    # is turned and whichever face it is on, and over the module and nothing else.
+    board, thing, there = _on_the_module(rot, back, T1="A", T2="B", T3="C")
+    side = "back" if back else "front"
+    board.place(board["T1"], on=thing, at=(8 * mm, 2 * mm), side=side)
+    board.place(board["T2"], on=thing, at=("4 mm", "3mm"), side=side)
+    board.place(board["T3"], on=thing, side=side)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert pad_xy(there, "3") != pytest.approx(pad_xy(there, "5"))
+    assert _pads(board, solution, "T1")["1"] == pytest.approx(pad_xy(there, "3"), abs=2e-6)
+    assert _pads(board, solution, "T2")["1"] == pytest.approx(pad_xy(there, "5"), abs=2e-6)
+    assert _pads(board, solution, "T3")["1"] == pytest.approx((115, 65))
+    assert solution.poses["T1"].back is back
+
+
+@pytest.mark.parametrize("back", [False, True])
+@pytest.mark.parametrize("rot", [0, 90, 180, 270])
+@pytest.mark.parametrize("edge", list(_UP))
+def test_a_pin_of_a_part_on_something_fixed_is_at_the_point_and_the_part_faces_as_said(
+    edge, rot, back
+):
+    # The sensor's pad 2 on the module's pad 3: the sensor turns as it is said to, not
+    # as the module is turned, and its pad 1 is 4 mm from pad 2 away from the edge.
+    board, thing, there = _on_the_module(rot, back, K1="A B")
+    board.place(board["K1"], on=thing, at=(8 * mm, 2 * mm), of=board["K1"].pin(2), facing=edge,
+                side="back" if back else "front")  # fmt: skip
+    solution = board.solve()
+    x, y = pad_xy(there, "3")
+    pads = _pads(board, solution, "K1")
+    assert pads["2"] == pytest.approx((x, y))
+    assert pads["1"] == pytest.approx((x - _UP[edge][0], y - _UP[edge][1]))
+    assert all(p.text.startswith("K1 does not fit on the board") for p in solution.problems)
+
+
+def test_a_part_on_something_fixed_may_overlap_that_thing_and_nothing_else():
+    # The module is from 114 to 124 mm across and 61 to 68 down.
+    board, thing, _ = _on_the_module(0, False, T1="A")
+    board.place(board["T1"], on=thing, at=(8 * mm, 2 * mm))
+    solution = board.solve()
+    assert solution.ok and _pads(board, solution, "T1")["1"] == pytest.approx((123, 67))
+    # At the same point of the board, and not said to be on the module, it is over it.
+    board, thing, _ = _on_the_module(0, False, T1="A")
+    board.place(board["T1"], at=(23 * mm, 17 * mm))
+    assert [p.text for p in board.solve().problems] == ["T1 is over M at (115, 65)"]
+    # A second fixed thing there is in the way, whichever of them is found first.
+    for x in (114.5, 123.5):
+        board, thing, _ = _on_the_module(0, False, T1="A")
+        board.hole("Mech:Hole", (x, 67))
+        board.place(board["T1"], on=thing, at=((x - 115) * mm, 2 * mm))
+        assert [p.text for p in board.solve().problems] == [f"T1 is over Hole at ({x}, 67)"]
+    # And so is another part: one on the thing as well, or one that is not.
+    board, thing, _ = _on_the_module(0, False, T1="A", T2="B", T3="C")
+    board.place(board["T1"], on=thing, at=(8 * mm, 2 * mm))
+    board.place(board["T2"], on=thing, at=(8.5 * mm, 2 * mm))
+    assert [p.text for p in board.solve().problems] == ["T1 and T2 overlap"]
+    board.place(board["T3"], at=(23 * mm, 17.5 * mm))
+    assert [p.text for p in board.solve().problems] == [
+        "T1 and T2 overlap", "T1 and T3 overlap", "T2 and T3 overlap", "T3 is over M at (115, 65)"
+    ]  # fmt: skip
+    # On one thing is not on another of its kind.
+    board, thing, _ = _on_the_module(0, False, T1="A")
+    board.hole("RF:M", (115, 73))
+    board.place(board["T1"], on=thing, at=(4 * mm, 6.5 * mm))
+    assert [p.text for p in board.solve().problems] == ["T1 is over M at (115, 73)"]
+
+
+def test_a_part_that_looks_for_a_place_keeps_off_a_part_on_something_fixed_and_off_the_thing():
+    # A test point on the module's right side, half on it and half off: from 123.5 to
+    # 124.5 mm across. The nearest place to it that is clear of it and of the module is
+    # on its right, 1 mm from it; without it there, the place 0.5 mm from the module.
+    board, thing, _ = _on_the_module(0, False, T1="A", T2="A")
+    board.place(board["T1"], on=thing, at=(9 * mm, 0 * mm))
+    board.place(board["T2"], near=board["T1"], within=3 * mm)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert _pads(board, solution, "T1")["1"] == pytest.approx((124, 65))
+    assert _pads(board, solution, "T2")["1"] == pytest.approx((125, 65))
+    # One placed after another along an edge keeps off it too.
+    board = _board(T1="A", T2="B", T3="C")
+    thing = board.hole("Device:R", (102, 60))
+    board.place(board["T1"], against=Edge.LEFT, along=8.5 * mm)
+    board.place(board["T2"], on=thing, at=(-1.5 * mm, 2 * mm))
+    board.place(board["T3"], against=Edge.LEFT, after=board["T1"])
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    # The first test point is from 58 to 59 mm down, the resistor fixed there from 59.1
+    # to 60.9 and the part on it from 61.5 to 62.5, with no room for another between.
+    assert _span(board, solution, "T3", Edge.LEFT) == pytest.approx((12.5, 13.5))
