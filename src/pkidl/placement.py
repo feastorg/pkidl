@@ -255,11 +255,14 @@ def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
 
 
 _AT_A_TIME = 4096  # the offsets a place near something is looked for at, at once
+_FURTHER = Length(30_000_000)  # as far as a place is looked for to say how far off it is
+EDGE = "the board's edge"
+_Grid = tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]
 _SIFT = True  # whether those are sifted all at once first: off, each is tried in turn
 
 
 @lru_cache(maxsize=4)  # a 20 mm distance is 20 MB of them
-def _offsets(limit: int, step: int) -> tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]:
+def _offsets(limit: int, step: int) -> _Grid:
     """Every offset on a grid of *step* within *limit*, nearest first: each as its
     distance squared, dy and dx, and the dx and dy of them all as arrays."""
     n = limit // step
@@ -950,7 +953,7 @@ class _Solver:
             return {Edge.TOP: box[3] <= of[1], Edge.BOTTOM: box[1] >= of[3],
                     Edge.LEFT: box[2] <= of[0], Edge.RIGHT: box[0] >= of[2]}[s.toward]  # fmt: skip
 
-        offsets, dxs, dys = _offsets(limit, step)
+        within = _offsets(limit, step)
 
         # Each way the part may be turned, with each of its pads by each pad it is near.
         ways = [(rot, turned, px, py, tx, ty)
@@ -960,11 +963,13 @@ class _Solver:
         through = shape.through
         # What a box may not overlap wherever it is tried: what is fixed on the board,
         # and the parts placed that share a face with this one.
-        barred = [taken for f, taken, holed in self.fixed if through or holed or f.back == back]
-        barred += [self._box(other) for other in done
-                   if other != ref and other in self.poses
-                   and (through or self.shapes[other].through
-                        or self.poses[other].back == back)]  # fmt: skip
+        named = [(f.label, taken) for f, taken, holed in self.fixed
+                 if through or holed or f.back == back]  # fmt: skip
+        named += [(other, self._box(other)) for other in done
+                  if other != ref and other in self.poses
+                  and (through or self.shapes[other].through
+                       or self.poses[other].back == back)]  # fmt: skip
+        barred = [box for _, box in named]
         b0, b1, b2, b3 = self.board
 
         # Where each way puts the part's box, before the offset is added.
@@ -974,34 +979,46 @@ class _Solver:
         wx0, wy0 = wx + boxes[:, 0:1], wy + boxes[:, 1:2]
         wx1, wy1 = wx + boxes[:, 2:3], wy + boxes[:, 3:4]
 
-        def roughly(keeps: bool, a: int, b: int) -> np.ndarray:
-            """For each way and each of the offsets from *a* to *b*, whether the part's
-            box there is on the board's box, on the side said, and over nothing it may
-            not be over: every place that is clear is one of these, and they are found
-            all at once."""
+        def boxes_at(grid: _Grid, a: int, b: int) -> tuple[np.ndarray, ...]:
+            """The part's box each way, at each of *grid*'s offsets from *a* to *b*."""
+            _, dxs, dys = grid
+            return (wx0 + dxs[a:b], wy0 + dys[a:b], wx1 + dxs[a:b], wy1 + dys[a:b])
+
+        def on_board(x0: np.ndarray, y0: np.ndarray, x1: np.ndarray, y1: np.ndarray) -> np.ndarray:
+            return (x0 >= b0) & (y0 >= b1) & (x1 <= b2) & (y1 <= b3)
+
+        def on_side(x0: np.ndarray, y0: np.ndarray, x1: np.ndarray, y1: np.ndarray) -> np.ndarray:
+            """On the side of what it is near that the statement says, as ``beyond``."""
+            if s.toward is None:
+                return np.ones(x0.shape, dtype=bool)
+            return {Edge.TOP: y1 <= of[1], Edge.BOTTOM: y0 >= of[3],
+                    Edge.LEFT: x1 <= of[0], Edge.RIGHT: x0 >= of[2]}[s.toward]  # fmt: skip
+
+        def roughly(keeps: bool, grid: _Grid, a: int, b: int) -> np.ndarray:
+            """For each way and each of *grid*'s offsets from *a* to *b*, whether the
+            part's box there is on the board's box, on the side said, and over nothing
+            it may not be over: every place that is clear is one of these, and they are
+            found all at once."""
             out = [*barred]
             if keeps:
                 out += [kept for _, kept, faces in self._kept(done) if through or back in faces]
-            x0, y0 = wx0 + dxs[a:b], wy0 + dys[a:b]
-            x1, y1 = wx1 + dxs[a:b], wy1 + dys[a:b]
+            x0, y0, x1, y1 = boxes_at(grid, a, b)
             if not _SIFT:
                 return np.ones(x0.shape, dtype=bool)
-            ok = (x0 >= b0) & (y0 >= b1) & (x1 <= b2) & (y1 <= b3)
-            if s.toward is not None:
-                ok &= {Edge.TOP: y1 <= of[1], Edge.BOTTOM: y0 >= of[3],
-                       Edge.LEFT: x1 <= of[0], Edge.RIGHT: x0 >= of[2]}[s.toward]  # fmt: skip
+            ok = on_board(x0, y0, x1, y1) & on_side(x0, y0, x1, y1)
             for t0, t1, t2, t3 in out:
                 ok &= ~((x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1))
             return ok
 
-        def nearest(keeps: bool) -> tuple[Pose | None, int]:
+        def nearest(keeps: bool, grid: _Grid = within) -> tuple[Pose | None, int]:
             best, found = None, -1
+            offsets = grid[0]
             # The offsets are nearest first: a few thousand at a time, until one of them
             # is a place and none further off is as near.
             for a in range(0, len(offsets) if ways else 0, _AT_A_TIME):
                 if best is not None and offsets[a][0] > found:
                     break
-                rough = roughly(keeps, a, a + _AT_A_TIME)
+                rough = roughly(keeps, grid, a, a + _AT_A_TIME)
                 for i in np.flatnonzero(rough.any(axis=0)).tolist():
                     d2, dy, dx = offsets[a + i]
                     if best is not None and d2 > found:
@@ -1027,10 +1044,41 @@ class _Solver:
                 kept = []
             toward = "" if s.toward is None else f", toward the {s.toward.value} edge,"
             holes = " and its holes" if self.fixed else ""
+            # How far off the nearest place is, looking three times as far and no less
+            # than 10 mm nor more than 30, and what is most in the way within the
+            # distance said.
+            reach = max(limit, min(max(3 * limit, _FURTHER.nm // 3), _FURTHER.nm))
+            _, further = nearest(True, _offsets(reach, step))
+            # To the next step up, so that the distance given is one that would do.
+            off = math.isqrt(max(further, 0)) // step * step
+            off += step if off * off < further else 0
+            where = (f"the nearest is {Length(off)} from it" if further >= 0
+                     else f"there is none within {Length(reach)} either")  # fmt: skip
+            blocked: dict[str, int] = {}
+            for a in range(0, len(within[0]) if ways else 0, _AT_A_TIME):
+                x0, y0, x1, y1 = boxes_at(within, a, a + _AT_A_TIME)
+                side = on_side(x0, y0, x1, y1)
+                on = on_board(x0, y0, x1, y1)
+                blocked[EDGE] = blocked.get(EDGE, 0) + int((side & ~on).sum())
+                for name, (t0, t1, t2, t3) in named:
+                    over = side & on & (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+                    blocked[name] = blocked.get(name, 0) + int(over.sum())
+            most = sorted((name for name, n in blocked.items() if n),
+                          key=lambda name: (-blocked[name], natural(name)))[:3]  # fmt: skip
+            way = (
+                ""
+                if not most
+                else (
+                    ", with "
+                    + (most[0] if len(most) == 1 else ", ".join(most[:-1]) + " and " + most[-1])
+                    + " in the way"
+                )
+            )
             self._problem((ref,), f"{ref} has no place within {s.within} of {s.near}{toward} "
                           f"that is on the {'back' if back else 'front'} of the board and "
                           f"clear of the other parts{holes}"
-                          + (" and of what is kept clear" if kept else ""),
+                          + (" and of what is kept clear" if kept else "")
+                          + f": {where}{way}",
                           s, *kept)  # fmt: skip
             return None
         self._chose(f"{ref}: {Length(math.isqrt(found))} from {s.near}, turned "

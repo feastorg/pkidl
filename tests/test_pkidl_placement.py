@@ -322,7 +322,8 @@ def test_a_part_with_no_place_near_enough_is_reported_and_not_placed():
     assert not solution.ok and solution.free == () and set(solution.poses) == {"U1"}
     assert _told(solution) == [
         "R1 has no place within 1.7 mm of U1.1 that is on the front of the board and clear "
-        f"of the other parts ({HERE}:{line})"
+        "of the other parts: the nearest is 1.8 mm from it, with U1 and the board's edge in "
+        f"the way ({HERE}:{line})"
     ]
     assert solution.problems[0].parts == ("R1",)
     assert solution.problems[0].statements == board.statements(about="R1")
@@ -361,7 +362,8 @@ def test_a_part_with_holes_takes_both_faces():
         board, solution = tried(2.5 * mm, side)
         assert _told(solution) == [
             f"R1 has no place within 2.5 mm of P1.1 that is on the {side} of the board and "
-            f"clear of the other parts ({HERE}:{_line_no() - 9})"
+            "clear of the other parts: the nearest is 2.6 mm from it, with P1 and the board's "
+            f"edge in the way ({HERE}:{_line_no() - 10})"
         ]
         board, solution = tried(2.6 * mm, side)
         assert solution.ok and solution.poses["R1"].back is (side == "back")
@@ -813,7 +815,8 @@ def test_a_placement_that_does_not_settle_is_reported_and_a_part_with_no_place_h
     assert _told(solution) == [
         "the placement does not settle: each pass moves a part",
         "R1 has no place within 2 mm of K1.1 that is on the front of the board and clear of "
-        f"the other parts ({HERE}:{said})",
+        "the other parts: the nearest is 4.8 mm from it, with the board's edge and K1 in the "
+        f"way ({HERE}:{said})",
     ]
     assert solution.problems[0].parts == ("K1", "R1")
     assert list(solution.poses) == ["K1"]
@@ -892,7 +895,7 @@ def test_within_is_as_the_crow_flies():
     assert solution.ok and "R1: 0.5 mm from T1.1, turned 0 degrees" in solution.chosen
     assert [p.text for p in tried(0.4 * mm).problems] == [
         "R1 has no place within 0.4 mm of T1.1 that is on the back of the board and clear of "
-        "the other parts"
+        "the other parts: the nearest is 0.5 mm from it, with the board's edge in the way"
     ]
 
 
@@ -995,7 +998,8 @@ def test_a_part_with_no_place_out_of_what_is_kept_clear_is_reported_with_the_kee
     board, solution, line = _under_the_module(1.2 * mm, "back")
     assert _told(solution) == [
         "R1 has no place within 1.2 mm of U1.1 that is on the back of the board and clear "
-        f"of the other parts and of what is kept clear ({HERE}:{line}, {HERE}:{line - 1})"
+        "of the other parts and of what is kept clear: the nearest is 1.3 mm from it "
+        f"({HERE}:{line}, {HERE}:{line - 1})"
     ]
     assert solution.problems[0].parts == ("R1",) and "R1" not in solution.poses
     near, kept = board.statements(about="R1")[0], solution.keepouts[0].statement
@@ -1004,7 +1008,8 @@ def test_a_part_with_no_place_out_of_what_is_kept_clear_is_reported_with_the_kee
     board, solution, line = _under_the_module(1.7 * mm, "front")
     assert _told(solution) == [
         "R1 has no place within 1.7 mm of U1.1 that is on the front of the board and clear "
-        f"of the other parts ({HERE}:{line})"
+        "of the other parts: the nearest is 1.8 mm from it, with U1 and the board's edge in "
+        f"the way ({HERE}:{line})"
     ]
     assert solution.problems[0].statements == board.statements(about="R1")
 
@@ -1049,7 +1054,8 @@ def test_a_part_with_holes_with_no_place_names_what_is_kept_clear_on_the_other_f
     board, solution, line = _over_a_strap(4.6 * mm)
     assert _told(solution) == [
         "P1 has no place within 4.6 mm of R1.1 that is on the front of the board and clear "
-        f"of the other parts and of what is kept clear ({HERE}:{line}, {HERE}:{line - 1})"
+        "of the other parts and of what is kept clear: the nearest is 4.7 mm from it, with "
+        f"the board's edge and R1 in the way ({HERE}:{line}, {HERE}:{line - 1})"
     ]
     assert solution.problems[0].statements == (board.statements(about="P1")[0],
                                                solution.keepouts[0].statement)  # fmt: skip
@@ -1461,7 +1467,8 @@ def test_a_part_with_no_place_on_the_side_it_is_to_be_on_is_said():
     line = _line_no() - 1
     assert _told(board.solve()) == [
         "R1 has no place within 4 mm of P1, toward the bottom edge, that is on the front of "
-        f"the board and clear of the other parts ({HERE}:{line})"
+        "the board and clear of the other parts: there is none within 12 mm either, with "
+        f"the board's edge in the way ({HERE}:{line})"
     ]
 
 
@@ -1710,7 +1717,8 @@ def test_a_part_with_no_place_on_a_board_with_holes_is_told_they_are_among_what_
     board.place(board["R1"], near=board["P1"], within=4 * mm, toward=Edge.BOTTOM)
     assert [p.text for p in board.solve().problems] == [
         "R1 has no place within 4 mm of P1, toward the bottom edge, that is on the front of "
-        "the board and clear of the other parts and its holes"
+        "the board and clear of the other parts and its holes: there is none within 12 mm "
+        "either, with the board's edge in the way"
     ]
 
 
@@ -1871,7 +1879,7 @@ def test_a_decoupling_capacitor_is_within_the_distance_said_of_its_pin_or_has_no
     solution = board.solve()
     assert _told(solution) == [
         "R1 has no place within 0.3 mm of U1.1 that is on the front of the board and clear "
-        f"of the other parts ({HERE}:{line})"
+        f"of the other parts: the nearest is 1.8 mm from it, with U1 in the way ({HERE}:{line})"
     ]
     # The problem is of the statement the board file wrote, not of what was made of it.
     assert solution.problems[0].statements == (said,)
@@ -2155,6 +2163,9 @@ def test_the_places_sifted_all_at_once_are_the_ones_found_trying_each_in_turn(mo
     at a time."""
     import pkidl.placement as placement
 
+    # Trying each place in turn is slow, and slower the further it looks: where a part
+    # has no place, how far off the nearest is is looked for no further than was said.
+    monkeypatch.setattr(placement, "_FURTHER", Length(0))
     for seed in range(12):
         monkeypatch.setattr(placement, "_SIFT", False)
         plain = _crowded(seed).solve()
@@ -2185,3 +2196,60 @@ def test_what_is_fixed_on_the_back_is_not_in_the_way_of_a_place_on_the_front():
     assert beside("Test:TP") == (115.0, 64.0)
     assert beside("Test:TP", back=False) != (115.0, 64.0)
     assert beside("Mech:Hole") != (115.0, 64.0)
+
+
+def _no_place(within: float, **said) -> tuple[Board, str]:
+    """A resistor with no place within *within* mm of the first pin of a module at the
+    middle of the board, and what the solver says of it."""
+    board = _board(U1="A B C D E", R1="A X")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.place(board["R1"], near=board["U1"].pin(1), within=within * mm, **said)
+    (problem,) = board.solve().problems
+    return board, problem.text
+
+
+def test_the_distance_said_to_be_the_nearest_is_one_that_would_do():
+    for within in (0.3, 1.0, 1.7):
+        _, text = _no_place(within)
+        off = float(text.split("the nearest is ")[1].split(" mm from it")[0])
+        assert off > within
+        # Asked for at that distance the part has its place, and a step nearer it has not.
+        board = _board(U1="A B C D E", R1="A X")
+        board.place(board["U1"], centre=True, facing=Edge.TOP)
+        board.place(board["R1"], near=board["U1"].pin(1), within=off * mm)
+        assert board.solve().problems == ()
+        assert "has no place" in _no_place(round(off - 0.1, 1))[1]
+
+
+def test_a_part_with_no_place_three_times_as_far_or_10_mm_off_is_said_to_have_none():
+    # Toward the top edge of a module that is against it: no place is on that side, so
+    # nothing is in the way of one.
+    board = _board(U1="A B C D E", R1="A X")
+    board.place(board["U1"], against=Edge.TOP, facing=Edge.TOP)
+    board.place(board["R1"], near=board["U1"].pin(1), within=1 * mm, toward=Edge.TOP)
+    (problem,) = board.solve().problems
+    assert problem.text.endswith(": there is none within 10 mm either")
+    # Past 10 mm it looks three times as far as was said, and no further than 30 mm.
+    for within, reach in ((5, 15), (12, 30), (40, 40)):
+        board = _board(U1="A B C D E", R1="A X")
+        board.place(board["U1"], against=Edge.TOP, facing=Edge.TOP)
+        board.place(board["R1"], near=board["U1"].pin(1), within=within * mm, toward=Edge.TOP)
+        (problem,) = board.solve().problems
+        assert f": there is none within {reach} mm either" in problem.text
+
+
+def test_what_is_most_in_the_way_is_named_the_three_that_take_the_most_places():
+    # Round the module's first pin: the module itself, a mounting hole beside it, and a
+    # resistor placed there first. A second resistor further off takes fewer places.
+    board = _board(U1="A B C D E", R1="A Y", R2="A Z", T1="A")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.hole("Mech:Hole", (109, 65))
+    board.place(board["R1"], near=board["U1"].pin(1), within=4 * mm)
+    board.place(board["R2"], near=board["U1"].pin(1), within=6 * mm)
+    board.place(board["T1"], near=board["U1"].pin(1), within=1 * mm)
+    texts = [p.text for p in board.solve().problems if p.parts == ("T1",)]
+    assert len(texts) == 1 and texts[0].endswith(
+        ": the nearest is 3.5 mm from it, with U1, Hole at (109, 65) and R1 in the way"
+    )
+    # One thing in the way is named alone.
+    assert _no_place(0.3)[1].endswith(": the nearest is 1.8 mm from it, with U1 in the way")

@@ -174,8 +174,13 @@ front. Solved on the board's inputs, neither holds, and both are reported
 ```
 P1 does not fit on the board: it reaches 0.48 mm past the left edge
 align(P1, P2, grid=2.54 mm) does not hold: P1 and P2 are 24.13 mm apart across the board, 9.5 steps
-R1 has no place within 3 mm of U1.1 that is on the front of the board and clear of the other parts
+R1 has no place within 3 mm of U1.1 that is on the front of the board and clear of the other parts: the nearest is 3.5 mm from it, with U1, P1 and the board's edge in the way
 ```
+
+A part with no place is told how far off the nearest one is, to the next 0.1 mm up so
+that the distance given would do, and the three things that take the most of the
+places it was tried in. It is looked for three times as far as was said, no less than
+10 mm and no more than 30.
 
 The board is 1.05 inch wide, so rows 0.9 inch apart are 0.075 inch in from each edge;
 and with the module between the headers, 0.48 mm of the front is left between its pads

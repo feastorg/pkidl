@@ -236,6 +236,12 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A part with no place within the distance said is told how far off the nearest place
+  is, to the next 0.1 mm up, so that the distance given would do, and what is most in
+  the way: `R8 has no place within 8 mm of ESP1.5 ...: the nearest is 9.1 mm from it,
+  with ESP1, IC1 and the board's edge in the way`. It is looked for three times as far
+  as was said, no less than 10 mm and no more than 30; past that, `there is none
+  within 30 mm either`. The problem's text is longer by that.
 - `Board.solve()` is faster where parts are placed `near=` something: the next-bus
   clock's 26 parts in 1.8 s where it took 47.5 s, the fan controller's 49 in 0.3 s
   where it took 21.7 s, with the same poses, choices and problems. The places a part
