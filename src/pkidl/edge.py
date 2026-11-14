@@ -44,6 +44,28 @@ def _arc(start: Point, mid: Point, end: Point) -> list[Point]:
     return [start, *_round(ox, oy, r, a0, span)[1:-1], end]
 
 
+def arc_bounds(start: Point, mid: Point, end: Point) -> list[Point]:
+    """The points that bound the arc from *start* through *mid* to *end*: its ends, and
+    where it passes the left, right, top and bottom of its circle."""
+    (ax, ay), (bx, by), (cx, cy) = start, mid, end
+    d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
+    if abs(d) < 1e-12:  # three points in a line: no arc, a line
+        return [start, end]
+    a2, b2, c2 = ax * ax + ay * ay, bx * bx + by * by, cx * cx + cy * cy
+    ox = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d
+    oy = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d
+    r = math.hypot(ax - ox, ay - oy)
+    a0, am, a1 = (math.degrees(math.atan2(y - oy, x - ox)) for x, y in (start, mid, end))
+    span = (a1 - a0) % 360
+    rising = (am - a0) % 360 <= span  # the angle grows from start to end, by way of mid
+    pts = [start, end]
+    for t in (0, 90, 180, 270):
+        along = (t - a0) % 360
+        if (along <= span) if rising else (along >= span):
+            pts.append((ox + r * math.cos(math.radians(t)), oy + r * math.sin(math.radians(t))))
+    return pts
+
+
 def _round(ox: float, oy: float, r: float, a0: float, span: float) -> list[Point]:
     """Points round a circle from angle *a0* through *span*, both ends among them."""
     step = 2 * math.acos(max(0.0, 1 - ARC / r)) if r > ARC else math.pi / 2
