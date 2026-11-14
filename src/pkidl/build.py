@@ -10,7 +10,9 @@ nothing places: ``BuildError`` says each, with the line it was written on. A rou
 that leaves connections unmade does not stop the build. What it says is in the result
 (``Built.routed``), and KiCad's DRC judges the board that was written. A pad starved of
 its pour that a track joins to its net is taken off the pour, and the result names it
-(``Routed.unjoined``).
+(``Routed.unjoined``). A track or a via the routed board has in an area kept clear of
+copper is in the result too (``Routed.kept_out``): the router was told of the area, and
+the board is checked for what it did.
 
 A router is given the box around the board's outline. The placement keeps parts inside
 the outline as it is drawn; the routing does not yet.
@@ -24,12 +26,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Point, Polygon
 
 from pkidl.dsn import Via, Wire
 from pkidl.fill import Cut, cut_off, prefill, spare, starved, unjoin
 from pkidl.footprint import Placement, place
-from pkidl.intent import Route, Rules
+from pkidl.intent import Fixed, Route, Rules
 from pkidl.kicad import kicad_command, unconnected
 from pkidl.placement import Solution
 from pkidl.project import NetClass, write_project
@@ -62,6 +64,7 @@ class Built:
 
 
 KICAD, MODEL = "KiCad", "model"  # whose word a build's pours are checked by
+_SLIVER = 1e-9  # square millimetres: copper that only touches an area is not in it
 
 
 def _sized(item: Node, unsized: Mapping[str, tuple[str, ...]], clearance: float) -> Node:
@@ -81,6 +84,51 @@ def _sized(item: Node, unsized: Mapping[str, tuple[str, ...]], clearance: float)
             drawn = float(str(value[1]))
             value[1] = num(min(clearance, drawn) if key == "thermal_gap" else clearance)
     return sized
+
+
+def kept_out(
+    items: Sequence[Node], areas: Sequence[tuple[str, str, Sequence[tuple[float, float]]]]
+) -> tuple[str, ...]:
+    """Each track and via among a board's *items* that is in one of *areas*, each what
+    a sentence calls it, the layer it is kept clear of copper on, and its corners: a
+    line for a net's tracks in an area on a layer, and one for a via, which is on every
+    layer. A track is in an area where its copper is, to its width; how much of it is
+    said by its middle line. A pad is not looked at: it is no copper that is kept out."""
+    shapes = [(what, layer, Polygon(corners)) for what, layer, corners in areas]
+    tracks: dict[tuple[str, str, str], list[float]] = {}
+    vias: dict[tuple[str, float, float, str], None] = {}
+    for item in items if shapes else ():
+        head = str(item[0])
+        if head not in ("segment", "via"):
+            continue
+        net = find(item, "net")
+        of = str(net[1]) if net is not None else ""
+        if head == "via":
+            at, size = find(item, "at"), find(item, "size")
+            assert at is not None and size is not None
+            x, y = float(str(at[1])), float(str(at[2]))
+            dot = Point(x, y).buffer(float(str(size[1])) / 2)
+            for what, _, shape in shapes:
+                if dot.intersection(shape).area > _SLIVER:
+                    vias.setdefault((of, x, y, what))
+            continue
+        start, end, width, on = (find(item, key) for key in ("start", "end", "width", "layer"))
+        assert start is not None and end is not None and width is not None and on is not None
+        line = LineString([(float(str(p[1])), float(str(p[2]))) for p in (start, end)])
+        copper = line.buffer(float(str(width[1])) / 2)
+        for what, layer, shape in shapes:
+            if layer == str(on[1]) and copper.intersection(shape).area > _SLIVER:
+                found = tracks.setdefault((of, layer, what), [0, 0.0])
+                found[0] += 1
+                found[1] += line.intersection(shape).length
+    said = []
+    for (of, layer, what), (count, long) in tracks.items():
+        segments = "1 segment" if count == 1 else f"{count:g} segments"
+        said.append(f"{of} has {segments} of track in {what} on {layer}, which is kept "
+                    f"clear of copper: {round(long, 3):g} mm of it")  # fmt: skip
+    for of, x, y, what in vias:
+        said.append(f"a via of {of} at ({x:g}, {y:g}) is in {what}, which is kept clear of copper")
+    return tuple(said)
 
 
 def build(board: Board, outdir: Path, name: str, router: Router | None = None) -> Built:
@@ -115,14 +163,20 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                        for item in built.items]  # fmt: skip
 
     keepouts: list[tuple[str, list[tuple[float, float]]]] = []
+    called: list[str] = []  # what a sentence calls each of them
     for kept in solution.keepouts:
         x0, y0, x1, y1 = (side.mm for side in kept.box)
         box = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        what = kept.statement.area
+        if isinstance(what, Fixed):
+            label = spoken = what.label
+        else:
+            label, spoken = f"{what.part.ref} {what.name}", f"{what.part.ref}'s {what.name} area"
         for layer, on in (("F.Cu", kept.front), ("B.Cu", kept.back)):
             if on and (layer, box) not in keepouts:
-                built.rule_area(f"{kept.statement.area.part.ref} {kept.statement.area.name}",
-                                layer, box)  # fmt: skip
+                built.rule_area(label, layer, box)
                 keepouts.append((layer, box))
+                called.append(spoken)
 
     outdir.mkdir(parents=True, exist_ok=True)
     project = routed = None
@@ -212,7 +266,10 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 routed = relieved(routed, found, again,
                                   lambda: spare(laid(wires, vias).items))  # fmt: skip
                 built.items = unjoin(built.items, off)
-            routed = replace(routed, judge=judged[-1] if judged else "")
             lay(built, routed)
+            areas = [(spoken, layer, box) for spoken, (layer, box)
+                     in zip(called, keepouts, strict=True)]  # fmt: skip
+            routed = replace(routed, judge=judged[-1] if judged else "",
+                             kept_out=kept_out(built.items, areas))  # fmt: skip
         project = projected(outdir / f"{name}.kicad_pro")
     return Built(built.write(outdir / f"{name}.kicad_pcb"), project, solution, routed)

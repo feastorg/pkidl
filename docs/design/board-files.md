@@ -62,6 +62,8 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `place(between=, against=, facing=)` | relative placement, orientation by intent | yes |
 | `u1.area("antenna")` | named regions on a footprint | yes (`pkidl.annotations`): shipped for the ESP-12E, or said in the board file with `board.annotate` |
 | `keepout(area, copper=True)` | an area kept clear | yes: placement keeps other parts out of it and says where it is, the build draws it as a rule area on each face it holds on, and the router is told to keep out of it |
+| `keepout(board.fixed(name), copper=True)` | no copper under something fixed on the board | yes: the box round the thing's outline, on its face or on both, drawn as a rule area and told to the router; pads are let be, and a track or via the routed board has in it is in the build's result |
+| `apart(parts, board.fixed(name), 5 * mm)` | parts kept a distance from something fixed | yes: a place that is looked for keeps it, and a place that is given and breaks it is a problem |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
@@ -237,6 +239,11 @@ the board is the build's.
   moved to.
 - `keepout` of an area of a part: no other part's outline reaches into it, on the
   part's face or on both.
+- `keepout` of something fixed on the board: no copper in the box round its outline,
+  on its face or on both. It keeps no part out, which the thing does already
+  ("As built, clear of something fixed", below).
+- `apart`: the outline of each part named is no nearer the outline of a fixed thing
+  than the distance said, whichever face either is on.
 
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest, and is reported: `P1: turned 90 degrees, of 90, 270, for the shortest
@@ -527,6 +534,91 @@ keep the pads of different parts 1.5 mm apart (pads_apart=) and parts 0.5 mm apa
 nothing is written into the project for them, so its DRC does not check them: they are
 held where the parts are placed. Its custom rules could say both (`physical_clearance`,
 `courtyard_clearance`), and writing them is not done.
+
+**As built, clear of something fixed:** the bench supply has a heatsink the board is
+drilled for, with both regulators standing on it. Nothing kept copper from under it:
+the board as routed had 69.5 mm of track on the front inside its outline, under the
+metal. And what stood beside it was kept 5 mm off by two boxes of the board worked out
+by hand from where the heatsink is. Two statements say both (decided 2026-11-14):
+
+```python
+sink = board.fixed("530002B02500G")
+board.keepout(sink, copper=True)                    # no copper on its face, under it
+board.keepout(sink, copper=True, both_sides=True)   # nor on the other face
+board.apart(board.parts("C101", "C105", "C106", "C107"), sink, 5 * mm)
+```
+
+`keepout` takes a fixed thing, as `board.fixed(name)` gives it, where it takes an area
+of a part. The area is the box round the thing's outline, the one the solver keeps
+parts off, on the face the thing is on, and on both with `both_sides=True`. As of an
+area of a part, what is kept out has to be said: without `copper=True` it is refused.
+It is in `Solution.keepouts` with the areas of parts, after them, and from there on it
+is one of them: a rule area on each face in the board that is written, named for the
+thing (`530002B02500G at (186.055, 149.225)`), so KiCad's DRC checks it; a keepout on
+that layer for the router, which lays no track in it there and no via in it at all, a
+via being on both faces; and no pour fills it on that face. Nothing is kept from under
+a fixed thing unless the board file says so, and a board that does not say is built
+byte for byte as it was.
+
+Two things differ from an area of a part. It keeps no part out: a fixed thing keeps
+parts off its outline already, but for a part placed `on=` it, and that is not
+changed. And a pad is not copper that is kept out. The regulators' pins are inside the
+heatsink's box and tracks have to reach them: on a face that is not kept they do, and
+a pin in a hole is reached from the other face. The thing's own pads, the heatsink's
+two mounting pins, are nothing either. With `both_sides=True` a pad inside the box is
+one no track can reach, and that is a problem of the solve, a part at a time, and not
+a router's failure minutes later: `U102.1, U102.2 and U102.3 are inside the outline of
+530002B02500G at (186.055, 149.225), which is kept clear of copper on both sides: no
+track can reach them`. It is told of a pad that is on a net and wholly inside the box,
+whichever face the pad is on.
+
+The build checks what it wrote. A track or a via that the routed board has in an area
+kept clear of copper, a fixed thing's or a part's, is a line of the result
+(`Routed.kept_out`), and nothing is changed for it:
+
+```
+A has 2 segments of track in S at (120, 66) on F.Cu, which is kept clear of copper: 12 mm of it
+a via of B at (123, 51) is in U1's antenna area, which is kept clear of copper
+```
+
+A track is in an area where its copper is, to its width, and the length given is of
+its middle line. Pads are not looked at. Before this an area of a part was told to the
+router and the routed board was not checked for it.
+
+`apart(parts, thing, distance)` takes one part or several, a fixed thing, and a length
+or a string such as `"5 mm"`. Anything but a fixed thing is refused at the line: a part
+kept apart from a part is not taken yet. It is a statement about each of its parts,
+and it places none. The outline of each is at least the distance from the outline of
+the thing, box to box as `bodies_apart` is measured, whichever face either is on: a
+capacitor on the back is as near a heatsink on the front as one beside it.
+
+A place that is looked for keeps it, as it keeps `bodies_apart` from that thing, with
+this distance for these parts: `near=`, `after=` and `before=` along an edge, and a
+row beside a part, where the row moves for any part of it that is named. A part with
+no place is told as before, the nearest distance given is one that would do, and the
+thing is named among what is in the way. A place that is given is not moved. Where it
+breaks the distance it is a problem of the solve, one for each part and thing, with
+the statements about the part and the `apart`: `C101 is 0.6 mm from 530002B02500G at
+(186.055, 149.225), and apart(C101, C105, C106, C107, 530002B02500G at (186.055,
+149.225), 5 mm) keeps it 5 mm from it`. A part over a thing on the thing's own face is
+told that it is over it, as before, and nothing more.
+
+Every distance said of a part and a thing is a least distance, so the largest holds:
+of `bodies_apart` and an `apart`, and of two `apart` statements, which are never a
+conflict. One problem is told, the larger's, and where the two are equal the rules'.
+A part placed `on=` a thing and kept `apart` from the same thing is a contradiction,
+told when the board is solved with both statements, and the part stays where it was
+put: `U102 is placed on 530002B02500G at (186.055, 149.225), and apart(...) keeps it
+5 mm from it`.
+
+On the bench supply, written so in a copy of its board file with the two boxes taken
+out, all 45 parts are placed with no problem and the four electrolytics are 5.03 to
+5.09 mm from the heatsink. The four diodes the boxes also held are then 0.51 to
+0.57 mm from it, as near as `bodies_apart` lets them be, since nothing says otherwise
+of them. Routed once (2026-11-14), the board has no track on the front inside the
+heatsink's box, where it had 69.5 mm, and no via; every connection is made, 92.7 mm
+of track runs under it on the back, and KiCad's DRC reports no rule area broken. The
+corpus board file is not changed here.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline
