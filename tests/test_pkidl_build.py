@@ -427,6 +427,112 @@ def test_a_bare_number_is_not_a_rule(board):
         board.rules(track=0.25, clearance=0.2 * mm)  # type: ignore[arg-type]
 
 
+def test_how_a_board_is_assembled_is_a_word_or_two_distances_or_both(board):
+    said = board.rules(track=0.5 * mm, clearance=0.3 * mm, assembly="hand")
+    line = _line_no() - 1
+    assert said == Rules(Length(500_000), Length(300_000), Length(500_000), "hand")
+    assert str(said) == 'rules(track=0.5 mm, clearance=0.3 mm, edge=0.5 mm, assembly="hand")'
+    assert str(said.source) == f"{HERE}:{line}"
+    assert said.data() == {"rules": {"track": 500_000, "clearance": 300_000, "edge": 500_000,
+                                     "assembly": "hand"}}  # fmt: skip
+    # The word's distances: between the pads of different parts, and between parts.
+    assert said.apart() == (Length(1_270_000), Length(500_000))
+    assert rules(track=0.5 * mm, clearance=0.3 * mm, assembly="machine").apart() == (
+        Length(0), Length(0)
+    )  # fmt: skip
+    # A number said is the one, over the word's and with no word.
+    over = rules(track=0.5 * mm, clearance=0.3 * mm, assembly="hand", pads_apart="1.5mm")
+    assert over.apart() == (Length(1_500_000), Length(500_000))
+    assert str(over) == ('rules(track=0.5 mm, clearance=0.3 mm, edge=0.5 mm, assembly="hand", '
+                         "pads_apart=1.5 mm)")  # fmt: skip
+    assert over.data() == {"rules": {"track": 500_000, "clearance": 300_000, "edge": 500_000,
+                                     "assembly": "hand", "pads_apart": 1_500_000}}  # fmt: skip
+    under = rules(track=0.5 * mm, clearance=0.3 * mm, assembly="hand", bodies_apart=0 * mm)
+    assert under.apart() == (Length(1_270_000), Length(0))
+    bare = rules(track=0.5 * mm, clearance=0.3 * mm, pads_apart=1 * mm, bodies_apart=0.3 * mm)
+    assert bare.apart() == (Length(1_000_000), Length(300_000))
+    assert str(bare) == ("rules(track=0.5 mm, clearance=0.3 mm, edge=0.5 mm, pads_apart=1 mm, "
+                         "bodies_apart=0.3 mm)")  # fmt: skip
+    assert bare.data() == {"rules": {"track": 500_000, "clearance": 300_000, "edge": 500_000,
+                                     "pads_apart": 1_000_000, "bodies_apart": 300_000}}  # fmt: skip
+    # With none of it said nothing is kept apart, and the statement is what it was.
+    plain = rules(track=0.5 * mm, clearance=0.3 * mm)
+    assert plain.apart() == (Length(0), Length(0))
+    assert plain == Rules(Length(500_000), Length(300_000), Length(500_000))
+    assert plain.data() == {"rules": {"track": 500_000, "clearance": 300_000, "edge": 500_000}}
+
+
+@pytest.mark.parametrize(
+    ("said", "error", "told"),
+    [
+        ({"assembly": "wave"}, ValueError,
+         r'rules\(\): assembly= "wave" is not how a board is assembled: "hand" or "machine"'),
+        ({"assembly": True}, ValueError,
+         r'rules\(\): assembly= True is not how a board is assembled: "hand" or "machine"'),
+        ({"pads_apart": -1 * mm}, ValueError, r"rules\(\): pads_apart= -1 mm is not a distance"),
+        ({"assembly": "hand", "bodies_apart": "-0.1mm"}, ValueError,
+         r"rules\(\): bodies_apart= -0.1 mm is not a distance"),
+        ({"pads_apart": 1.27}, TypeError, "1.27 has no unit"),
+        ({"bodies_apart": "half a mil"}, ValueError, "'half a mil' is not a length"),
+    ],
+)  # fmt: skip
+def test_a_way_of_assembling_that_is_not_one_is_refused_where_it_is_said(board, said, error, told):
+    with pytest.raises(error, match=told):
+        board.rules(track=0.25 * mm, clearance=0.2 * mm, **said)
+    assert board.statements() == board.statements()[:3]
+
+
+def test_how_a_board_is_assembled_is_said_once(board):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, assembly="hand")
+    line = _line_no() - 1
+    # The same distances said the long way agree with the word.
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, pads_apart=1.27 * mm, bodies_apart=0.5 * mm)
+    assert board.conflicts() == ()
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, assembly="machine")
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, assembly="hand", pads_apart=1 * mm)
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, assembly="hand", bodies_apart=1 * mm)
+    assert [str(c) for c in board.conflicts()] == [
+        f'the board: assembly is "hand" ({HERE}:{line}) and "machine" ({HERE}:{line + 5})',
+        f"the board: distance between parts is 0.5 mm ({HERE}:{line}) and 0 mm ({HERE}:{line + 5})",
+        f"the board: distance between parts is 0.5 mm ({HERE}:{line}) and 1 mm ({HERE}:{line + 7})",
+        f"the board: distance between the pads of different parts is 1.27 mm ({HERE}:{line}) "
+        f"and 0 mm ({HERE}:{line + 5})",
+        f"the board: distance between the pads of different parts is 1.27 mm ({HERE}:{line}) "
+        f"and 1 mm ({HERE}:{line + 6})",
+    ]
+    # Nothing is placed from statements that conflict.
+    assert [p.text for p in board.solve().problems] == [str(c) for c in board.conflicts()]
+
+
+def test_saying_nothing_of_assembly_and_saying_a_word_for_something_are_two_things(board):
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    line = _line_no() - 1
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, assembly="machine")  # which is nothing
+    assert board.conflicts() == ()
+    board.rules(track=0.25 * mm, clearance=0.2 * mm, assembly="hand")
+    assert [str(c) for c in board.conflicts()] == [
+        f'the board: assembly is "machine" ({HERE}:{line + 2}) and "hand" ({HERE}:{line + 4})',
+        f"the board: distance between parts is 0 mm ({HERE}:{line}) and 0.5 mm ({HERE}:{line + 4})",
+        f"the board: distance between the pads of different parts is 0 mm ({HERE}:{line}) and "
+        f"1.27 mm ({HERE}:{line + 4})",
+    ]
+
+
+def test_nothing_of_how_a_board_is_assembled_is_written_into_its_project(inputs, tmp_path):
+    def project(out: str, **how) -> str:
+        board = Board.from_inputs(inputs)
+        u1, p1, r1 = board.parts("U1", "P1", "R1")
+        board.place(p1, against=Edge.LEFT, inset=3 * mm)
+        board.place(u1, against=Edge.TOP, facing=Edge.TOP)
+        board.place(r1, near=u1.pin(2), within=6 * mm)
+        board.rules(track=0.25 * mm, clearance=0.2 * mm, **how)
+        project = board.build(tmp_path / out, "b").project
+        assert project is not None
+        return project.read_text()
+
+    assert project("hand", assembly="hand") == project("plain")
+
+
 def _pours(built: Built) -> dict[tuple[str, str], tuple[float, float]]:
     """Each pour of a built board: by net and layer, its clearance and thermal gap."""
     found = {}

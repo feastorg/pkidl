@@ -428,10 +428,14 @@ class Board:
         return statement
 
     def rules(self, *, track: Length | str, clearance: Length | str,
-              edge: Length | str = 0.5 * mm) -> Rules:  # fmt: skip
-        """Say the widths the board's copper is held to, and get the statement back. See
+              edge: Length | str = 0.5 * mm, assembly: str | None = None,
+              pads_apart: Length | str | None = None,
+              bodies_apart: Length | str | None = None) -> Rules:  # fmt: skip
+        """Say the widths the board's copper is held to and how far apart its parts are
+        kept for the way it is assembled, and get the statement back. See
         ``pkidl.intent.rules``."""
-        statement = intent.rules(track=track, clearance=clearance, edge=edge)
+        statement = intent.rules(track=track, clearance=clearance, edge=edge, assembly=assembly,
+                                 pads_apart=pads_apart, bodies_apart=bodies_apart)  # fmt: skip
         self.add(statement)
         return statement
 
