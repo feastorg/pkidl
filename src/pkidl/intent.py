@@ -641,7 +641,9 @@ class Rules(Statement):
                 raise ValueError(f"rules(): {name}= {value} is not a width")
         if self.edge < Length(0):
             raise ValueError(f"rules(): edge= {self.edge} is outside the board")
-        if self.assembly is not None and self.assembly not in ASSEMBLED:
+        if self.assembly is not None and not (
+            isinstance(self.assembly, str) and self.assembly in ASSEMBLED
+        ):
             words = " or ".join(_shown(word) for word in ASSEMBLED)
             raise ValueError(f"rules(): assembly= {_shown(self.assembly)} is not how a board is "
                              f"assembled: {words}")  # fmt: skip
@@ -839,7 +841,7 @@ def rules(*, track: Length | str, clearance: Length | str, edge: Length | str = 
     different parts and of what is fixed on the board. By hand that is 1.27 mm and
     0.5 mm, and by machine nothing, which is what a board that says none of it has.
     Either distance may be said, with the word or without, and is then the one. They
-    are held where the parts are placed, and KiCad has no rule for them."""
+    are held where the parts are placed, and nothing is written to the project for them."""
     return Rules(length(track), length(clearance), length(edge), assembly,
                  None if pads_apart is None else length(pads_apart),
                  None if bodies_apart is None else length(bodies_apart),

@@ -523,9 +523,10 @@ off a fixed thing by its outline.
 
 `Solution.chosen` says once what is kept and where each number came from (`the rules
 keep the pads of different parts 1.5 mm apart (pads_apart=) and parts 0.5 mm apart
-(assembly="hand")`). KiCad has no rule for either distance, so nothing is written into
-the project for them and its DRC does not check them: they are held where the parts
-are placed.
+(assembly="hand")`). KiCad's board setup has no rule for either distance, and
+nothing is written into the project for them, so its DRC does not check them: they are
+held where the parts are placed. Its custom rules could say both (`physical_clearance`,
+`courtyard_clearance`), and writing them is not done.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline

@@ -22,8 +22,8 @@ Unreleased. History before this file was reconstructed from the git log.
   (`R1.2 is 0.36 mm from J1.1, and the rules keep the pads of different parts 1.27 mm
   apart`). The parts of a row with a pitch said, and a part `on=` something fixed with
   that thing, are not held to `bodies_apart` with each other. `Solution.chosen` says
-  what is kept. KiCad has no rule for either distance, so neither is written into the
-  project. (#66)
+  what is kept. Neither distance is written into the project, so KiCad's DRC does not
+  check them. (#66)
 - A row of parts beside a part. `board.row(resistors, beside=switch, toward=Edge.RIGHT)`
   puts the parts side by side on the side of the part that is toward that edge, in the
   order named, from the top down or from the left. Each stands across the row, its

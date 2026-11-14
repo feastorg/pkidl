@@ -465,6 +465,8 @@ def test_how_a_board_is_assembled_is_a_word_or_two_distances_or_both(board):
 @pytest.mark.parametrize(
     ("said", "error", "told"),
     [
+        ({"assembly": ["hand"]}, ValueError,
+         r"rules\(\): assembly= .* is not how a board is assembled"),
         ({"assembly": "wave"}, ValueError,
          r'rules\(\): assembly= "wave" is not how a board is assembled: "hand" or "machine"'),
         ({"assembly": True}, ValueError,
