@@ -11,6 +11,7 @@
    "pcbench": "scripts/benchmark/fixtures/PCBench/DualLM317BenchSupply_DualLM317BenchSupply/raw.kicad_pcb",
    "sha256": {
     "LICENSE": "c0216d743872f4fe73fcc852d9f84d9089e4483019d39fda64b6e8a478a8dc28",
+    "board.py": "37f08acee91aed746463a90daf90dc2fa8eff9ca2f9db3d38018ff6c1429c4d9",
     "circuit.json": "dca8e2254a103be4b8fd59f7f90166e556ca0081b69ff83ddb5ff359598ee0b9",
     "footprints/3296W.kicad_mod": "97ca8428d9276a20f6a6b6f2bf714b3c90f263363d12f9e937c73dd8801837c9",
     "footprints/530002B02500G.kicad_mod": "03a00396eab7ed5f0f8dbaf05590b99deb6349d9b2c867921f4869b3928fdd36",

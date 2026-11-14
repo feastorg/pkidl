@@ -213,6 +213,46 @@ In order; each a PR with its tests:
 Not in it, since no board has needed them: `near=` beside another relation (#14), a
 part that overhangs the edge (#34), a part beneath a through-hole part's housing (#35).
 
+### The fourth board: seven
+
+Done 2026-11-14. The six steps are merged (#56 to #65), and the next-bus clock's board
+file says its supply's part of the board and stands its capacitors off the 7805 (#67).
+
+The fourth board is `corpus/t1/DualLM317BenchSupply_DualLM317BenchSupply`: a bench
+supply, 45 parts, all through-hole, the back of its own front panel. Its board file
+was written with the library as it stood after step 6, in eleven tries. It places all
+45 parts with no problem and routes with nothing left, its pour carrying ground on the
+first run. KiCad 10.0.6 finds four errors, the four mounting holes at the board's
+corners, which are the reference's own four: the bar is met.
+
+It also found a defect. Every pad on this board has its copper offset from its hole,
+and the solver took copper to be on the hole: two pads were placed 0.1 mm into each
+other with no problem said, and KiCad called it a short (#68, fixed; #70 for the
+three places that still read a pad so).
+
+What it could not say:
+
+1. **A part on something fixed.** The board is drilled for a heatsink and nothing can
+   be put on it; both LM317s stand along the back edge uncooled (#71).
+2. **A placement going neither round nor to rest**: 43 s to say so of eleven parts,
+   until the regulators' places were given (#72).
+3. **What is in the way along an edge.** A part with no place `after=` another is told
+   only that (#73).
+4. **A place by its coordinates.** Meters, pot, switches: where a panel is drilled.
+   Shares along an edge were guessed five times (#74).
+5. **A bank of parts beside a part**: twelve resistors by the switch that picks one
+   (#75).
+6. **Which pin of a part shares a net with another part**, where neither net is a
+   rail (#76).
+7. **How long a solve takes**: 13 s for this board, 6.4 s for the next-bus clock with
+   its supply in an area (#77).
+
+Seven to the next-bus clock's eight, and of another kind. That board could not say
+which way round a part goes or how near; this one says both and cannot say where the
+mechanics put things: on a heatsink, at a drilled hole, in a bank. Of milestone 2c's
+own bar, two things are not met: a solve in a few seconds (2, 7), and no distance
+found by trying (4).
+
 ## Milestone 3: T1, copper for current
 
 OpenMPPT: `path(..., current=)` sizing copper and checking the narrowest neck on the
