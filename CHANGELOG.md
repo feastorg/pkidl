@@ -13,9 +13,11 @@ Unreleased. History before this file was reconstructed from the git log.
   copper=True)` takes what `board.fixed(name)` gives where it takes an area of a part:
   no track and no pour in the box round the thing's outline on its face, or on either
   face with `both_sides=True`, and no via. It is a rule area in the board that is
-  written and a keepout for the router. Pads are let be, so a part placed `on=` the
-  thing is still reached on a face that is not kept; kept on both sides, a pad on a net
-  inside the box is a problem of the solve naming the part. It keeps no part out, which
+  written and a keepout for the router. Pads are let be, so a pin in a hole of a part
+  placed `on=` the thing is still reached from the face that is not kept. A pad on a
+  net with its middle inside the box that no track can reach is a problem of the solve
+  naming the part: a pad on the surface of a kept face, and any pad when both faces
+  are kept. It keeps no part out, which
   a fixed thing does already. `board.apart(parts, sink, 5 * mm)` keeps the outline of
   each part that far from the thing's, whichever face either is on. A part that looks
   for its place (`near=`, `after=`, `before=`, a row beside a part) keeps it, and a

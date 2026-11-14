@@ -70,8 +70,9 @@ What each statement means here:
 - ``keepout`` of something fixed on the board: the box around its outline, on its face
   or on both, is in ``Solution.keepouts`` for the copper drawn afterwards. It keeps no
   part out: a part is kept off a fixed thing with nothing said, but for one ``on=`` it.
-  On both faces, a part with a pad on a net wholly inside the box is a problem: no
-  track can reach the pad.
+  A pad on a net whose middle is inside the box, and not on its side, is a problem
+  where every face it has copper on is kept: a pad on the surface of a kept face, and
+  a pin in a hole when both are. No track can reach it.
 - ``apart``: the outline of each part named is no nearer the outline of the thing
   than the distance, whichever face either is on. It places nothing. A part that looks
   for its place looks only where it holds, and a place that is given and breaks it is
@@ -215,12 +216,14 @@ class Solution:
 @dataclass(frozen=True)
 class _Shape:
     """A footprint's pads (number and centre, which is its hole where it has one) and
-    outline, about its origin, and the box around each pad's copper."""
+    outline, about its origin, the box around each pad's copper, and the numbers of
+    the pads that are in holes, their copper on both faces."""
 
     pads: tuple[tuple[str, int, int], ...]
     box: Box
     through: bool
     copper: tuple[tuple[str, Box], ...] = ()
+    holed: frozenset[str] = frozenset()
 
 
 def _nm(value: object) -> int:
@@ -229,6 +232,7 @@ def _nm(value: object) -> int:
 
 def _shape(footprint: Node) -> _Shape:
     pads, copper, xs, ys = [], [], [], []
+    holed = set()
     through = False
     for pad in find_all(footprint, "pad"):
         at, size = find(pad, "at"), find(pad, "size")
@@ -250,6 +254,8 @@ def _shape(footprint: Node) -> _Shape:
         ys += [y - (h + 1) // 2, y + (h + 1) // 2]
         copper.append((str(pad[1]), (xs[-2], ys[-2], xs[-1], ys[-1])))
         through = through or pad[2] in ("thru_hole", "np_thru_hole")
+        if pad[2] == "thru_hole":
+            holed.add(str(pad[1]))
     drawn = [(item, layer[1]) for item in footprint[2:]
              if isinstance(item, list) and str(item[0]).startswith("fp_") and item[0] != "fp_text"
              and (layer := find(item, "layer")) is not None]  # fmt: skip
@@ -276,7 +282,8 @@ def _shape(footprint: Node) -> _Shape:
         ys += [_nm(p[2]) for p in points]
     if not xs:  # nothing drawn: a point
         return _Shape((), (0, 0, 0, 0), False)
-    return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), through, tuple(copper))
+    return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), through, tuple(copper),
+                  frozenset(holed))  # fmt: skip
 
 
 def _turn(x: int, y: int, rot: int, back: bool) -> tuple[int, int]:
@@ -298,7 +305,7 @@ def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
         (ax, ay), (bx, by) = _turn(px0, py0, rot, back), _turn(px1, py1, rot, back)
         copper.append((number, (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))))
     return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), shape.through,
-                  tuple(copper))  # fmt: skip
+                  tuple(copper), shape.holed)  # fmt: skip
 
 
 _PASSES = 24  # how many times everything is placed before a placement is said not to settle
@@ -540,6 +547,7 @@ class _Solver:
         # How far each part is kept from a thing by what is said of the two: the most
         # any ``apart`` says, with each statement that says that much.
         self.aparts: dict[str, dict[Fixed, tuple[int, tuple[Apart, ...]]]] = {}
+        upon: dict[tuple[str, Fixed], list[Statement]] = {}
         for s in statements:
             if not isinstance(s, Apart):
                 continue
@@ -550,15 +558,19 @@ class _Solver:
                 continue
             for part in s.parts:
                 if on := [ask for ask in self.asks.get(part.ref, []) if ask.on == s.thing]:
-                    # Said to be on it and to be kept from it: it stays where it was put.
-                    self.unordered.append(Problem(
-                        (part.ref,), f"{part.ref} is placed on {s.thing}, and {s} keeps it "
-                        f"{s.distance} from it", (*on, s)))  # fmt: skip
+                    # Said to be on it and to be kept from it: it stays where it was
+                    # put, and is told once, of the statement that keeps it furthest.
+                    upon.setdefault((part.ref, s.thing), [*on]).append(s)
                     continue
                 far, by = self.aparts.setdefault(part.ref, {}).get(s.thing, (0, ()))
                 if s.distance.nm >= far:
                     by = (*by, s) if s.distance.nm == far else (s,)
                     self.aparts[part.ref][s.thing] = (s.distance.nm, by)
+        for (ref, thing), said_of in upon.items():
+            most = max((s for s in said_of if isinstance(s, Apart)), key=lambda s: s.distance.nm)
+            self.unordered.append(Problem(
+                (ref,), f"{ref} is placed on {thing}, and {most} keeps it {most.distance} "
+                "from it", tuple(said_of)))  # fmt: skip
         for s in statements:
             if isinstance(s, Row):
                 for part in s.parts:
@@ -1922,25 +1934,36 @@ class _Solver:
                 if ref != owner and on and _overlap(self._box(ref), kept):
                     self._problem((ref, owner), f"{ref} is in {owner}'s {name} area, "
                                   "which is kept clear of copper", s, *self.said[ref])  # fmt: skip
-        # A pad wholly under a thing that copper is kept from on both faces is one no
-        # track can reach, whichever face the pad is on.
+        # A pad on a net whose middle is inside the box of a thing that copper is kept
+        # from is one no track can reach where every face it has copper on is kept: a
+        # pad on the surface on a kept face, and a pin in a hole when both are. One
+        # problem for a part and a thing, whatever number of statements keep it clear.
+        clear: dict[Fixed, tuple[set[bool], list[Keepout]]] = {}
         for s, thing in self.clears:
-            if not s.both_sides or (kept := self.things.get(thing)) is None:
-                continue
+            if thing in self.things:
+                on, said = clear.setdefault(thing, (set(), []))
+                on |= {False, True} if s.both_sides else {thing.back}
+                said.append(s)
+        for thing, (on, said) in clear.items():
+            k0, k1, k2, k3 = self.things[thing]
             for ref in placed:
                 pose = self.poses[ref]
                 turned = _turned(self.shapes[ref], pose.rot, pose.back)
                 under = list(dict.fromkeys(
                     n for n, c in turned.copper
                     if self.nets[ref].get(n) is not None
-                    and kept[0] <= c[0] + pose.x.nm and c[2] + pose.x.nm <= kept[2]
-                    and kept[1] <= c[1] + pose.y.nm and c[3] + pose.y.nm <= kept[3]))  # fmt: skip
+                    and (len(on) == 2 or (n not in turned.holed and pose.back in on))
+                    and 2 * k0 < c[0] + c[2] + 2 * pose.x.nm < 2 * k2
+                    and 2 * k1 < c[1] + c[3] + 2 * pose.y.nm < 2 * k3))  # fmt: skip
                 if under:
                     pads = _listed([f"{ref}.{n}" for n in under])
                     are, them = ("is", "it") if len(under) == 1 else ("are", "them")
+                    where = (
+                        "both sides" if len(on) == 2 else "the back" if True in on else "the front"
+                    )
                     self._problem((ref,), f"{pads} {are} inside the outline of {thing}, which "
-                                  "is kept clear of copper on both sides: no track can reach "
-                                  f"{them}", *self.said.get(ref, ()), s)  # fmt: skip
+                                  f"is kept clear of copper on {where}: no track can reach "
+                                  f"{them}", *self.said.get(ref, ()), *said)  # fmt: skip
         for s in self.aligns:
             firsts = [(p.ref, self._pads(p.ref)[0]) for p in s.parts
                       if p.ref in self.poses and self.shapes[p.ref].pads]  # fmt: skip

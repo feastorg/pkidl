@@ -563,14 +563,21 @@ byte for byte as it was.
 Two things differ from an area of a part. It keeps no part out: a fixed thing keeps
 parts off its outline already, but for a part placed `on=` it, and that is not
 changed. And a pad is not copper that is kept out. The regulators' pins are inside the
-heatsink's box and tracks have to reach them: on a face that is not kept they do, and
-a pin in a hole is reached from the other face. The thing's own pads, the heatsink's
-two mounting pins, are nothing either. With `both_sides=True` a pad inside the box is
-one no track can reach, and that is a problem of the solve, a part at a time, and not
-a router's failure minutes later: `U102.1, U102.2 and U102.3 are inside the outline of
-530002B02500G at (186.055, 149.225), which is kept clear of copper on both sides: no
-track can reach them`. It is told of a pad that is on a net and wholly inside the box,
-whichever face the pad is on.
+heatsink's box and tracks have to reach them: a pin in a hole has copper on both faces
+and is reached from the one that is not kept. The thing's own pads, the heatsink's two
+mounting pins, are nothing either.
+
+A pad no track can reach is a problem of the solve, a part and a thing at a time, and
+not a router's failure minutes later. It is a pad on a net, inside the box, every face
+of whose copper is kept. With one face kept that is a pad on the surface of that face:
+no track may come to it there, and no via inside the box brings one from the other
+face (`T1.1 is inside the outline of M at (115, 65), which is kept clear of copper on
+the front: no track can reach it`). A pin in a hole is not one, and nor is a surface
+pad on the other face. With `both_sides=True` it is every pad inside: `U102.1, U102.2
+and U102.3 are inside the outline of 530002B02500G at (186.055, 149.225), which is
+kept clear of copper on both sides: no track can reach them`. A pad is inside by its
+middle, the middle of the box round its copper: a pad mostly over the side of the box
+is inside, and one whose middle is exactly on the side is not.
 
 The build checks what it wrote. A track or a via that the routed board has in an area
 kept clear of copper, a fixed thing's or a part's, is a line of the result

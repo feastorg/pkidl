@@ -435,7 +435,7 @@ class Board:
 
     def apart(self, parts: Part | Iterable[Part], thing: Fixed, distance: Length | str) -> Apart:
         """Say that parts are kept a distance from something fixed on the board, and
-        get the statement back. See ``pkidl.intent.apart``."""
+        get the statement back. See ``pkidl.apart``."""
         statement = intent.apart(parts, thing, distance)
         self.add(statement)
         return statement

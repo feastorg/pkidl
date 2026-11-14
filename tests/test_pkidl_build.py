@@ -1345,6 +1345,25 @@ def test_a_track_or_a_via_in_an_area_kept_clear_of_copper_is_in_the_builds_resul
     assert built.routed is not None and built.routed.kept_out == ()
 
 
+def test_a_track_whose_width_alone_reaches_into_an_area_kept_clear_is_in_the_result(sunk, tmp_path):
+    # The heatsink's box starts 114 mm across. A track 0.25 mm wide down the board
+    # 0.05 mm left of it has 0.075 mm of its copper inside and none of its middle
+    # line; one 0.2 mm left of it is 0.075 mm clear.
+    _routed(sunk).keepout(sunk.fixed("S"), copper=True)
+
+    def beside(x: float) -> tuple[str, ...]:
+        wires = (Wire("B", F, 0.25, [(x, 63.0), (x, 69.0)]),)
+        built = sunk.build(tmp_path / f"at-{x}", router=Scripted(Run(wires, (), 0)))
+        assert built.routed is not None
+        return built.routed.kept_out
+
+    assert beside(113.95) == (
+        f"B has 1 segment of track in {SINK_NAME} on F.Cu, which is kept clear of copper: "
+        "0 mm of it",
+    )
+    assert beside(113.8) == ()
+
+
 def test_copper_in_an_area_of_a_part_or_on_either_face_kept_clear_is_in_the_result(board, tmp_path):
     hole = board.fixed("M3")  # 3.2 mm across at (136, 76), from 134.4 to 137.6 mm
     _routed(board).keepout(hole, copper=True, both_sides=True)

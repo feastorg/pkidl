@@ -869,7 +869,9 @@ def keepout(area: Area | Fixed, *, copper: bool = False, both_sides: bool = Fals
     Or of something fixed on the board, as ``board.fixed`` gives it: the box round its
     outline. *copper*: no track and no pour on the thing's face of the board, or on
     either with *both_sides*, and no via. A pad is not kept out: a part placed ``on=``
-    the thing has its pads there, and they are reached on a face that is not kept.
+    the thing has its pads there, and a pin in a hole is reached from the face that is
+    not kept. A pad on a net with its middle inside the box that no track can reach is
+    a problem: one on the surface of a face that is kept, and any when both are.
     Parts are kept off the thing as they are with nothing said."""
     return Keepout(area, bool(copper), bool(both_sides), source=_written_at())
 
