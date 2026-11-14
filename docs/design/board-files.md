@@ -639,7 +639,7 @@ edge; ground declared, and the capacitors that are the regulator's; `rules(...)`
 distances behind the fan headers that leave room for their housings, 5 to 7 mm where
 the sketch said 2 to 5, with each tach pull-up said to be on the side of its header
 toward the top edge: nearest its pin, it went into the gap between two housings. The encoder is against the right edge where the sketch had it
-at the top, which the input header has. It solves in about half a minute (#18), and
+at the top, which the input header has. It solves in under a second, and
 what KiCad says of the built board is under "As built, the build", with its row in the
 scorecard.
 
