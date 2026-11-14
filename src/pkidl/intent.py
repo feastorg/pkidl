@@ -29,6 +29,7 @@ import sys
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
+from numbers import Real
 from pathlib import Path
 from typing import Any
 
@@ -146,13 +147,15 @@ class Place(Statement):
             if self.after is not None or self.before is not None:
                 raise ValueError(f"{self.part}: along= says where along the edge, and "
                                  "after= or before= leaves it to be found: give one")  # fmt: skip
-            if isinstance(self.along, bool) or not isinstance(self.along, int | float | Length):
+            if isinstance(self.along, bool) or not isinstance(self.along, Real | Length):
                 raise TypeError(f"{self.part}: along= takes a share of the edge, such as "
                                 f"1 / 3, or a distance along it, not {self.along!r}")  # fmt: skip
             if isinstance(self.along, Length):
                 if self.along < Length(0):
                     raise ValueError(f"{self.part}: along= {self.along} is off the edge")
-            elif not 0 <= self.along <= 1:
+            elif 0 <= self.along <= 1:
+                object.__setattr__(self, "along", float(self.along))  # a fraction is its share
+            else:
                 raise ValueError(f"{self.part}: along= {self.along} is a share of the edge, "
                                  "from 0 to 1; a distance has its unit: 12 * mm")  # fmt: skip
         if self.outward is not None:

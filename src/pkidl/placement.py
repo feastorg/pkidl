@@ -526,7 +526,9 @@ class _Solver:
         looks with them, and what they keep clear, already there."""
         needs = {ref: {p.ref for s in asks for p in s.mentions()} - {ref}
                  for ref, asks in self.asks.items()}  # fmt: skip
-        looks = {ref: any(s.near is not None for s in asks) for ref, asks in self.asks.items()}
+        looks = {ref: any(s.near is not None or s.after is not None or s.before is not None
+                          for s in asks)
+                 for ref, asks in self.asks.items()}  # fmt: skip
         order: list[str] = []
         while ready := sorted((r for r in needs if r not in order and needs[r] <= set(order)),
                               key=lambda r: (looks[r], natural(r))):  # fmt: skip
@@ -566,16 +568,27 @@ class _Solver:
                               "against= or between= beside it", *asks)  # fmt: skip
                 return None
             return self._near(ref, nears[0], rots, back, done)
-        best = None
+        # Each way round is tried from what was said before any of them: what is said
+        # of a way that is not taken is not said of the part, and a way with no place
+        # is passed over where another has one.
+        best, failed = None, None
+        problems, chosen = self.problems, self.chosen
         for rot in rots:
+            self.problems, self.chosen = dict(problems), dict(chosen)
             turned = _turned(shape, rot, back)
             at = self._fixed(ref, turned, edges, betweens, done)
             if at is None:
-                return None
+                failed = failed or self.problems
+                continue
             key = (self._wires(ref, turned, *at), rot)
             if best is None or key < best[0]:
-                best = (key, Pose(Length(at[0]), Length(at[1]), rot, back))
-        assert best is not None
+                best = (key, Pose(Length(at[0]), Length(at[1]), rot, back),
+                        self.problems, self.chosen)  # fmt: skip
+        if best is None:
+            assert failed is not None
+            self.problems, self.chosen = failed, chosen
+            return None
+        self.problems, self.chosen = best[2], best[3]
         if len(rots) > 1:
             ways = ", ".join(map(str, rots))
             self._chose(f"{ref}: turned {best[1].rot} degrees, of {ways}, for the "
@@ -828,7 +841,7 @@ class _Solver:
             if beside:
                 # Looked for along the edge with the other way settled, which the edge
                 # says; and where something else says where along it, held to that.
-                found = self._beside(ref, turned, beside[0], axis == "across", done,
+                found = self._beside(ref, turned, beside, axis == "across", done,
                                      at[0] if at else min(v for v, _ in ys),
                                      values[0] if values else None)  # fmt: skip
                 if found is None:
@@ -845,51 +858,58 @@ class _Solver:
             at.append(values[0])
         return at[0], at[1]
 
-    def _beside(self, ref: str, turned: _Shape, s: Place, level: bool, done: set[str],
-                other: int, held: int | None) -> int | None:  # fmt: skip
+    def _beside(self, ref: str, turned: _Shape, said: list[Place], level: bool,
+                done: set[str], other: int, held: int | None) -> int | None:  # fmt: skip
         """Where along the edge it is against a part said to be ``after=`` or
-        ``before=`` another goes: past that part's outline along the edge, on the side
-        said, as near it as the part is clear of what is placed. *level* for an edge
-        that runs across the board, top or bottom; *other* is where the part is the
-        other way, which its edge says. *held* is where along the edge something else
-        puts it, a second edge or a row: it is then there, and after or before as said
-        or a problem."""
-        others = [p for p in (s.after, s.before) if p is not None]
-        if missing := [p.ref for p in others if p.ref not in self.poses]:
+        ``before=`` others goes: past each one's outline along the edge, on the side
+        said, as near them as the part is clear of what is placed. *said* is every
+        statement that says so; *level* for an edge that runs across the board, top or
+        bottom; *other* is where the part is the other way, which its edge says. *held*
+        is where along the edge something else puts it, a second edge or a row: it is
+        then there, and after and before as said or a problem."""
+        beside = [(word, p) for s in said for word, p in (("after", s.after), ("before", s.before))
+                  if p is not None]  # fmt: skip
+        missing = list(dict.fromkeys(p.ref for _, p in beside if p.ref not in self.poses))
+        if missing:
             self._problem((ref,), f"{ref} is placed by {', '.join(missing)}, which is not "
-                          "placed", s)  # fmt: skip
+                          "placed", *said)  # fmt: skip
             return None
-        b = turned.box
+        b, back = turned.box, self._back(ref)
         lo, hi = (self.board[0], self.board[2]) if level else (self.board[1], self.board[3])
         b0, b1 = (b[0], b[2]) if level else (b[1], b[3])
         first, last = lo - b0, hi - b1  # the origin with the outline at each end of the edge
-        if s.after is not None:
-            o = self._box(s.after.ref)
-            first = max(first, (o[2] if level else o[3]) - b0)
-        if s.before is not None:
-            o = self._box(s.before.ref)
-            last = min(last, (o[0] if level else o[1]) - b1)
-        said = " and ".join(f"{word} {p.ref}" for word, p in
-                            (("after", s.after), ("before", s.before)) if p)  # fmt: skip
-        assert s.against is not None
+        for word, p in beside:
+            o = self._box(p.ref)
+            if word == "after":
+                first = max(first, (o[2] if level else o[3]) - b0)
+            else:
+                last = min(last, (o[0] if level else o[1]) - b1)
+        words = " and ".join(f"{word} {p.ref}" for word, p in beside)
+        edge = said[0].against
+        assert edge is not None
         if held is not None:
             if first <= held <= last:
                 return held
-            self._problem((ref,), f"{ref} is not {said} along the {s.against.value} edge where "
+            self._problem((ref,), f"{ref} is not {words} along the {edge.value} edge where "
                           "it is put", *self.said[ref])  # fmt: skip
             return None
-        # From the part it is after, or back from the one it is before.
-        step = STEP.nm if s.after is not None else -STEP.nm
-        v = first if s.after is not None else last
-        while first <= v <= last:
+        # From what it is after, or back from what it is before: a step at a time, and
+        # hard against the far side of each thing in the way, which a step may not land on.
+        forward = any(word == "after" for word, _ in beside)
+        ends = [box for f, box, _ in self.fixed]
+        ends += [self._box(r) for r in done if r != ref and r in self.poses]
+        ends += [box for _, box, _ in self._kept(done)]
+        tries = {(o[2] if level else o[3]) - b0 if forward else (o[0] if level else o[1]) - b1
+                 for o in ends}  # fmt: skip
+        tries |= set(range(first, last + 1, STEP.nm) if forward
+                     else range(last, first - 1, -STEP.nm))  # fmt: skip
+        for v in sorted((v for v in tries if first <= v <= last), reverse=not forward):
             x, y = (v, other) if level else (other, v)
-            if self._clear(ref, _moved(b, x, y), self._back(ref), turned.through, done,
-                           True, (turned, x, y)):  # fmt: skip
-                self._chose(f"{ref}: {said} along the {s.against.value} edge")
+            if self._clear(ref, _moved(b, x, y), back, turned.through, done, True, (turned, x, y)):
+                self._chose(f"{ref}: {words} along the {edge.value} edge")
                 return v
-            v += step
-        self._problem((ref,), f"{ref} has no place against the {s.against.value} edge {said} "
-                      "that is on the board and clear of the other parts", s)  # fmt: skip
+        self._problem((ref,), f"{ref} has no place against the {edge.value} edge {words} "
+                      "that is on the board and clear of the other parts", *said)  # fmt: skip
         return None
 
     def _centre(self, ref: str) -> tuple[int, int]:
