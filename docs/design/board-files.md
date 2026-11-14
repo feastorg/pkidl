@@ -284,14 +284,17 @@ Open after this:
 - **A placement that goes round.** A part is turned to bring its pads nearer what they
   connect to, and that can leave a part placed `near=` it with no place; without that
   part it turns back. Two parts on one net can each be nearest the other where the
-  other was, and swap every pass. Every pass leaves a placement that holds what was
-  said, so a placement come round to one it has been at is kept at one of those it
-  goes round: the one with the fewest problems, and of those the first. The choices
+  other was, and swap every pass. A placement come round to one it has been at is
+  kept at one of those it goes round: the one with the fewest problems, counted with
+  everything placed, and of those the first. Each of them has every part placed
+  `near=` something where its statement says; a part against an edge can be off the
+  board turned one way and on it turned the other, which is why they are counted. The choices
   say so and name the parts (`K1 and R1: each is placed by where the others are, and
   they go round 2 placements; kept as in the one with the fewest problems, the first
-  of them`). One still moving after twelve passes without coming round is a problem of
-  the parts that moved, with what is said of them. Seen so far: rounds of two, three
-  and four.
+  of them`). One still moving after two dozen passes without coming round is a problem
+  of the parts that moved, with what is said of them. Seen so far, in tests and in
+  boards made at random: rounds of two to eight placements, after up to six passes
+  that are not gone back to.
 - **Limits of this solver:** an edge is a side of the box around the outline, so on a
   board cut to another shape a part against an edge can be off the board, and is said
   to be; `near=` is solved alone, not with `against=`, `between=`, `centre=True` or a

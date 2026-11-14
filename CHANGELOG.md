@@ -251,7 +251,7 @@ Unreleased. History before this file was reconstructed from the git log.
   `K1 and R1: each is placed by where the others are, and they go round 2 placements`.
   It was a problem, `the placement does not settle: each pass moves a part`, naming
   every part and no statement, whatever else the board had. A placement still moving
-  after twelve passes is that problem still, of the parts that moved and the
+  after two dozen passes is that problem still, of the parts that moved and the
   statements about them.
 - A board routed again without its pours is checked as the run with them was, and what
   the check finds is in the result as `Routed.left`: the pours are still drawn round

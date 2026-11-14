@@ -804,12 +804,13 @@ def test_on_the_back_a_part_is_mirrored_and_its_up_side_still_faces_where_it_was
 
 def test_a_placement_that_goes_round_is_kept_where_it_has_the_fewest_problems(monkeypatch):
     def solved() -> Solution:
-        board = _board(K1="X A", R1="A B")
+        board = _board(K1="X A", R1="A B", T1="C")
         board.place(board["K1"], against=Edge.TOP)
         board.place(board["R1"], near=board["K1"].pin(1), within=2 * mm)
+        board.place(board["T1"], against=Edge.BOTTOM)  # which stays where it is
         return board.solve()
 
-    said = _line_no() - 3
+    said = _line_no() - 4
     # With pad 1 towards the middle of the board the resistor fits 1.8 mm below it. The
     # sensor's pad 2 is on the resistor's net, so the sensor is then turned to bring it
     # nearer; that puts pad 1 a millimetre from the top edge, deep in the sensor's own
@@ -818,7 +819,7 @@ def test_a_placement_that_goes_round_is_kept_where_it_has_the_fewest_problems(mo
     # and the one that places the resistor is kept, and said to have been.
     solution = solved()
     assert solution.ok
-    assert _pads(board := _board(K1="X A", R1="A B"), solution, "K1")["1"] == (115.0, 55.0)
+    assert _pads(board := _board(K1="X A", R1="A B", T1="C"), solution, "K1")["1"] == (115.0, 55.0)
     assert solution.poses["R1"] == Pose(Length(115_000_000), Length(57_800_000), 270)
     assert solution.chosen[-1] == (
         "K1 and R1: each is placed by where the others are, and they go round 2 placements; "
@@ -829,13 +830,31 @@ def test_a_placement_that_goes_round_is_kept_where_it_has_the_fewest_problems(mo
     assert solved() == solution
     # A placement still moving when the passes run out, and not yet come round, is a
     # problem of the parts that moved, with what is said of them.
-    monkeypatch.setattr("pkidl.placement._PASSES", 2)  # twelve, as shipped
+    monkeypatch.setattr("pkidl.placement._PASSES", 2)  # two dozen, as shipped
     (unsettled, lost) = solved().problems
     assert str(unsettled) == (
         "the placement does not settle: K1 and R1 still moved on pass 2, each placed by "
         f"where the others are ({HERE}:{said - 1}, {HERE}:{said})"
     )
     assert unsettled.parts == ("K1", "R1") and lost.parts == ("R1",)
+
+
+def test_the_placement_kept_of_a_round_is_the_one_with_least_wrong_once_all_are_placed():
+    # Found by trying boards: it goes round four placements. Two of them have the
+    # module a millimetre off the top edge, which shows only once every part is placed;
+    # counted while placing, the first of the four looked as good as the third.
+    board = _board(Q2="E E", R1="E Z", R3="X A", R4="D E", U1="G E A A D")
+    u1, r1, r3 = board.parts("U1", "R1", "R3")
+    board.place(u1, against=Edge.TOP, inset=3 * mm)
+    board.place(r1, near=u1.pin(3), within=3 * mm, side="back")
+    board.place(board["Q2"], near=r1.pin(1), within=2 * mm)
+    board.place(r3, near=u1.pin(3), within=2 * mm)
+    board.place(board["R4"], near=r3.pin(2), within=3 * mm)
+    solution = board.solve()
+    assert "they go round 4 placements" in solution.chosen[-1]
+    assert [p.parts for p in solution.problems] == [("Q2",)]
+    assert not any("does not fit" in p.text for p in solution.problems)
+    assert solution.poses["U1"] == Pose(Length(119_000_000), Length(56_000_000), 180)
 
 
 def test_two_parts_that_take_each_others_place_every_pass_are_kept_as_first_placed():

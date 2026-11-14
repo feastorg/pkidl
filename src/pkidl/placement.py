@@ -263,7 +263,7 @@ def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
                   tuple(copper))  # fmt: skip
 
 
-_PASSES = 12  # how many times everything is placed before a placement is said not to settle
+_PASSES = 24  # how many times everything is placed before a placement is said not to settle
 
 
 def _listed(names: list[str]) -> str:
@@ -503,13 +503,19 @@ class _Solver:
             if self.poses == before:
                 break
             # A placement come round to one it has been at before goes round for good:
-            # parts that turn or move for each other, each pass undoing the last. Every
-            # pass leaves a placement that holds what was said, so one of those it goes
-            # round is kept: the one with the fewest problems, and the first of those.
+            # parts that turn or move for each other, each pass undoing the last. One
+            # of those it goes round is kept: the one with the fewest problems, what
+            # only shows once everything is placed among them, and the first of those.
             again = next((i for i, seen in enumerate(passes) if seen[0] == self.poses), None)
             if again is not None:
                 round_ = passes[again:]
-                kept = min(round_, key=lambda seen: len(seen[1]))
+
+                def told(seen: tuple[dict, dict, dict, dict]) -> int:
+                    self.poses, self.problems, self.chosen, self.turns = (dict(v) for v in seen)
+                    self._check()
+                    return len(self.problems)
+
+                kept = min(round_, key=told)
                 moved = sorted({ref for seen in round_ for ref in order
                                 if seen[0].get(ref) != kept[0].get(ref)}, key=natural)  # fmt: skip
                 self.poses, self.problems, self.chosen, self.turns = (dict(v) for v in kept)
