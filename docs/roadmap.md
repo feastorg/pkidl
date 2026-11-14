@@ -187,6 +187,31 @@ and what the solver tells the person writing the board file (1, 2, 5, 6, 8), and
 more are the solver itself (3, 4). By the rule above that kind is the next milestone,
 ahead of copper for current.
 
+## Milestone 2c: placement that says what is meant
+
+What milestone 2b's count asks for. Tracked in #9.
+
+**Done when** the three corpus board files say what they mean with no knowledge of how
+a footprint is drawn and no distance found by trying, each solves in a few seconds, and
+the next-bus clock meets its bar: no DRC error, as its reference has none. Then a
+fourth board is written with the library as it stands, and its count is set beside
+eight.
+
+In order; each a PR with its tests:
+
+1. **Solve time** (#18). Everything after it is slowed by it, the tests among it.
+2. **How far the nearest place is**, when a part has none within its distance (#49).
+3. **What KiCad rejects and the build let through**: a pad in another part's courtyard
+   (#51), and the pour of a board routed again without it (#52).
+4. **Which side of a part goes to an edge, and a way up that matters** (#47, #48): a
+   part's annotation names a side.
+5. **A placement that does not settle** (#15).
+6. **Where along an edge** (#50), **then where a group of parts goes** (#53): what a
+   layout looks like, judged by eye on the renders as well as by the scorecard.
+
+Not in it, since no board has needed them: `near=` beside another relation (#14), a
+part that overhangs the edge (#34), a part beneath a through-hole part's housing (#35).
+
 ## Milestone 3: T1, copper for current
 
 OpenMPPT: `path(..., current=)` sizing copper and checking the narrowest neck on the
