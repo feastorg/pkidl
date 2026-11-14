@@ -280,11 +280,12 @@ class Board:
         side: Side | str | None = None,
         toward: Edge | None = None,
         centre: bool = False,
+        outward: str | None = None,
     ) -> Place:
         """Say where *part* goes, and get the statement back. See ``pkidl.place``."""
         statement = intent.place(part, against=against, inset=inset, between=between,
                                  facing=facing, near=near, within=within, side=side,
-                                 toward=toward, centre=centre)  # fmt: skip
+                                 toward=toward, centre=centre, outward=outward)  # fmt: skip
         self.add(statement)
         return statement
 
@@ -312,6 +313,7 @@ class Board:
 
     def annotate(
         self, part: Part, *, pins: Mapping[str, int | str] | None = None,
+        sides: Mapping[str, Edge] | None = None, upright: bool = False,
         **areas: tuple[tuple[Length | str, Length | str], tuple[Length | str, Length | str]]
     ) -> tuple[Area, ...]:  # fmt: skip
         """Say what *part*'s footprint means, where no annotation ships for it: each
@@ -323,7 +325,15 @@ class Board:
         *pins* names *part*'s pins, each name with the pin's number:
         ``board.annotate(q, pins={"B": 1, "E": 2, "C": 3})``, and then ``q.pin("B")``.
         Only *part* has the names: a footprint does not say which pad of a transistor
-        is its base."""
+        is its base.
+
+        *sides* names sides of the footprint, each by where it is as the footprint is
+        drawn: ``board.annotate(jack, sides={"socket": Edge.LEFT})``, and then
+        ``place(jack, against=Edge.LEFT, outward="socket")``. ``upright=True`` says that
+        which way round the part is matters, as a display's does. Of a part so marked,
+        or with a side named, the way round is never chosen: a board file that does not
+        say it, with ``facing=`` or ``outward=``, is told so. Every part with that
+        footprint has both."""
         part = self.circuit.part(part.ref)
         boxes = {}
         for name, corners in areas.items():
@@ -332,7 +342,15 @@ class Board:
                 raise ValueError(f"{part}: area {name} has no size")
             boxes[name] = (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
         names = {name: str(number) for name, number in (pins or {}).items()}
-        self.circuit.annotate(part.footprint, boxes, {part.ref: names})
+        for name, edge in (sides or {}).items():
+            if not isinstance(edge, Edge):
+                raise TypeError(f"{part}: side {name} is a side of the footprint, such as "
+                                f"Edge.LEFT, not {edge!r}")  # fmt: skip
+        if not isinstance(upright, bool):
+            raise TypeError(f"{part}: upright= takes True, not {upright!r}")
+        self.circuit.annotate(part.footprint, boxes, {part.ref: names},
+                              {name: edge.value for name, edge in (sides or {}).items()},
+                              upright)  # fmt: skip
         return tuple(part.area(name) for name in areas)
 
     def keepout(self, area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
