@@ -234,7 +234,7 @@ The solver places one part at a time, each after what it is placed by, and goes 
 until nothing moves. It reports what it cannot hold together and does not search for
 it. Where it has been seen to stop is #9: `near=` solved alone (#14), a placement that
 does not settle (#15), a part against an edge centred on the whole edge (#16), an area
-of a part placed `near=` something (#17), and 14 s to solve 49 parts (#18). Milestone
+of a part placed `near=` something (#17). Milestone
 2b says how much that costs on a board it was not built for.
 
 ## Open, outside the milestones

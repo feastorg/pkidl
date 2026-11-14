@@ -465,7 +465,7 @@ def test_the_fan_controllers_board_file_is_the_one_the_design_shows():
 @pytest.fixture(scope="module")
 def fan_built(tmp_path_factory):
     """The fan controller as its board file builds it, with a router that lays nothing.
-    Solving its 49 parts takes about half a minute, so once for the tests that read it."""
+    Built once for the tests that read it."""
     router = Scripted()
     board = runpy.run_path(str(FAN / "board.py"))["board"]
     return board, board.build(tmp_path_factory.mktemp("fan"), router=router), router
@@ -539,7 +539,7 @@ def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_le
 def test_the_next_bus_clocks_board_file_places_every_part_with_nothing_added_to_pkidl():
     """Milestone 2b: a board file written with the library as it stood. It says where
     all 26 parts go, with statements the library had; what it could not say is in the
-    roadmap. Solving it takes most of a minute."""
+    roadmap."""
     clock = CORPUS / "t0" / "nextbusclock_NextBusClockV1"
     board = runpy.run_path(str(clock / "board.py"))["board"]
     solution = board.solve()

@@ -2110,3 +2110,78 @@ def test_a_hole_of_a_part_too_near_the_edge_is_called_a_hole():
     assert [p.text for p in board.solve().problems] == [
         "a hole of H1 is 0.2 mm from the board's edge, and the rules keep copper 0.5 mm from it"
     ]
+
+
+def _crowded(seed: int) -> Board:
+    """A board with a module, a header, a mounting hole and a pad fixed on the back in
+    the way, an area of the module kept clear, and six parts each to be near something,
+    at distances and on sides picked by *seed*."""
+    import random
+
+    pick = random.Random(seed)
+    board = _ruled(U1="A B C D E", P1="A B C D", R1="A B", R2="B C", R3="C D", T1="A", T2="E",
+                   Q1="D E", H1="")  # fmt: skip
+    board.place(board["U1"], centre=True, facing=pick.choice(list(Edge)))
+    board.place(board["P1"], against=pick.choice([Edge.TOP, Edge.BOTTOM]), inset=3 * mm)
+    board.place(board["H1"], against=Edge.LEFT, inset=pick.choice([3, 6]) * mm)
+    # Fixed on the board: a hole, which is in the way on both faces, and a pad on the
+    # back, which is in the way there and not on the front.
+    board.hole("Mech:Hole", (pick.choice([110, 121]), pick.choice([60, 71])))
+    board.hole("Test:TP", (pick.choice([112, 118]), pick.choice([61, 68])), back=True)
+    (beside,) = board.annotate(board["U1"], beside=((-3 * mm, -4 * mm), (-1 * mm, 4 * mm)))
+    board.keepout(beside, copper=True, both_sides=pick.random() < 0.5)
+    for ref, by in (
+        ("R1", "U1"),
+        ("R2", "U1"),
+        ("R3", "P1"),
+        ("T1", "R1"),
+        ("T2", "U1"),
+        ("Q1", "R3"),
+    ):
+        near = board[by] if pick.random() < 0.5 else board[by].pin(pick.choice([1, 2]))
+        toward = pick.choice([None, None, *Edge])
+        within = pick.choice([1.5, 3, 4]) * mm
+        if pick.random() < 0.3:
+            board.place(board[ref], near=near, within=within, toward=toward, side="back")
+        else:
+            board.place(board[ref], near=near, within=within, toward=toward)
+    return board
+
+
+def test_the_places_sifted_all_at_once_are_the_ones_found_trying_each_in_turn(monkeypatch):
+    """A place near something is looked for among thousands of offsets, sifted together
+    by where the part's box would be. Sifting only leaves out places that are not clear,
+    so what is found is what trying every offset in turn finds, however many are taken
+    at a time."""
+    import pkidl.placement as placement
+
+    for seed in range(12):
+        monkeypatch.setattr(placement, "_SIFT", False)
+        plain = _crowded(seed).solve()
+        monkeypatch.setattr(placement, "_SIFT", True)
+        for at_a_time in (4096, 97):
+            monkeypatch.setattr(placement, "_AT_A_TIME", at_a_time)
+            assert _crowded(seed).solve() == plain, (seed, at_a_time)
+    # The cases are not all one kind: parts are placed, and some have no place.
+    solved = [_crowded(seed).solve() for seed in range(12)]
+    assert any(s.problems for s in solved) and sum(len(s.poses) for s in solved) > 50
+
+
+def test_what_is_fixed_on_the_back_is_not_in_the_way_of_a_place_on_the_front():
+    def beside(fixed: str | None, back: bool = True) -> tuple[float, float]:
+        board = _board(T1="A", T2="A")
+        board.place(board["T1"], centre=True)
+        board.place(board["T2"], near=board["T1"], within=3 * mm)
+        if fixed is not None:
+            board.hole(fixed, (115, 63.4), back=back)  # over that place, clear of T1
+        solution = board.solve()
+        assert solution.problems == ()
+        return _pads(board, solution, "T2")["1"]
+
+    # The nearest place to T1, at the middle of the board, is the one above it.
+    assert beside(None) == (115.0, 64.0)
+    # A pad fixed there on the back leaves it free on the front; one fixed on the front,
+    # or a hole, which is through both faces, does not.
+    assert beside("Test:TP") == (115.0, 64.0)
+    assert beside("Test:TP", back=False) != (115.0, 64.0)
+    assert beside("Mech:Hole") != (115.0, 64.0)

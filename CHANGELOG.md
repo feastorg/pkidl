@@ -236,6 +236,12 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- `Board.solve()` is faster where parts are placed `near=` something: the next-bus
+  clock's 26 parts in 1.8 s where it took 47.5 s, the fan controller's 49 in 0.3 s
+  where it took 21.7 s, with the same poses, choices and problems. The places a part
+  might go are sifted all at once by where its box would be, nearest first, and only
+  those left are looked at one by one. pkidl depends on numpy, which shapely already
+  brought.
 - A pour that does not say its `clearance` or its `thermal_gap` has both from the
   board's `rules(clearance=)` when the board is built, where it had 0.4 and 0.5 mm
   whatever the rules. The thermal gap is not widened past 0.5 mm by rules that ask
