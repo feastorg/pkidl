@@ -97,6 +97,7 @@ from pkidl.intent import (
     Inside,
     Keepout,
     Place,
+    Region,
     Row,
     Rules,
     Side,
@@ -279,7 +280,7 @@ _Grid = tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]
 _SIFT = True  # whether those are sifted all at once first: off, each is tried in turn
 
 
-@lru_cache(maxsize=8)  # a 30 mm distance is 46 MB of them, a 15 mm one 12
+@lru_cache(maxsize=8)  # a 30 mm distance is 44 MB of them, a 15 mm one 11
 def _offsets(limit: int, step: int) -> _Grid:
     """Every offset on a grid of *step* within *limit*, nearest first: each as its
     distance squared, dy and dx, and the dx and dy of them all as arrays."""
@@ -390,12 +391,17 @@ class _Solver:
         self.circuit = circuit
         self.asks: dict[str, list[Place]] = {}
         self.aligns = [s for s in statements if isinstance(s, Align)]
-        # The areas of the board each part is said to be inside, where they are on it.
-        self.areas: dict[str, list[tuple[Inside, Box]]] = {}
+        # The areas of the board each part is said to be inside: each once, with where it
+        # is on the board and every statement that says so.
+        said: dict[str, dict[Region, list[Inside]]] = {}
         for s in statements:
             if isinstance(s, Inside):
                 for part in s.parts:
-                    self.areas.setdefault(part.ref, []).append((s, s.area.within(self.board)))
+                    said.setdefault(part.ref, {}).setdefault(s.area, []).append(s)
+        self.areas: dict[str, list[tuple[Region, Box, tuple[Inside, ...]]]] = {
+            ref: [(area, area.within(self.board), tuple(by)) for area, by in areas.items()]
+            for ref, areas in said.items()
+        }
         # Each area kept clear, as this circuit has it, whichever board's part the
         # statement was written with.
         self.keeps = [(s, circuit.part(s.area.part.ref).area(s.area.name).box)
@@ -953,7 +959,7 @@ class _Solver:
                      else range(last, first - 1, -STEP.nm))  # fmt: skip
         for v in sorted((v for v in tries if first <= v <= last), reverse=not forward):
             x, y = (v, other) if level else (other, v)
-            if self._outside(ref, _moved(b, x, y)) is None and self._clear(
+            if not self._outside(ref, _moved(b, x, y)) and self._clear(
                 ref, _moved(b, x, y), back, turned.through, done, True, (turned, x, y)
             ):
                 self._chose(f"{ref}: {words} along the {edge.value} edge")
@@ -962,14 +968,16 @@ class _Solver:
                       "that is on the board and clear of the other parts", *said)  # fmt: skip
         return None
 
-    def _outside(self, ref: str, box: Box) -> tuple[Inside, int, str] | None:
-        """The first area *ref* is said to be inside that *box* is not wholly in: the
-        statement, how far past it reaches, and past which side."""
-        for s, (x0, y0, x1, y1) in self.areas.get(ref, []):
+    def _outside(self, ref: str, box: Box) -> list[tuple[Region, tuple[Inside, ...], int, str]]:
+        """Each area *ref* is said to be inside that *box* is not wholly in: the area,
+        the statements that say so, how far past it reaches, and past which side."""
+        out = []
+        for area, (x0, y0, x1, y1), said in self.areas.get(ref, []):
             past = (x0 - box[0], y0 - box[1], box[2] - x1, box[3] - y1)
             if max(past) > 0:
-                return s, max(past), ("left", "top", "right", "bottom")[past.index(max(past))]
-        return None
+                side = ("left", "top", "right", "bottom")[past.index(max(past))]
+                out.append((area, said, max(past), side))
+        return out
 
     def _centre(self, ref: str) -> tuple[int, int]:
         x0, y0, x1, y1 = self._box(ref)
@@ -1127,7 +1135,7 @@ class _Solver:
         of = self._box(target)
         only = self.pad.get(id(s))  # the pads of this part that are to be near, if not any
         least = 0 if s.at_least is None else s.at_least.nm
-        rooms = [box for _, box in self.areas.get(ref, [])]
+        rooms = [box for _, box, _ in self.areas.get(ref, [])]
 
         def apart(turned: _Shape, x: int, y: int) -> bool:
             """No pad that is to be near nearer what it is near than the least said."""
@@ -1238,7 +1246,7 @@ class _Solver:
                         at = (turned, x, y)
                         if least and (d2 < least * least or not apart(*at)):
                             continue
-                        if rooms and self._outside(ref, _moved(turned.box, x, y)) is not None:
+                        if rooms and self._outside(ref, _moved(turned.box, x, y)):
                             continue
                         if not (beyond(_moved(turned.box, x, y))
                                 and self._clear(ref, _moved(turned.box, x, y), back, through,
@@ -1290,10 +1298,10 @@ class _Solver:
                     + " in the way"
                 )
             )
-            held = [a for a, _ in self.areas.get(ref, [])]
+            held = [a for _, _, said in self.areas.get(ref, []) for a in said]
             more = [f"at least {s.at_least} from it"] if s.at_least is not None else []
             more += [f"toward the {s.toward.value} edge"] if s.toward is not None else []
-            more += [f"inside {a.area}" for a in held]
+            more += [f"inside {area}" for area, _, _ in self.areas.get(ref, [])]
             also = f", {', '.join(more)}," if more else ""
             self._problem((ref,), f"{ref} has no place within {s.within} of {s.near}{also} "
                           f"that is on the {'back' if back else 'front'} of the board and "
@@ -1317,11 +1325,10 @@ class _Solver:
                               "facing= an edge, or outward= a side of it",
                               *self.said[ref])  # fmt: skip
             box, names = self._box(ref), ("left", "top", "right", "bottom")
-            if (out := self._outside(ref, box)) is not None:
-                area, past, side = out
-                self._problem((ref,), f"{ref} is not inside {area.area}: it reaches "
+            for area, said, past, side in self._outside(ref, box):
+                self._problem((ref,), f"{ref} is not inside {area}: it reaches "
                               f"{Length(past)} past its {side} side",
-                              area, *self.said[ref])  # fmt: skip
+                              *said, *self.said[ref])  # fmt: skip
             over = (self.board[0] - box[0], self.board[1] - box[1],
                     box[2] - self.board[2], box[3] - self.board[3])  # fmt: skip
             for name, past in zip(names, over, strict=True):

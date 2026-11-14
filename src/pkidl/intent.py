@@ -422,7 +422,9 @@ class Region:
     box: tuple[Length, Length, Length, Length] | None = None
 
     def __post_init__(self) -> None:
-        if (self.edge is None) == (self.box is None):
+        if (self.edge is None) == (self.box is None) or (
+            self.box is not None and self.share is not None
+        ):
             raise ValueError("area() takes an edge and a share of the board from it, or a "
                              "box=: one of them")  # fmt: skip
         if self.edge is not None:
@@ -444,7 +446,10 @@ class Region:
 
     def __str__(self) -> str:
         if self.edge is not None:
-            return f"area({self.edge}, share={self.share:.3g})"
+            assert self.share is not None
+            # As short as says which share it is: two that differ read differently.
+            short = format(self.share, "g")
+            return f"area({self.edge}, share={short if float(short) == self.share else self.share})"
         assert self.box is not None
         x0, y0, x1, y1 = self.box
         return f"area(box=(({x0}, {y0}), ({x1}, {y1})))"
@@ -487,7 +492,14 @@ class Inside(Statement):
         return self.parts
 
     def data(self) -> dict[str, Any]:
-        return {"inside": str(self.area), "parts": [p.ref for p in self.parts]}
+        # The area as it is and not as it reads, so that two never have one order by chance.
+        area = self.area
+        if area.box is not None:
+            said: dict[str, Any] = {"box": [v.nm for v in area.box]}
+        else:
+            assert area.edge is not None
+            said = {"edge": area.edge.value, "share": area.share}
+        return {"inside": said, "parts": [p.ref for p in self.parts]}
 
 
 BOARD = "the board"
@@ -620,13 +632,20 @@ def area(
     the board's top left corner. It says nothing by itself: ``inside`` puts parts in it."""
     if box is None:
         return Region(edge, share)  # type: ignore[arg-type]
+    if not (isinstance(box, tuple | list) and len(box) == 2
+            and all(isinstance(xy, tuple | list) and len(xy) == 2 for xy in box)):  # fmt: skip
+        raise TypeError("area(): box= is two opposite corners, as in box=((0 * mm, 0 * mm), "
+                        f"(30 * mm, 40 * mm)), not {box!r}")  # fmt: skip
     (ax, ay), (bx, by) = ((length(x), length(y)) for x, y in box)
-    return Region(edge, None, (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)))
+    return Region(edge, share, (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)))  # type: ignore[arg-type]
 
 
 def inside(area: Region, parts: Iterable[Part]) -> Inside:
     """Say that *parts* go inside *area*: the whole outline of each. An area keeps parts
     in and does nothing else: it does not spread them over itself."""
+    if isinstance(parts, Part):
+        raise TypeError(f"inside({area}) takes its parts together, as in "
+                        f"inside({area}, [{parts}])")  # fmt: skip
     return Inside(area, tuple(parts), source=_written_at())
 
 
