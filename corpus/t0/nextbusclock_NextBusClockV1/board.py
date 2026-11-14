@@ -22,8 +22,8 @@ def digit(display, register, limit_a, limit_b):
 # The two digits are read left to right, along the top edge.
 digits = board.parts("DIG1", "DIG2")
 board.row(digits, along=Edge.TOP)
-board.annotate(digits[0], upright=True)  # a display is read one way up
 for display in digits:
+    board.annotate(display, oriented=True)  # a display is read one way up
     board.place(display, facing=Edge.TOP)
 board.add(*digit(digits[0], board["SR1"], board["R3"], board["R4"]))
 board.add(*digit(digits[1], board["SR2"], board["R5"], board["R6"]))

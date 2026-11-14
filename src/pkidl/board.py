@@ -294,7 +294,7 @@ class Board:
 
     def annotate(
         self, part: Part, *, pins: Mapping[str, int | str] | None = None,
-        sides: Mapping[str, Edge] | None = None, upright: bool = False,
+        sides: Mapping[str, Edge] | None = None, oriented: bool = False,
         **areas: tuple[tuple[Length | str, Length | str], tuple[Length | str, Length | str]]
     ) -> tuple[Area, ...]:  # fmt: skip
         """Say what *part*'s footprint means, where no annotation ships for it: each
@@ -310,11 +310,14 @@ class Board:
 
         *sides* names sides of the footprint, each by where it is as the footprint is
         drawn: ``board.annotate(jack, sides={"socket": Edge.LEFT})``, and then
-        ``place(jack, against=Edge.LEFT, outward="socket")``. ``upright=True`` says that
-        which way round the part is matters, as a display's does. Of a part so marked,
-        or with a side named, the way round is never chosen: a board file that does not
-        say it, with ``facing=`` or ``outward=``, is told so. Every part with that
-        footprint has both."""
+        ``place(jack, against=Edge.LEFT, outward="socket")``. Every part with that
+        footprint has the names: a side is where it is on the footprint.
+
+        ``oriented=True`` says that which way round *part* is matters, as a display's
+        does, and naming a side says it too. Of a part so marked the way round is never
+        chosen: a board file that does not say it, with ``facing=`` or ``outward=``,
+        is told so. Only *part* is marked. Another part with the same footprint, a
+        second header of the same kind, is turned as before until it is marked."""
         part = self.circuit.part(part.ref)
         boxes = {}
         for name, corners in areas.items():
@@ -327,11 +330,11 @@ class Board:
             if not isinstance(edge, Edge):
                 raise TypeError(f"{part}: side {name} is a side of the footprint, such as "
                                 f"Edge.LEFT, not {edge!r}")  # fmt: skip
-        if not isinstance(upright, bool):
-            raise TypeError(f"{part}: upright= takes True, not {upright!r}")
+        if not isinstance(oriented, bool):
+            raise TypeError(f"{part}: oriented= takes True, not {oriented!r}")
         self.circuit.annotate(part.footprint, boxes, {part.ref: names},
                               {name: edge.value for name, edge in (sides or {}).items()},
-                              upright)  # fmt: skip
+                              [part.ref] if oriented or sides else [])  # fmt: skip
         return tuple(part.area(name) for name in areas)
 
     def keepout(self, area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:

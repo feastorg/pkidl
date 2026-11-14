@@ -295,7 +295,7 @@
    "pcbench": "scripts/benchmark/fixtures/PCBench/nextbusclock_NextBusClockV1/raw.kicad_pcb",
    "sha256": {
     "LICENSE": "2aa6232bc367cb237fbba7beef31319e3279013e4683bd4d2c0a773b4bfae379",
-    "board.py": "2ea897eaa90904c044fe803bb52524bd7b8db0abdde6be09f01e02f6d8172ede",
+    "board.py": "e8d2985746d9db5cb5822c9aabd22721c52e940bf88184e6af26d8ecefbd4a58",
     "circuit.json": "4d9a6b2aeab0f30c769fe205c316910d8b3f07e3e55c78a6521a324445fcbb68",
     "footprints/Buttons_Switches_ThroughHole.pretty/SW_PUSH.kicad_mod": "0a49b558d601977dbd7f54df46f22eb54b01ade1503046d22b9b8817b09a4f0f",
     "footprints/Capacitors_ThroughHole.pretty/C_Radial_D7.5_L11.2_P2.5.kicad_mod": "7631119681a6b8ab7960e34b10b26fea0545808e835b2d9379ca5751b1db70ab",

@@ -17,7 +17,7 @@ Anything plural is a method that selects, and gives everything when asked for no
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -148,9 +148,8 @@ class Part:
     @property
     def way_up_matters(self) -> bool:
         """Whether which way round it is is the board file's to say and never chosen: a
-        part annotated ``upright=True``, or with a side named."""
-        return (self.footprint in self.circuit._way_up
-                or bool(self.circuit._sides.get(self.footprint)))  # fmt: skip
+        part annotated ``oriented=True``, or with a side named for it."""
+        return self.ref in self.circuit._oriented
 
     def area(self, name: str) -> Area:
         """A named area of its footprint, as the footprint's annotation marks it out:
@@ -246,7 +245,7 @@ class Circuit:
         self._names: dict[str, dict[str, str]] = {}  # reference -> pin name -> number
         # footprint name -> the name of a side of it -> which side, as it is drawn
         self._sides: dict[str, dict[str, str]] = {}
-        self._way_up: set[str] = set()  # the footprints whose way round is not to be chosen
+        self._oriented: set[str] = set()  # the parts whose way round is not to be chosen
         # A footprint whose shipped annotation is of some other footprint, and why.
         self.unfitted: dict[str, str] = {}
 
@@ -314,7 +313,7 @@ class Circuit:
         areas: Mapping[str, Box],
         pins: Mapping[str, Mapping[str, str]] | None = None,
         sides: Mapping[str, str] | None = None,
-        upright: bool = False,
+        oriented: Iterable[str] = (),
     ) -> None:
         """Give the footprint named *footprint* its named *areas*, each a box in the
         footprint's own coordinates, and each part in *pins*, by its reference, names
@@ -324,8 +323,9 @@ class Circuit:
         pin for it is refused, with nothing of what was said kept.
 
         *sides* names sides of the footprint as it is drawn, each ``left``, ``right``,
-        ``top`` or ``bottom``; *upright* says that which way round the part is is not
-        to be chosen for it. A part with a side named is such a part too."""
+        ``top`` or ``bottom``, and every part with the footprint has them. *oriented*
+        is the parts, by reference, whose way round is not to be chosen for them."""
+        marked = [self.part(ref).ref for ref in oriented]
         sided = self._sides.get(footprint, {})
         for name, side in (sides or {}).items():
             if not isinstance(name, str) or not name:
@@ -359,8 +359,7 @@ class Circuit:
         self._names.update(named)
         if sides:
             self._sides[footprint] = {**sided, **sides}
-        if upright:
-            self._way_up.add(footprint)
+        self._oriented.update(marked)
 
     def name_nets(self, names: Mapping[str, str]) -> tuple[Net, ...]:
         """Give nets the schematic left anonymous a name to write and read:

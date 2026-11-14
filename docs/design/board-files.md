@@ -141,7 +141,11 @@ the board is the build's.
   name. Finding the side is looking at the footprint once; saying it after that is
   saying what is meant. Nothing is worked out from the footprint (decided 2026-11-13).
 - A part whose way round matters is never turned by choice. `board.annotate(display,
-  upright=True)` marks it, and so does naming a side of it. Left to itself the solver
+  oriented=True)` marks it, and so does naming a side of it: that part, and not
+  another with the same footprint, which may be a header whose way round is nobody's
+  concern (decided 2026-11-13: marked part by part). The word says the part has a
+  way round and not which: `upright` was the first word, and a part marked and placed
+  `facing=Edge.LEFT` is not upright (decided 2026-11-14). Left to itself the solver
   turns a part for its shortest wiring, which put the next-bus clock's displays on
   their sides. A part so marked that no `facing=` or `outward=` speaks of is a
   problem: `DIG1's way round matters and nothing says it: give facing= an edge, or

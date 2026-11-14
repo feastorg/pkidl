@@ -11,11 +11,12 @@ Unreleased. History before this file was reconstructed from the git log.
 
 - A side of a part has a name, and goes to an edge by it. `board.annotate(jack,
   sides={"socket": Edge.LEFT})` names a side of the footprint as it is drawn, for every
-  part with that footprint, and `place(jack, against=Edge.LEFT, outward="socket")`
+  part with that footprint to ask for, and `place(jack, against=Edge.LEFT, outward="socket")`
   puts that side at the edge, on either face of the board. A side that is not named,
   `outward=` with no `against=`, and a part said to be two ways round are each told.
-- `board.annotate(display, upright=True)` says a part's way round matters. Of a part
-  so marked, or with a side named, the way round is never chosen for its wiring: where
+- `board.annotate(display, oriented=True)` says a part's way round matters, and naming
+  a side of a part says it of that part. Of a part so marked the way round is never
+  chosen for its wiring, and another part with the same footprint is not marked: where
   no `facing=` or `outward=` says it, `Board.solve()` reports `DIG1's way round matters
   and nothing says it`, and a build refuses the board.
 - A build routes a board with its pours known to the router, and checks the result.
