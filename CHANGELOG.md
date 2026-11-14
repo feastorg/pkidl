@@ -9,6 +9,16 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- A row of parts beside a part. `board.row(resistors, beside=switch, toward=Edge.RIGHT)`
+  puts the parts side by side on the side of the part that is toward that edge, in the
+  order named, from the top down or from the left. Each stands across the row, its
+  length away from the part, and all are turned the same way. `pitch=` is the distance
+  between their middles; with none they are as close as keeps their outlines clear and
+  their pads the rules' clearance apart. The row is as near the part as is clear, level
+  with its middle, and further out or along from there, up to 30 mm, where something
+  is in the way; `Solution.chosen` says where it went. One with no place is a single
+  problem, and none of it is placed. `row()` takes `along=` an edge or `beside=` a part
+  with `toward=`, and refuses both or neither. (#75)
 - A part at a point of the board. `place(pot, at=(72 * mm, 76 * mm), facing=Edge.TOP)`
   puts the footprint's origin two lengths across and down from the board's top left
   corner, and `of=pot.pin(1)` puts that pin there instead, whichever way round the part

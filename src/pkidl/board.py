@@ -339,11 +339,14 @@ class Board:
         self.add(statement)
         return statement
 
-    def row(self, parts: Iterable[Part], *, along: Edge, pitch: Length | str = "even",
-            inset: Length | str | None = None) -> Row:  # fmt: skip
-        """Say that *parts* go in a row along an edge, in the order named, and get the
-        statement back. See ``pkidl.row``."""
-        statement = intent.row(parts, along=along, pitch=pitch, inset=inset)
+    def row(self, parts: Iterable[Part], *, along: Edge | None = None,
+            pitch: Length | str | None = None, inset: Length | str | None = None,
+            beside: Part | None = None, toward: Edge | None = None) -> Row:  # fmt: skip
+        """Say that *parts* go in a row, in the order named, along an edge or beside a
+        part on the side of it toward an edge, and get the statement back. See
+        ``pkidl.row``."""
+        statement = intent.row(parts, along=along, pitch=pitch, inset=inset, beside=beside,
+                               toward=toward)  # fmt: skip
         self.add(statement)
         return statement
 
