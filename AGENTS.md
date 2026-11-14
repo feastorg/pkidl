@@ -24,7 +24,8 @@ spike/           # the BREAD boards written with pkidl: a separate project, its 
 ```sh
 just setup        # install dependencies
 just check        # fmt-check + lint + typecheck (CI-equivalent)
-just test         # pkidl's tests
+just test         # pkidl's tests, but for the ones that route a whole board
+just test-all     # every test, as CI runs them
 ```
 
 `spike/` has its own: run `just --list` there. Its boards need KiCad, SKiDL and
@@ -34,6 +35,7 @@ Freerouting are skipped where it is not installed, and run in CI.
 ## Conventions
 
 - Run `just check && just test` before every commit; in `spike/` too when it changes.
+  Run `just test-all` before a commit that changes routing or the build.
 - Conventional Commits: `type(scope): description`.
 - A change a user of the library would notice adds its entry to `CHANGELOG.md`, under
   Unreleased, in the same PR.
