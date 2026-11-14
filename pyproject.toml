@@ -16,6 +16,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
 dependencies = [
+    "numpy>=2.0",
     "shapely>=2.2.0",
 ]
 

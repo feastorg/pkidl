@@ -82,6 +82,7 @@ from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache
 
+import numpy as np
 from shapely.geometry import Polygon
 from shapely.geometry import box as _area
 from shapely.prepared import prep
@@ -251,6 +252,23 @@ def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
         copper.append((number, (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))))
     return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), shape.through,
                   tuple(copper))  # fmt: skip
+
+
+_AT_A_TIME = 4096  # the offsets a place near something is looked for at, at once
+_SIFT = True  # whether those are sifted all at once first: off, each is tried in turn
+
+
+@cache
+def _offsets(limit: int, step: int) -> tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]:
+    """Every offset on a grid of *step* within *limit*, nearest first: each as its
+    distance squared, dy and dx, and the dx and dy of them all as arrays."""
+    n = limit // step
+    offsets = sorted((dx * dx + dy * dy, dy, dx)
+                     for dx in range(-n * step, n * step + 1, step)
+                     for dy in range(-n * step, n * step + 1, step)
+                     if dx * dx + dy * dy <= limit * limit)  # fmt: skip
+    return (offsets, np.array([dx for _, _, dx in offsets], dtype=np.int64),
+            np.array([dy for _, dy, _ in offsets], dtype=np.int64))  # fmt: skip
 
 
 def _moved(box: Box, x: int, y: int) -> Box:
@@ -932,32 +950,73 @@ class _Solver:
             return {Edge.TOP: box[3] <= of[1], Edge.BOTTOM: box[1] >= of[3],
                     Edge.LEFT: box[2] <= of[0], Edge.RIGHT: box[0] >= of[2]}[s.toward]  # fmt: skip
 
-        n = limit // step
-        offsets = sorted((dx * dx + dy * dy, dy, dx)
-                         for dx in range(-n * step, n * step + 1, step)
-                         for dy in range(-n * step, n * step + 1, step)
-                         if dx * dx + dy * dy <= limit * limit)  # fmt: skip
+        offsets, dxs, dys = _offsets(limit, step)
+
+        # Each way the part may be turned, with each of its pads by each pad it is near.
+        ways = [(rot, turned, px, py, tx, ty)
+                for rot in rots for turned in [_turned(shape, rot, back)]
+                for number, px, py in turned.pads if only is None or number in only
+                for tx, ty in targets]  # fmt: skip
+        through = shape.through
+        # What a box may not overlap wherever it is tried: what is fixed on the board,
+        # and the parts placed that share a face with this one.
+        barred = [taken for f, taken, holed in self.fixed if through or holed or f.back == back]
+        barred += [self._box(other) for other in done
+                   if other != ref and other in self.poses
+                   and (through or self.shapes[other].through
+                        or self.poses[other].back == back)]  # fmt: skip
+        b0, b1, b2, b3 = self.board
+
+        # Where each way puts the part's box, before the offset is added.
+        wx = np.array([tx - px for _, _, px, _, tx, _ in ways], dtype=np.int64)[:, None]
+        wy = np.array([ty - py for _, _, _, py, _, ty in ways], dtype=np.int64)[:, None]
+        boxes = np.array([turned.box for _, turned, *_ in ways], dtype=np.int64).reshape(-1, 4)
+        wx0, wy0 = wx + boxes[:, 0:1], wy + boxes[:, 1:2]
+        wx1, wy1 = wx + boxes[:, 2:3], wy + boxes[:, 3:4]
+
+        def roughly(keeps: bool, a: int, b: int) -> np.ndarray:
+            """For each way and each of the offsets from *a* to *b*, whether the part's
+            box there is on the board's box, on the side said, and over nothing it may
+            not be over: every place that is clear is one of these, and they are found
+            all at once."""
+            out = [*barred]
+            if keeps:
+                out += [kept for _, kept, faces in self._kept(done) if through or back in faces]
+            x0, y0 = wx0 + dxs[a:b], wy0 + dys[a:b]
+            x1, y1 = wx1 + dxs[a:b], wy1 + dys[a:b]
+            if not _SIFT:
+                return np.ones(x0.shape, dtype=bool)
+            ok = (x0 >= b0) & (y0 >= b1) & (x1 <= b2) & (y1 <= b3)
+            if s.toward is not None:
+                ok &= {Edge.TOP: y1 <= of[1], Edge.BOTTOM: y0 >= of[3],
+                       Edge.LEFT: x1 <= of[0], Edge.RIGHT: x0 >= of[2]}[s.toward]  # fmt: skip
+            for t0, t1, t2, t3 in out:
+                ok &= ~((x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1))
+            return ok
 
         def nearest(keeps: bool) -> tuple[Pose | None, int]:
             best, found = None, -1
-            for d2, dy, dx in offsets:
-                if best is not None and d2 > found:
+            # The offsets are nearest first: a few thousand at a time, until one of them
+            # is a place and none further off is as near.
+            for a in range(0, len(offsets) if ways else 0, _AT_A_TIME):
+                if best is not None and offsets[a][0] > found:
                     break
-                for rot in rots:
-                    turned = _turned(shape, rot, back)
-                    for number, px, py in turned.pads:
-                        if only is not None and number not in only:
+                rough = roughly(keeps, a, a + _AT_A_TIME)
+                for i in np.flatnonzero(rough.any(axis=0)).tolist():
+                    d2, dy, dx = offsets[a + i]
+                    if best is not None and d2 > found:
+                        break
+                    for w in np.flatnonzero(rough[:, i]).tolist():
+                        rot, turned, px, py, tx, ty = ways[w]
+                        x, y = tx + dx - px, ty + dy - py
+                        at = (turned, x, y)
+                        if not (beyond(_moved(turned.box, x, y))
+                                and self._clear(ref, _moved(turned.box, x, y), back, through,
+                                                done, keeps, at)):  # fmt: skip
                             continue
-                        for tx, ty in targets:
-                            x, y = tx + dx - px, ty + dy - py
-                            box = _moved(turned.box, x, y)
-                            at = (turned, x, y)
-                            if not (beyond(box) and self._clear(ref, box, back, shape.through,
-                                                                done, keeps, at)):  # fmt: skip
-                                continue
-                            key = (self._wires(ref, turned, x, y), rot, y, x)
-                            if best is None or key < best[0]:
-                                best, found = (key, Pose(Length(x), Length(y), rot, back)), d2
+                        key = (self._wires(ref, turned, x, y), rot, y, x)
+                        if best is None or key < best[0]:
+                            best, found = (key, Pose(Length(x), Length(y), rot, back)), d2
             return (None if best is None else best[1]), found
 
         pose, found = nearest(True)

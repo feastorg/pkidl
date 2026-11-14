@@ -2110,3 +2110,51 @@ def test_a_hole_of_a_part_too_near_the_edge_is_called_a_hole():
     assert [p.text for p in board.solve().problems] == [
         "a hole of H1 is 0.2 mm from the board's edge, and the rules keep copper 0.5 mm from it"
     ]
+
+
+def _crowded(seed: int) -> Board:
+    """A board with a module, a header and a hole in the way, and six parts each to be
+    near something, at distances and on sides picked by *seed*."""
+    import random
+
+    pick = random.Random(seed)
+    board = _ruled(U1="A B C D E", P1="A B C D", R1="A B", R2="B C", R3="C D", T1="A", T2="E",
+                   Q1="D E", H1="")  # fmt: skip
+    board.place(board["U1"], centre=True, facing=pick.choice(list(Edge)))
+    board.place(board["P1"], against=pick.choice([Edge.TOP, Edge.BOTTOM]), inset=3 * mm)
+    board.place(board["H1"], against=Edge.LEFT, inset=pick.choice([3, 6]) * mm)
+    for ref, by in (
+        ("R1", "U1"),
+        ("R2", "U1"),
+        ("R3", "P1"),
+        ("T1", "R1"),
+        ("T2", "U1"),
+        ("Q1", "R3"),
+    ):
+        near = board[by] if pick.random() < 0.5 else board[by].pin(pick.choice([1, 2]))
+        toward = pick.choice([None, None, *Edge])
+        within = pick.choice([1.5, 3, 4]) * mm
+        if pick.random() < 0.3:
+            board.place(board[ref], near=near, within=within, toward=toward, side="back")
+        else:
+            board.place(board[ref], near=near, within=within, toward=toward)
+    return board
+
+
+def test_the_places_sifted_all_at_once_are_the_ones_found_trying_each_in_turn(monkeypatch):
+    """A place near something is looked for among thousands of offsets, sifted together
+    by where the part's box would be. Sifting only leaves out places that are not clear,
+    so what is found is what trying every offset in turn finds, however many are taken
+    at a time."""
+    import pkidl.placement as placement
+
+    for seed in range(8):
+        monkeypatch.setattr(placement, "_SIFT", False)
+        plain = _crowded(seed).solve()
+        monkeypatch.setattr(placement, "_SIFT", True)
+        for at_a_time in (4096, 97, 1):
+            monkeypatch.setattr(placement, "_AT_A_TIME", at_a_time)
+            assert _crowded(seed).solve() == plain, (seed, at_a_time)
+    # The cases are not all one kind: parts are placed, and some have no place.
+    solved = [_crowded(seed).solve() for seed in range(8)]
+    assert any(s.problems for s in solved) and sum(len(s.poses) for s in solved) > 30
