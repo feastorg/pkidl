@@ -613,15 +613,20 @@ class _Solver:
             turned = _turned(shape, rot, back)
             at = self._fixed(ref, turned, edges, betweens, done)
             if at is None:
-                failed = failed or self.problems
+                failed = failed or (self.problems, self.chosen)
                 continue
             key = (self._wires(ref, turned, *at), rot)
             if best is None or key < best[0]:
                 best = (key, Pose(Length(at[0]), Length(at[1]), rot, back),
                         self.problems, self.chosen)  # fmt: skip
         if best is None:
+            # With no way round that has a place, what the first way tried ran into,
+            # and what was said on the way that is not of where this part went: a row
+            # says how much of its edge is clear whether or not its parts fit there.
             assert failed is not None
-            self.problems, self.chosen = failed, chosen
+            self.problems = failed[0]
+            self.chosen = {note: None for note in failed[1]
+                           if note in chosen or not note.startswith(f"{ref}:")}  # fmt: skip
             return None
         self.problems, self.chosen = best[2], best[3]
         if len(rots) > 1:

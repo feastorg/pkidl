@@ -157,7 +157,9 @@ the board is the build's.
   are both held. A part that looks for its place this way is placed after the parts
   whose place is given, as one placed `near=` is, and is clear of them; it is turned
   a way round that has a place, where it is free to turn. The place is looked for a
-  step of 0.1 mm at a time and hard against the far side of each thing in the way. A
+  step of 0.1 mm at a time and hard against the far side of each thing in the way: a
+  gap just the part's size is found, and one just the part's size and the clearance
+  the rules keep round it is found only where a step lands on it. A
   part that something else puts along the edge is held to what was said, and is a
   problem where it is not.
 - A part whose way round matters is never turned by choice. `board.annotate(display,

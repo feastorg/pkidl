@@ -12,6 +12,7 @@ import json
 import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from fractions import Fraction
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -262,7 +263,7 @@ class Board:
         toward: Edge | None = None,
         centre: bool = False,
         outward: str | None = None,
-        along: float | Length | str | None = None,
+        along: float | Fraction | Length | str | None = None,
         after: Part | None = None,
         before: Part | None = None,
     ) -> Place:

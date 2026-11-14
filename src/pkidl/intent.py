@@ -29,6 +29,7 @@ import sys
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
+from fractions import Fraction
 from numbers import Real
 from pathlib import Path
 from typing import Any
@@ -461,7 +462,7 @@ def place(
     toward: Edge | None = None,
     centre: bool = False,
     outward: str | None = None,
-    along: float | Length | str | None = None,
+    along: float | Fraction | Length | str | None = None,
     after: Part | None = None,
     before: Part | None = None,
 ) -> Place:
@@ -479,7 +480,9 @@ def place(
     if isinstance(side, str) and side in ("front", "back"):
         side = Side(side)
     return Place(part, against, inset, between, facing, near, within, side,  # type: ignore[arg-type]
-                 toward, centre, outward, length(along) if isinstance(along, str) else along,
+                 toward, centre, outward,
+                 length(along) if isinstance(along, str)
+                 else float(along) if isinstance(along, Fraction) else along,
                  after, before, source=_written_at())  # fmt: skip
 
 

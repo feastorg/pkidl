@@ -2762,8 +2762,10 @@ def test_where_along_an_edge_is_said_with_the_edge_and_one_way():
         "place(T1, against=Edge.TOP, along=12 mm)"
     )
     # A share written as a fraction is the share, and either end of the edge is one.
-    third: Any = Fraction(1, 3)
-    assert place(t1, against=Edge.TOP, along=third).along == pytest.approx(1 / 3)
+    third = place(t1, against=Edge.TOP, along=Fraction(1, 3))
+    assert third.along == pytest.approx(1 / 3) and type(third.along) is float
+    assert third == place(t1, against=Edge.TOP, along=1 / 3)
+    assert type(place(t1, against=Edge.TOP, along=1).along) is float
     assert (
         place(t1, against=Edge.TOP, along=0).along,
         place(t1, against=Edge.TOP, along=1).along,
@@ -2820,6 +2822,18 @@ def test_after_two_parts_is_after_the_further_of_them():
     solution = board.solve()
     assert solution.ok and _span(board, solution, "R1", Edge.LEFT) == pytest.approx((20.5, 24.1))
     assert "R1: after T1 and after T2 along the left edge" in solution.chosen
+    # Whichever is which; and before two parts is before the nearer end of them.
+    for words, at in ((("after", "after"), (20.5, 24.1)), (("before", "before"), (0.9, 4.5))):
+        for first, second in (("T1", "T2"), ("T2", "T1")):
+            board = _board(T1="A", T2="B", R1="A B")
+            board.place(board[first], against=Edge.LEFT, along=5 * mm)
+            board.place(board[second], against=Edge.LEFT, along=20 * mm)
+            for word, other in zip(words, (first, second), strict=True):
+                beside: dict[str, Any] = {word: board[other]}
+                board.place(board["R1"], against=Edge.LEFT, **beside)
+            solution = board.solve()
+            assert solution.ok, (words, first)
+            assert _span(board, solution, "R1", Edge.LEFT) == pytest.approx(at)
 
 
 def test_a_part_looked_for_along_an_edge_is_placed_after_those_whose_place_is_given():
@@ -2832,6 +2846,15 @@ def test_a_part_looked_for_along_an_edge_is_placed_after_those_whose_place_is_gi
     board.place(r1, against=Edge.LEFT, after=t1)
     solution = board.solve()
     assert solution.ok and _span(board, solution, "R1", Edge.LEFT) == pytest.approx((7.5, 11.1))
+    # And one that looks back from a part: clear of T7, which it sorts before and
+    # was ready to be placed before, once T5 was.
+    board = _board(T7="A", T5="B", R1="A B")
+    t1, t5, r1 = board.parts("T7", "T5", "R1")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t5, against=Edge.LEFT, along=7 * mm)
+    board.place(r1, against=Edge.LEFT, before=t5)
+    solution = board.solve()
+    assert solution.ok and _span(board, solution, "R1", Edge.LEFT) == pytest.approx((0.9, 4.5))
 
 
 def test_a_part_free_to_turn_is_turned_the_way_that_has_a_place_along_the_edge():
@@ -2927,3 +2950,25 @@ def test_a_gap_that_is_just_the_parts_size_and_off_the_grid_is_found():
     solution = board.solve()
     assert solution.ok
     assert _span(board, solution, "T5", Edge.LEFT) == pytest.approx((6.525, 7.525))
+
+
+def test_a_part_with_no_place_any_way_round_leaves_what_was_said_of_its_row_and_not_of_it():
+    # A row at a pitch that does not fit what a hole leaves clear of its edge: neither
+    # header is placed, and the row still says how much of the edge it had.
+    board = _board(P1="A B C D", P2="A B C D")
+    board.hole("Mech:Hole", (104, 51.5))
+    board.row(board.parts("P1", "P2"), along=Edge.TOP, pitch=14 * mm)
+    solution = board.solve()
+    assert solution.poses == {} and solution.problems
+    assert (
+        "row(P1, P2, along=Edge.TOP, pitch=14 mm): over the 25 mm of the top edge that is "
+        "clear, of 30 mm"
+    ) in solution.chosen
+    assert all(note.startswith("row(") for note in solution.chosen)
+    # A part against the top edge and the bottom is in two places down the board and is
+    # not placed: nothing is said of where across the board it was centred.
+    board = _board(T1="A")
+    board.place(board["T1"], against=Edge.TOP)
+    board.place(board["T1"], against=Edge.BOTTOM)
+    solution = board.solve()
+    assert solution.poses == {} and len(solution.problems) == 1 and solution.chosen == ()
