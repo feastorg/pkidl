@@ -326,7 +326,7 @@ def test_a_board_routed_with_its_pours_known_and_nothing_cut_off_is_routed_once(
 
 
 def test_a_net_whose_pour_is_left_in_pieces_is_routed_again_by_tracks(tmp_path):
-    first, again = Run((A_ROUTE,), (A_VIA,), 0), Run((A_ROUTE, GND_ROUTE), (), 0)
+    first, again = Run((A_ROUTE,), (), 0), Run((A_ROUTE, GND_ROUTE), (A_VIA,), 0)
     router = InTurn([first, again], [[STRANDED], [STARVED]])
     routed = poured(router, job(ONE_CLASS, planes=[GND_POUR]), tmp_path, "b", router.cut)
     # The second run has no plane: ground is a net like any other, routed as on a
@@ -335,13 +335,13 @@ def test_a_net_whose_pour_is_left_in_pieces_is_routed_again_by_tracks(tmp_path):
         ("poured", [GND_POUR]),
         ("", []),
     ]
-    assert routed.wires == (A_ROUTE, GND_ROUTE) and routed.vias == ()
+    assert routed.wires == (A_ROUTE, GND_ROUTE) and routed.vias == (A_VIA,)
     assert routed.runs == (("poured", first), ("", again))
     # What was cut off is said. The pour is still drawn on the board routed again, round
     # the tracks that carry its net, so that board is checked as the first was, and what
     # the check finds of it is said apart: it is of the board that stands.
     assert routed.cut == (STRANDED,) and routed.left == (STARVED,)
-    assert router.checked == [((A_ROUTE,), (A_VIA,)), ((A_ROUTE, GND_ROUTE), ())]
+    assert router.checked == [((A_ROUTE,), ()), ((A_ROUTE, GND_ROUTE), (A_VIA,))]
 
 
 def test_only_the_net_that_was_cut_off_gives_up_its_pour(tmp_path):

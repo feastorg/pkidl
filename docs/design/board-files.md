@@ -431,7 +431,9 @@ asked to be all joined. Where they are, that run is the routing. Where they are
 not, what was cut off is in the result (`Routed.cut`), and the board is routed again
 with that net carried by tracks and its pour beside them, as a board was before.
 
-The board routed again is checked too, by the same judge. Its pours are still drawn,
+The board routed again is asked the same question. Each check asks KiCad afresh, so
+one can be KiCad's and the next the model's, and `Routed.judge` names who answered
+last. Its pours are still drawn,
 round the tracks that carry their nets, and can leave what KiCad's DRC rejects: a pad
 whose relief joins a piece of pour that joins nothing else. What the check finds of
 that board is in the result apart (`Routed.left`), since it is of the board that is
