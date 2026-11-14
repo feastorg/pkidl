@@ -560,3 +560,24 @@ def test_the_next_bus_clocks_board_file_places_every_part_by_what_it_says():
     said = [str(s) for s in board.statements()]
     assert "place(SR1, near=DIG1, within=15 mm, toward=Edge.BOTTOM)" in said
     assert "place(SR2, near=DIG2, within=15 mm, toward=Edge.BOTTOM)" in said
+
+
+@pytest.mark.parametrize(("d", "big", "round_", "moved"), [
+    ("t3/NRC2016_usb_sio", "U2", 4, "C4, C5 and U2"),
+    ("t4/rxadc_14_rxadc_14", "U103", 3, "C104, C105, C106, C108, C109, C110 and C115"),
+])  # fmt: skip
+def test_two_boards_whose_decoupling_went_round_are_kept_at_one_placement(d, big, round_, moved):
+    """Their largest part decoupled with every capacitor in the circuit: the capacitors
+    take each other's pins pass after pass (#15). Each board is kept at one of the
+    placements it goes round, and nothing says it does not settle."""
+    board = Board.from_inputs(CORPUS / d / "board.py")
+    board.ground("GND")
+    board.place(board[big], centre=True)
+    board.decouple(board[big], [p for p in board.parts() if p.ref.startswith("C")], within=6 * mm)
+    solution = board.solve()
+    assert not any("settle" in problem.text for problem in solution.problems)
+    assert [note for note in solution.chosen if "go round" in note] == [
+        f"{moved}: each is placed by where the others are, and they go round {round_} "
+        "placements; kept as in the one with the fewest problems, the first of them"
+    ]
+    assert board.solve() == solution
