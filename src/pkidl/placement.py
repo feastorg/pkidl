@@ -43,6 +43,19 @@ What each statement means here:
   but for a part that is ``facing=`` an edge. The turn is counted from how each part
   lies along the edge with its length running the way the row runs, so a part drawn
   on end and one drawn across are in one row with pin 1 of each at the same end.
+- ``row`` beside a part, toward an edge: the parts are side by side on that side of the
+  part, in the order named, from the top down its left or right side or from the left
+  along its top or bottom. Each stands across the row, the shorter side of its outline
+  along the row's line and the near sides of them all in one line, turned as the parts
+  of a row along an edge are. The middles of their outlines are one pitch apart: the
+  length given, or the least that keeps each outline clear of the others and their
+  pads as far apart as the rules say. The row is on that side of the part's outline:
+  touching it, or as far off as keeps their pads apart, the middle of the row level
+  with the middle of the part. Where that is not clear of all a part that looks for a
+  place is kept clear of, the row is a step at a time further out and along its line,
+  the place nearest that first one, and of two as near the one less far along, then
+  the one toward the top or the left. One that has no place within 30 mm is a problem,
+  and none of it is placed.
 - ``decouple`` a part with capacitors: each capacitor is across ground, as the board
   file declares it, and one supply of the part, and is placed as ``near=`` one of the
   part's pins on that supply has it, with the capacitor's own pad on the supply the
@@ -88,6 +101,7 @@ import math
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from functools import cache, lru_cache
+from itertools import combinations
 
 import numpy as np
 from shapely import intersects_xy, prepare
@@ -278,6 +292,7 @@ _FURTHER = Length(30_000_000)  # as far as a place is looked for to say how far 
 _EDGE = "the board's edge"
 _AREA = "the edge of its area"
 _Grid = tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]
+_Stood = Mapping[str, tuple[_Shape, int, int]]  # each part's shape, and where its origin is
 _SIFT = True  # whether those are sifted all at once first: off, each is tried in turn
 
 
@@ -292,6 +307,35 @@ def _offsets(limit: int, step: int) -> _Grid:
                      if dx * dx + dy * dy <= limit * limit)  # fmt: skip
     return (offsets, np.array([dx for _, _, dx in offsets], dtype=np.int64),
             np.array([dy for _, dy, _ in offsets], dtype=np.int64))  # fmt: skip
+
+
+@lru_cache(maxsize=2)
+def _beyond(limit: int, step: int) -> tuple[np.ndarray, np.ndarray]:
+    """Every place on a grid of *step* within *limit* that is no nearer a part than a
+    row beside it starts: how far out from there and how far along, nearest first; of
+    two as near, the one less far along, then the one back along the row's line."""
+    n = limit // step
+    out, along = (v.ravel() for v in np.meshgrid(np.arange(n + 1, dtype=np.int64),
+                                                 np.arange(-n, n + 1, dtype=np.int64),
+                                                 indexing="ij"))  # fmt: skip
+    near = out * out + along * along <= n * n
+    out, along = out[near], along[near]
+    order = np.lexsort((along, np.abs(along), out * out + along * along))
+    return out[order] * step, along[order] * step
+
+
+def _apart(gap: int, d: int) -> int:
+    """How far apart one way two pads *d* apart the other way are when they are *gap*
+    apart in all, to the nanometre above."""
+    return math.isqrt(gap * gap - d * d - 1) + 1
+
+
+def _lies(row: Row) -> Edge:
+    """The edge whose row the parts of *row* lie as: its own, or for a row beside a
+    part one its line runs across, so that each part stands across the row."""
+    if row.along is not None:
+        return row.along
+    return Edge.TOP if row.toward in (Edge.LEFT, Edge.RIGHT) else Edge.LEFT
 
 
 def _moved(box: Box, x: int, y: int) -> Box:
@@ -448,6 +492,8 @@ class _Solver:
         self.problems: dict[Problem, None] = {}
         self.chosen: dict[str, None] = {}
         self.turns: dict[Row, int] = {}  # the way round each row's parts are, this pass
+        # Where each row beside a part has its parts' origins, this pass, or None.
+        self.banks: dict[Row, dict[str, tuple[int, int]] | None] = {}
 
     def _decouple(self, circuit: Circuit, statements: list[Decouple]) -> None:
         """Give each capacitor that decouples a part one of the part's pins to be near:
@@ -517,7 +563,7 @@ class _Solver:
         before: dict[str, Pose] = {}
         for _ in range(_PASSES):
             before, done = dict(self.poses), set()
-            self.problems, self.chosen, self.turns = {}, {}, {}
+            self.problems, self.chosen, self.turns, self.banks = {}, {}, {}, {}
             for ref in order:
                 if (pose := self._place(ref, done)) is not None:
                     self.poses[ref] = pose
@@ -588,9 +634,24 @@ class _Solver:
         looks = {ref: any(s.near is not None or s.after is not None or s.before is not None
                           for s in asks)
                  for ref, asks in self.asks.items()}  # fmt: skip
+        # A row beside a part looks for its place as one thing, after that part, where
+        # the first of its references comes among the parts that look for a place: its
+        # parts follow one another, and what is placed by one of them waits for all.
+        first: dict[str, str] = {}
+        for row in dict.fromkeys(r for rows in self.rows.values() for r in rows if r.beside):
+            assert row.beside is not None
+            members = {p.ref for p in row.parts}
+            for ref in needs:
+                if ref in members:
+                    needs[ref].add(row.beside.ref)
+                    looks[ref] = True
+                    first.setdefault(ref, min(members, key=natural))
+                elif needs[ref] & members:
+                    needs[ref] |= members
         order: list[str] = []
         while ready := sorted((r for r in needs if r not in order and needs[r] <= set(order)),
-                              key=lambda r: (looks[r], natural(r))):  # fmt: skip
+                              key=lambda r: (looks[r], natural(first.get(r, r)),
+                                             natural(r))):  # fmt: skip
             order.append(ready[0])
         stuck = sorted(set(needs) - set(order), key=natural)
         for ref in stuck:
@@ -609,8 +670,11 @@ class _Solver:
         shape = self.shapes[ref]
         back, rots = self._back(ref), self._rots(ref)
         edges = self._edges(ref)
-        if rows and not any(s.facing for s in asks):
-            rots = ((self._lie(ref, rows[0].along) + self._turn_of(rows[0])) % 360,)
+        # A row beside a part finds its place whole, when the first of its parts is placed.
+        banks = [row for row in rows if row.beside is not None]
+        lost = any(self._bank(row, done) is None for row in banks)
+        if rows and not lost and not any(s.facing for s in asks):
+            rots = ((self._lie(ref, _lies(rows[0])) + self._turn_of(rows[0])) % 360,)
         nears = [s for s in asks if s.near is not None]
         betweens = [s for s in asks if s.between]
         if nears:
@@ -631,6 +695,11 @@ class _Solver:
                               "at= or on= beside it", *asks)  # fmt: skip
                 return None
             return self._near(ref, nears[0], rots, back, done)
+        if lost:
+            return None
+        if banks and len(rows) > 1:
+            self._problem((ref,), f"{ref} is in two rows: {' and '.join(map(str, rows))}", *rows)
+            return None
         # Each way round is tried from what was said before any of them: what is said
         # of a way that is not taken is not said of the part, and a way with no place
         # is passed over where another has one.
@@ -669,7 +738,8 @@ class _Solver:
     def _edges(self, ref: str) -> dict[Edge, Place | Row]:
         """The edges *ref* is against, each with the statement that says so: its own
         place, or else a row along that edge."""
-        edges: dict[Edge, Place | Row] = {s.along: s for s in self.rows.get(ref, [])}
+        edges: dict[Edge, Place | Row] = {s.along: s for s in self.rows.get(ref, [])
+                                          if s.along is not None}  # fmt: skip
         return {**edges, **{s.against: s for s in self.asks[ref] if s.against}}
 
     def _turned(self, ref: str) -> dict[int, Place]:
@@ -700,7 +770,7 @@ class _Solver:
         if said := self._turned(ref):
             return (next(iter(said)),)
         # A part in a row lies along the row's edge, whatever other edge it is against.
-        lie = [s.along for s in self.rows.get(ref, [])] or list(edges)
+        lie = [_lies(s) for s in self.rows.get(ref, [])] or list(edges)
         if len(lie) == 1 or ref in self.rows:
             w, h = shape.box[2] - shape.box[0], shape.box[3] - shape.box[1]
             upright = lie[0] in (Edge.LEFT, Edge.RIGHT)
@@ -725,7 +795,7 @@ class _Solver:
         if row not in self.turns:
             members = {p.ref for p in row.parts}
             refs = [p.ref for p in row.parts if not any(s.facing for s in self.asks[p.ref])]
-            lies = {ref: self._lie(ref, row.along) for ref in refs}
+            lies = {ref: self._lie(ref, _lies(row)) for ref in refs}
             ways = [turn for turn in _ROTATIONS
                     if all((lies[r] + turn) % 360 in self._rots(r) for r in refs)]  # fmt: skip
             # What a turn that is not taken would run into is not a problem to report.
@@ -733,6 +803,15 @@ class _Solver:
 
             def cost(turn: int) -> tuple[int, int]:
                 wires = 0
+                if row.beside is not None:
+                    # Where the row first looks, which is where it is with nothing in
+                    # the way.
+                    stood = self._stood(row, turn)[0]
+                    (dx, dy), _ = self._out(row, stood)
+                    for ref in refs:
+                        turned, x, y = stood[ref]
+                        wires += self._wires(ref, turned, x + dx, y + dy, but=members)
+                    return wires, turn
                 for ref in refs:
                     turned = _turned(self.shapes[ref], (lies[ref] + turn) % 360, self._back(ref))
                     betweens = [s for s in self.asks[ref] if s.between]
@@ -750,9 +829,192 @@ class _Solver:
                             "shortest connections")  # fmt: skip
             elif len(ways) > 1:
                 of = ", ".join(map(str, ways))
-                self._chose(f"{row}: turned {turn} degrees from how each part lies along the "
-                            f"edge, of {of}, for the shortest connections")  # fmt: skip
+                how = "lies along the edge" if row.beside is None else "stands across the row"
+                self._chose(f"{row}: turned {turn} degrees from how each part {how}, of {of}, "
+                            "for the shortest connections")  # fmt: skip
         return self.turns[row]
+
+    def _stood(self, row: Row,
+               turn: int) -> tuple[_Stood, int, tuple[str, str], tuple[int, int]]:  # fmt: skip
+        """The parts of a row beside a part, the row turned *turn*, where they are with
+        the row touching the part and level with it: each part's shape and its origin.
+        With them the least pitch that keeps them clear of each other, the two parts
+        that need it, and how far the row is across the board and down it."""
+        assert row.beside is not None
+        refs = [p.ref for p in row.parts]
+        a = 1 if row.toward in (Edge.LEFT, Edge.RIGHT) else 0  # the way the row's line runs
+        out = row.toward in (Edge.RIGHT, Edge.BOTTOM)
+        shapes = []
+        for ref in refs:
+            faced = any(s.facing for s in self.asks[ref])
+            rot = self._rots(ref)[0] if faced else (self._lie(ref, _lies(row)) + turn) % 360
+            shapes.append(_turned(self.shapes[ref], rot, self._back(ref)))
+        # Each part's origin from the line their near sides are on, and the middle of
+        # its outline along the row.
+        off = [-(t.box[1 - a] if out else t.box[3 - a]) for t in shapes]
+        mids = [(t.box[a] + t.box[a + 2]) // 2 for t in shapes]
+        least, pair = 0, (refs[0], refs[1])
+        for i, j in combinations(range(len(refs)), 2):
+            s, t = shapes[i], shapes[j]
+            need = (s.box[a + 2] - mids[i]) - (t.box[a] - mids[j])
+            for n, p in s.copper if self.gap else ():
+                net = self.nets[refs[i]].get(n)
+                for m, q in t.copper:
+                    if net is not None and net == self.nets[refs[j]].get(m):
+                        continue
+                    # Across the row the two pads are where they are, whatever the pitch.
+                    across = max(p[1 - a] + off[i] - q[3 - a] - off[j],
+                                 q[1 - a] + off[j] - p[3 - a] - off[i], 0)  # fmt: skip
+                    if across < self.gap:
+                        need = max(need, _apart(self.gap, across)
+                                   + (p[a + 2] - mids[i]) - (q[a] - mids[j]))  # fmt: skip
+            each = -(-need // (j - i))  # the parts between them are at the one pitch too
+            if each > least:
+                least, pair = each, (refs[i], refs[j])
+        pitch = row.pitch.nm if isinstance(row.pitch, Length) else least
+        along = [k * pitch - mid for k, mid in enumerate(mids)]
+        lo = min(o + t.box[a] for o, t in zip(along, shapes, strict=True))
+        hi = max(o + t.box[a + 2] for o, t in zip(along, shapes, strict=True))
+        deep = max(t.box[3 - a] - t.box[1 - a] for t in shapes)
+        by = self._box(row.beside.ref)
+        line = by[3 - a] if out else by[1 - a]
+        level = (by[a] + by[a + 2]) // 2 - (lo + hi) // 2
+        stood = {ref: (t, o + level, f + line) if a == 0 else (t, f + line, o + level)
+                 for ref, t, o, f in zip(refs, shapes, along, off, strict=True)}  # fmt: skip
+        return stood, least, pair, ((hi - lo, deep) if a == 0 else (deep, hi - lo))
+
+    def _out(self, row: Row, stood: _Stood) -> tuple[tuple[int, int], int]:
+        """Where a row beside a part first looks, from touching the part: off it as far
+        as keeps their pads as far apart as the rules say. Across and down, and how far."""
+        assert row.beside is not None
+        a = 1 if row.toward in (Edge.LEFT, Edge.RIGHT) else 0
+        by = row.beside.ref
+        pose = self.poses[by]
+        there = _turned(self.shapes[by], pose.rot, pose.back)
+        far = 0
+        for ref, (turned, x, y) in stood.items() if self.gap else ():
+            if not (turned.through or there.through or self._back(ref) == pose.back):
+                continue
+            for n, p in turned.copper:
+                p, net = _moved(p, x, y), self.nets[ref].get(n)
+                for m, q in there.copper:
+                    if net is not None and net == self.nets[by].get(m):
+                        continue
+                    q = _moved(q, pose.x.nm, pose.y.nm)
+                    along = max(p[a] - q[a + 2], q[a] - p[a + 2], 0)
+                    across = max(p[1 - a] - q[3 - a], q[1 - a] - p[3 - a], 0)
+                    if along < self.gap:
+                        far = max(far, _apart(self.gap, along) - across)
+        way = far if row.toward in (Edge.RIGHT, Edge.BOTTOM) else -far
+        return ((way, 0) if a == 1 else (0, way)), far
+
+    def _bank(self, row: Row, done: set[str]) -> dict[str, tuple[int, int]] | None:
+        """Where each part of a row beside a part has its origin, or None with the
+        reason reported, once for the row: the nearest place to the part, on the side
+        said, where every part of the row is clear."""
+        if row in self.banks:
+            return self.banks[row]
+        assert row.beside is not None and row.toward is not None
+        self.banks[row] = None
+        refs, by = tuple(p.ref for p in row.parts), row.beside.ref
+        if by not in self.poses:
+            self._problem(refs, f"{_listed(list(refs))} are placed by {by}, which is not "
+                          "placed", row)  # fmt: skip
+            return None
+        faces = {on: [ref for ref in refs if self._back(ref) == on] for on in (False, True)}
+        if faces[False] and faces[True]:
+            self._problem(refs, f"{row} is on one face of the board, and its parts are said "
+                          f"to be on two: {_listed(faces[False])} on the front, "
+                          f"{_listed(faces[True])} on the back",
+                          row, *(s for ref in refs for s in self.asks[ref] if s.side))  # fmt: skip
+            return None
+        back = bool(faces[True])
+        stood, least, pair, (wide, high) = self._stood(row, self._turn_of(row))
+        if isinstance(row.pitch, Length) and row.pitch.nm < least:
+            pads = f", their pads {Length(self.gap)} apart," if self.gap else ""
+            self._problem(refs, f"{row} does not fit: {pair[0]} and {pair[1]} are clear of "
+                          f"each other{pads} at a pitch of {Length(least)} or more",
+                          row)  # fmt: skip
+            return None
+        (fx, fy), far = self._out(row, stood)
+        a = 1 if row.toward in (Edge.LEFT, Edge.RIGHT) else 0
+        sign = 1 if row.toward in (Edge.RIGHT, Edge.BOTTOM) else -1
+        outs, alongs = _beyond(_FURTHER.nm, STEP.nm)
+        # What each part may not overlap wherever the row is tried: what is fixed on
+        # the board, the parts placed that share a face with it, and what they keep clear.
+        named: dict[str, list[tuple[str, Box]]] = {}
+        for ref, (turned, _, _) in stood.items():
+            holed = turned.through
+            named[ref] = [(f.label, taken) for f, taken, through in self.fixed
+                          if holed or through or f.back == back]  # fmt: skip
+            named[ref] += [(other, self._box(other)) for other in done
+                           if other in self.poses and other not in refs
+                           and (holed or self.shapes[other].through
+                                or self.poses[other].back == back)]  # fmt: skip
+            named[ref] += [(f"{s.area.part.ref}'s {s.area.name} area", kept)
+                           for s, kept, on in self._kept(done) if holed or back in on]  # fmt: skip
+        b0, b1, b2, b3 = self.board
+        blocked: dict[str, int] = {}
+
+        def roughly(start: int, count: bool) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+            """The places from *start* on, a few thousand, as across and down from where
+            the row first looks, and whether every part's outline there is on the
+            board's box, in its areas and over nothing it may not be over."""
+            o, v = outs[start : start + _AT_A_TIME], alongs[start : start + _AT_A_TIME]
+            dx, dy = (fx + sign * o, v) if a == 1 else (v, fy + sign * o)
+            ok = np.ones(o.shape, dtype=bool)
+            for ref, (turned, x, y) in stood.items():
+                x0, y0, x1, y1 = (c + d for c, d in zip(_moved(turned.box, x, y),
+                                                        (dx, dy, dx, dy), strict=True))  # fmt: skip
+                on = (x0 >= b0) & (y0 >= b1) & (x1 <= b2) & (y1 <= b3)
+                room = np.ones(o.shape, dtype=bool)
+                for _, (r0, r1, r2, r3), _ in self.areas.get(ref, []):
+                    room &= (x0 >= r0) & (y0 >= r1) & (x1 <= r2) & (y1 <= r3)
+                ok &= on & room
+                if count:
+                    blocked[_EDGE] = blocked.get(_EDGE, 0) + int((~on).sum())
+                    blocked[_AREA] = blocked.get(_AREA, 0) + int((on & ~room).sum())
+                for name, (t0, t1, t2, t3) in named[ref]:
+                    over = (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+                    ok &= ~over
+                    if count:
+                        blocked[name] = blocked.get(name, 0) + int((on & room & over).sum())
+            return ok, dx, dy
+
+        for start in range(0, len(outs), _AT_A_TIME):
+            ok, dxs, dys = roughly(start, False)
+            for i in np.flatnonzero(ok).tolist():
+                dx, dy = int(dxs[i]), int(dys[i])
+                if all(not self._outside(ref, _moved(turned.box, x + dx, y + dy))
+                       and self._clear(ref, _moved(turned.box, x + dx, y + dy), back,
+                                       turned.through, done, True, (turned, x + dx, y + dy))
+                       for ref, (turned, x, y) in stood.items()):  # fmt: skip
+                    off = far + int(outs[start + i])
+                    along = int(alongs[start + i])
+                    way = ("above" if along < 0 else "below") if a == 1 else (
+                        "left of" if along < 0 else "right of")  # fmt: skip
+                    self._chose(f"{row}: " + (f"{Length(off)} from" if off else "touching")
+                                + f" {by}, " + (f"{Length(abs(along))} {way} " if along else "")
+                                + "level with it")  # fmt: skip
+                    self.banks[row] = {ref: (x + dx, y + dy) for ref, (_, x, y) in stood.items()}
+                    return self.banks[row]
+        for start in range(0, len(outs), _AT_A_TIME):
+            roughly(start, True)
+        most = sorted((name for name, n in blocked.items() if n),
+                      key=lambda name: (-blocked[name], natural(name)))[:3]  # fmt: skip
+        areas = list(dict.fromkeys(area for ref in refs for area, _, _ in self.areas.get(ref, [])))
+        held = [s for ref in refs for _, _, said in self.areas.get(ref, []) for s in said]
+        also = f", {', '.join(f'inside {area}' for area in areas)}," if areas else ""
+        kept = any(turned.through or back in on for _, _, on in self._kept(done)
+                   for turned, _, _ in stood.values())  # fmt: skip
+        self._problem(refs, f"{row} has no place within {_FURTHER} of {by}{also} that is on "
+                      f"the {'back' if back else 'front'} of the board and clear of the other "
+                      f"parts{' and its holes' if self.fixed else ''}"
+                      + (" and of what is kept clear" if kept else "")
+                      + f": it is {Length(wide)} across the board and {Length(high)} down it"
+                      + (f", with {_listed(most)} in the way" if most else ""),
+                      row, *held)  # fmt: skip
+        return None
 
     def _run(self, row: Row) -> tuple[int, int]:
         """The stretch of its edge that *row* spreads over: the longest that is clear,
@@ -760,6 +1022,7 @@ class _Solver:
         fixed on the board and of where the outline is cut back from the edge. The
         whole edge where nothing is."""
         if row not in self.runs:
+            assert row.along is not None
             axis = 0 if row.along in (Edge.TOP, Edge.BOTTOM) else 1
             lo, hi = self.board[axis], self.board[axis + 2]
             backs = {self._back(p.ref) for p in row.parts}
@@ -798,6 +1061,7 @@ class _Solver:
     def _in_row(self, ref: str, row: Row, turned: _Shape) -> int | None:
         """Where *ref*'s origin goes along the edge *row* is along, or None with the
         reason reported, when the row is longer than the edge."""
+        assert row.along is not None
         axis = 0 if row.along in (Edge.TOP, Edge.BOTTOM) else 1
         whole = self.board[axis + 2] - self.board[axis]
         lo, hi = self._run(row)
@@ -843,6 +1107,13 @@ class _Solver:
         edged = {"across": [e for e in edges if e in (Edge.LEFT, Edge.RIGHT)],
                  "along": [e for e in edges if e in (Edge.TOP, Edge.BOTTOM)]}  # fmt: skip
         for row in self.rows.get(ref, []):
+            if row.beside is not None:
+                # Where the row found its place, this way round, both ways.
+                if (bank := self.banks.get(row)) is None:
+                    return None
+                xs.append((bank[ref][0], row))
+                ys.append((bank[ref][1], row))
+                continue
             if (at := self._in_row(ref, row, turned)) is None:
                 return None
             (xs if row.along in (Edge.TOP, Edge.BOTTOM) else ys).append((at, row))

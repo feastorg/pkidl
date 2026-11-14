@@ -392,6 +392,67 @@ then taken as 9.398 mm each by their pads, along the whole 60 mm edge with five 
 of 4.48 mm, the end two over the mounting holes 4 mm in from the corners. A row spreads over what the holes leave
 clear (decided 2026-11-11), and now does: below.
 
+**As built, a row beside a part:** `row(resistors, beside=switch, toward=Edge.RIGHT)`
+is a row on the side of a part that is toward an edge, where `along=` is a row along an
+edge of the board (decided 2026-11-14). A row is one or the other: both, or neither,
+is refused at the line that says it, and so is `toward=` with no `beside=`, `beside=`
+with no `toward=`, an `inset=`, which is measured from an edge, and `pitch="even"`,
+which spreads a row along one. It is what a bank of parts by the part they belong to
+wants: the bench supply's twelve sense resistors beside the rotary switch that picks
+one of them, which `near=` a pin of the switch, each on its own, left in loose stacks.
+
+The parts are side by side in the order named: one above another down the part's left
+or right side, the first uppermost, or from the left along its top or bottom. Each
+stands across the row, the shorter side of its outline along the row's line and its
+length away from the part, like the rungs of a ladder, so the row is as short as it
+can be. The sides of their outlines nearest the part are in one line. They are turned
+the same way, the way that makes the row's connections shortest where the row first
+looks for its place, which is said once for the row; a part of it that is `facing=` an
+edge keeps to that, whichever way that lays it, and a square part may stand either
+way, as in a row along an edge.
+
+`pitch=` is the distance from the middle of each part's outline to the next, along the
+row's line. With none given it is the least at which every outline is clear of the
+others and their pads on different nets are as far apart as the board's `rules` keep
+copper: outlines touching, where no rules are said or the pads are well inside. It is
+one pitch for the whole row, that of the two parts that need the most. A pitch given
+that is less than that is a problem, and none of the row is placed (`row(R1, R2, R3,
+beside=Q1, toward=Edge.RIGHT, pitch=1.7 mm) does not fit: R1 and R2 are clear of each
+other at a pitch of 1.8 mm or more`).
+
+The row is wholly on that side of the part's outline, and never over it. It first
+looks touching the part, or as far off it as keeps their pads the rules' clearance
+apart, with the middle of the row level with the middle of the part's outline. Where
+that place is not clear, it looks further out and along its line, 0.1 mm at a time and
+no more than 30 mm from that first place, and takes the nearest place to it that is
+clear. Of two as near, it takes the one less far along, so further out before
+sideways, and then the one toward the top or the left. Clear is what it is for a part
+placed `near=` something: every part of the row inside the outline, off what is fixed
+on the board, off the parts already placed and the areas they keep clear, inside any
+area it is said to be inside, and its pads the rules' distances from other pads and
+from the board's edge. The choices say where it went (`row(R1, R2, R3, beside=Q1,
+toward=Edge.RIGHT): 2.5 mm from Q1, level with it`, or `touching Q1, 3.6 mm above level
+with it`).
+
+A row with no such place is one problem, of all its parts, and none of them is placed.
+It says how big the row is and the three things most often in the way, as a part with
+no place `near=` something is told (`row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT) has
+no place within 30 mm of Q1 that is on the front of the board and clear of the other
+parts: it is 3.6 mm across the board and 5.4 mm down it, with the board's edge in the
+way`).
+
+The row is placed after the part it is beside, and with the parts that look for a
+place, after those whose place is given: among them it comes where the first of its
+references does, its parts one after another, and a part placed by one of its parts
+waits for them all. So a part placed `near=` something whose reference comes before
+the row's is there first, and the row goes round it. Its parts are on one face, the one
+their place statements say, and a row said to be on both is a problem. A place
+statement may say `side=` or `facing=` of a part of the row. One that says where the
+part is, an edge or a point, is the usual problem of two places, and `near=` is still
+solved alone. A part is in one row beside a part: a second is a conflict, and a row
+along an edge as well is a problem of that part (`R1 is in two rows`), with each row
+going on without it.
+
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline
 encloses (`pkidl.edge`): the lines and arcs joined end to end, an arc followed to

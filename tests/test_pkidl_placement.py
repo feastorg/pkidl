@@ -3922,3 +3922,471 @@ def test_a_part_that_looks_for_a_place_keeps_off_a_part_on_something_fixed_and_o
     # The first test point is from 58 to 59 mm down, the resistor fixed there from 59.1
     # to 60.9 and the part on it from 61.5 to 62.5, with no room for another between.
     assert _span(board, solution, "T3", Edge.LEFT) == pytest.approx((12.5, 13.5))
+
+
+def _by_the_square(*, ruled: bool = False, **parts: str) -> Board:
+    """A 3 mm square part at the middle of the board, from 113.5 to 116.5 mm across and
+    63.5 to 66.5 down, its pads at (114, 65) and (116, 65), and the parts named."""
+    board = (_ruled if ruled else _board)(Q1="A B", **parts)
+    board.place(board["Q1"], centre=True, facing=Edge.TOP)
+    return board
+
+
+@pytest.mark.parametrize(("toward", "boxes", "pads"), [
+    # Three resistors, each 3.6 by 1.8 mm, their outlines touching: 5.4 mm of them along
+    # the side of the square, about its middle, and 3.6 mm out from it.
+    (Edge.RIGHT, [(16.5, 12.3, 20.1, 14.1), (16.5, 14.1, 20.1, 15.9), (16.5, 15.9, 20.1, 17.7)],
+     {"1": (117.3, 63.2), "2": (119.3, 63.2)}),
+    (Edge.LEFT, [(9.9, 12.3, 13.5, 14.1), (9.9, 14.1, 13.5, 15.9), (9.9, 15.9, 13.5, 17.7)],
+     {"1": (112.7, 63.2), "2": (110.7, 63.2)}),
+    (Edge.TOP, [(12.3, 9.9, 14.1, 13.5), (14.1, 9.9, 15.9, 13.5), (15.9, 9.9, 17.7, 13.5)],
+     {"1": (113.2, 62.7), "2": (113.2, 60.7)}),
+    (Edge.BOTTOM, [(12.3, 16.5, 14.1, 20.1), (14.1, 16.5, 15.9, 20.1), (15.9, 16.5, 17.7, 20.1)],
+     {"1": (113.2, 67.3), "2": (113.2, 69.3)}),
+])  # fmt: skip
+def test_a_row_beside_a_part_is_on_the_side_toward_the_edge_its_parts_across_it(
+    toward, boxes, pads
+):
+    board = _by_the_square(R1="A X", R2="A Y", R3="A Z")
+    said = board.row(board.parts("R1..R3"), beside=board["Q1"], toward=toward)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert solution.free == ()
+    # From the top down a side of the part, from the left along its top or bottom.
+    assert [_box_of(board, solution, ref) for ref in ("R1", "R2", "R3")] == [
+        pytest.approx(box) for box in boxes
+    ]
+    # Each stands across the row, like a rung: its pads in a line away from the part,
+    # pad 1, which is on the net of the square's far pad, the nearer of the two.
+    assert _pads(board, solution, "R1") == {n: pytest.approx(at) for n, at in pads.items()}
+    assert len({solution.poses[ref].rot for ref in ("R1", "R2", "R3")}) == 1
+    assert f"{said}: touching Q1, level with it" in solution.chosen
+
+
+def test_a_row_beside_a_part_is_in_the_order_its_parts_are_named_whatever_their_sizes():
+    # A resistor, a 1 mm test point and a resistor: the pitch is the 1.4 mm that keeps
+    # the test point off either, and the row is 4.6 mm from end to end.
+    board = _by_the_square(R1="A X", T1="A", R2="A Y")
+    board.add(row([board["R2"], board["T1"], board["R1"]], beside=board["Q1"], toward=Edge.RIGHT))
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert [_box_of(board, solution, ref) for ref in ("R2", "T1", "R1")] == [
+        pytest.approx(box)
+        for box in [(16.5, 12.7, 20.1, 14.5), (16.5, 14.5, 17.5, 15.5), (16.5, 15.5, 20.1, 17.3)]
+    ]
+
+
+def test_the_parts_of_a_row_beside_a_part_are_turned_the_same_way_but_for_one_facing_an_edge():
+    # R1 and R2 have a pad nearer the square's pad on A turned 0 degrees; R3 alone
+    # would turn 180, to bring its pad 2 nearer.
+    def board() -> tuple[Board, Any]:
+        board = _by_the_square(R1="A X", R2="A Y", R3="Z A")
+        return board, board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+
+    made, said = board()
+    solution = made.solve()
+    assert solution.ok, _told(solution)
+    assert [solution.poses[ref].rot for ref in ("R1", "R2", "R3")] == [0, 0, 0]
+    assert solution.chosen == (
+        f"{said}: turned 0 degrees, of 0, 180, for the shortest connections",
+        f"{said}: touching Q1, level with it",
+    )
+    # With each resistor's nets the other way round, the row is turned the other way.
+    turned = _by_the_square(R1="X A", R2="Y A", R3="A Z")
+    turned.row(turned.parts("R1..R3"), beside=turned["Q1"], toward=Edge.RIGHT)
+    solution = turned.solve()
+    assert solution.ok, _told(solution)
+    assert [solution.poses[ref].rot for ref in ("R1", "R2", "R3")] == [180, 180, 180]
+    # A part of the row that faces an edge keeps to it, and the rest are turned together.
+    faced, _ = board()
+    faced.place(faced["R3"], facing=Edge.BOTTOM)
+    solution = faced.solve()
+    assert solution.ok, _told(solution)
+    assert [solution.poses[ref].rot for ref in ("R1", "R2", "R3")] == [0, 0, 180]
+    assert _box_of(faced, solution, "R3") == pytest.approx((16.5, 15.9, 20.1, 17.7))
+    # Even one that faces along the row: it is 3.6 mm of the row then, and the one
+    # pitch is the 2.7 mm that keeps it off its neighbour.
+    along, _ = board()
+    along.place(along["R3"], facing=Edge.LEFT)
+    solution = along.solve()
+    assert solution.ok, _told(solution)
+    assert [_box_of(along, solution, ref) for ref in ("R1", "R2", "R3")] == [
+        pytest.approx(box)
+        for box in [(16.5, 10.95, 20.1, 12.75), (16.5, 13.65, 20.1, 15.45),
+                    (16.5, 15.45, 18.3, 19.05)]
+    ]  # fmt: skip
+
+
+def test_a_row_beside_a_part_is_as_close_as_outlines_and_the_rules_for_pads_let_it_be():
+    # A test point is a pad 1 mm square and nothing else. With no rules three of them
+    # touch each other and the square.
+    board = _by_the_square(T1="X", T2="Y", T3="Z")
+    said = board.row(board.parts("T1..T3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert [_box_of(board, solution, ref) for ref in ("T1", "T2", "T3")] == [
+        pytest.approx(box)
+        for box in [(16.5, 13.5, 17.5, 14.5), (16.5, 14.5, 17.5, 15.5), (16.5, 15.5, 17.5, 16.5)]
+    ]
+    assert f"{said}: touching Q1, level with it" in solution.chosen
+    # With rules that keep copper 0.2 mm apart they are that far from each other, and
+    # from the square, whose second pad reaches its outline beside the middle one.
+    board = _by_the_square(ruled=True, T1="X", T2="Y", T3="Z")
+    said = board.row(board.parts("T1..T3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert [_box_of(board, solution, ref) for ref in ("T1", "T2", "T3")] == [
+        pytest.approx(box)
+        for box in [(16.7, 13.3, 17.7, 14.3), (16.7, 14.5, 17.7, 15.5), (16.7, 15.7, 17.7, 16.7)]
+    ]
+    assert f"{said}: 0.2 mm from Q1, level with it" in solution.chosen
+    # That far and no further, where it is not a whole step of the 0.1 mm a place is
+    # looked for at.
+    board = _by_the_square(T1="X", T2="Y", T3="Z")
+    board.rules(track=0.25 * mm, clearance=0.25 * mm)
+    said = board.row(board.parts("T1..T3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert [_box_of(board, solution, ref) for ref in ("T1", "T2", "T3")] == [
+        pytest.approx(box)
+        for box in [(16.75, 13.25, 17.75, 14.25), (16.75, 14.5, 17.75, 15.5),
+                    (16.75, 15.75, 17.75, 16.75)]
+    ]  # fmt: skip
+    assert f"{said}: 0.25 mm from Q1, level with it" in solution.chosen
+    # Pads on one net may touch: each other, and the square's.
+    board = _by_the_square(ruled=True, T1="B", T2="B", T3="B")
+    board.row(board.parts("T1..T3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert [_box_of(board, solution, ref) for ref in ("T1", "T2", "T3")] == [
+        pytest.approx(box)
+        for box in [(16.5, 13.5, 17.5, 14.5), (16.5, 14.5, 17.5, 15.5), (16.5, 15.5, 17.5, 16.5)]
+    ]
+    # A resistor's pads are 0.3 mm inside its outline: the rules move none of them.
+    board = _by_the_square(ruled=True, R1="A X", R2="A Y", R3="A Z")
+    board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert [_box_of(board, solution, ref)[1] for ref in ("R1", "R2", "R3")] == pytest.approx(
+        [12.3, 14.1, 15.9]
+    )
+
+
+def test_a_row_beside_a_part_with_a_pitch_has_the_middles_of_its_parts_that_far_apart():
+    board = _by_the_square(R1="A X", R2="A Y", R3="A Z")
+    said = board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT, pitch=4 * mm)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert [(solution.poses[ref].x.mm, solution.poses[ref].y.mm) for ref in ("R1", "R2", "R3")] == [
+        pytest.approx((118.3, y)) for y in (61.0, 65.0, 69.0)
+    ]
+    assert str(said) == "row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT, pitch=4 mm)"
+    assert f"{said}: touching Q1, level with it" in solution.chosen
+    # The least pitch is one that does.
+    board = _by_the_square(R1="A X", R2="A Y", R3="A Z")
+    board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT, pitch=1.8 * mm)
+    assert board.solve().ok
+
+
+def test_a_pitch_too_small_for_a_row_beside_a_part_is_said_and_none_of_it_is_placed():
+    board = _by_the_square(R1="A X", R2="A Y", R3="A Z")
+    board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT, pitch=1.7 * mm)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert list(solution.poses) == ["Q1"] and solution.free == ()
+    assert _told(solution) == [
+        "row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT, pitch=1.7 mm) does not fit: R1 and R2 "
+        f"are clear of each other at a pitch of 1.8 mm or more ({HERE}:{line})"
+    ]
+    assert solution.problems[0].parts == ("R1", "R2", "R3")
+    # With rules, the pitch that keeps the pads apart as well.
+    board = _by_the_square(ruled=True, T1="X", T2="Y", T3="Z")
+    board.row(board.parts("T1..T3"), beside=board["Q1"], toward=Edge.RIGHT, pitch=1.1 * mm)
+    solution = board.solve()
+    assert list(solution.poses) == ["Q1"]
+    assert [p.text for p in solution.problems] == [
+        "row(T1, T2, T3, beside=Q1, toward=Edge.RIGHT, pitch=1.1 mm) does not fit: T1 and T2 "
+        "are clear of each other, their pads 0.2 mm apart, at a pitch of 1.2 mm or more"
+    ]
+
+
+def _a_hole(x: float, y: float):
+    return lambda board: board.hole("Mech:Hole", (x, y))  # 2 mm square about that point
+
+
+@pytest.mark.parametrize(("ruled", "square", "more", "box", "where"), [
+    # Three resistors on the right of the square are from 116.5 to 120.1 mm across and
+    # 62.3 to 67.7 down where nothing is in the way. A hole from 117 to 119 mm across
+    # at their middle: 2.5 mm out is nearer than 3.7 mm up or down.
+    (False, None, _a_hole(118, 65), (19.0, 12.3, 22.6, 17.7), "2.5 mm from Q1, level with it"),
+    # A hole that reaches 1.6 mm into their top end: down past it.
+    (False, None, _a_hole(118, 62.9), (16.5, 13.9, 20.1, 19.3),
+     "touching Q1, 1.6 mm below level with it"),
+    # A hole 2.5 mm into their top end: out as far, and level, before down.
+    (False, None, _a_hole(118, 63.8), (19.0, 12.3, 22.6, 17.7), "2.5 mm from Q1, level with it"),
+    # A part placed there, from 116.7 to 120.3 mm across and 64.1 to 65.9 down: 3.6 mm
+    # up or down is nearer than 3.8 mm out, and up before down.
+    (False, None, lambda board: board.place(board["R9"], at=(18.5 * mm, 15 * mm)),
+     (16.5, 8.7, 20.1, 14.1), "touching Q1, 3.6 mm above level with it"),
+    # The square 0.5 mm from the top edge: level with it the row is 0.7 mm off the
+    # board, and with rules its pads, 0.3 mm inside it, are to be 0.5 mm from the edge.
+    (False, (15, 2), None, (16.5, 0.0, 20.1, 5.4), "touching Q1, 0.7 mm below level with it"),
+    (True, (15, 2), None, (16.5, 0.2, 20.1, 5.6), "touching Q1, 0.9 mm below level with it"),
+    # An area the resistors are said to be inside, which starts 1 mm from the square.
+    (False, None,
+     lambda board: board.inside(board.area(box=((17.5 * mm, 0 * mm), (30 * mm, 30 * mm))),
+                                board.parts("R1..R3")),
+     (17.5, 12.3, 21.1, 17.7), "1 mm from Q1, level with it"),
+    # And one that one of them alone is said to be inside, under the square's middle.
+    (False, None,
+     lambda board: board.inside(board.area(box=((0 * mm, 15 * mm), (30 * mm, 30 * mm))),
+                                [board["R1"]]),
+     (16.5, 15.0, 20.1, 20.4), "touching Q1, 2.7 mm below level with it"),
+])  # fmt: skip
+def test_a_row_beside_a_part_goes_out_and_along_to_the_nearest_place_that_is_clear(
+    ruled, square, more, box, where
+):
+    board = (_ruled if ruled else _board)(Q1="A B", R1="A X", R2="A Y", R3="A Z", R9="J K")
+    if square is None:
+        board.place(board["Q1"], centre=True, facing=Edge.TOP)
+    else:
+        board.place(board["Q1"], at=(square[0] * mm, square[1] * mm), facing=Edge.TOP)
+    if more is not None:
+        more(board)
+    said = board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert not solution.problems, _told(solution)
+    boxes = [_box_of(board, solution, ref) for ref in ("R1", "R2", "R3")]
+    # The box around the three of them.
+    assert (boxes[0][0], boxes[0][1], boxes[2][2], boxes[2][3]) == pytest.approx(box)
+    assert f"{said}: {where}" in solution.chosen
+
+
+def test_a_row_beside_a_part_with_no_place_is_one_problem_and_none_of_it_is_placed():
+    # The square against the right edge: nothing is to the right of it.
+    board = _board(Q1="A B", R1="A X", R2="A Y", R3="A Z")
+    board.place(board["Q1"], against=Edge.RIGHT, facing=Edge.TOP)
+    board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert list(solution.poses) == ["Q1"] and solution.free == ()
+    assert _told(solution) == [
+        "row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT) has no place within 30 mm of Q1 that "
+        "is on the front of the board and clear of the other parts: it is 3.6 mm across the "
+        f"board and 5.4 mm down it, with the board's edge in the way ({HERE}:{line})"
+    ]
+    assert solution.problems[0].parts == ("R1", "R2", "R3")
+    # What is most in the way is named, the three that take the most places. The square
+    # 4.5 mm from the right edge, a header down that edge 3.5 mm deep, and the resistors
+    # said to be inside a band of the board 6 mm high.
+    board = _board(Q1="A B", R1="A X", R2="A Y", R3="A Z", P1="C D E F")
+    board.place(board["Q1"], at=(24 * mm, 15 * mm), facing=Edge.TOP)
+    board.place(board["P1"], against=Edge.RIGHT)
+    board.inside(board.area(box=((0 * mm, 12 * mm), (30 * mm, 18 * mm))), board.parts("R1..R3"))
+    board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert sorted(solution.poses) == ["P1", "Q1"]
+    assert [p.text for p in solution.problems] == [
+        "row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT) has no place within 30 mm of Q1, "
+        "inside area(box=((0 mm, 12 mm), (30 mm, 18 mm))), that is on the front of the board "
+        "and clear of the other parts: it is 3.6 mm across the board and 5.4 mm down it, "
+        "with the board's edge, the edge of its area and P1 in the way"
+    ]
+
+
+def test_a_row_beside_a_part_is_on_the_face_its_parts_are_said_to_be_on():
+    # On the back the row passes under a part on the front where it would have been,
+    # and not through a hole.
+    board = _by_the_square(R1="A X", R2="A Y", R3="A Z", R9="J K")
+    board.place(board["R9"], at=(18.5 * mm, 15 * mm))
+    for part in board.parts("R1..R3"):
+        board.place(part, side="back")
+    said = board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert all(solution.poses[ref].back for ref in ("R1", "R2", "R3"))
+    assert [_box_of(board, solution, ref) for ref in ("R1", "R2", "R3")] == [
+        pytest.approx(box)
+        for box in [(16.5, 12.3, 20.1, 14.1), (16.5, 14.1, 20.1, 15.9), (16.5, 15.9, 20.1, 17.7)]
+    ]
+    # Each still with its pads in a line away from the square, and all one way round.
+    for ref in ("R1", "R2", "R3"):
+        (ax, ay), (bx, by) = _pads(board, solution, ref).values()
+        assert ay == pytest.approx(by) and abs(ax - bx) == pytest.approx(2)
+    assert len({solution.poses[ref].rot for ref in ("R1", "R2", "R3")}) == 1
+    board.hole("Mech:Hole", (118, 63))
+    solution = board.solve()
+    assert solution.ok, _told(solution)
+    assert f"{said}: touching Q1, 1.7 mm below level with it" in solution.chosen
+    # A row is on one face.
+    board = _by_the_square(R1="A X", R2="A Y", R3="A Z")
+    board.place(board["R2"], side="back")
+    back = _line_no() - 1
+    board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert list(solution.poses) == ["Q1"] and solution.free == ()
+    assert _told(solution) == [
+        "row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT) is on one face of the board, and its "
+        f"parts are said to be on two: R1 and R3 on the front, R2 on the back ({HERE}:{back + 2}, "
+        f"{HERE}:{back})"
+    ]
+
+
+def test_a_row_beside_a_part_is_a_statement_that_says_the_part_and_the_side_of_it():
+    board = _board(Q1="A B", R1="A X", R2="A Y", R3="A Z")
+    q1, r1, r2, r3 = board.parts("Q1", "R1", "R2", "R3")
+    a = row([r1, r2, r3], beside=q1, toward=Edge.RIGHT)
+    assert a == row((r1, r2, r3), beside=q1, toward=Edge.RIGHT) and a.source is not None
+    assert a.source.line == _line_no() - 2
+    # Another order is another row, and so is another part, side or pitch.
+    assert a != row([r2, r1, r3], beside=q1, toward=Edge.RIGHT)
+    assert a != row([r1, r2], beside=r3, toward=Edge.RIGHT)
+    assert a != row([r1, r2, r3], beside=q1, toward=Edge.LEFT)
+    b = row([r1, r2, r3], beside=q1, toward=Edge.RIGHT, pitch="4mm")
+    assert a != b == row([r1, r2, r3], beside=q1, toward=Edge.RIGHT, pitch=4 * mm)
+    assert str(a) == "row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT)"
+    assert str(b) == "row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT, pitch=4 mm)"
+    assert a.mentions() == (r1, r2, r3, q1)
+    assert a.data() == {"row": ["R1", "R2", "R3"], "beside": "Q1", "toward": "right"}
+    assert b.data() == {"row": ["R1", "R2", "R3"], "beside": "Q1", "toward": "right",
+                        "pitch": 4_000_000}  # fmt: skip
+    # A row along an edge is as it was.
+    c = row([r1, r2], along=Edge.TOP)
+    assert c == row([r1, r2], along=Edge.TOP, pitch="even")
+    assert str(c) == 'row(R1, R2, along=Edge.TOP, pitch="even")'
+    assert c.data() == {"row": ["R1", "R2"], "along": "top", "pitch": "even"}
+    # The order they were added in is not the order they are in.
+    assert canonical([b, c, a]) == canonical([a, b, c])
+    # A board is told it, and it is about the part it is beside as well.
+    assert board.row([r1, r2, r3], beside=q1, toward=Edge.RIGHT) == a
+    assert board.statements(about="Q1") == (a,) == board.statements(about="R2")
+    with pytest.raises(LookupError):
+        _board(R1="A X", R2="A Y").add(a)
+
+
+@pytest.mark.parametrize(("said", "error", "message"), [
+    ({}, ValueError,
+     r"row\(\) does not say where: give along= an edge, or beside= a part and toward= an edge"),
+    ({"along": Edge.TOP, "beside": "Q1", "toward": Edge.RIGHT}, ValueError,
+     r"row\(\): along= says the row is along an edge, and beside= that it is beside a part: "
+     "give one"),
+    ({"beside": "Q1"}, ValueError,
+     r"row\(\): beside= Q1 does not say which side of it: give toward= an edge"),
+    ({"toward": Edge.RIGHT}, ValueError,
+     r"row\(\): toward= says which side of a part the row is on: give beside="),
+    ({"along": Edge.TOP, "toward": Edge.RIGHT}, ValueError,
+     r"row\(\): toward= says which side of a part the row is on: give beside="),
+    ({"beside": "Q1", "toward": "right"}, TypeError,
+     r"row\(\): toward= takes an edge, such as Edge.RIGHT, not 'right'"),
+    ({"beside": "Q1!", "toward": Edge.RIGHT}, TypeError,
+     r"row\(\): beside= takes a part, such as board\[\"SW1\"\], not 'Q1!'"),
+    ({"beside": "R1", "toward": Edge.RIGHT}, ValueError,
+     r"row\(\): beside= R1 is one of the row's parts"),
+    ({"beside": "Q1", "toward": Edge.RIGHT, "inset": 1 * mm}, ValueError,
+     r"row\(\): inset= is measured from an edge: give along="),
+    ({"beside": "Q1", "toward": Edge.RIGHT, "pitch": "even"}, ValueError,
+     r'row\(\): pitch="even" spreads a row along an edge: beside a part, give a length or '
+     "leave it out"),
+    ({"beside": "Q1", "toward": Edge.RIGHT, "pitch": 0 * mm}, ValueError,
+     r"row\(\): pitch= 0 mm is not a step"),
+    ({"beside": "Q1", "toward": Edge.RIGHT, "pitch": 4}, TypeError, "4 has no unit"),
+])  # fmt: skip
+def test_a_row_that_does_not_say_one_place_for_itself_is_refused(said, error, message):
+    board = _board(Q1="A B", R1="A X", R2="A Y")
+    if said.get("beside") in ("Q1", "R1"):
+        said = {**said, "beside": board[said["beside"]]}
+    for make in (row, board.row):
+        with pytest.raises(error, match=message):
+            make(board.parts("R1", "R2"), **said)
+    assert board.statements() == ()
+    with pytest.raises(ValueError, match=r"row\(\) takes two parts or more"):
+        row([board["R1"]], beside=board["Q1"], toward=Edge.RIGHT)
+
+
+def test_another_place_said_for_a_part_of_a_row_beside_a_part_is_a_problem():
+    def board() -> Board:
+        board = _by_the_square(R1="A X", R2="A Y", R3="A Z", R4="C D", R5="E F")
+        board.row(board.parts("R1..R3"), beside=board["Q1"], toward=Edge.RIGHT)
+        return board
+
+    # Against an edge, or at a point: two places, and the rest of the row is where it was.
+    for where, apart in (("edge", 16.5), ("point", 13.3)):
+        made = board()
+        if where == "edge":
+            made.place(made["R1"], against=Edge.LEFT)
+        else:
+            made.place(made["R1"], at=(5 * mm, 5 * mm))
+        solution = made.solve()
+        assert [p.text for p in solution.problems] == [
+            f"R1 is put in two places {apart} mm apart across the board"
+        ]
+        assert sorted(solution.poses) == ["Q1", "R2", "R3"]
+        assert _box_of(made, solution, "R2") == pytest.approx((16.5, 14.1, 20.1, 15.9))
+    made = board()
+    made.place(made["R2"], near=made["Q1"], within=5 * mm)
+    solution = made.solve()
+    assert [p.text for p in solution.problems] == [
+        "R2: near= is solved alone: one near=, and no row() beside it"
+    ]
+    assert sorted(solution.poses) == ["Q1", "R1", "R3"]
+    # A row along an edge as well: the part is in neither, and each goes on without it.
+    made = board()
+    made.row(made.parts("R1", "R4", "R5"), along=Edge.BOTTOM)
+    solution = made.solve()
+    assert [p.text for p in solution.problems] == [
+        "R1 is in two rows: row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT) and "
+        'row(R1, R4, R5, along=Edge.BOTTOM, pitch="even")'
+    ]
+    assert sorted(solution.poses) == ["Q1", "R2", "R3", "R4", "R5"]
+    # A second row beside a part is said twice of the part, as a second along an edge is.
+    made = board()
+    made.row(made.parts("R1", "R4"), beside=made["Q1"], toward=Edge.LEFT)
+    (problem,) = made.solve().problems
+    assert problem.parts == ("R1",) and problem.text.startswith(
+        "R1: row beside a part is row(R1, R2, R3, beside=Q1, toward=Edge.RIGHT) ("
+    )
+    assert "and row(R1, R4, beside=Q1, toward=Edge.LEFT) (" in problem.text
+
+
+def test_a_row_beside_a_part_that_has_no_place_is_not_placed_and_says_so():
+    # Nothing places the square.
+    board = _board(Q1="A B", R1="A X", R2="A Y")
+    board.row(board.parts("R1", "R2"), beside=board["Q1"], toward=Edge.RIGHT)
+    solution = board.solve()
+    assert solution.poses == {} and solution.free == ("Q1",)
+    assert [p.text for p in solution.problems] == [
+        "R1 is placed by Q1, which nothing places", "R2 is placed by Q1, which nothing places"
+    ]  # fmt: skip
+    # The square has no place of its own: one problem for the row, beside the square's.
+    board = _board(Q1="A B", R1="A X", R2="A Y", T1="A")
+    board.place(board["T1"], centre=True)
+    board.place(board["Q1"], near=board["T1"], within=0.3 * mm)
+    board.row(board.parts("R1", "R2"), beside=board["Q1"], toward=Edge.RIGHT)
+    line = _line_no() - 1
+    solution = board.solve()
+    assert list(solution.poses) == ["T1"] and solution.free == ()
+    assert [str(p) for p in solution.problems if p.parts != ("Q1",)] == [
+        f"R1 and R2 are placed by Q1, which is not placed ({HERE}:{line})"
+    ]
+    assert len(solution.problems) == 2
+
+
+def test_a_row_beside_a_part_does_not_depend_on_when_it_was_said_and_places_what_is_by_it():
+    def said(board: Board) -> list:
+        q1 = board["Q1"]
+        return [place(q1, centre=True, facing=Edge.TOP),
+                row(board.parts("R1..R3"), beside=q1, toward=Edge.RIGHT),
+                place(board["D1"], near=board["R2"].pin(1), within=5 * mm)]  # fmt: skip
+
+    first, second = (_board(Q1="A B", R1="A X", R2="A Y", R3="A Z", D1="Y") for _ in range(2))
+    first.add(*said(first))
+    second.add(*reversed(said(second)))
+    solution = first.solve()
+    assert solution.ok, _told(solution)
+    assert solution == second.solve()
+    assert _box_of(first, solution, "R2") == pytest.approx((16.5, 14.1, 20.1, 15.9))
+    # The diode is placed by the middle resistor, and comes before the third by its
+    # reference. It waits for the whole row all the same, and is not where the third
+    # resistor goes, which is the nearest place to the second with the third not there.
+    x, y = _pads(first, solution, "D1")["1"]
+    assert not (116.5 < x < 120.1 and 62.3 < y < 67.7)
