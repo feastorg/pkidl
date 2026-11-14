@@ -2067,6 +2067,11 @@ def test_an_arc_of_a_footprints_body_is_all_of_the_arc_and_not_its_three_points(
     assert mm_box(_footprint("S", arc((1 - k, -k), (-2, 0), (1 - k, k)), pad)) == pytest.approx(
         (-2, -k, 0.5, k), abs=2e-6
     )
+    # Open at the bottom, its sides are where it passes the left and right of its circle,
+    # which none of its three points is.
+    assert mm_box(_footprint("S", arc((-k, 1 + k), (0, -2), (k, 1 + k)), pad)) == pytest.approx(
+        (-3, -2, 3, 1 + k), abs=2e-6
+    )
     # Three points in a line are a line.
     assert mm_box(_footprint("S", arc((-2, 1), (0, 1), (3, 1)), pad)) == (-2, -0.5, 3, 1)
     # The LED whose courtyard a resistor's pad was put in (#51): 3.2 mm above and below
