@@ -65,6 +65,6 @@ board.place(esp, against=Edge.BOTTOM)
 board.place(board["R7"], near=esp.pin(6), within=12 * mm)
 board.place(board["R8"], near=esp.pin(5), within=12 * mm)
 
-board.rules(track=0.25 * mm, clearance=0.2 * mm)
+board.rules(track=0.25 * mm, clearance=0.2 * mm, assembly="hand")
 board.pour("GND", layer="B.Cu")
 board.route()

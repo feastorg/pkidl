@@ -281,6 +281,10 @@ heatsink. What is wrong with it:
    further, the second bank has no place under it.
 3. **Silkscreen over silkscreen**, 199 warnings (#26).
 
+The next-bus clock is assembled by hand too, since a pad starved of its pour is taken
+off it (#52): built so, two of its ground pads are, and KiCad 10.0.8 finds no error.
+Its solve takes 12 s for it, where it took 6.4 s (#77).
+
 Not in it: what is in the way along an edge (#73), which pin shares a net (#76), a
 placement going neither round nor to rest (#72), solve time with the distances said
 (#77).

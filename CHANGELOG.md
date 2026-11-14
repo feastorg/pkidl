@@ -295,6 +295,9 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- The next-bus clock's board file is assembled by hand: `assembly="hand"` in its rules.
+  No pads of different parts are nearer than 1.3 mm, where they were 0.3 mm.
+
 - The bench supply's board file is written again with what milestone 2d added: both
   LM317s on the heatsink, the panel's parts at points, the sense resistors in two banks
   beside their switch, and `assembly="hand"`. Its test no longer runs with the slow
