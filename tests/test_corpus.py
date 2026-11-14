@@ -309,6 +309,7 @@ def test_the_t0_board_file_builds_its_circuit_with_every_part_placed(tmp_path):
     assert _nets(made, "zone") == {"GND"}  # the pour the board file asks for
 
 
+@pytest.mark.slow
 def test_the_t0_board_file_is_routed_by_freerouting_with_nothing_left(tmp_path):
     """Where Freerouting is installed. What it says it left is its own word: KiCad's DRC
     of the board this writes is ``just corpus``."""
@@ -518,6 +519,7 @@ def test_the_fan_controller_is_routed_with_its_tracks_as_wide_as_its_rules_say(f
     assert job.neck_down is False and job.fan_out is False
 
 
+@pytest.mark.slow
 def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_left(tmp_path):
     """Where Freerouting is installed. This is the board whose tracks it narrowed: with
     neck-down off, 13 paths out of its fan-out stage were three quarters of the width."""

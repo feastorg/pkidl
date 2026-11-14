@@ -100,7 +100,7 @@ jobs:
         run: just check
 
       - name: Test
-        run: just test
+        run: just test-all
 
   check:
     name: Check
