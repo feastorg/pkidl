@@ -9,6 +9,13 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- Where along an edge a part goes can be said. `place(jack, against=Edge.LEFT,
+  along=1 / 3)` puts the middle of its outline a third of the way along the edge, and
+  `along=12 * mm` that distance, from the edge's top end or its left end.
+  `place(esp, against=Edge.RIGHT, after=sr2)` puts it further along the edge than
+  another part, as near that part as there is a clear place, and `before=` the other
+  way; the two together are between two parts. With none of them a part is centred
+  along its edge, as before.
 - A side of a part has a name, and goes to an edge by it. `board.annotate(jack,
   sides={"socket": Edge.LEFT})` names a side of the footprint as it is drawn, for every
   part with that footprint to ask for, and `place(jack, against=Edge.LEFT, outward="socket")`

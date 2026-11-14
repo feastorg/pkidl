@@ -140,6 +140,18 @@ the board is the build's.
   against=Edge.LEFT, outward="socket")`, and every part with that footprint has the
   name. Finding the side is looking at the footprint once; saying it after that is
   saying what is meant. Nothing is worked out from the footprint (decided 2026-11-13).
+- `along=` the edge a part is `against=`: where along it the middle of the part's
+  outline is, as a share of the edge, `along=1 / 3`, or a distance, `along=12 * mm`,
+  from the edge's top end for the left and right edges and its left end for the top
+  and bottom. With nothing said the part is centred, as it was. A corner, a row or
+  `between=` that puts it somewhere else along the edge is the usual problem of two
+  places (decided 2026-11-14).
+- `after=` or `before=` a part, with `against=` an edge: further along the edge than
+  that part's outline reaches, or not as far, by the same top-to-bottom and
+  left-to-right, and as near it as there is a clear place. The other part need not be
+  against the edge: `place(esp, against=Edge.RIGHT, after=sr2)` is the module below
+  the register. Both together are between two parts. A part that something else
+  puts along the edge is held to what was said, and is a problem where it is not.
 - A part whose way round matters is never turned by choice. `board.annotate(display,
   oriented=True)` marks it, and so does naming a side of it: that part, and not
   another with the same footprint, which may be a header whose way round is nobody's

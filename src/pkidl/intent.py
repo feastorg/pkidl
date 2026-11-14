@@ -120,10 +120,41 @@ class Place(Statement):
     toward: Edge | None = None
     centre: bool = False
     outward: str | None = None
+    along: float | Length | None = None
+    after: Part | None = None
+    before: Part | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.part, Part):
             raise TypeError(f'place() takes a part, such as board["U1"], not {self.part!r}')
+        for name, other in (("after", self.after), ("before", self.before)):
+            if other is None:
+                continue
+            if not isinstance(other, Part):
+                raise TypeError(f"{self.part}: {name}= takes a part, not {other!r}")
+            if other == self.part:
+                raise ValueError(f"{self.part}: {name}= {other} is the part itself")
+            if self.against is None:
+                raise ValueError(f"{self.part}: {name}= says where along an edge the part "
+                                 "is: give against=")  # fmt: skip
+        if self.after is not None and self.after == self.before:
+            raise ValueError(f"{self.part}: it cannot be both after and before {self.after}")
+        if self.along is not None:
+            if self.against is None:
+                raise ValueError(f"{self.part}: along= says where along an edge the part "
+                                 "is: give against=")  # fmt: skip
+            if self.after is not None or self.before is not None:
+                raise ValueError(f"{self.part}: along= says where along the edge, and "
+                                 "after= or before= leaves it to be found: give one")  # fmt: skip
+            if isinstance(self.along, bool) or not isinstance(self.along, int | float | Length):
+                raise TypeError(f"{self.part}: along= takes a share of the edge, such as "
+                                f"1 / 3, or a distance along it, not {self.along!r}")  # fmt: skip
+            if isinstance(self.along, Length):
+                if self.along < Length(0):
+                    raise ValueError(f"{self.part}: along= {self.along} is off the edge")
+            elif not 0 <= self.along <= 1:
+                raise ValueError(f"{self.part}: along= {self.along} is a share of the edge, "
+                                 "from 0 to 1; a distance has its unit: 12 * mm")  # fmt: skip
         if self.outward is not None:
             if not isinstance(self.outward, str) or not self.outward:
                 raise TypeError(f"{self.part}: outward= takes the name of a side of the "
@@ -173,7 +204,7 @@ class Place(Statement):
 
     def _said(self) -> Iterator[tuple[str, Any]]:
         for name in ("against", "inset", "between", "facing", "near", "within", "side",
-                     "toward", "centre", "outward"):  # fmt: skip
+                     "toward", "centre", "outward", "along", "after", "before"):  # fmt: skip
             if (value := getattr(self, name)) is not None and value is not False:
                 yield name, value
 
@@ -183,7 +214,8 @@ class Place(Statement):
 
     def mentions(self) -> tuple[Part, ...]:
         near = () if self.near is None else (_part_of(self.near),)
-        return tuple(dict.fromkeys((self.part, *(self.between or ()), *near)))
+        beside = tuple(p for p in (self.after, self.before) if p is not None)
+        return tuple(dict.fromkeys((self.part, *(self.between or ()), *near, *beside)))
 
     def claims(self) -> dict[tuple[str, str], object]:
         claims: dict[tuple[str, str], object] = {}
@@ -191,6 +223,9 @@ class Place(Statement):
             claims[self.part.ref, f"inset from the {self.against.value} edge"] = self.inset
         if self.facing is not None:
             claims[self.part.ref, "facing"] = self.facing
+        if self.along is not None:
+            assert self.against is not None
+            claims[self.part.ref, f"place along the {self.against.value} edge"] = self.along
         if self.near is not None:
             claims[self.part.ref, f"distance from {self.near}"] = self.within
         if self.toward is not None:
@@ -423,9 +458,15 @@ def place(
     toward: Edge | None = None,
     centre: bool = False,
     outward: str | None = None,
+    along: float | Length | str | None = None,
+    after: Part | None = None,
+    before: Part | None = None,
 ) -> Place:
     """Say where *part* goes: *against* an edge of the board, *inset* from it, with the
-    side of it named *outward* to that edge (``annotate(sides=)`` names a part's sides);
+    side of it named *outward* to that edge (``annotate(sides=)`` names a part's sides),
+    and *along* the edge by a share of it, ``1 / 3``, or a distance, ``12 * mm``, from
+    its top end or its left end to the part's middle, or *after* or *before* another
+    part along it, as near that part as there is room;
     *between* two parts; *facing* an edge; *near* a pin or a part, *within* a distance of it, and
     on the side of it that is *toward* an edge; at the *centre* of the board; on which
     *side* of the board, ``Side.BACK`` or ``"back"``. One statement can say several.
@@ -435,7 +476,8 @@ def place(
     if isinstance(side, str) and side in ("front", "back"):
         side = Side(side)
     return Place(part, against, inset, between, facing, near, within, side,  # type: ignore[arg-type]
-                 toward, centre, outward, source=_written_at())  # fmt: skip
+                 toward, centre, outward, length(along) if isinstance(along, str) else along,
+                 after, before, source=_written_at())  # fmt: skip
 
 
 def align(*parts: Part, grid: Length | str) -> Align:
@@ -567,7 +609,7 @@ def _spoken(value: object) -> str:
 def _data(value: Any) -> Any:
     if isinstance(value, Length):
         return value.nm
-    if isinstance(value, bool):
+    if isinstance(value, bool | int | float):
         return value
     if isinstance(value, Edge | Side):
         return value.value
