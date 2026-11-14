@@ -253,6 +253,38 @@ mechanics put things: on a heatsink, at a drilled hole, in a bank. Of milestone 
 own bar, two things are not met: a solve in a few seconds (2, 7), and no distance
 found by trying (4).
 
+## Milestone 2d: where the mechanics put a part
+
+Done 2026-11-14. Tracked in #79. Three of the seven are said: a part at a point of the
+board (#74), a part on something fixed (#71), a row of parts beside a part (#75). With
+them, room between parts by how the board is assembled (#66): the bench supply as first
+rewritten was inside its rules and not a board to solder, with pads of two parts 0.30 mm
+apart and 37 pairs of outlines nearer than 0.5 mm.
+
+The bench supply's board file is written again. Both LM317s are on the heatsink, back
+to back, each at this heatsink's seat for a TO-220. The meters, the switches, the pot
+and the trimmer are at points in millimetres. The twelve sense resistors are in two
+banks of six beside the switch that picks among them: one line of twelve is longer than
+the panel has there. It is assembled by hand. It places all 45 parts with no problem in
+2 s, where the first took 13 s, and routes with nothing left. KiCad 10.0.6 finds the
+same four errors, the reference's own.
+
+Looked at as a design, by measurement of the written board and by eye on its render:
+no pads of different parts nearer than 1.34 mm, no outlines nearer than 0.4 mm and
+those the resistors of a bank at their pitch, every electrolytic 5 mm or more from the
+heatsink. What is wrong with it:
+
+1. **Copper under the heatsink.** 69.5 mm of track on the front lies inside its
+   outline, where its body sits on the board. Nothing says to keep copper from under
+   a fixed thing (#82). It is the one fault to mend before this board is built.
+2. **The ammeter is 0.65 mm from the heatsink's outline**, by their boxes. Moved
+   further, the second bank has no place under it.
+3. **Silkscreen over silkscreen**, 199 warnings (#26).
+
+Not in it: what is in the way along an edge (#73), which pin shares a net (#76), a
+placement going neither round nor to rest (#72), solve time with the distances said
+(#77).
+
 ## Milestone 3: T1, copper for current
 
 OpenMPPT: `path(..., current=)` sizing copper and checking the narrowest neck on the

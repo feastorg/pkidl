@@ -583,11 +583,10 @@ def test_two_boards_whose_decoupling_went_round_are_kept_at_one_placement(d, big
     assert board.solve() == solution
 
 
-@pytest.mark.slow
 def test_the_bench_supplys_board_file_places_every_part_by_what_it_says():
-    """The fourth board, written with the library as it stood after milestone 2c's
-    steps. It takes a quarter of a minute to solve (#77), so it runs with the slow
-    tests."""
+    """The fourth board, written again after milestone 2d: its regulators on the
+    heatsink, its panel parts at points, its sense resistors in banks, and assembled
+    by hand."""
     supply = CORPUS / "t1" / "DualLM317BenchSupply_DualLM317BenchSupply"
     board = runpy.run_path(str(supply / "board.py"))["board"]
     solution = board.solve()
@@ -597,7 +596,7 @@ def test_the_bench_supplys_board_file_places_every_part_by_what_it_says():
         set(solution.poses) == {part["ref"] for part in wanted["parts"]}
         and len(wanted["parts"]) == 45
     )
-    # No pad's copper is nearer another net's than the rules say, by the footprints as
+    # No pad's copper is nearer another part's than the rules say, by the footprints as
     # they are placed and not by the solver's own reckoning: this board's pads have
     # their copper off their holes, and two were once placed into each other (#68).
     from pkidl.fill import _pad_shape
@@ -613,5 +612,5 @@ def test_the_bench_supplys_board_file_places_every_part_by_what_it_says():
             if net:
                 pads.append((part["ref"], net, _pad_shape(placed, pad)))
     near = min(a[2].distance(b[2]) for i, a in enumerate(pads) for b in pads[i + 1:]
-               if a[0] != b[0] and a[1] != b[1])  # fmt: skip
-    assert near >= 0.3 - 1e-6
+               if a[0] != b[0])  # fmt: skip
+    assert near >= 1.27 - 1e-6  # assembly="hand", whatever the nets
