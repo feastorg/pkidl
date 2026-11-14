@@ -866,7 +866,13 @@ class _Solver:
                     return None
                 ox, oy = 0, 0
                 if s.of is not None:
-                    ox, oy = next((x, y) for n, x, y in turned.pads if n == s.of.number)
+                    pad = next(((x, y) for n, x, y in turned.pads if n == s.of.number), None)
+                    if pad is None:
+                        self._problem((ref,), f"{s.of} is to be at a point, and {ref}'s "
+                                      f"footprint {self.circuit.part(ref).footprint!r} has "
+                                      f"no pad {s.of.number}", s)  # fmt: skip
+                        return None
+                    ox, oy = pad
                 xs.append((ax - ox, s))
                 ys.append((ay - oy, s))
         # With no inset, against the edge: its outline on the edge, or as near as the

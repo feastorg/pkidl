@@ -295,8 +295,13 @@ class Place(Statement):
             # The point, which of the part is at it, and what it is a point of.
             where = _shown(self.at)
             where = where if self.of is None else f"{self.of} at {where}"
-            claims[self.part.ref, "place on the board"] = (
-                where if self.on is None else f"{where} on {self.on}")  # fmt: skip
+            if (on := self.on) is not None:
+                # All that makes it the thing it is: two may go by one label.
+                x, y = (str(v).removesuffix(" mm") for v in (on.x, on.y))
+                turn = on.rot if float(f"{on.rot:g}") != on.rot else f"{on.rot:g}"
+                where = (f"{where} on {on.footprint} at ({x}, {y}) turned {turn} degrees on "
+                         f"the {'back' if on.back else 'front'}")  # fmt: skip
+            claims[self.part.ref, "place on the board"] = where
         return claims
 
     def data(self) -> dict[str, Any]:

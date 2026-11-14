@@ -132,6 +132,15 @@ class _Things(list[Fixed]):
         found = [f for f in self
                  if name in (f.footprint, f.footprint.rpartition(":")[2], f.label)]  # fmt: skip
         if at is not None:
+            numbers = (
+                isinstance(at, tuple | list)
+                and len(at) == 2
+                and not any(isinstance(v, bool) or not isinstance(v, int | float) for v in at)
+            )
+            if not numbers:
+                raise TypeError(f"fixed({name!r}): at= is a place in board millimetres, as "
+                                "numbers, as board.hole takes it, such as at=(125, 55), not "
+                                f"{at!r}")  # fmt: skip
             x, y = (round(v * 1_000_000) for v in at)
             found = [f for f in found if (f.x.nm, f.y.nm) == (x, y)]
         if len(found) == 1:

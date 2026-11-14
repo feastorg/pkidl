@@ -3557,6 +3557,9 @@ def test_a_point_is_refused_beside_anything_else_that_says_where_at_the_line_tha
         ({"against": Edge.LEFT, "along": 1 / 3}, "against"),
         ({"against": Edge.LEFT, "after": t1}, "against"),
         ({"against": Edge.LEFT, "before": t1}, "against"),
+        ({"along": 1 / 3}, "along"),
+        ({"after": t1}, "after"),
+        ({"before": t1}, "before"),
     ]
     for more, name in cases:
         with pytest.raises(ValueError, match=f"K1: at= says where the part is, and so does "
@@ -3630,8 +3633,29 @@ def test_a_part_given_two_points_is_a_conflict_with_both_lines():
     board.place(k1, on=thing)
     assert [str(c).split(f" ({HERE}")[1:] for c in board.conflicts()] == [
         [f":{_line_no() - 4}) and K1.2 at (15 mm, 15 mm)", f":{_line_no() - 3})"],
-        [f":{_line_no() - 5}) and (0 mm, 0 mm) on Dot at (115, 65)", f":{_line_no() - 3})"],
-    ]
+        [f":{_line_no() - 5}) and (0 mm, 0 mm) on Mech:Dot at (115, 65) turned 0 degrees on "
+         "the front", f":{_line_no() - 4})"],
+    ]  # fmt: skip
+    # Two things of one kind at one place, one on each face or one turned, go by one
+    # label and are two things: on each of them is two places.
+    for rot, back in ((0, True), (90, False), (22.5, False)):
+        board = _board(T1="A")
+        t1 = board["T1"]
+        one, two = (
+            board.hole("Device:R", (115, 65)),
+            board.hole("Device:R", (115, 65), rot=rot, back=back),
+        )
+        assert one.label == two.label and one != two
+        board.place(t1, on=one, at=(1 * mm, 0 * mm))
+        board.place(t1, on=two, at=(1 * mm, 0 * mm))
+        line = _line_no() - 1
+        turn = f"{rot:g} degrees on the {'back' if back else 'front'}"
+        assert [str(c) for c in board.conflicts()] == [
+            "T1: place on the board is (1 mm, 0 mm) on Device:R at (115, 65) turned 0 degrees "
+            f"on the front ({HERE}:{line - 1}) and (1 mm, 0 mm) on Device:R at (115, 65) "
+            f"turned {turn} ({HERE}:{line})"
+        ]
+        assert not board.solve().poses
 
 
 def test_a_point_and_another_place_said_apart_hold_together_or_are_two_places():
@@ -3704,6 +3728,42 @@ def test_a_part_at_a_point_is_not_moved_and_what_is_wrong_there_is_said():
     assert [p.text for p in board.solve().problems] == [
         "K1's way round matters and nothing says it: give facing= an edge, or outward= a side of it"
     ]
+
+
+def test_a_pin_the_footprint_has_no_pad_for_is_a_problem_at_a_point_and_the_part_is_not_placed():
+    # The chip's footprint has pads 10, 2 and 3, and its circuit a pin 1.
+    for on in (False, True):
+        board = _board(Z1="A B C", T1="A")
+        thing = board.hole("Mech:Dot", (115, 65))
+        z1 = board["Z1"]
+        board.place(board["T1"], at=(5 * mm, 5 * mm))
+        board.place(z1, at=(10 * mm, 10 * mm), of=z1.pin(1), on=thing if on else None)
+        line = _line_no() - 1
+        solution = board.solve()
+        assert _told(solution) == [f"Z1.1 is to be at a point, and Z1's footprint 'Chip:Z' has "
+                                   f"no pad 1 ({HERE}:{line})"]  # fmt: skip
+        assert list(solution.poses) == ["T1"] and solution.free == ()
+    # A pin it has a pad for is placed as ever.
+    board = _board(Z1="A B C")
+    board.place(board["Z1"], at=(10 * mm, 10 * mm), of=board["Z1"].pin(2), facing=Edge.TOP)
+    solution = board.solve()
+    assert solution.ok and _pads(board, solution, "Z1")["2"] == pytest.approx((110, 60))
+
+
+def test_a_fixed_thing_is_had_at_a_place_in_board_millimetres_as_a_hole_is_put_there():
+    # 129.54 mm is not 129540000 nm until it is rounded, and it is where the hole is.
+    board = _board(T1="A")
+    one, two = board.hole("Mech:Hole", (129.54, 55)), board.hole("Mech:Hole", (103, 67.31))
+    assert int(129.54 * 1_000_000) != one.x.nm == 129_540_000
+    assert board.fixed("Hole", at=(129.54, 55)) is one
+    assert board.fixed("Hole", at=(103, 67.31)) is two
+    # Lengths are what place(at=) takes, from the board's top left: not this.
+    for bad in ((129.54 * mm, 55 * mm), ("129.54 mm", "55 mm"), (129.54, 55 * mm), (True, 55),
+                (129.54,), 129.54):  # fmt: skip
+        with pytest.raises(TypeError, match=r"fixed\('Hole'\): at= is a place in board "
+                                            r"millimetres, as numbers, as board.hole takes "
+                                            r"it, such as at=\(125, 55\), not "):  # fmt: skip
+            board.fixed("Hole", at=bad)  # pyright: ignore[reportArgumentType]
 
 
 def test_what_is_fixed_on_the_board_is_had_by_its_name():
