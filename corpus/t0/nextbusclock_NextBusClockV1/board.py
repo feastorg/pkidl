@@ -39,18 +39,22 @@ board.place(board["C6"], near=y1.pin(1), within=8 * mm)
 board.place(board["R2"], near=ic1.pin(1), within=8 * mm)
 board.place(board["SW1"], near=board["R2"], within=15 * mm)
 
-# Power comes in at the left edge: the jack, the 5 V regulator by it with a capacitor on
-# its input and one on its output, then the 3.3 V regulator and its capacitor.
+# Power comes in at the left edge and the supply keeps to the left third of the board:
+# the jack, the 5 V regulator by it, then the 3.3 V regulator. The 7805 runs hot, so
+# its two capacitors and the power LED's resistor stand off from it; the LED is on
+# the 5 V output, away from the jack.
 jack, reg5, reg33 = board["BJ1"], board["5V_REG1"], board["33V_REG1"]
+supply = board.area(Edge.LEFT, share=1 / 3)
+board.inside(supply, [jack, reg5, reg33, *board.parts("C1", "C2", "C4", "D1", "R1")])
 board.annotate(jack, sides={"socket": Edge.LEFT})
 board.place(jack, against=Edge.LEFT, outward="socket")  # it opens off the board
-board.place(reg5, near=jack.pin(1), within=15 * mm)
-board.place(board["C1"], near=reg5.pin(1), within=10 * mm)
-board.place(board["C2"], near=reg5.pin(3), within=10 * mm)
-board.place(reg33, near=reg5.pin(3), within=20 * mm)
+board.place(reg5, near=jack, within=15 * mm, at_least=6 * mm)  # clear of all its pads
+board.place(board["C1"], near=reg5.pin(1), within=12 * mm, at_least=7 * mm)
+board.place(board["C2"], near=reg5.pin(3), within=12 * mm, at_least=7 * mm)
+board.place(reg33, near=reg5.pin(3), within=20 * mm, at_least=8 * mm)
 board.place(board["C4"], near=reg33.pin(2), within=10 * mm)
-board.place(board["D1"], near=reg5, toward=Edge.BOTTOM, within=20 * mm)
-board.place(board["R1"], near=board["D1"].pin(2), within=8 * mm)
+board.place(board["R1"], near=reg5.pin(3), toward=Edge.BOTTOM, within=12 * mm, at_least=5 * mm)
+board.place(board["D1"], near=board["R1"].pin(1), within=8 * mm)
 
 # The radio module in the bottom right corner, clear of the rest, with its two
 # pull-ups.
