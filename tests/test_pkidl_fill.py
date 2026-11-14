@@ -630,6 +630,13 @@ def test_a_starved_pad_that_only_the_pour_joins_cannot_be_spared():
     assert _starved(_board(ALONE, *ISLAND, *part_way)) == [("GND", ("A.1",), "F.Cu", True)]
 
 
+def test_a_track_on_a_face_a_pad_has_no_copper_on_does_not_join_it():
+    # Ground's track runs along the back from under A. A pad through the board is on
+    # it; a pad on the front alone is not, and no pad of that net can be spared.
+    assert "A.1" in spare(_board(ALONE, *CARRIED))
+    assert spare(_board(_one("A", 5, 15), *CARRIED)) == set()
+
+
 def test_a_pad_with_one_spoke_into_the_body_of_the_pour_is_starved():
     one = _board(ALONE, *_round(THREE_SIDES), *CARRIED)
     assert len(fills(one, OUTLINE, 0.5)) == 1  # no island: the one spoke is to the pour

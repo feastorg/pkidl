@@ -517,7 +517,9 @@ def spare(items: list[Node]) -> set[str]:
     connection of the board changed. Each is on a poured net that its pads, tracks and
     vias join into one piece by themselves, with no pour, and neither it nor its
     footprint says that it joins no pour, which leaves nothing to take off, or joins
-    solidly, which has no relief to starve."""
+    solidly, which has no relief to starve. A pad's copper is taken as the box round
+    it, as everywhere here: a track that ends in the cut corner of a rounded pad is
+    taken to join it."""
     found: set[str] = set()
     for net in sorted({_net(z) for z in _pours(items)}):
         nodes, of, _ = _on(items, net)

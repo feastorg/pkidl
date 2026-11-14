@@ -762,7 +762,7 @@ KiCad passes. Six boards built from the fan controller's and the next-bus clock'
 files were filled and checked by KiCad 10.0.8 and by the model: KiCad named six pads
 starved, all of them with spokes into an island, and the model named those six and
 twelve more. KiCad counts a spoke the model's stricter test does not, and it passed
-six pads whose every spoke is into a piece of fill that nothing else of the net
+some pads whose every spoke is into a piece of fill that nothing else of the net
 touches; what tells those from the ones it names was not found. A pad the model gives
 no spoke at all is not called starved, though KiCad may count one. Under the model a
 pad can so be taken off a pour that KiCad would have left it on, with a track joining
