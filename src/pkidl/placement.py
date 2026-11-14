@@ -94,8 +94,10 @@ from pkidl.intent import (
     Align,
     Decouple,
     Edge,
+    Inside,
     Keepout,
     Place,
+    Region,
     Row,
     Rules,
     Side,
@@ -273,11 +275,12 @@ def _listed(names: list[str]) -> str:
 _AT_A_TIME = 4096  # the offsets a place near something is looked for at, at once
 _FURTHER = Length(30_000_000)  # as far as a place is looked for to say how far off it is
 _EDGE = "the board's edge"
+_AREA = "the edge of its area"
 _Grid = tuple[list[tuple[int, int, int]], np.ndarray, np.ndarray]
 _SIFT = True  # whether those are sifted all at once first: off, each is tried in turn
 
 
-@lru_cache(maxsize=4)  # a 30 mm distance is 46 MB of them
+@lru_cache(maxsize=8)  # a 30 mm distance is 44 MB of them, a 15 mm one 11
 def _offsets(limit: int, step: int) -> _Grid:
     """Every offset on a grid of *step* within *limit*, nearest first: each as its
     distance squared, dy and dx, and the dx and dy of them all as arrays."""
@@ -388,6 +391,17 @@ class _Solver:
         self.circuit = circuit
         self.asks: dict[str, list[Place]] = {}
         self.aligns = [s for s in statements if isinstance(s, Align)]
+        # The areas of the board each part is said to be inside: each once, with where it
+        # is on the board and every statement that says so.
+        said: dict[str, dict[Region, list[Inside]]] = {}
+        for s in statements:
+            if isinstance(s, Inside):
+                for part in s.parts:
+                    said.setdefault(part.ref, {}).setdefault(s.area, []).append(s)
+        self.areas: dict[str, list[tuple[Region, Box, tuple[Inside, ...]]]] = {
+            ref: [(area, area.within(self.board), tuple(by)) for area, by in areas.items()]
+            for ref, areas in said.items()
+        }
         # Each area kept clear, as this circuit has it, whichever board's part the
         # statement was written with.
         self.keeps = [(s, circuit.part(s.area.part.ref).area(s.area.name).box)
@@ -945,12 +959,25 @@ class _Solver:
                      else range(last, first - 1, -STEP.nm))  # fmt: skip
         for v in sorted((v for v in tries if first <= v <= last), reverse=not forward):
             x, y = (v, other) if level else (other, v)
-            if self._clear(ref, _moved(b, x, y), back, turned.through, done, True, (turned, x, y)):
+            if not self._outside(ref, _moved(b, x, y)) and self._clear(
+                ref, _moved(b, x, y), back, turned.through, done, True, (turned, x, y)
+            ):
                 self._chose(f"{ref}: {words} along the {edge.value} edge")
                 return v
         self._problem((ref,), f"{ref} has no place against the {edge.value} edge {words} "
                       "that is on the board and clear of the other parts", *said)  # fmt: skip
         return None
+
+    def _outside(self, ref: str, box: Box) -> list[tuple[Region, tuple[Inside, ...], int, str]]:
+        """Each area *ref* is said to be inside that *box* is not wholly in: the area,
+        the statements that say so, how far past it reaches, and past which side."""
+        out = []
+        for area, (x0, y0, x1, y1), said in self.areas.get(ref, []):
+            past = (x0 - box[0], y0 - box[1], box[2] - x1, box[3] - y1)
+            if max(past) > 0:
+                side = ("left", "top", "right", "bottom")[past.index(max(past))]
+                out.append((area, said, max(past), side))
+        return out
 
     def _centre(self, ref: str) -> tuple[int, int]:
         x0, y0, x1, y1 = self._box(ref)
@@ -1107,6 +1134,14 @@ class _Solver:
         shape, limit, step = self.shapes[ref], s.within.nm, STEP.nm
         of = self._box(target)
         only = self.pad.get(id(s))  # the pads of this part that are to be near, if not any
+        least = 0 if s.at_least is None else s.at_least.nm
+        rooms = [box for _, box, _ in self.areas.get(ref, [])]
+
+        def apart(turned: _Shape, x: int, y: int) -> bool:
+            """No pad that is to be near nearer what it is near than the least said."""
+            return all((px + x - tx) ** 2 + (py + y - ty) ** 2 >= least * least
+                       for number, px, py in turned.pads if only is None or number in only
+                       for tx, ty in targets)  # fmt: skip
 
         def beyond(box: Box) -> bool:
             """On the side of what it is near that the statement says, where it says."""
@@ -1149,6 +1184,13 @@ class _Solver:
         def on_board(x0: np.ndarray, y0: np.ndarray, x1: np.ndarray, y1: np.ndarray) -> np.ndarray:
             return (x0 >= b0) & (y0 >= b1) & (x1 <= b2) & (y1 <= b3)
 
+        def in_area(x0: np.ndarray, y0: np.ndarray, x1: np.ndarray, y1: np.ndarray) -> np.ndarray:
+            """Inside every area of the board the part is said to be inside."""
+            ok = np.ones(x0.shape, dtype=bool)
+            for r0, r1, r2, r3 in rooms:
+                ok &= (x0 >= r0) & (y0 >= r1) & (x1 <= r2) & (y1 <= r3)
+            return ok
+
         def on_side(x0: np.ndarray, y0: np.ndarray, x1: np.ndarray, y1: np.ndarray) -> np.ndarray:
             """On the side of what it is near that the statement says, as ``beyond``."""
             if s.toward is None:
@@ -1167,7 +1209,10 @@ class _Solver:
             x0, y0, x1, y1 = boxes_at(grid, a, b)
             if not _SIFT:
                 return np.ones(x0.shape, dtype=bool)
-            ok = on_board(x0, y0, x1, y1) & on_side(x0, y0, x1, y1)
+            ok = on_board(x0, y0, x1, y1) & on_side(x0, y0, x1, y1) & in_area(x0, y0, x1, y1)
+            if least:  # nearer than the least said, by the pad this way puts near
+                _, dxs, dys = grid
+                ok &= (dxs[a:b] * dxs[a:b] + dys[a:b] * dys[a:b]) >= least * least
             for t0, t1, t2, t3 in out:
                 ok &= ~((x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1))
             # Where the outline is drawn in from its box, a box by one of the pieces cut
@@ -1199,6 +1244,10 @@ class _Solver:
                         rot, turned, px, py, tx, ty = ways[w]
                         x, y = tx + dx - px, ty + dy - py
                         at = (turned, x, y)
+                        if least and (d2 < least * least or not apart(*at)):
+                            continue
+                        if rooms and self._outside(ref, _moved(turned.box, x, y)):
+                            continue
                         if not (beyond(_moved(turned.box, x, y))
                                 and self._clear(ref, _moved(turned.box, x, y), back, through,
                                                 done, keeps, at)):  # fmt: skip
@@ -1214,7 +1263,6 @@ class _Solver:
             kept = [k for k, _, faces in self._kept(done) if shape.through or back in faces]
             if kept and nearest(False)[0] is None:
                 kept = []
-            toward = "" if s.toward is None else f", toward the {s.toward.value} edge,"
             holes = " and its holes" if self.fixed else ""
             # How far off the nearest place is, looking three times as far and no less
             # than 10 mm nor more than 30, and what is most in the way within the
@@ -1234,8 +1282,10 @@ class _Solver:
                 side = on_side(x0, y0, x1, y1)
                 on = on_board(x0, y0, x1, y1)
                 blocked[_EDGE] = blocked.get(_EDGE, 0) + int((side & ~on).sum())
+                room = in_area(x0, y0, x1, y1)
+                blocked[_AREA] = blocked.get(_AREA, 0) + int((side & on & ~room).sum())
                 for name, (t0, t1, t2, t3) in named:
-                    over = side & on & (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
+                    over = side & on & room & (x0 < t2) & (t0 < x1) & (y0 < t3) & (t1 < y1)
                     blocked[name] = blocked.get(name, 0) + int(over.sum())
             most = sorted((name for name, n in blocked.items() if n),
                           key=lambda name: (-blocked[name], natural(name)))[:3]  # fmt: skip
@@ -1248,12 +1298,17 @@ class _Solver:
                     + " in the way"
                 )
             )
-            self._problem((ref,), f"{ref} has no place within {s.within} of {s.near}{toward} "
+            held = [a for _, _, said in self.areas.get(ref, []) for a in said]
+            more = [f"at least {s.at_least} from it"] if s.at_least is not None else []
+            more += [f"toward the {s.toward.value} edge"] if s.toward is not None else []
+            more += [f"inside {area}" for area, _, _ in self.areas.get(ref, [])]
+            also = f", {', '.join(more)}," if more else ""
+            self._problem((ref,), f"{ref} has no place within {s.within} of {s.near}{also} "
                           f"that is on the {'back' if back else 'front'} of the board and "
                           f"clear of the other parts{holes}"
                           + (" and of what is kept clear" if kept else "")
                           + f"{where}{way}",
-                          s, *kept)  # fmt: skip
+                          s, *held, *kept)  # fmt: skip
             return None
         self._chose(f"{ref}: {Length(math.isqrt(found))} from {s.near}, turned "
                            f"{pose.rot} degrees")  # fmt: skip
@@ -1270,6 +1325,10 @@ class _Solver:
                               "facing= an edge, or outward= a side of it",
                               *self.said[ref])  # fmt: skip
             box, names = self._box(ref), ("left", "top", "right", "bottom")
+            for area, said, past, side in self._outside(ref, box):
+                self._problem((ref,), f"{ref} is not inside {area}: it reaches "
+                              f"{Length(past)} past its {side} side",
+                              *said, *self.said[ref])  # fmt: skip
             over = (self.board[0] - box[0], self.board[1] - box[1],
                     box[2] - self.board[2], box[3] - self.board[3])  # fmt: skip
             for name, past in zip(names, over, strict=True):

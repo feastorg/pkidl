@@ -162,6 +162,19 @@ the board is the build's.
   the rules keep round it is found only where a step lands on it. A
   part that something else puts along the edge is held to what was said, and is a
   problem where it is not.
+- An area of the board is made once and named, and parts are said to be inside it:
+  `left = board.area(Edge.LEFT, share=1 / 3)`, the left third of the box around the
+  outline, or `board.area(box=((0 * mm, 0 * mm), (30 * mm, 40 * mm)))`, two corners
+  across and down from its top left; then `board.inside(left, [jack, reg5, c1])`. The
+  whole outline of each part is inside. A part that looks for its place, `near=`
+  something or `after=` a part, looks inside its area, and is told the area is in the
+  way where it has none. A part whose place is given is a problem where that is
+  outside. An area keeps parts in and does nothing else: nothing spreads them over it
+  (decided 2026-11-14).
+- `at_least=` beside `within=`: no pad that is to be near is nearer what it is near
+  than that, measured as `within=` is, pad to pad. Parts placed `near=` go as near as
+  they can, which packs a supply against its connector; the least distance is how a
+  board file says otherwise, where it matters.
 - A part whose way round matters is never turned by choice. `board.annotate(display,
   oriented=True)` marks it, and so does naming a side of it: that part, and not
   another with the same footprint, which may be a header whose way round is nobody's

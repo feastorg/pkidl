@@ -14,10 +14,11 @@ from typing import Any
 
 import pytest
 
-from pkidl import Board, Edge, Side, align, decouple, keepout, mm, place, row
+from pkidl import Board, Edge, Side, align, area, decouple, inside, keepout, mm, place, row
 from pkidl.circuit import Circuit
 from pkidl.footprint import Placement, pad_xy, pads
 from pkidl.footprint import place as put
+from pkidl.intent import canonical
 from pkidl.placement import Pose, Problem, Solution, _shape, _Solver
 from pkidl.sexpr import Node, dumps, parse
 from pkidl.units import Length
@@ -2972,3 +2973,311 @@ def test_a_part_with_no_place_any_way_round_leaves_what_was_said_of_its_row_and_
     board.place(board["T1"], against=Edge.BOTTOM)
     solution = board.solve()
     assert solution.poses == {} and len(solution.problems) == 1 and solution.chosen == ()
+
+
+def _box_of(board: Board, solution: Solution, ref: str) -> tuple[float, float, float, float]:
+    """*ref*'s outline on the board: left, top, right and bottom, from the board's top
+    left corner."""
+    (x0, x1), (y0, y1) = (_span(board, solution, ref, edge) for edge in (Edge.TOP, Edge.LEFT))
+    return x0, y0, x1, y1
+
+
+@pytest.mark.parametrize(("edge", "share", "room"), [
+    (Edge.LEFT, 0.3, (0, 0, 9, 30)), (Edge.RIGHT, 0.5, (15, 0, 30, 30)),
+    (Edge.TOP, 0.4, (0, 0, 30, 12)), (Edge.BOTTOM, Fraction(1, 4), (0, 22.5, 30, 30)),
+])  # fmt: skip
+def test_a_part_inside_an_area_looks_for_its_place_there(edge, share, room):
+    # The board is 30 mm each way and the module is at its middle. A resistor by its
+    # first pin, left to itself, is 1.8 mm from the pin, in none of these areas.
+    def solved(within: float, held: bool) -> tuple[Board, Solution]:
+        board = _board(U1="A B C D E", R1="A X")
+        board.place(board["U1"], centre=True, facing=Edge.TOP)
+        board.place(board["R1"], near=board["U1"].pin(1), within=within * mm)
+        if held:
+            board.inside(board.area(edge, share=share), [board["R1"]])
+        return board, board.solve()
+
+    board, free = solved(20, False)
+    x0, y0, x1, y1 = _box_of(board, free, "R1")
+    assert not (room[0] <= x0 and room[1] <= y0 and x1 <= room[2] and y1 <= room[3])
+    board, solution = solved(20, True)
+    assert solution.ok
+    x0, y0, x1, y1 = _box_of(board, solution, "R1")
+    assert room[0] <= x0 + 1e-6 and room[1] <= y0 + 1e-6
+    assert x1 <= room[2] + 1e-6 and y1 <= room[3] + 1e-6
+    # As near the pin as the area lets it be: hard against the area's side.
+    assert min(abs(x0 - room[0]), abs(y0 - room[1]), abs(x1 - room[2]), abs(y1 - room[3])) < 0.11
+
+
+def test_a_part_with_no_place_inside_its_area_is_told_the_area_is_in_the_way():
+    board = _board(U1="A B C D E", R1="A X")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    near = board.place(board["R1"], near=board["U1"].pin(1), within=4 * mm)
+    held = board.inside(board.area(Edge.BOTTOM, share=1 / 4), [board["R1"]])
+    (problem,) = board.solve().problems
+    assert problem.text == (
+        "R1 has no place within 4 mm of U1.1, inside area(Edge.BOTTOM, share=0.25), that is on "
+        "the front of the board and clear of the other parts: the nearest is 8.3 mm from it, "
+        "with the edge of its area in the way"
+    )
+    assert problem.statements == (near, held)
+    # Given that distance it has its place, and it is in the area.
+    board = _board(U1="A B C D E", R1="A X")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.place(board["R1"], near=board["U1"].pin(1), within=8.3 * mm)
+    board.inside(board.area(Edge.BOTTOM, share=1 / 4), [board["R1"]])
+    solution = board.solve()
+    assert solution.ok and _box_of(board, solution, "R1")[1] >= 22.5 - 1e-6
+
+
+def test_a_part_whose_place_is_given_outside_its_area_is_said_to_be_outside_it():
+    board = _board(U1="A B C D E", T1="A")
+    u1, t1 = board.parts("U1", "T1")
+    board.place(u1, centre=True, facing=Edge.TOP)
+    board.place(t1, against=Edge.LEFT, along=20 * mm)
+    corner = board.area(box=((0 * mm, 0 * mm), ("10 mm", 10 * mm)))
+    board.inside(corner, [u1, t1])
+    line = _line_no() - 1
+    assert str(corner) == "area(box=((0 mm, 0 mm), (10 mm, 10 mm)))"
+    assert _told(board.solve()) == [
+        "T1 is not inside area(box=((0 mm, 0 mm), (10 mm, 10 mm))): it reaches 10.5 mm past "
+        f"its bottom side ({HERE}:{line}, {HERE}:{line - 2})",
+        "U1 is not inside area(box=((0 mm, 0 mm), (10 mm, 10 mm))): it reaches 10 mm past its "
+        f"right side ({HERE}:{line}, {HERE}:{line - 3})",
+    ]
+    # One that looks for its place along an edge looks inside its area.
+    board = _board(T1="A", T2="B")
+    t1, t2 = board.parts("T1", "T2")
+    board.place(t1, against=Edge.LEFT, along=5 * mm)
+    board.place(t2, against=Edge.LEFT, after=t1)
+    board.inside(board.area(Edge.BOTTOM, share=1 / 2), [t2])
+    solution = board.solve()
+    assert solution.ok and _span(board, solution, "T2", Edge.LEFT) == pytest.approx((15, 16))
+
+
+def test_a_part_in_two_areas_is_in_both(monkeypatch):
+    def solved() -> tuple[Board, Solution]:
+        board = _board(U1="A B C D E", R1="A X")
+        board.place(board["U1"], centre=True, facing=Edge.TOP)
+        board.place(board["R1"], near=board["U1"].pin(1), within=14 * mm)
+        board.inside(board.area(Edge.LEFT, share=1 / 3), [board["R1"]])
+        board.inside(board.area(Edge.BOTTOM, share=1 / 3), [board["R1"]])
+        return board, board.solve()
+
+    board, solution = solved()
+    x0, y0, x1, y1 = _box_of(board, solution, "R1")
+    assert solution.ok and x1 <= 10 + 1e-6 and y0 >= 20 - 1e-6
+    # Each place is held to them when it is tried in full, not only when places are
+    # sifted: trying each in turn finds the same one.
+    monkeypatch.setattr("pkidl.placement._SIFT", False)
+    assert solved()[1] == solution
+
+
+def test_an_area_is_an_edge_and_a_share_or_a_box_and_takes_parts():
+    board = _board(T1="A", T2="B")
+    t1, t2 = board.parts("T1", "T2")
+    third = area(Edge.LEFT, share=Fraction(1, 3))
+    assert third == board.area(Edge.LEFT, share=1 / 3)
+    assert str(third) == "area(Edge.LEFT, share=0.3333333333333333)"
+    assert area(box=((30 * mm, 4 * mm), (1 * mm, "2 mm"))) == area(
+        box=((1 * mm, 2 * mm), (30 * mm, 4 * mm))
+    )
+    statement = inside(third, [t2, t1, t2])
+    assert str(statement) == "inside(area(Edge.LEFT, share=0.3333333333333333), T1, T2)"
+    assert statement.mentions() == (t1, t2)
+    assert statement.data() == {"inside": {"edge": "left", "share": 1 / 3}, "parts": ["T1", "T2"]}
+    corner = inside(area(box=((1 * mm, 2 * mm), (30 * mm, 4 * mm))), [t1])
+    assert corner.data() == {
+        "inside": {"box": [1_000_000, 2_000_000, 30_000_000, 4_000_000]}, "parts": ["T1"]
+    }  # fmt: skip
+    assert board.add(statement) == (statement,)
+    wrong: Any = "left"
+    one: Any = t1
+    flat: Any = (0 * mm, 0 * mm, 30 * mm, 40 * mm)
+    zero = (0 * mm, 0 * mm)
+    cases: list[tuple[Any, type, str]] = [
+        (lambda: area(), ValueError, "an edge and a share of the board from it, or a box="),
+        (lambda: area(Edge.LEFT, share=0.5, box=(zero, (1 * mm, 1 * mm))), ValueError,
+         "one of them"),
+        (lambda: area(share=0.5, box=(zero, (1 * mm, 1 * mm))), ValueError, "one of them"),
+        (lambda: area(box=flat), TypeError, "box= is two opposite corners, as in box="),
+        (lambda: area(box=(zero, wrong)), TypeError, "box= is two opposite corners, as in box="),
+        (lambda: area(Edge.LEFT), TypeError, "share= is how much of the board from that edge"),
+        (lambda: area(Edge.LEFT, share=True), TypeError, "share= is how much"),
+        (lambda: area(Edge.LEFT, share=0), ValueError, "more than 0 and no more than 1"),
+        (lambda: area(Edge.LEFT, share=1.5), ValueError, "more than 0 and no more than 1"),
+        (lambda: area(wrong, share=0.5), TypeError, "area\\(\\) takes an edge"),
+        (lambda: area(box=((1 * mm, 1 * mm), (1 * mm, 5 * mm))), ValueError, "with room between"),
+        (lambda: area(box=((-1 * mm, 1 * mm), (3 * mm, 5 * mm))), ValueError, "top left"),
+        (lambda: inside(wrong, [t1]), TypeError, "inside\\(\\) takes an area of the board"),
+        (lambda: inside(third, []), TypeError, "takes the parts that go inside it"),
+        (lambda: inside(third, [wrong]), TypeError, "takes the parts that go inside it"),
+        (lambda: inside(third, one), TypeError,
+         "takes its parts together, as in "
+         "inside\\(area\\(Edge.LEFT, share=0.3333333333333333\\), \\[T1\\]\\)"),
+    ]  # fmt: skip
+    for make, error, said in cases:
+        with pytest.raises(error, match=said):
+            make()
+
+
+def test_a_part_near_something_keeps_the_least_distance_said_as_well_as_the_most():
+    def solved(**how) -> tuple[Board, Solution]:
+        board = _board(U1="A B C D E", R1="A A")
+        board.place(board["U1"], centre=True, facing=Edge.TOP)
+        board.place(board["R1"], near=board["U1"].pin(1), within=6 * mm, **how)
+        return board, board.solve()
+
+    board, near = solved()
+    assert any(note.startswith("R1: 1.8 mm from U1.1") for note in near.chosen)
+    board, solution = solved(at_least=3 * mm)
+    assert solution.ok
+    pin = _pads(board, solution, "U1")["1"]
+    # Both the resistor's pads are on the pin's net, and neither is nearer it than said.
+    apart = sorted(math.dist(pin, at) for at in _pads(board, solution, "R1").values())
+    assert apart[0] == pytest.approx(3) and apart[1] > 3
+    assert any(note.startswith("R1: 3 mm from U1.1") for note in solution.chosen)
+    # With no place between the least and the most it is told both.
+    board = _board(U1="A B C D E", R1="A A")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.place(board["R1"], near=board["U1"].pin(1), within=2 * mm, at_least=1.95 * mm,
+                toward=Edge.TOP)  # fmt: skip
+    (problem,) = board.solve().problems
+    assert problem.text.startswith(
+        "R1 has no place within 2 mm of U1.1, at least 1.95 mm from it, toward the top edge, "
+        "that is on the front of the board and clear of the other parts"
+    )
+    u1, r1 = board.parts("U1", "R1")
+    statement = place(r1, near=u1, within=6 * mm, at_least="2 mm")
+    assert str(statement) == "place(R1, near=U1, within=6 mm, at_least=2 mm)"
+    for how, said in [
+        ({"against": Edge.TOP, "at_least": 1 * mm}, "at_least= is how far at the least"),
+        ({"near": u1, "within": 3 * mm, "at_least": 3 * mm}, "less than within= 3 mm"),
+        ({"near": u1, "within": 3 * mm, "at_least": 0 * mm}, "more than nothing"),
+    ]:
+        with pytest.raises(ValueError, match=said):
+            place(r1, **how)
+
+
+@pytest.mark.parametrize("edge", [Edge.LEFT, Edge.RIGHT, Edge.TOP, Edge.BOTTOM])
+def test_a_share_of_1_is_the_whole_board(edge):
+    whole = area(edge, share=1)
+    assert str(whole) == f"area({edge}, share=1)"
+    assert whole.within((100, 50, 140, 70)) == (100, 50, 140, 70)
+
+
+def test_two_areas_that_are_not_the_same_read_differently_and_have_one_order():
+    board = _board(T1="A")
+    t1 = board["T1"]
+    less, more = area(Edge.LEFT, share=0.3331), area(Edge.LEFT, share=0.3334)
+    assert less != more
+    assert (str(less), str(more)) == (
+        "area(Edge.LEFT, share=0.3331)", "area(Edge.LEFT, share=0.3334)"
+    )  # fmt: skip
+    # Written on one line, they are in the order of what they say, whichever was added
+    # first.
+    a, b = inside(less, [t1]), inside(more, [t1])
+    assert a.source == b.source and a.data() != b.data()
+    assert canonical([a, b]) == canonical([b, a]) == [a, b]
+
+
+@pytest.mark.parametrize(("edge", "side", "at"), [
+    (Edge.LEFT, 2, 10), (Edge.RIGHT, 0, 30), (Edge.TOP, 3, 5), (Edge.BOTTOM, 1, 15),
+])  # fmt: skip
+def test_a_share_of_a_board_that_is_not_square_is_of_its_width_or_of_its_height(edge, side, at):
+    # The board is 40 mm across and 20 mm down: a quarter of it from the left or the
+    # right is 10 mm, and from the top or the bottom 5 mm.
+    board = _drawn(100, 50, 140, 70, U1="A B C D E", R1="A X")
+    board.place(board["U1"], centre=True, facing=Edge.TOP)
+    board.place(board["R1"], near=board["U1"].pin(1), within=25 * mm)
+    board.inside(board.area(edge, share=1 / 4), [board["R1"]])
+    solution = board.solve()
+    # As near the pin as the area lets it be: hard against the area's side.
+    assert solution.ok and _box_of(board, solution, "R1")[side] == pytest.approx(at)
+
+
+def test_a_part_outside_two_of_its_areas_is_told_of_each():
+    # The test point is 1 mm square, at the middle of the top edge.
+    board = _board(T1="A")
+    t1 = board["T1"]
+    board.place(t1, against=Edge.TOP)
+    board.inside(board.area(Edge.BOTTOM, share=1 / 4), [t1])
+    board.inside(board.area(Edge.LEFT, share=0.2), [t1])
+    line = _line_no() - 1
+    assert _told(board.solve()) == [
+        "T1 is not inside area(Edge.BOTTOM, share=0.25): it reaches 22.5 mm past its top "
+        f"side ({HERE}:{line - 1}, {HERE}:{line - 2})",
+        "T1 is not inside area(Edge.LEFT, share=0.2): it reaches 9.5 mm past its right "
+        f"side ({HERE}:{line}, {HERE}:{line - 2})",
+    ]
+    board = _board(T1="A")
+    t1 = board["T1"]
+    board.place(t1, against=Edge.LEFT)
+    board.inside(board.area(Edge.RIGHT, share=1 / 2), [t1])
+    (problem,) = board.solve().problems
+    assert problem.text == (
+        "T1 is not inside area(Edge.RIGHT, share=0.5): it reaches 15 mm past its left side"
+    )
+
+
+def test_an_area_said_twice_of_a_part_is_named_once_with_both_statements():
+    board = _board(U1="A B C D E", R1="A X", T1="A")
+    u1, r1, t1 = board.parts("U1", "R1", "T1")
+    board.place(u1, centre=True, facing=Edge.TOP)
+    near = board.place(r1, near=u1.pin(1), within=4 * mm)
+    against = board.place(t1, against=Edge.TOP)
+    bottom = board.area(Edge.BOTTOM, share=1 / 4)
+    held = [
+        board.inside(bottom, [r1]),
+        board.inside(bottom, [r1, t1]),
+        board.inside(bottom, [t1]),
+    ]
+    looking, given = board.solve().problems
+    assert looking.text == (
+        "R1 has no place within 4 mm of U1.1, inside area(Edge.BOTTOM, share=0.25), that is on "
+        "the front of the board and clear of the other parts: the nearest is 8.3 mm from it, "
+        "with the edge of its area in the way"
+    )
+    assert looking.statements == (near, held[0], held[1])
+    assert given.text == (
+        "T1 is not inside area(Edge.BOTTOM, share=0.25): it reaches 22.5 mm past its top side"
+    )
+    assert given.statements == (held[1], held[2], against)
+
+
+def test_the_least_distance_is_from_every_pad_of_a_part_that_a_part_is_near():
+    # The resistor's net is on the module's second pin, 2 mm below its first, and the
+    # nearer that pin the shorter its tracks: it is no nearer either than said.
+    board = _board(U1="A B C D E", R1="B B")
+    u1, r1 = board.parts("U1", "R1")
+    board.place(u1, centre=True, facing=Edge.TOP)
+    board.place(r1, near=u1, within=6 * mm, at_least=3 * mm)
+    solution = board.solve()
+    assert solution.ok
+    apart = sorted(math.dist(a, b) for a in _pads(board, solution, "U1").values()
+                   for b in _pads(board, solution, "R1").values())  # fmt: skip
+    assert apart[0] == pytest.approx(3)
+
+
+def test_the_distance_said_to_be_the_nearest_keeps_the_least_distance_said():
+    # The area is as high as the resistor lying across the board, level with the pin:
+    # its places are a step of 0.1 mm apart to the left of the module, the nearest
+    # 1.8 mm from the pin, and none is between 1.85 mm and 1.89 mm from it.
+    def solved(within: float) -> tuple[Board, Solution]:
+        board = _board(U1="A B C D E", R1="A A")
+        board.place(board["U1"], centre=True, facing=Edge.TOP)
+        board.place(board["R1"], near=board["U1"].pin(1), within=within * mm,
+                    at_least=1.85 * mm)  # fmt: skip
+        board.inside(board.area(box=((0 * mm, "14.1 mm"), (30 * mm, "15.9 mm"))), [board["R1"]])
+        return board, board.solve()
+
+    (problem,) = solved(1.89)[1].problems
+    assert problem.text == (
+        "R1 has no place within 1.89 mm of U1.1, at least 1.85 mm from it, inside "
+        "area(box=((0 mm, 14.1 mm), (30 mm, 15.9 mm))), that is on the front of the board and "
+        "clear of the other parts: the nearest is 1.9 mm from it, with the edge of its area "
+        "and U1 in the way"
+    )
+    board, solution = solved(1.9)
+    assert solution.ok
+    assert any(note.startswith("R1: 1.9 mm from U1.1") for note in solution.chosen)

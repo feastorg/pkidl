@@ -9,6 +9,14 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- An area of the board, and parts said to be inside it. `left = board.area(Edge.LEFT,
+  share=1 / 3)` or `board.area(box=((0 * mm, 0 * mm), (30 * mm, 40 * mm)))` makes one,
+  and `board.inside(left, [jack, reg5, c1])` keeps each part's whole outline in it:
+  a part placed `near=` something or `after=` a part looks for its place there, and one
+  whose place is given outside it is a problem. `pkidl.area` and `pkidl.inside` are
+  the same for a block function.
+- `place(part, near=pin, within=15 * mm, at_least=5 * mm)`: a least distance beside
+  the most, pad to pad, for parts that are not to be packed against what they are near.
 - Where along an edge a part goes can be said. `place(jack, against=Edge.LEFT,
   along=1 / 3)` puts the middle of its outline a third of the way along the edge, and
   `along=12 * mm` that distance, from the edge's top end or its left end.

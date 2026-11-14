@@ -125,6 +125,7 @@ class Place(Statement):
     along: float | Length | None = None
     after: Part | None = None
     before: Part | None = None
+    at_least: Length | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.part, Part):
@@ -196,6 +197,13 @@ class Place(Statement):
                 raise ValueError(f"{self.part}: near= {self.near} is the part itself")
         if self.within is not None and self.within <= Length(0):
             raise ValueError(f"{self.part}: within= {self.within} leaves no room")
+        if self.at_least is not None:
+            if self.within is None:
+                raise ValueError(f"{self.part}: at_least= is how far at the least from what "
+                                 "it is near: give near= and within=")  # fmt: skip
+            if not Length(0) < self.at_least < self.within:
+                raise ValueError(f"{self.part}: at_least= {self.at_least} is more than "
+                                 f"nothing and less than within= {self.within}")  # fmt: skip
         if self.between is not None:
             pair = tuple(self.between)
             if len(pair) != 2 or not all(isinstance(p, Part) for p in pair):
@@ -208,7 +216,8 @@ class Place(Statement):
 
     def _said(self) -> Iterator[tuple[str, Any]]:
         for name in ("against", "inset", "between", "facing", "near", "within", "side",
-                     "toward", "centre", "outward", "along", "after", "before"):  # fmt: skip
+                     "toward", "centre", "outward", "along", "after", "before",
+                     "at_least"):  # fmt: skip
             if (value := getattr(self, name)) is not None and value is not False:
                 yield name, value
 
@@ -402,6 +411,97 @@ class Keepout(Statement):
         circuit.part(self.area.part.ref).area(self.area.name)
 
 
+@dataclass(frozen=True)
+class Region:
+    """A part of the board, for parts to be said to be inside: a *share* of it from an
+    *edge*, the whole of that edge's length, or a *box*, its left, top, right and bottom
+    from the board's top left corner. Made with ``area``."""
+
+    edge: Edge | None = None
+    share: float | None = None
+    box: tuple[Length, Length, Length, Length] | None = None
+
+    def __post_init__(self) -> None:
+        if (self.edge is None) == (self.box is None) or (
+            self.box is not None and self.share is not None
+        ):
+            raise ValueError("area() takes an edge and a share of the board from it, or a "
+                             "box=: one of them")  # fmt: skip
+        if self.edge is not None:
+            if not isinstance(self.edge, Edge):
+                raise TypeError(f"area() takes an edge, such as Edge.LEFT, not {self.edge!r}")
+            if isinstance(self.share, bool) or not isinstance(self.share, Real):
+                raise TypeError("area(): share= is how much of the board from that edge, "
+                                f"such as 1 / 3, not {self.share!r}")  # fmt: skip
+            if not 0 < self.share <= 1:
+                raise ValueError(f"area(): share= {self.share} is a share of the board, more "
+                                 "than 0 and no more than 1")  # fmt: skip
+            object.__setattr__(self, "share", float(self.share))
+        else:
+            assert self.box is not None
+            x0, y0, x1, y1 = self.box
+            if not (Length(0) <= x0 < x1 and Length(0) <= y0 < y1):
+                raise ValueError("area(): box= is two opposite corners, each across and down "
+                                 "from the board's top left, with room between them")  # fmt: skip
+
+    def __str__(self) -> str:
+        if self.edge is not None:
+            assert self.share is not None
+            # As short as says which share it is: two that differ read differently.
+            short = format(self.share, "g")
+            return f"area({self.edge}, share={short if float(short) == self.share else self.share})"
+        assert self.box is not None
+        x0, y0, x1, y1 = self.box
+        return f"area(box=(({x0}, {y0}), ({x1}, {y1})))"
+
+    def within(self, board: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+        """Where it is on a board with the box *board*, in nanometres."""
+        x0, y0, x1, y1 = board
+        if self.box is not None:
+            a, b, c, d = (v.nm for v in self.box)
+            return x0 + a, y0 + b, x0 + c, y0 + d
+        assert self.share is not None and self.edge is not None
+        w, h = round(self.share * (x1 - x0)), round(self.share * (y1 - y0))
+        return {
+            Edge.LEFT: (x0, y0, x0 + w, y1),
+            Edge.RIGHT: (x1 - w, y0, x1, y1),
+            Edge.TOP: (x0, y0, x1, y0 + h),
+            Edge.BOTTOM: (x0, y1 - h, x1, y1),
+        }[self.edge]
+
+
+@dataclass(frozen=True)
+class Inside(Statement):
+    """Parts that go inside an area of the board. Made with ``inside``."""
+
+    area: Region
+    parts: tuple[Part, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.area, Region):
+            raise TypeError("inside() takes an area of the board, such as "
+                            f"board.area(Edge.LEFT, share=1 / 3), not {self.area!r}")  # fmt: skip
+        if not self.parts or not all(isinstance(p, Part) for p in self.parts):
+            raise TypeError(f"inside({self.area}) takes the parts that go inside it")
+        object.__setattr__(self, "parts", tuple(sorted(dict.fromkeys(self.parts), key=_by_ref)))
+
+    def __str__(self) -> str:
+        return f"inside({self.area}, {', '.join(p.ref for p in self.parts)})"
+
+    def mentions(self) -> tuple[Part, ...]:
+        return self.parts
+
+    def data(self) -> dict[str, Any]:
+        # The area as it is and not as it reads, so that two never have one order by chance.
+        area = self.area
+        if area.box is not None:
+            said: dict[str, Any] = {"box": [v.nm for v in area.box]}
+        else:
+            assert area.edge is not None
+            said = {"edge": area.edge.value, "share": area.share}
+        return {"inside": said, "parts": [p.ref for p in self.parts]}
+
+
 BOARD = "the board"
 
 
@@ -465,13 +565,15 @@ def place(
     along: float | Fraction | Length | str | None = None,
     after: Part | None = None,
     before: Part | None = None,
+    at_least: Length | str | None = None,
 ) -> Place:
     """Say where *part* goes: *against* an edge of the board, *inset* from it, with the
     side of it named *outward* to that edge (``annotate(sides=)`` names a part's sides),
     and *along* the edge by a share of it, ``1 / 3``, or a distance, ``12 * mm``, from
     its top end or its left end to the part's middle, or *after* or *before* another
     part along it, as near that part as there is room;
-    *between* two parts; *facing* an edge; *near* a pin or a part, *within* a distance of it, and
+    *between* two parts; *facing* an edge; *near* a pin or a part, *within* a distance of it and
+    *at_least* a distance from it, and
     on the side of it that is *toward* an edge; at the *centre* of the board; on which
     *side* of the board, ``Side.BACK`` or ``"back"``. One statement can say several.
     Nothing moves until the board is built."""
@@ -483,7 +585,8 @@ def place(
                  toward, centre, outward,
                  length(along) if isinstance(along, str)
                  else float(along) if isinstance(along, Fraction) else along,
-                 after, before, source=_written_at())  # fmt: skip
+                 after, before, None if at_least is None else length(at_least),
+                 source=_written_at())  # fmt: skip
 
 
 def align(*parts: Part, grid: Length | str) -> Align:
@@ -516,6 +619,34 @@ def decouple(part: Part, caps: Iterable[Part], *, within: Length | str) -> Decou
         raise TypeError(f"decouple({part}) takes its capacitors together, as in "
                         f"decouple({part}, [{caps}], within=...)")  # fmt: skip
     return Decouple(part, tuple(caps), length(within), source=_written_at())
+
+
+def area(
+    edge: Edge | None = None,
+    *,
+    share: float | Fraction | None = None,
+    box: tuple[tuple[Length | str, Length | str], tuple[Length | str, Length | str]] | None = None,
+) -> Region:
+    """An area of the board: a *share* of it from an *edge*, ``area(Edge.LEFT, share=1 /
+    3)`` the left third, or a *box* by two opposite corners, each across and down from
+    the board's top left corner. It says nothing by itself: ``inside`` puts parts in it."""
+    if box is None:
+        return Region(edge, share)  # type: ignore[arg-type]
+    if not (isinstance(box, tuple | list) and len(box) == 2
+            and all(isinstance(xy, tuple | list) and len(xy) == 2 for xy in box)):  # fmt: skip
+        raise TypeError("area(): box= is two opposite corners, as in box=((0 * mm, 0 * mm), "
+                        f"(30 * mm, 40 * mm)), not {box!r}")  # fmt: skip
+    (ax, ay), (bx, by) = ((length(x), length(y)) for x, y in box)
+    return Region(edge, share, (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by)))  # type: ignore[arg-type]
+
+
+def inside(area: Region, parts: Iterable[Part]) -> Inside:
+    """Say that *parts* go inside *area*: the whole outline of each. An area keeps parts
+    in and does nothing else: it does not spread them over itself."""
+    if isinstance(parts, Part):
+        raise TypeError(f"inside({area}) takes its parts together, as in "
+                        f"inside({area}, [{parts}])")  # fmt: skip
+    return Inside(area, tuple(parts), source=_written_at())
 
 
 def keepout(area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
