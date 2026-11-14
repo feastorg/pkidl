@@ -236,6 +236,11 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A board routed again without its pours is checked as the run with them was, and what
+  the check finds is in the result as `Routed.left`: the pours are still drawn round
+  the tracks, and can leave a pad on a relief that joins an island of pour, which
+  KiCad's DRC rejects. The board is written as before and nothing is changed for what
+  is found. `scripts/corpus.py build` prints each as `left on the board as built`.
 - A part with no place within the distance said is told how far off the nearest place
   is, to the next 0.1 mm up, and what is most in the way: `R8 has no place within 8 mm
   of ESP1.5 ...: the nearest is 9.1 mm from it, with ESP1, IC1 and the board's edge in

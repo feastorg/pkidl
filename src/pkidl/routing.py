@@ -111,6 +111,10 @@ class Routed:
     # What a run with the pours known left cut off, for which the board was routed
     # again with those nets carried by tracks (``poured``).
     cut: tuple[Cut, ...] = ()
+    # What the same check finds of the board as it was routed last, where that was
+    # without its pours: they are still drawn, round the tracks that carry their nets,
+    # and what they leave wrong is on the board that is written.
+    left: tuple[Cut, ...] = ()
     # Whose word it is that the pours join what they are left to: ``KiCad``, or
     # ``model`` for pkidl's model of KiCad's fill. Empty where nothing was asked.
     judge: str = ""
@@ -230,9 +234,12 @@ def poured(
     nothing cut off and nothing the router says it left unmade, that run is the
     routing. Otherwise the nets cut off lose their planes and the board is routed
     again, by ``staged`` once no plane is left: what is routed last is the routing,
-    and ``Routed.cut`` has what each earlier run left cut off. Only the nets that have
-    pours are checked. What a router says it left unmade of the others, and of a board
-    routed with no pour left, is in each ``Run`` and is its own word.
+    and ``Routed.cut`` has what each earlier run left cut off. A board routed by
+    ``staged`` still has its pours drawn, as copper beside the tracks, and *cut* is
+    asked of it too: what it finds is ``Routed.left``, and nothing is changed for it.
+    Only the nets that have pours are checked. What a router says it left unmade of
+    the others, and of a board routed with no pour left, is in each ``Run`` and is its
+    own word.
     """
     planes, runs, cuts = list(job.planes), [], []
     while planes:
@@ -251,7 +258,8 @@ def poured(
         lost = {c.net for c in found} & {net for net, _, _ in planes}
         planes = [p for p in planes if p[0] not in lost] if lost else []
     rest = staged(router, replace(job, planes=()), outdir, name)
-    return Routed(rest.wires, rest.vias, (*runs, *rest.runs), tuple(cuts))
+    left = tuple(cut(rest.wires, rest.vias)) if job.planes else ()
+    return Routed(rest.wires, rest.vias, (*runs, *rest.runs), tuple(cuts), left)
 
 
 def lay(board: Board, routed: Routed) -> None:

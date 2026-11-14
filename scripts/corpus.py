@@ -167,6 +167,7 @@ def build(out: Path) -> int:
             "routed": [{"stage": stage, "unrouted": run.unrouted} for stage, run in runs],
             "pours_checked_by": built.routed.judge if built.routed is not None else "",
             "cut": [str(c) for c in built.routed.cut] if built.routed is not None else [],
+            "left": [str(c) for c in built.routed.left] if built.routed is not None else [],
         })  # fmt: skip
         print(f"{BOARDS[board_id][0]} {board_id}: built, {len(built.solution.poses)} parts placed"
               + "".join(f", {stage or 'rest'}: {run.unrouted} unrouted" for stage, run in runs)
@@ -174,6 +175,8 @@ def build(out: Path) -> int:
                  if built.routed is not None and built.routed.judge else ""))  # fmt: skip
         for c in built.routed.cut if built.routed is not None else ():
             print(f"    {c}")
+        for c in built.routed.left if built.routed is not None else ():
+            print(f"    left on the board as built: {c}")
     return 1 if failed else 0
 
 
