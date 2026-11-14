@@ -9,7 +9,8 @@ Each aspect of a part is said once. Two statements that give it differently are 
 conflict, reported with the line each was written on; neither wins.
 
 ``row(fans, along=Edge.BOTTOM)`` is about several parts at once: where they go along an
-edge, in the order they are named.
+edge, in the order they are named. ``row(resistors, beside=switch, toward=Edge.RIGHT)``
+is a row beside a part, on the side of it toward that edge.
 
 ``decouple(u1, caps, within=2 * mm)`` puts capacitors by a part's supply pins, one to
 a pin.
@@ -355,12 +356,15 @@ class Align(Statement):
 
 @dataclass(frozen=True)
 class Row(Statement):
-    """Parts spread along an edge, in the order named. Made with ``row``."""
+    """Parts spread along an edge, or side by side beside a part on the side of it
+    toward an edge, in the order named. Made with ``row``."""
 
     parts: tuple[Part, ...]
-    along: Edge
-    pitch: Length | str = "even"
+    along: Edge | None = None
+    pitch: Length | str | None = None
     inset: Length | None = None
+    beside: Part | None = None
+    toward: Edge | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "parts", tuple(self.parts))
@@ -369,35 +373,77 @@ class Row(Statement):
         if twice := [p.ref for p in dict.fromkeys(self.parts) if self.parts.count(p) > 1]:
             raise ValueError(f"row() has {', '.join(twice)} twice")
         if len(self.parts) < 2:
-            raise ValueError("row() takes two parts or more: one is placed against= the edge")
-        if not isinstance(self.along, Edge):
-            raise TypeError("row(): along= takes an edge, such as Edge.BOTTOM, "
-                            f"not {self.along!r}")  # fmt: skip
+            raise ValueError("row() takes two parts or more: one is placed against= the edge, "
+                             "or near= the part")  # fmt: skip
+        if self.along is not None and self.beside is not None:
+            raise ValueError("row(): along= says the row is along an edge, and beside= that "
+                             "it is beside a part: give one")  # fmt: skip
+        if self.toward is not None and self.beside is None:
+            raise ValueError("row(): toward= says which side of a part the row is on: give "
+                             "beside=")  # fmt: skip
+        if self.along is None and self.beside is None:
+            raise ValueError("row() does not say where: give along= an edge, or beside= a "
+                             "part and toward= an edge")  # fmt: skip
+        if self.beside is None:
+            if not isinstance(self.along, Edge):
+                raise TypeError("row(): along= takes an edge, such as Edge.BOTTOM, "
+                                f"not {self.along!r}")  # fmt: skip
+            if self.pitch is None:  # what is meant when no pitch is given
+                object.__setattr__(self, "pitch", "even")
+        else:
+            if not isinstance(self.beside, Part):
+                raise TypeError('row(): beside= takes a part, such as board["SW1"], '
+                                f"not {self.beside!r}")  # fmt: skip
+            if self.toward is None:
+                raise ValueError(f"row(): beside= {self.beside} does not say which side of "
+                                 "it: give toward= an edge")  # fmt: skip
+            if not isinstance(self.toward, Edge):
+                raise TypeError("row(): toward= takes an edge, such as Edge.RIGHT, "
+                                f"not {self.toward!r}")  # fmt: skip
+            if self.beside in self.parts:
+                raise ValueError(f"row(): beside= {self.beside} is one of the row's parts")
+            if self.inset is not None:
+                raise ValueError("row(): inset= is measured from an edge: give along=")
+            if self.pitch == "even":
+                raise ValueError('row(): pitch="even" spreads a row along an edge: beside a '
+                                 "part, give a length or leave it out")  # fmt: skip
         if isinstance(self.pitch, Length):
             if self.pitch <= Length(0):
                 raise ValueError(f"row(): pitch= {self.pitch} is not a step")
-        elif self.pitch != "even":
+        elif self.pitch != "even" and (self.pitch is not None or self.beside is None):
             raise TypeError(f'row(): pitch= takes "even" or a length, not {self.pitch!r}')
         if self.inset is not None and self.inset < Length(0):
             raise ValueError(f"row(): inset= {self.inset} is outside the board")
 
     def __str__(self) -> str:
+        parts = ", ".join(p.ref for p in self.parts)
+        if self.beside is not None:
+            pitch = "" if self.pitch is None else f", pitch={self.pitch}"
+            return f"row({parts}, beside={self.beside.ref}, toward={self.toward}{pitch})"
         pitch = '"even"' if self.pitch == "even" else self.pitch
         inset = "" if self.inset is None else f", inset={self.inset}"
-        return (f"row({', '.join(p.ref for p in self.parts)}, along={self.along}, "
-                f"pitch={pitch}{inset})")  # fmt: skip
+        return f"row({parts}, along={self.along}, pitch={pitch}{inset})"
 
     def mentions(self) -> tuple[Part, ...]:
-        return self.parts
+        return self.parts if self.beside is None else (*self.parts, self.beside)
 
     def claims(self) -> dict[tuple[str, str], object]:
         claims: dict[tuple[str, str], object] = {}
         for part in self.parts:
-            claims[part.ref, f"inset from the {self.along.value} edge"] = self.inset
-            claims[part.ref, f"row along the {self.along.value} edge"] = str(self)
+            if self.along is None:
+                claims[part.ref, "row beside a part"] = str(self)
+            else:
+                claims[part.ref, f"inset from the {self.along.value} edge"] = self.inset
+                claims[part.ref, f"row along the {self.along.value} edge"] = str(self)
         return claims
 
     def data(self) -> dict[str, Any]:
+        if self.beside is not None:
+            assert self.toward is not None
+            pitch = {} if self.pitch is None else {"pitch": _data(self.pitch)}
+            return {"row": [p.ref for p in self.parts], "beside": self.beside.ref,
+                    "toward": self.toward.value, **pitch}  # fmt: skip
+        assert self.along is not None
         inset = {} if self.inset is None else {"inset": self.inset.nm}
         return {"row": [p.ref for p in self.parts], "along": self.along.value,
                 "pitch": _data(self.pitch), **inset}  # fmt: skip
@@ -671,16 +717,28 @@ def align(*parts: Part, grid: Length | str) -> Align:
     return Align(parts, length(grid), source=_written_at())
 
 
-def row(parts: Iterable[Part], *, along: Edge, pitch: Length | str = "even",
-        inset: Length | str | None = None) -> Row:  # fmt: skip
-    """Say that *parts* go in a row *along* an edge of the board, in the order named:
-    from the left along the top or bottom, from the top down a side. Each lies against
-    the edge as ``place(part, against=)`` has it, *inset* from it likewise. With
-    *pitch* ``"even"`` the gaps are equal: between the parts, and from each end of the
-    edge to the part nearest it. With a length, the parts' middles are that far apart
-    and the row is about the middle of the edge."""
-    return Row(tuple(parts), along, pitch if pitch == "even" else length(pitch),
-               None if inset is None else length(inset), source=_written_at())  # fmt: skip
+def row(parts: Iterable[Part], *, along: Edge | None = None,
+        pitch: Length | str | None = None, inset: Length | str | None = None,
+        beside: Part | None = None, toward: Edge | None = None) -> Row:  # fmt: skip
+    """Say that *parts* go in a row, in the order named, one of two ways.
+
+    *along* an edge of the board: from the left along the top or bottom, from the top
+    down a side. Each lies against the edge as ``place(part, against=)`` has it, *inset*
+    from it likewise. With *pitch* ``"even"``, which is what no pitch means, the gaps
+    are equal: between the parts, and from each end of the edge to the part nearest it.
+    With a length, the parts' middles are that far apart and the row is about the
+    middle of the edge.
+
+    *beside* a part, on the side of it *toward* an edge: one above another down its left
+    or right side, the first uppermost, or from the left along its top or bottom. Each
+    stands across the row, its length away from the part, like the rungs of a ladder,
+    and all are turned the same way. Their middles are *pitch* apart, or as close as
+    keeps their outlines clear of each other and their pads as far apart as the board's
+    rules say. The row is as near the part as it is clear, its middle level with the
+    part's, and further out or along from there where something is in the way."""
+    return Row(tuple(parts), along, pitch if pitch is None or pitch == "even" else length(pitch),
+               None if inset is None else length(inset), beside, toward,
+               source=_written_at())  # fmt: skip
 
 
 def decouple(part: Part, caps: Iterable[Part], *, within: Length | str) -> Decouple:
