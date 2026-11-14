@@ -177,8 +177,8 @@ the board is the build's.
   `against=`, `between=`, `centre=True` or `near=` beside it. Two statements that
   give a part different points are a conflict, and a point and an edge said apart
   that do not agree are two places (decided 2026-11-14).
-- `on=` something fixed on the board: `sink = board.thing("530002B02500G")`, then
-  `place(limit, on=sink, at=(12.7 * mm, 0 * mm), facing=Edge.TOP)`. `board.thing` gives
+- `on=` something fixed on the board: `sink = board.fixed("530002B02500G")`, then
+  `place(limit, on=sink, at=(12.7 * mm, 0 * mm), facing=Edge.TOP)`. `board.fixed` gives
   the one thing fixed on the board with that footprint or that label, and for several
   of a kind the one `at=` a place in board millimetres. The point is then one of that
   thing, in its own footprint's coordinates as a footprint editor shows them, and it
@@ -186,9 +186,9 @@ the board is the build's.
   thing's origin. `of=` a pin is as before. The part may overlap that thing, which is
   what being on it is, and nothing else: a second fixed thing or another part in the
   way is still a problem, and a part that looks for its place keeps off both the
-  thing and the part on it. Which face the part is on is still `side=`'s to say. The
-  list of what is fixed was `board.fixed` already, so what has one of them by name
-  is `board.thing` (decided 2026-11-14).
+  thing and the part on it. Which face the part is on is still `side=`'s to say.
+  `board.fixed` is still the list of what is fixed that it was, to go through or
+  count, and called with a name it gives one of them (decided 2026-11-14).
 - An area of the board is made once and named, and parts are said to be inside it:
   `left = board.area(Edge.LEFT, share=1 / 3)`, the left third of the box around the
   outline, or `board.area(box=((0 * mm, 0 * mm), (30 * mm, 40 * mm)))`, two corners

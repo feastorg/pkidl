@@ -153,7 +153,7 @@ class Place(Statement):
         if self.on is not None:
             if not isinstance(self.on, Fixed):
                 raise TypeError(f"{self.part}: on= takes something fixed on the board, as "
-                                f"board.thing(name) gives it, not {self.on!r}")  # fmt: skip
+                                f"board.fixed(name) gives it, not {self.on!r}")  # fmt: skip
             if self.at is None:  # on a thing is at its origin, where nothing says
                 object.__setattr__(self, "at", (Length(0), Length(0)))
         if self.at is not None:
@@ -634,7 +634,7 @@ def place(
 ) -> Place:
     """Say where *part* goes: *at* a point of the board, two lengths across and down
     from its top left corner, where the footprint's origin goes, or the pin *of* the
-    part that is named; *on* something fixed on the board, as ``board.thing`` gives it,
+    part that is named; *on* something fixed on the board, as ``board.fixed`` gives it,
     *at* a point of that thing in its own footprint's coordinates, and free to overlap
     it; *against* an edge of the board, *inset* from it, with the
     side of it named *outward* to that edge (``annotate(sides=)`` names a part's sides),

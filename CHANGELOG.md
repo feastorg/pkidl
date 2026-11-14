@@ -14,7 +14,7 @@ Unreleased. History before this file was reconstructed from the git log.
   corner, and `of=pot.pin(1)` puts that pin there instead, whichever way round the part
   is. It is not looked for: off the board, over a hole or on another part it is a
   problem. Two different points for one part are a conflict.
-- A part on something fixed on the board. `sink = board.thing("530002B02500G")` has a
+- A part on something fixed on the board. `sink = board.fixed("530002B02500G")` has a
   fixed thing by its footprint or its label, and `place(limit, on=sink, at=(12.7 * mm,
   0 * mm))` puts the part at a point of it, in the thing's own coordinates and turned
   as the thing is. The part may overlap that thing, and nothing else.

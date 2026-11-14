@@ -3586,7 +3586,7 @@ def test_a_point_is_refused_beside_anything_else_that_says_where_at_the_line_tha
         board.place(k1, at=("15", "15 mm"))
     for bad in ("M", thing.label, k1, (115, 65)):
         with pytest.raises(TypeError, match="K1: on= takes something fixed on the board, as "
-                                            r"board.thing\(name\) gives it, not "):  # fmt: skip
+                                            r"board.fixed\(name\) gives it, not "):  # fmt: skip
             board.place(k1, on=bad)  # type: ignore[arg-type]
     # A thing of another board, or one never put on a board, is not on this one.
     other = _board(K1="A B")
@@ -3709,27 +3709,56 @@ def test_a_part_at_a_point_is_not_moved_and_what_is_wrong_there_is_said():
 def test_what_is_fixed_on_the_board_is_had_by_its_name():
     board = _board(T1="A")
     module = board.hole("RF:M", (115, 65), rot=90)
-    assert board.thing("M") is module and board.thing("RF:M") is module
-    assert board.thing("M at (115, 65)") is module
+    assert board.fixed("M") is module and board.fixed("RF:M") is module
+    assert board.fixed("M at (115, 65)") is module
     with pytest.raises(LookupError, match=r"nothing fixed on the board is 'Hole': there is "
                                           r"M at \(115, 65\)"):  # fmt: skip
-        board.thing("Hole")
+        board.fixed("Hole")
     one, two = board.hole("Mech:Hole", (103, 53)), board.hole("Mech:Hole", (127.5, 53))
-    assert board.thing("M") is module
+    assert board.fixed("M") is module
     with pytest.raises(LookupError, match=r"2 things fixed on the board are 'Hole': Hole at "
                                           r"\(103, 53\) and Hole at \(127.5, 53\): say which, "
-                                          r"as in thing\('Hole', at=\(103, 53\)\)"):  # fmt: skip
-        board.thing("Hole")
-    assert board.thing("Hole", at=(103, 53)) is one
-    assert board.thing("Mech:Hole", at=(127.5, 53)) is two
-    assert board.thing("Hole at (127.5, 53)") is two
+                                          r"as in fixed\('Hole', at=\(103, 53\)\)"):  # fmt: skip
+        board.fixed("Hole")
+    assert board.fixed("Hole", at=(103, 53)) is one
+    assert board.fixed("Mech:Hole", at=(127.5, 53)) is two
+    assert board.fixed("Hole at (127.5, 53)") is two
     with pytest.raises(LookupError, match=r"nothing fixed on the board is 'Hole' at \(1, 2\): "
                                           r"there is Hole at \(103, 53\), M at \(115, 65\) and "
                                           r"Hole at \(127.5, 53\)"):  # fmt: skip
-        board.thing("Hole", at=(1, 2))
+        board.fixed("Hole", at=(1, 2))
     with pytest.raises(LookupError, match="nothing fixed on the board is 'M': nothing is fixed "
                                           "on it"):  # fmt: skip
-        _board(T1="A").thing("M")
+        _board(T1="A").fixed("M")
+
+
+def test_what_is_fixed_on_the_board_is_still_a_list_and_is_called_for_one_by_name():
+    board = _board(T1="A")
+    assert board.fixed == [] and len(board.fixed) == 0 and not board.fixed
+    one = board.hole("Mech:Hole", (103, 53))
+    two = board.hole("Mech:Hole", (127.5, 53))
+    module = board.hole("RF:M", (115, 65))
+    assert isinstance(board.fixed, list) and board.fixed == [one, two, module]
+    assert len(board.fixed) == 3 and list(board.fixed) == [one, two, module]
+    assert [f.label for f in board.fixed] == ["Hole at (103, 53)", "Hole at (127.5, 53)",
+                                              "M at (115, 65)"]  # fmt: skip
+    assert board.fixed[0] is one and board.fixed[-1] is module and board.fixed[:2] == [one, two]
+    assert two in board.fixed and board.fixed.index(module) == 2
+    # Called, it is the one that goes by the name, and of several the one at a place.
+    assert board.fixed("M") is module
+    assert board.fixed("Hole", at=(127.5, 53)) is two and board.fixed("Hole", at=(103, 53)) is one
+    with pytest.raises(LookupError, match="2 things fixed on the board are 'Hole'"):
+        board.fixed("Hole")
+    # A plain list put in its place is called the same way, on a board made with one too.
+    board.fixed = [module, two]  # pyright: ignore[reportAttributeAccessIssue]
+    assert board.fixed == [module, two] and board.fixed("Hole") is two
+    made = Board(fixed=[one, module])  # pyright: ignore[reportArgumentType]
+    assert made.fixed == [one, module] and made.fixed("M") is module
+    # And it is emptied as a list is: nothing is then fixed, and nothing is had by name.
+    board.fixed.clear()
+    assert board.fixed == [] and board.solve().problems == ()
+    with pytest.raises(LookupError, match="nothing is fixed on it"):
+        board.fixed("M")
 
 
 def _on_the_module(rot: float, back: bool, **parts: str) -> tuple[Board, Any, Node]:
