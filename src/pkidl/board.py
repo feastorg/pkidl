@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from pkidl import annotations, intent
 from pkidl.circuit import Area, Circuit, Net, Part, Pin, Selector
+from pkidl.edge import arc_bounds
 from pkidl.edge import shape as edge_shape
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_at, place
 from pkidl.intent import (
@@ -105,26 +106,6 @@ def _hull(pts: list[Point]) -> list[Point]:
             upper.pop()
         upper.append(p)
     return [(round(x, 6), round(y, 6)) for x, y in lower[:-1] + upper[:-1]]
-
-
-def _arc_bounds(start: Point, mid: Point, end: Point) -> list[Point]:
-    """The points that bound the arc from *start* through *mid* to *end*: its ends, and
-    where it passes the left, right, top and bottom of its circle."""
-    (ax, ay), (bx, by), (cx, cy) = start, mid, end
-    d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by))
-    a2, b2, c2 = ax * ax + ay * ay, bx * bx + by * by, cx * cx + cy * cy
-    ox = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d
-    oy = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d
-    r = math.hypot(ax - ox, ay - oy)
-    a0, am, a1 = (math.degrees(math.atan2(y - oy, x - ox)) for x, y in (start, mid, end))
-    span = (a1 - a0) % 360
-    rising = (am - a0) % 360 <= span  # the angle grows from start to end, by way of mid
-    pts = [start, end]
-    for t in (0, 90, 180, 270):
-        along = (t - a0) % 360
-        if (along <= span) if rising else (along >= span):
-            pts.append((ox + r * math.cos(math.radians(t)), oy + r * math.sin(math.radians(t))))
-    return pts
 
 
 def _xy(p: Point, key: str = "xy") -> Node:
@@ -428,7 +409,7 @@ class Board:
                 node.append([Sym("pts"), *(_xy(p) for p in corners)])
                 box += corners
             elif kind == "gr_arc":
-                box += _arc_bounds(pts["start"], pts["mid"], pts["end"])
+                box += arc_bounds(pts["start"], pts["mid"], pts["end"])
             elif kind == "gr_circle":
                 (cx, cy), r = pts["center"], math.dist(pts["center"], pts["end"])
                 box += [(cx - r, cy - r), (cx + r, cy + r)]
