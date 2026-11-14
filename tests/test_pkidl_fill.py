@@ -4,8 +4,8 @@ from shapely.geometry import Point as SPoint
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
-from pkidl.fill import Cut, cut_off, fills, prefill
-from pkidl.sexpr import parse
+from pkidl.fill import Cut, cut_off, fills, prefill, spare, starved, unjoin
+from pkidl.sexpr import dumps, find_all, parse
 
 OUTLINE = [(0.0, 0.0), (30.0, 0.0), (30.0, 30.0), (0.0, 30.0)]
 TOL = 0.001  # mm: coordinates are rounded to 0.1 um, the DSN resolution
@@ -556,3 +556,175 @@ def test_what_the_gap_round_a_pad_leaves_thinner_than_the_fills_least_width_is_g
     # A fill that may be 0.1 mm thin has its way past, and the pad's spokes their copper.
     thin = _relieved("GND").replace("(min_thickness 0.25)", "(min_thickness 0.1)")
     assert cut_off(_items(*LEFT, MOST, *WIDE_GAP, plug, *taken, *REST, thin), OUTLINE, 0.5) == []
+
+
+def _back(net: str, a: tuple[float, float], b: tuple[float, float]) -> str:
+    return (f"(segment (start {a[0]} {a[1]}) (end {b[0]} {b[1]}) (width 0.5) "
+            f'(layer "B.Cu") (net "{net}"))')  # fmt: skip
+
+
+def _fence(x0: float, y0: float, x1: float, y1: float) -> list[str]:
+    """Tracks of another net all the way round a box of the front."""
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    return [_track("SIG", a, b, 0.25) for a, b in zip(corners, corners[1:] + corners[:1],
+                                                      strict=True)]  # fmt: skip
+
+
+def _holed(ref: str, x: float, y: float, more: str = "", of_fp: str = "") -> str:
+    """A footprint of one pad through the board."""
+    return _one(ref, x, y, kind="thru_hole rect", more=f"(drill 0.4) {more}", of_fp=of_fp)
+
+
+ALONE = _holed("A", 5, 15)  # a pad through the board, fenced in below
+ISLAND = _fence(3, 13, 7, 17)
+# Ground carried by track with no pour: from A along the back and up a via at C2, and
+# on the front from there to C3.
+CARRIED = [_back("GND", (5, 15), (25, 15)), '(via (at 25 15) (size 0.8) (net "GND"))',
+           _track("GND", (25, 15), (20, 20))]  # fmt: skip
+THREE_SIDES = [(-1.6, 0), (1.6, 0), (0, -1.6)]
+
+
+def _board(*nodes, zone=None):
+    return _items(*nodes, *REST, zone or _relieved("GND"))
+
+
+def _starved(items):
+    return [(c.net, c.pads, c.layer, c.starved) for c in starved(items, OUTLINE, 0.5)]
+
+
+def test_a_pad_on_an_island_of_pour_that_it_alone_holds_is_starved_and_can_be_spared():
+    items = _board(ALONE, *ISLAND, *CARRIED)
+    # The fence leaves a piece of the pour round the pad, and all four spokes of its
+    # relief reach it and nothing else of ground does. The track carries the pad, so
+    # nothing is cut off.
+    assert len(fills(items, OUTLINE, 0.5)) == 2
+    assert cut_off(items, OUTLINE, 0.5) == []
+    assert _starved(items) == [("GND", ("A.1",), "F.Cu", True)]
+    (found,) = starved(items, OUTLINE, 0.5)
+    assert str(found) == (
+        "A.1 is starved of the pour of GND on F.Cu: fewer than 2 spokes of its relief "
+        "reach a piece of the pour that another pad or a via of GND is on"
+    )
+    # Ground is one piece by its tracks, so any pad of it can be taken off the pour.
+    assert spare(items) == {"A.1", "C2.1", "C3.1"}
+    off = unjoin(items, ["A.1"])
+    # The island, now joined to nothing, is not filled; nothing is starved, and ground
+    # is one piece as it was.
+    assert len(fills(off, OUTLINE, 0.5)) == 1
+    assert starved(off, OUTLINE, 0.5) == [] and cut_off(off, OUTLINE, 0.5) == []
+    assert spare(off) == {"C2.1", "C3.1"}  # the pad joins no pour now: nothing to take off
+    # Only the pad is changed: every track, via and zone is the node it was.
+    assert [new is old for new, old in zip(off, items, strict=True)] == [
+        str(old[0]) != "footprint" or "A" not in str(old) for old in items
+    ]
+
+
+def test_a_starved_pad_that_only_the_pour_joins_cannot_be_spared():
+    items = _board(ALONE, *ISLAND)
+    assert _starved(items) == [("GND", ("A.1",), "F.Cu", True)]
+    assert [c.pads for c in cut_off(items, OUTLINE, 0.5)] == [("A.1",)]
+    assert spare(items) == set()
+    # Nor where a track joins it to one pad of the net and not to them all.
+    part_way = [*CARRIED[:2]]
+    assert spare(_board(ALONE, *ISLAND, *part_way)) == set()
+    assert _starved(_board(ALONE, *ISLAND, *part_way)) == [("GND", ("A.1",), "F.Cu", True)]
+
+
+def test_a_track_on_a_face_a_pad_has_no_copper_on_does_not_join_it():
+    # Ground's track runs along the back from under A. A pad through the board is on
+    # it; a pad on the front alone is not, and no pad of that net can be spared.
+    assert "A.1" in spare(_board(ALONE, *CARRIED))
+    assert spare(_board(_one("A", 5, 15), *CARRIED)) == set()
+
+
+def test_a_pad_with_one_spoke_into_the_body_of_the_pour_is_starved():
+    one = _board(ALONE, *_round(THREE_SIDES), *CARRIED)
+    assert len(fills(one, OUTLINE, 0.5)) == 1  # no island: the one spoke is to the pour
+    assert _starved(one) == [("GND", ("A.1",), "F.Cu", True)] and "A.1" in spare(one)
+    assert starved(unjoin(one, ["A.1"]), OUTLINE, 0.5) == []
+    # Two spokes are what KiCad asks, and a pad no spoke of which has its copper is
+    # not joined to the pour at all: neither is starved.
+    assert _starved(_board(ALONE, *_round(THREE_SIDES[:2]), *CARRIED)) == []
+    boxed = _round([(1.6 * dx, 1.6 * dy) for dx, dy in SIDES])
+    assert _starved(_board(ALONE, *boxed, *CARRIED)) == []
+
+
+def test_an_island_that_a_via_or_another_pad_of_the_net_is_on_starves_no_pad():
+    wide = _fence(1.5, 11, 12, 19)
+    assert _starved(_board(ALONE, *wide, *CARRIED)) == [("GND", ("A.1",), "F.Cu", True)]
+    via = '(via (at 9.5 15) (size 0.8) (net "GND"))'
+    assert _starved(_board(ALONE, *wide, *CARRIED, via)) == []
+    assert _starved(_board(ALONE, *wide, *CARRIED, _one("B", 9.5, 15))) == []
+    # A pad joined solidly holds the island as well as one on a relief.
+    solid = _one("B", 9.5, 15, more="(zone_connect 2)")
+    assert _starved(_board(ALONE, *wide, *CARRIED, solid)) == []
+    # One that joins no pour does not.
+    apart = _one("B", 9.5, 15, more="(zone_connect 0)")
+    assert _starved(_board(ALONE, *wide, *CARRIED, apart)) == [("GND", ("A.1",), "F.Cu", True)]
+
+
+def test_taking_one_pad_off_an_island_can_starve_the_other_pad_on_it():
+    # Two pads fenced in together. A has one spoke free and B all four: A is starved,
+    # and B is not while A's spoke is on the island with it.
+    b = _holed("B", 9.5, 15)
+    carried = [*CARRIED, _back("GND", (9.5, 15), (9.5, 22)), _back("GND", (9.5, 22), (25, 22)),
+               _back("GND", (25, 22), (25, 15))]  # fmt: skip
+    items = _board(ALONE, b, *_fence(1.5, 11, 12, 19),
+                   *_round([(-1.6, 0), (0, 1.6), (0, -1.6)]), *carried)  # fmt: skip
+    assert _starved(items) == [("GND", ("A.1",), "F.Cu", True)]
+    assert {"A.1", "B.1"} <= spare(items)
+    # With A off the pour the island is B's alone.
+    assert _starved(unjoin(items, ["A.1"])) == [("GND", ("B.1",), "F.Cu", True)]
+    both = unjoin(items, ["A.1", "B.1"])
+    assert _starved(both) == [] and len(fills(both, OUTLINE, 0.5)) == 1
+    assert cut_off(both, OUTLINE, 0.5) == cut_off(items, OUTLINE, 0.5) == []
+
+
+def test_a_pad_that_says_it_joins_no_pour_or_joins_solidly_is_not_starved_or_spared():
+    for says in ("(zone_connect 0)", "(zone_connect 2)"):
+        own, by_fp = _holed("A", 5, 15, says), _holed("A", 5, 15, of_fp=says)
+        for pad in (own, by_fp):
+            items = _board(pad, *ISLAND, *CARRIED)
+            assert _starved(items) == []
+            assert spare(items) == {"C2.1", "C3.1"}
+    # One that says a relief is as one that says nothing.
+    relief = _holed("A", 5, 15, "(zone_connect 1)")
+    items = _board(relief, *ISLAND, *CARRIED)
+    assert _starved(items) == [("GND", ("A.1",), "F.Cu", True)] and "A.1" in spare(items)
+
+
+def test_a_net_with_no_pour_has_no_pad_to_spare():
+    assert spare(_items(ALONE, *REST, *CARRIED)) == set()
+    assert starved(_items(ALONE, *REST, *CARRIED), OUTLINE, 0.5) == []
+
+
+def test_a_pad_is_taken_off_every_pour_by_what_is_written_on_it():
+    def pads(items):
+        return [dumps(pad) for item in items if item[0] == "footprint"
+                for pad in find_all(item, "pad")]  # fmt: skip
+
+    plain = '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net "GND"))'
+    with_uuid = plain[:-1] + ' (uuid "u"))'
+    said = plain[:-1] + " (zone_connect 1) (thermal_gap 0.3))"
+
+    def fp(ref, *made):
+        return f'(footprint "t" (at 5 5) (property "Reference" "{ref}") {" ".join(made)})'
+
+    two = plain.replace('"1"', '"2"')
+    items = _items(fp("A", plain, two), fp("B", with_uuid), fp("C", said), fp("A1", plain))
+    before = [dumps(item) for item in items]
+    off = unjoin(items, ["A.1", "B.1", "C.1"])
+    assert (
+        pads(off)
+        == [
+            dumps(parse(plain[:-1] + " (zone_connect 0))")),
+            dumps(parse(two)),  # another pad of the part
+            dumps(parse(plain[:-1] + ' (zone_connect 0) (uuid "u"))')),  # before its uuid
+            dumps(parse(said.replace("zone_connect 1", "zone_connect 0"))),  # said once
+            dumps(parse(plain)),  # A1 is not A
+        ]
+    )
+    # The board it was taken off is as it was, and with no pad named nothing is copied.
+    assert [dumps(item) for item in items] == before
+    assert all(new is old for new, old in zip(unjoin(items, []), items, strict=True))
+    assert unjoin(items, ["A.1"])[3] is items[3]

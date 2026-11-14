@@ -670,9 +670,40 @@ last. Its pours are still drawn,
 round the tracks that carry their nets, and can leave what KiCad's DRC rejects: a pad
 whose relief joins a piece of pour that joins nothing else. What the check finds of
 that board is in the result apart (`Routed.left`), since it is of the board that is
-written, and nothing is changed for it: the pour stays, and what to do about it is the
-board file's to say (decided 2026-11-13). KiCad reports a starved relief; the model
-does not, and where it is the judge `Routed.left` has only what is left unconnected.
+written. The pour stays, and no track is changed for what is found (decided 2026-11-13).
+
+One thing is mended (decided 2026-11-14, `pkidl.routing.relieved`). A pad starved of its
+pour, and joined to its net without the pour, is taken off the pour: `(zone_connect 0)`
+on that pad in the board that is written. The piece of pour it held, now joined to
+nothing, is not filled, and no connection of the board changes. This is of the board the
+build writes, whichever way it was routed. The pours are then filled and checked again,
+by KiCad where KiCad is the judge, since a pad off a pour can change what another pad's
+relief reaches, and again until a check names no pad to take off, five checks at most.
+Each pad taken off is a line of `Routed.unjoined`:
+
+```
+C5.1 is taken off the pour of GND on B.Cu, which starved its relief: a track joins it to the rest of GND
+```
+
+`Routed.left` is what the last check found. A starved pad that only the pour joins is
+there, left exactly as it was, and so is one still starved after the fifth check.
+
+A pad is joined to its net without the pour where the pads, tracks and vias of its net,
+as routed, are one piece with no pour among them (`pkidl.fill.spare`): the whole net,
+not the one pad, so that taking the pad off can part nothing that was joined through
+it. A net the pour partly carries has no pad taken off. A pad that says how it joins a
+pour, itself or by its footprint, is not overridden where it says none, which leaves
+nothing to take off, or solid, which has no relief to starve. Nothing in a board file
+asks for any of this: `board.pour` and `board.route` are as they were. A board with no
+pour, and one whose pours starve no pad, is written byte for byte as before.
+
+Where the model is the judge it finds the starved pads itself, of the board that is
+written (`pkidl.fill.starved`): a pad with a relief of which a spoke has its copper,
+and fewer than two spokes reach a piece of the fill that another pad of the net is
+joined to or a via of the net is on. A piece that only the pad holds is an island, and
+spokes into it do not count. It is not asked this of a run with the pours known, where
+a starved relief by KiCad's word sends the board to be routed again and by the model's
+does not.
 
 Who checks: KiCad, where it is installed. A build writes the board with what was
 proposed laid, has `kicad-cli pcb drc --refill-zones` fill it to the board's own rules,
@@ -725,6 +756,19 @@ it is there.
 KiCad's verdict is its unconnected items, and with them any pad it joins by fewer
 spokes than it asks (`starved_thermal`): connected, by its fill, and an error by its
 DRC, so not a pour to leave a net to.
+
+Of starved reliefs the model is not KiCad either, and here it errs toward naming a pad
+KiCad passes. Six boards built from the fan controller's and the next-bus clock's board
+files were filled and checked by KiCad 10.0.8 and by the model: KiCad named six pads
+starved, all of them with spokes into an island, and the model named those six and
+twelve more. KiCad counts a spoke the model's stricter test does not, and it passed
+some pads whose every spoke is into a piece of fill that nothing else of the net
+touches; what tells those from the ones it names was not found. A pad the model gives
+no spoke at all is not called starved, though KiCad may count one. Under the model a
+pad can so be taken off a pour that KiCad would have left it on, with a track joining
+it either way, and that is all the model's word can cost here. On the clock placed for
+hand assembly both name C5.1 and ESP1.2, and with those two pads off the pour KiCad
+finds no error and nothing unconnected.
 
 On the T0 board the first run stands: ground is its pour, with one segment of track and
 a via bringing the module's ground pad to it, where it had seven segments; KiCad finds the same

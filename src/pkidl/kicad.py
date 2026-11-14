@@ -63,7 +63,8 @@ def cuts(report: dict) -> list[Cut]:
     """What a KiCad DRC *report* (its JSON) says a board's pours do not carry: each
     unconnected item, and each pad joined to its pour by fewer spokes than KiCad asks
     (``starved_thermal``), which KiCad counts as connected and as an error. Each is a
-    ``Cut`` with the net and the pads KiCad names, in its words."""
+    ``Cut`` with the net and the pads KiCad names, in its words; a starved one is
+    marked so, with the layer KiCad says the relief is on."""
     starved = [v for v in report.get("violations", []) if v.get("type") == "starved_thermal"]
     found = []
     for item in [*report.get("unconnected_items", []), *starved]:
@@ -72,7 +73,13 @@ def cuts(report: dict) -> list[Cut]:
         pads = [f"{m.group(2)}.{m.group(1)}" for text in said
                 if (m := re.search(r"[Pp]ad (\S+) \[.*?\] of (\S+)", text))]  # fmt: skip
         what = " and ".join(said)
+        layer = None
         if item in starved:
             what = f"{item.get('description', 'starved thermal')}: {what}"
-        found.append(Cut(nets[0] if nets else "", tuple(pads), seen=what))
+            on = re.search(r"\(layer ([\w.]+)", what) or re.search(
+                r"Zone \[.*?\] on ([\w.]+)", what
+            )
+            layer = on.group(1) if on else None
+        found.append(Cut(nets[0] if nets else "", tuple(pads), layer, seen=what,
+                         starved=item in starved))  # fmt: skip
     return found

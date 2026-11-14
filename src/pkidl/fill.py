@@ -28,7 +28,9 @@ custom pad primitives are taken as their bounding rectangle.
 
 from __future__ import annotations
 
+import copy
 import math
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 
 from shapely import affinity
@@ -41,7 +43,7 @@ from shapely.ops import unary_union
 from pkidl.board import Point
 from pkidl.circuit import natural
 from pkidl.footprint import pad_at
-from pkidl.sexpr import Node, find, find_all
+from pkidl.sexpr import Node, Sym, find, find_all
 
 Plane = tuple[str, str, list[Point]]  # net, layer, hole-free polygon in board mm
 SPOKES = 2  # the spokes KiCad asks of a thermal relief before it calls it starved
@@ -310,24 +312,253 @@ class Cut:
     rest of their net: which *pads*, as ``C5.2``; the *layer* of the piece of pour they
     are on, or None where no pour reaches them; and the nets whose tracks run beside
     that piece, *fenced* in by them. One that KiCad reported has what KiCad said it
-    *seen* as, in its own words, and no layer."""
+    *seen* as, in its own words.
+
+    A *starved* one is not cut off: it is one pad whose thermal relief on *layer* does
+    not join it to its pour as KiCad asks (``starved``), whatever else joins it."""
 
     net: str
     pads: tuple[str, ...]
     layer: str | None = None
     fenced: tuple[str, ...] = ()
     seen: str = ""
+    starved: bool = False
 
     def __str__(self) -> str:
         if self.seen:
             return f"KiCad, of {self.net}: {self.seen}"
         pads = ", ".join(self.pads)
         are = "is" if len(self.pads) == 1 else "are"
+        if self.starved:
+            return (f"{pads} {are} starved of the pour of {self.net} on {self.layer}: fewer "
+                    f"than {SPOKES} spokes of its relief reach a piece of the pour that "
+                    f"another pad or a via of {self.net} is on")  # fmt: skip
         if self.layer is None:
             return f"{pads} {are} cut off from the rest of {self.net}: no pour reaches there"
         by = f", fenced in by tracks of {', '.join(self.fenced)}" if self.fenced else ""
         return (f"{pads} {are} cut off from the rest of {self.net}: on a piece of its pour "
                 f"on {self.layer} that is apart from the rest{by}")  # fmt: skip
+
+
+Copper_of = tuple[str, dict[str, BaseGeometry]]  # a pad's name or "", its copper by layer
+
+
+def _pours(items: list[Node]) -> list[Node]:
+    return [z for z in items if str(z[0]) == "zone" and find(z, "keepout") is None and _net(z)]
+
+
+def _on(items: list[Node], net: str) -> tuple[list[Copper_of], dict[int, tuple[Node, Node]],
+                                              set[int]]:  # fmt: skip
+    """What is on *net*: each pad, track and via, with its name where it is a pad and
+    its copper on each layer; for each that is a pad, its footprint and itself; and
+    which are vias."""
+    nodes: list[Copper_of] = []
+    of: dict[int, tuple[Node, Node]] = {}
+    vias: set[int] = set()
+    for item in items:
+        head = str(item[0])
+        if head == "footprint":
+            ref = next(str(p[2]) for p in find_all(item, "property") if p[1] == "Reference")
+            for pad in find_all(item, "pad"):
+                if _net(pad) == net and find(pad, "size") is not None:
+                    shape = _pad_shape(item, pad)
+                    of[len(nodes)] = (item, pad)
+                    nodes.append((f"{ref}.{pad[1]}", dict.fromkeys(_layers(pad), shape)))
+        elif head == "segment" and _net(item) == net:
+            line = LineString([_xy(item, "start"), _xy(item, "end")])
+            nodes.append(("", {_layers(item)[0]: line.buffer(_num(item, "width") / 2)}))
+        elif head == "via" and _net(item) == net:
+            dot = SPoint(_xy(item, "at")).buffer(_num(item, "size") / 2)
+            vias.add(len(nodes))
+            nodes.append(("", dict.fromkeys(("F.Cu", "B.Cu"), dot)))
+    return nodes, of, vias
+
+
+def _parts(
+    zones: list[Node],
+    pieces: list[tuple[str, str, Polygon]],
+    net: str,
+    nodes: list[Copper_of],
+    of: dict[int, tuple[Node, Node]],
+) -> tuple[list[tuple[str, Polygon]], list[tuple[Node, BaseGeometry]]]:
+    """The fill of *net* as KiCad leaves it: each piece cut away, by its gap, round every
+    pad of the net that has a relief there, and what is left thinner than the fill's
+    least width gone. A pad in the only way through a wall parts the pour so. Each part
+    with its layer, and for each its zone and the piece uncut."""
+    mine_zones = [z for z in zones if _net(z) == net]
+    poured: list[tuple[str, Polygon]] = []
+    whole: list[tuple[Node, BaseGeometry]] = []
+    for layer, piece in [(layer, piece) for n, layer, piece in pieces if n == net]:
+        on = [z for z in mine_zones if layer in _layers(z)]
+        at = piece.representative_point()
+        zone = next((z for z in on if _outline(z).contains(at)), on[0])
+        rings = unary_union([
+            nodes[k][1][layer].buffer(_gap(zone, of[k][1]))
+            for k in of if layer in nodes[k][1] and _relief(zone, *of[k]) == "thermal"
+        ] or [Polygon()])  # fmt: skip
+        thick = _num(zone, "min_thickness", default=0.25)
+        left = piece.difference(rings).buffer(-thick / 2).buffer(thick / 2)
+        for part in getattr(left, "geoms", [left]):
+            if isinstance(part, Polygon) and not part.is_empty:
+                poured.append((layer, part))
+                whole.append((zone, piece.buffer(0.001)))
+    return poured, whole
+
+
+def _joined(
+    nodes: list[Copper_of],
+    of: dict[int, tuple[Node, Node]],
+    poured: list[tuple[str, Polygon]],
+    whole: list[tuple[Node, BaseGeometry]],
+) -> tuple[Callable[[int], int], dict[int, list[int]], dict[int, list[int]]]:
+    """What the copper of a net joins: *nodes* and after them the parts of its pour
+    (*poured*, *whole*: ``_parts``), each numbered in that order. Gives the group a
+    number is in, as the number of one of the group; for each pad with a relief, the
+    part each spoke of its that has its copper reaches (a part's place in *poured*,
+    once a spoke); and for each pad joined solidly, the parts it touches.
+
+    With no parts it is what the pads, tracks and vias join by themselves."""
+    first = len(nodes)
+    nodes = [*nodes, *(("", {layer: part}) for layer, part in poured)]
+    near = [part.buffer(0.001) for _, part in poured]
+    group = list(range(len(nodes)))
+    spoked: dict[int, list[int]] = {}
+    solid: dict[int, list[int]] = {}
+
+    def root(i: int) -> int:
+        while group[i] != i:
+            group[i] = group[group[i]]
+            i = group[i]
+        return i
+
+    # A pad and the pour, as KiCad joins them: solidly where it touches, or by the
+    # spokes of its relief, each with copper from the pad across its own gap and on
+    # into a piece of the fill. Two spokes in all, and it is joined to every piece
+    # one of them reaches.
+    for i, (fp, pad) in of.items():
+        reached: list[int] = []
+        for j, (layer, part) in enumerate(poured):
+            if layer not in nodes[i][1]:
+                continue
+            zone, uncut = whole[j]
+            shape, how = nodes[i][1][layer], _relief(zone, fp, pad)
+            if how == "solid" and shape.intersects(part):
+                group[root(first + j)] = root(i)
+                solid.setdefault(i, []).append(j)
+            elif how == "thermal":
+                ring = shape.buffer(_gap(zone, pad))
+                reached += [j for s in _spokes(fp, pad, zone)
+                            if uncut.covers(s.intersection(ring).difference(shape))
+                            and near[j].covers(s.difference(ring))]  # fmt: skip
+        if reached:
+            spoked[i] = reached
+        if len(reached) >= SPOKES:
+            for j in reached:
+                group[root(first + j)] = root(i)
+    for i in range(len(nodes)):
+        mine = nodes[i][1]
+        for j in range(i + 1, len(nodes)):
+            if root(i) == root(j) or (i in of and j >= first):
+                continue
+            theirs = nodes[j][1]
+            if any(k in theirs and mine[k].intersects(theirs[k]) for k in mine):
+                group[root(j)] = root(i)
+    return root, spoked, solid
+
+
+def starved(
+    items: list[Node],
+    outline: list[Point] | Polygon,
+    edge: float,
+    clearances: dict[str, float] | None = None,
+) -> list[Cut]:
+    """The pads of a routed board that a thermal relief does not join to their pour as
+    KiCad asks, whatever else joins them: a ``Cut`` for each, ``starved``, with the
+    layer. Arguments as for ``fills``.
+
+    A pad is starved on a layer where a spoke of its relief has its copper, and fewer
+    than ``SPOKES`` of them reach a part of the fill that another pad of the net is
+    joined to, by a spoke or solidly, or that a via of the net is on. A part that only
+    the pad holds is an island KiCad does not count."""
+    zones = _pours(items)
+    pieces = fills(items, outline, edge, clearances)
+    found: list[Cut] = []
+    for net in sorted({_net(z) for z in zones}):
+        nodes, of, vias = _on(items, net)
+        poured, whole = _parts(zones, pieces, net, nodes, of)
+        _, spoked, solid = _joined(nodes, of, poured, whole)
+        held: dict[int, set[int]] = {}  # a part: the pads joined to it
+        for joins in (spoked, solid):
+            for i, parts in joins.items():
+                for j in parts:
+                    held.setdefault(j, set()).add(i)
+        for i, parts in sorted(spoked.items(), key=lambda kv: natural(nodes[kv[0]][0])):
+            for layer in sorted({poured[j][0] for j in parts}):
+                good = [
+                    j for j in parts
+                    if poured[j][0] == layer
+                    and (held[j] - {i} or any(nodes[v][1][layer].intersects(poured[j][1])
+                                              for v in vias))
+                ]  # fmt: skip
+                if len(good) < SPOKES:
+                    found.append(Cut(net, (nodes[i][0],), layer, starved=True))
+    return found
+
+
+def _says(fp: Node, pad: Node) -> str:
+    """What *pad*, or else its footprint, says of how it joins a pour: ``none``,
+    ``solid``, or nothing where neither says or what is said is a relief."""
+    own = find(pad, "zone_connect") or find(fp, "zone_connect")
+    return "" if own is None else {"0": "none", "2": "solid"}.get(str(own[1]), "")
+
+
+def spare(items: list[Node]) -> set[str]:
+    """The pads, as ``C5.1``, that a pour can be spared: taken off it with no
+    connection of the board changed. Each is on a poured net that its pads, tracks and
+    vias join into one piece by themselves, with no pour, and neither it nor its
+    footprint says that it joins no pour, which leaves nothing to take off, or joins
+    solidly, which has no relief to starve. A pad's copper is taken as the box round
+    it, as everywhere here: a track that ends in the cut corner of a rounded pad is
+    taken to join it."""
+    found: set[str] = set()
+    for net in sorted({_net(z) for z in _pours(items)}):
+        nodes, of, _ = _on(items, net)
+        root, _, _ = _joined(nodes, of, [], [])
+        if len({root(i) for i in of}) == 1:
+            said: dict[str, set[str]] = {}
+            for i, (fp, pad) in of.items():
+                said.setdefault(nodes[i][0], set()).add(_says(fp, pad))
+            found |= {name for name, says in said.items() if says == {""}}
+    return found
+
+
+def unjoin(items: list[Node], pads: Collection[str]) -> list[Node]:
+    """*items* with each of *pads* (as ``C5.1``) off every pour: ``(zone_connect 0)`` on
+    the pad, in a copy of its footprint. With no pads, the items as they are."""
+    out = []
+    for item in items:
+        named = [] if str(item[0]) != "footprint" else [
+            k for k, pad in enumerate(item)
+            if isinstance(pad, list) and pad and str(pad[0]) == "pad" and len(pad) > 1
+            and f"{_ref(item)}.{pad[1]}" in pads
+        ]  # fmt: skip
+        if named:
+            item = copy.deepcopy(item)
+            for k in named:
+                pad = item[k]
+                own, tail = find(pad, "zone_connect"), find(pad, "uuid")
+                if own is not None:
+                    own[1] = Sym("0")
+                elif tail is not None:
+                    pad.insert(pad.index(tail), [Sym("zone_connect"), Sym("0")])
+                else:
+                    pad.append([Sym("zone_connect"), Sym("0")])
+        out.append(item)
+    return out
+
+
+def _ref(fp: Node) -> str:
+    return next(str(p[2]) for p in find_all(fp, "property") if p[1] == "Reference")
 
 
 def cut_off(
@@ -343,89 +574,15 @@ def cut_off(
 
     A pad is joined to a piece of pour as KiCad joins it (see the module): by two
     spokes of its thermal relief, or by touching it where the connection is solid."""
-    zones = [z for z in items if str(z[0]) == "zone" and find(z, "keepout") is None and _net(z)]
+    zones = _pours(items)
     pieces = fills(items, outline, edge, clearances)
     cuts: list[Cut] = []
     for net in sorted({_net(z) for z in zones}):
-        # What is on the net: its name where it is a pad, and its copper on each layer.
-        nodes: list[tuple[str, dict[str, BaseGeometry]]] = []
-        of: dict[int, tuple[Node, Node]] = {}  # a node that is a pad: its footprint and pad
-        for item in items:
-            head = str(item[0])
-            if head == "footprint":
-                ref = next(str(p[2]) for p in find_all(item, "property") if p[1] == "Reference")
-                for pad in find_all(item, "pad"):
-                    if _net(pad) == net and find(pad, "size") is not None:
-                        shape = _pad_shape(item, pad)
-                        of[len(nodes)] = (item, pad)
-                        nodes.append((f"{ref}.{pad[1]}", dict.fromkeys(_layers(pad), shape)))
-            elif head == "segment" and _net(item) == net:
-                line = LineString([_xy(item, "start"), _xy(item, "end")])
-                nodes.append(("", {_layers(item)[0]: line.buffer(_num(item, "width") / 2)}))
-            elif head == "via" and _net(item) == net:
-                dot = SPoint(_xy(item, "at")).buffer(_num(item, "size") / 2)
-                nodes.append(("", dict.fromkeys(("F.Cu", "B.Cu"), dot)))
-        # The fill as KiCad leaves it: each piece cut away, by its gap, round every pad
-        # of the net that has a relief there, and what is left thinner than the fill's
-        # least width gone. A pad in the only way through a wall parts the pour so.
-        mine_zones = [z for z in zones if _net(z) == net]
-        poured: list[tuple[str, Polygon]] = []
-        whole: list[tuple[Node, BaseGeometry]] = []  # for each: its zone, the piece uncut
-        for layer, piece in [(layer, piece) for n, layer, piece in pieces if n == net]:
-            on = [z for z in mine_zones if layer in _layers(z)]
-            at = piece.representative_point()
-            zone = next((z for z in on if _outline(z).contains(at)), on[0])
-            rings = unary_union([
-                nodes[k][1][layer].buffer(_gap(zone, of[k][1]))
-                for k in of if layer in nodes[k][1] and _relief(zone, *of[k]) == "thermal"
-            ] or [Polygon()])  # fmt: skip
-            thick = _num(zone, "min_thickness", default=0.25)
-            left = piece.difference(rings).buffer(-thick / 2).buffer(thick / 2)
-            for part in getattr(left, "geoms", [left]):
-                if isinstance(part, Polygon) and not part.is_empty:
-                    poured.append((layer, part))
-                    whole.append((zone, piece.buffer(0.001)))
+        nodes, of, _ = _on(items, net)
+        poured, whole = _parts(zones, pieces, net, nodes, of)
         first = len(nodes)
-        for layer, part in poured:
-            nodes.append(("", {layer: part}))
-        near = [part.buffer(0.001) for _, part in poured]
-        group = list(range(len(nodes)))
-
-        def root(i: int, group: list[int] = group) -> int:
-            while group[i] != i:
-                group[i] = group[group[i]]
-                i = group[i]
-            return i
-
-        # A pad and the pour, as KiCad joins them: solidly where it touches, or by the
-        # spokes of its relief, each with copper from the pad across its own gap and on
-        # into a piece of the fill. Two spokes in all, and it is joined to every piece
-        # one of them reaches.
-        for i, (fp, pad) in of.items():
-            reached: list[int] = []
-            for j, (layer, part) in enumerate(poured):
-                if layer not in nodes[i][1]:
-                    continue
-                zone, uncut = whole[j]
-                shape, how = nodes[i][1][layer], _relief(zone, fp, pad)
-                if how == "solid" and shape.intersects(part):
-                    group[root(first + j)] = root(i)
-                elif how == "thermal":
-                    ring = shape.buffer(_gap(zone, pad))
-                    reached += [first + j for s in _spokes(fp, pad, zone)
-                                if uncut.covers(s.intersection(ring).difference(shape))
-                                and near[j].covers(s.difference(ring))]  # fmt: skip
-            if len(reached) >= SPOKES:
-                for j in reached:
-                    group[root(j)] = root(i)
-        for i in range(len(nodes)):
-            mine = nodes[i][1]
-            for j in range(i + 1, len(nodes)):
-                if root(i) == root(j) or (i in of and j >= first):
-                    continue
-                theirs = nodes[j][1]
-                if any(k in theirs and mine[k].intersects(theirs[k]) for k in mine):
-                    group[root(j)] = root(i)
+        root, _, _ = _joined(nodes, of, poured, whole)
+        nodes = [*nodes, *(("", {layer: part}) for layer, part in poured)]
         together: dict[int, list[int]] = {}
         for i in range(len(nodes)):
             together.setdefault(root(i), []).append(i)

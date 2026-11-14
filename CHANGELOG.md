@@ -307,6 +307,25 @@ Unreleased. History before this file was reconstructed from the git log.
   every part and no statement, whatever else the board had. A placement still moving
   after two dozen passes is that problem still, of the parts that moved and the
   statements about them.
+- A build takes a pad starved of its pour off the pour, where a track joins it. A pad
+  whose thermal relief reaches too little of its pour, or only an island of it that
+  nothing else of the net is on, is an error by KiCad's DRC (`starved_thermal`), and
+  the build wrote the board with it and said so in `Routed.left`. Where the pads,
+  tracks and vias of the pad's net are one piece without the pour, the pad is now
+  written with `(zone_connect 0)`, the pours are filled and checked again, by KiCad
+  where it is installed, and that is repeated until a check names no such pad, five
+  checks at most. No track, via or connection is changed. `Routed.unjoined` has a line
+  for each pad taken off (`C5.1 is taken off the pour of GND on B.Cu, which starved its
+  relief: a track joins it to the rest of GND`), and `scripts/corpus.py build` prints
+  them and writes them to `built.json`. A starved pad that only the pour joins is left
+  as it was and is in `Routed.left`, which is now what the last check found of the
+  board written, however it was routed. A pad that says `zone_connect` 0 or 2, itself
+  or by its footprint, is not touched. Where KiCad is not installed the model finds
+  the starved pads of the board to be written (`pkidl.fill.starved`), which it did not
+  report before; it names pads KiCad passes. A board with no pour, or whose pours
+  starve no pad, is written byte for byte as before. `Cut.starved` marks what was found
+  starved, with its layer, and `pkidl.fill.spare` and `pkidl.fill.unjoin` are the pads
+  that can be taken off and the board with them off. (#52)
 - A board routed again without its pours is checked as the run with them was, and what
   the check finds is in the result as `Routed.left`: the pours are still drawn round
   the tracks, and can leave a pad on a relief that joins an island of pour, which

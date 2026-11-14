@@ -266,7 +266,7 @@ to back, each at this heatsink's seat for a TO-220. The meters, the switches, th
 and the trimmer are at points in millimetres. The twelve sense resistors are in two
 banks of six beside the switch that picks among them: one line of twelve is longer than
 the panel has there. It is assembled by hand. It places all 45 parts with no problem in
-2 s, where the first took 13 s, and routes with nothing left. KiCad 10.0.6 finds the
+2 s, where the first took 13 s, and routes with nothing left. KiCad 10.0.8 finds the
 same four errors, the reference's own.
 
 Looked at as a design, by measurement of the written board and by eye on its render:

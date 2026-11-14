@@ -5,13 +5,15 @@ the stages are told apart from the engine. ``tests/test_pkidl_route.py`` runs th
 one.
 """
 
+from dataclasses import replace
+
 import pytest
 
 from pkidl.board import Board
 from pkidl.dsn import Via, Wire
 from pkidl.fill import Cut
 from pkidl.project import NetClass
-from pkidl.routing import Job, Routed, Run, lay, poured, staged
+from pkidl.routing import TURNS, Job, Routed, Run, lay, poured, relieved, staged
 from pkidl.sexpr import find, find_all, parse
 
 FOOTPRINT = """(footprint "R" (at {x} 10) (property "Reference" "{ref}")
@@ -407,3 +409,110 @@ def test_copper_the_job_came_with_is_kept_where_the_run_with_pours_stands(tmp_pa
     router = InTurn([Run((A_ROUTE,), (), 0)], [[]])
     whole = job(ONE_CLASS, planes=[GND_POUR], wires=[AUTHORED])
     assert poured(router, whole, tmp_path, "b", router.cut).wires == (A_ROUTE, AUTHORED)
+
+
+# As KiCad 10.0.6 said them of the next-bus clock with its parts apart for hand assembly.
+C5 = Cut("GND", ("C5.1",), "B.Cu", starved=True,
+         seen="Thermal relief connection to zone incomplete (layer B.Cu; 4 spokes connected "
+              "to isolated island): Zone [GND] on B.Cu and PTH pad 1 [GND] of C5")  # fmt: skip
+ESP1 = Cut("GND", ("ESP1.2",), "B.Cu", starved=True,
+           seen="Thermal relief connection to zone incomplete (layer B.Cu; 1 spokes connected "
+                "to isolated island): Zone [GND] on B.Cu and PTH pad 2 [GND] of ESP1")  # fmt: skip
+ROUTED = Routed((A_ROUTE, GND_ROUTE), (A_VIA,), (("", Run((A_ROUTE, GND_ROUTE), (A_VIA,), 0)),),
+                (STRANDED,), (C5, ESP1))  # fmt: skip
+
+
+class Judge:
+    """A check that answers the next of what it was told, and keeps what it was asked."""
+
+    def __init__(self, *answers):
+        self.answers, self.asked, self.spares = list(answers), [], 0
+
+    def check(self, off):
+        self.asked.append(tuple(off))
+        return self.answers.pop(0)
+
+    def spare(self, pads=("C5.1", "ESP1.2", "R1.1")):
+        def said():
+            self.spares += 1
+            return set(pads)
+
+        return said
+
+
+def test_a_pad_starved_of_its_pour_that_a_track_joins_is_taken_off_and_the_check_asked_again():
+    judge = Judge([])
+    routed = relieved(ROUTED, ROUTED.left, judge.check, judge.spare())
+    # Asked once more, with both pads off their pour, and it names none: that is all.
+    assert judge.asked == [("C5.1", "ESP1.2")]
+    assert routed.unjoined == (
+        "C5.1 is taken off the pour of GND on B.Cu, which starved its relief: a track "
+        "joins it to the rest of GND",
+        "ESP1.2 is taken off the pour of GND on B.Cu, which starved its relief: a track "
+        "joins it to the rest of GND",
+    )
+    assert routed.left == ()
+    # Nothing that was routed is changed, and what was cut off before is still said.
+    assert routed == replace(ROUTED, left=(), unjoined=routed.unjoined)
+
+
+def test_a_starved_pad_that_only_the_pour_joins_is_left_and_said():
+    judge = Judge([ESP1])
+    routed = relieved(ROUTED, ROUTED.left, judge.check, judge.spare(["C5.1"]))
+    assert judge.asked == [("C5.1",)]
+    assert [line.split()[0] for line in routed.unjoined] == ["C5.1"]
+    assert routed.left == (ESP1,)
+    # With no pad that can be spared the check is not asked again at all.
+    judge = Judge()
+    routed = relieved(ROUTED, ROUTED.left, judge.check, judge.spare([]))
+    assert judge.asked == [] and routed == ROUTED and routed.unjoined == ()
+
+
+def test_what_a_check_finds_with_a_pad_off_is_asked_about_in_its_turn():
+    # With C5's pad off the pour KiCad names ESP1's, and then one that is cut off.
+    judge = Judge([ESP1], [STRANDED])
+    routed = relieved(replace(ROUTED, left=(C5,)), [C5], judge.check, judge.spare())
+    assert judge.asked == [("C5.1",), ("C5.1", "ESP1.2")]
+    assert [line.split()[0] for line in routed.unjoined] == ["C5.1", "ESP1.2"]
+    assert routed.left == (STRANDED,)
+    assert judge.spares == 1  # the tracks are as routed all along: asked of once
+
+
+def test_a_board_whose_pours_starve_no_pad_is_asked_about_no_more():
+    judge = Judge()
+    plain = replace(ROUTED, left=(STRANDED, STARVED))
+    # What is cut off is not a pad to take off, nor is what KiCad said in words alone.
+    assert relieved(plain, plain.left, judge.check, judge.spare()) == plain
+    assert relieved(replace(plain, left=()), [], judge.check, judge.spare()).unjoined == ()
+    assert judge.asked == [] and judge.spares == 0
+
+
+def test_a_pad_the_check_still_names_once_it_is_off_is_not_taken_off_twice():
+    judge = Judge([C5])
+    routed = relieved(ROUTED, [C5], judge.check, judge.spare())
+    assert judge.asked == [("C5.1",)] and len(routed.unjoined) == 1
+    assert routed.left == (C5,)
+
+
+def test_the_pours_are_checked_again_no_more_than_a_set_number_of_times():
+    def named(n):
+        return Cut("GND", (f"R{n}.1",), "B.Cu", starved=True)
+
+    judge = Judge(*([named(n)] for n in range(2, 20)))
+    every = judge.spare([f"R{n}.1" for n in range(1, 20)])
+    routed = relieved(ROUTED, [named(1)], judge.check, every)
+    assert TURNS == 5 and len(judge.asked) == 5
+    assert [line.split()[0] for line in routed.unjoined] == ["R1.1", "R2.1", "R3.1", "R4.1", "R5.1"]
+    # What the last check names is still starved, and is said.
+    assert routed.left == (named(6),)
+    judge = Judge(*([named(n)] for n in range(2, 20)))
+    assert len(relieved(ROUTED, [named(1)], judge.check, every, turns=2).unjoined) == 2
+
+
+def test_a_pad_starved_by_a_pour_whose_layer_is_not_known_is_said_without_it():
+    judge = Judge([])
+    unknown = Cut("GND", ("C5.1",), starved=True, seen="x")
+    assert relieved(ROUTED, [unknown], judge.check, judge.spare()).unjoined == (
+        "C5.1 is taken off the pour of GND, which starved its relief: a track joins it to "
+        "the rest of GND",
+    )
