@@ -1149,3 +1149,188 @@ def test_paths_of_two_files_are_in_the_order_of_the_files_and_then_the_lines(boa
     early = replace(path(q1, j3, current=1 * A), source=Source("/boards/a/blocks.py", 99))
     board.add(late, early)
     assert [m.path for m in measure(board, tmp_path / "out", STRAIGHT)] == [early, late]
+
+
+# What each rule is bounded by.
+
+
+def test_an_end_beside_the_end_of_another_track_is_not_part_way_along_it(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # A track from J1 that stops 0.2 mm aside of the middle of one 0.5 mm wide, which
+    # goes on to J2: within that track's copper, and *by* in from its end. Part way
+    # along is more than a tenth of a micrometre from each end, whichever end it is.
+    stem = Wire("IN", F, 0.5, [(110.0, 60.0), (159.8, 60.0)])
+
+    def from_its_start(by: float) -> Reading:
+        bar = Wire("IN", F, 0.5, [(160.0, 60.0 - by), (160.0, 70.0), (210.0, 70.0), (210.0, 60.0)])
+        return one(board, tmp_path / f"start-{by}", stem, bar)
+
+    def from_its_end(by: float) -> Reading:
+        bar = Wire("IN", F, 0.5, [(210.0, 60.0), (210.0, 70.0), (160.0, 70.0), (160.0, 60.0 - by)])
+        return one(board, tmp_path / f"end-{by}", bar, stem)
+
+    for inside in (from_its_start, from_its_end):
+        assert inside(0.00005).ohms is None
+        joined = inside(0.0002)
+        assert joined.ohms == pytest.approx(ohms(49.8 + 70, 0.5), rel=1e-9)
+        assert joined.length == 119.8 * mm
+
+
+def test_pads_over_each_other_on_two_faces_are_joined_only_by_a_via_through_both(tmp_path):
+    # R2 on the back with its pad on OUT under R1.1, which is on the front at (189, 78).
+    board = carrier(tmp_path / "carrier", places={k: v for k, v in PLACES.items() if k != "R2"})
+    board.place(board["R2"], at=(88 * mm, 28 * mm), facing=Edge.TOP, side="back")
+    board.path(board["R1"], "OUT", board["R2"], current=1 * A)
+    built = board.build(tmp_path / "placed", router=Scripted())
+    placed = {str(p[2]): fp for fp in find_all(parse(built.board.read_text()), "footprint")
+              for p in find_all(fp, "property") if p[1] == "Reference"}  # fmt: skip
+    assert pad_xy(placed["R1"], "1") == pad_xy(placed["R2"], "1") == (189, 78)
+    layers = {ref: [str(layer) for pad in find_all(fp, "pad") if pad[1] == "1"
+                    for layer in find_all(pad, "layers")[0][1:]]
+              for ref, fp in placed.items()}  # fmt: skip
+    assert (layers["R1"], layers["R2"]) == ([F], [B])
+    apart = one(board, tmp_path / "apart")
+    assert apart.ohms is None and str(apart) == "OUT, R1 to R2: not joined by track"
+    through = one(board, tmp_path / "through", vias=(Via("OUT", VIA, (189.0, 78.0)),))
+    assert (through.ohms, through.length, through.narrowest) == (0.0, Length(0), None)
+
+
+def test_a_track_is_cut_where_its_middle_line_passes_within_a_place_of_a_point(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+
+    # Two tracks that cross at (160, 60), each going *past* it: their ends are no
+    # place together, and the crossing is too near the end of each to be one part way
+    # along. Each passes within a place of the end of the other, and is cut there.
+    def corner(past: float) -> Reading:
+        along = Wire("IN", F, 0.5, [(110.0, 60.0), (160.0 + past, 60.0)])
+        down = Wire("IN", F, 0.5, [(160.0, 60.0 - past), (160.0, 70.0), (210.0, 70.0),
+                                   (210.0, 60.0)])  # fmt: skip
+        return one(board, tmp_path / f"corner-{past}", along, down)
+
+    assert 2**0.5 * 0.00009 > 0.0001
+    met = corner(0.00009)
+    assert met.ohms == pytest.approx(ohms(120, 0.5), rel=1e-6)
+    assert met.length is not None and met.length.mm == pytest.approx(120, abs=2e-4)
+    assert corner(0.0).ohms == pytest.approx(ohms(120, 0.5), rel=1e-9)
+
+
+@pytest.mark.parametrize("order", [(0, 1, 2), (2, 0, 1), (0, 2, 1)])
+def test_two_points_that_are_each_one_place_with_a_third_are_one_place(board, tmp_path, order):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # Two tracks whose ends are 0.15 um apart are not joined; with the end of a third
+    # between the two, within a place of each, they are, whichever is laid first.
+    wires = (Wire("IN", F, 0.5, [(110.0, 60.0), (160.0, 60.0)]),
+             Wire("IN", F, 0.5, [(160.00015, 60.0), (210.0, 60.0)]),
+             Wire("IN", F, 0.5, [(160.000075, 60.0), (160.000075, 50.0)]))  # fmt: skip
+    assert one(board, tmp_path / "two", *wires[:2]).ohms is None
+    reading = one(board, tmp_path / "three", *(wires[n] for n in order))
+    assert reading.ohms == pytest.approx(ohms(100 - 0.00015, 0.5), rel=1e-8)
+
+
+def test_a_reading_that_failed_says_whether_its_net_has_a_pour(board, tmp_path, monkeypatch):
+    from pkidl import paths
+
+    j1, j2, j3 = board.parts("J1", "J2", "J3")
+    board.pour("GND", layer="B.Cu")
+    board.path(j1, "IN", j2, "GND", j3, current=1 * A)
+
+    def broken(*_):
+        raise RuntimeError("no such luck")
+
+    monkeypatch.setattr(paths, "_between", broken)
+    built = board.build(tmp_path / "out", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert built.routed is not None
+    (measured,) = built.routed.paths
+    assert [(str(r.stretch.net), bool(r.failed), r.poured) for r in measured.stretches] == [
+        ("IN", True, False),
+        ("GND", True, True),
+    ]
+
+
+@pytest.mark.parametrize("order", [(0, 1, 2), (2, 0, 1)])
+def test_a_track_that_stops_short_of_another_cuts_it_nowhere(board, tmp_path, order):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # A second track laid all but on the first: 0.2 um below its middle line at 130 mm
+    # and 0.2 um above it at 190 mm, so that it ends within its copper at each and
+    # crosses it at 160 mm. They are two strips either side of where they cross.
+    lapped = Wire("IN", F, 0.5, [(130.0, 59.9998), (190.0, 60.0002)])
+    two = one(board, tmp_path / "two", STRAIGHT, lapped)
+    assert two.ohms == pytest.approx(ohms(20 + 15 + 15 + 20, 0.5), rel=1e-6)
+    # A third comes down at 150 mm and stops 1 mm short of them: its line crosses
+    # theirs past its end, and that is no crossing. Neither is cut there, and what
+    # they are is what they were, whichever is laid first.
+    short = Wire("IN", F, 0.5, [(150.0, 70.0), (150.0, 61.0)])
+    wires = (STRAIGHT, lapped, short)
+    three = one(board, tmp_path / "three", *(wires[n] for n in order))
+    assert three.ohms == pytest.approx(two.ohms, rel=1e-9)
+    assert (three.length, three.narrowest) == (two.length, two.narrowest)
+
+
+# How it reads.
+
+
+def test_a_path_of_one_stretch_that_is_not_measured_says_so_of_the_one(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    line = _line_no() - 1
+    (measured,) = measure(board, tmp_path / "bare")
+    assert str(measured) == (
+        f"path(J1, IN, J2, current=1 A) ({HERE}:{line}): no figure: its one stretch is not "
+        "measured\n"
+        "  IN, J1 to J2: not joined by track"
+    )
+
+
+@pytest.mark.parametrize("unit", [A, mA])
+@pytest.mark.parametrize("count", [float("nan"), float("inf"), float("-inf")])
+def test_a_current_of_no_number_of_amps_is_refused(unit, count):
+    told = f"a current is a number of amps, not {count!r}: write 1 \\* A"
+    with pytest.raises(ValueError, match=told):
+        _ = count * unit
+    with pytest.raises(ValueError, match=told):
+        _ = unit * count
+
+
+def test_the_corpus_build_says_each_path_as_it_was_measured(board, tmp_path, monkeypatch, capsys):
+    import importlib.util
+    from types import SimpleNamespace
+
+    from pkidl.routing import Routed
+
+    j1, j2, q1, j3 = board.parts("J1", "J2", "Q1", "J3")
+    board.path(j1, "IN", j2, current=1 * A)
+    board.path(q1, j3, current=1 * A)
+    found = tuple(measure(board, tmp_path / "measured", STRAIGHT))
+    spec = importlib.util.spec_from_file_location(
+        "corpus_script", File(__file__).parent.parent / "scripts" / "corpus.py"
+    )
+    assert spec is not None and spec.loader is not None
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    routed = Routed((), (), (("", Run((), (), 0)),), paths=found)
+    made = SimpleNamespace(routed=routed, solution=SimpleNamespace(poses={}, chosen=()))
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "board.py").write_text(
+        "from types import SimpleNamespace\nboard = SimpleNamespace(build=lambda d, name: MADE)\n"
+    )
+    monkeypatch.setattr(script, "BOARDS", {"b": ("t0", "a board")})
+    monkeypatch.setattr(script, "board_dir", lambda board_id: tmp_path / "src")
+    monkeypatch.setattr("builtins.MADE", made, raising=False)
+    assert script.build(tmp_path / "out") == 0
+    said = json.loads((tmp_path / "out" / "b" / "built.json").read_text())
+    assert said["paths"] == [str(m) for m in found] and len(said["paths"]) == 2
+    printed = capsys.readouterr().out.splitlines()
+    assert printed[1:] == [
+        f"    {said['paths'][0].splitlines()[0]}",
+        "      IN, J1 to J2: 100 mm of track, 0.5 mm at its narrowest, 98.3 mΩ, 98.3 mV",
+        f"    {said['paths'][1].splitlines()[0]}",
+        "      OUT, Q1 to J3: not joined by track",
+    ]
+    # A board that was not routed has none.
+    monkeypatch.setattr("builtins.MADE", SimpleNamespace(routed=None, solution=made.solution))
+    assert script.build(tmp_path / "out") == 0
+    assert json.loads((tmp_path / "out" / "b" / "built.json").read_text())["paths"] == []
