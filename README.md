@@ -9,7 +9,7 @@ connects to what. [`docs/charter.md`](docs/charter.md) says what pkidl is for, a
 [`docs/roadmap.md`](docs/roadmap.md) where it stands.
 
 **Status:** early, and changing. Nothing is released, the API moves between commits,
-and one corpus board builds end to end so far.
+and four of the fifteen corpus boards have a board file that builds and routes so far.
 
 ## A board file
 
