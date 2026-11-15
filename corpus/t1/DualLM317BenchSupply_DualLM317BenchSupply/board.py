@@ -104,16 +104,14 @@ board.place(board["R101"], near=led.pin(2), within=12 * mm)
 # across the four 10 ohm resistors side by side, the least the current switch picks.
 # With the limit bypassed, what the regulator passes, taken here as the ammeter's full
 # scale of 1 A. In at either jack and through the power switch; then through the
-# limiter to the current switch and from the four resistors on to the regulator, or by
-# the bypass switch straight to the regulator; on through the output switch to the plus
-# post; and back from the minus post through the ammeter to ground. What cannot be said
-# is the copper between the current switch and the resistors: a net for each of the
-# switch's positions, and no one of them the way.
+# limiter and the current switch, in that position, to the four resistors and on to the
+# regulator, or by the bypass switch straight to the regulator; on through the output
+# switch to the plus post; and back from the minus post through the ammeter to ground.
+# The switch's other five positions go by other resistors, carry less, and are not said.
 bypass, output = board["SW102"], board["SW103"]
 for jack in jacks:
     board.path(jack, power, current=1 * A)
-board.path(power, limit, current, current=500 * mA)
-board.path(board.parts("R204..R207"), volts, current=500 * mA)
+board.path(power, limit, current, board.parts("R204..R207"), volts, current=500 * mA)
 board.path(power, bypass, volts, output, board["P101"], current=1 * A)
 board.path(board["P102"], ammeter, "GND", current=1 * A)
 
