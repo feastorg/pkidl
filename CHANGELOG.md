@@ -314,6 +314,9 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- The bench supply's two toggle switches are 12.7 mm between centres, where they were
+  10.0 mm.
+
 - The bench supply's board file keeps copper from under its heatsink
   (`keepout(sink, copper=True)`) and says how far its electrolytics and its diodes
   stand from it (`apart`), in place of two areas worked out by hand.
