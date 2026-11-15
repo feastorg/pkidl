@@ -623,7 +623,7 @@ def test_the_bench_supplys_board_file_says_the_way_its_load_current_goes():
     supply = CORPUS / "t1" / "DualLM317BenchSupply_DualLM317BenchSupply"
     board = runpy.run_path(str(supply / "board.py"))["board"]
     paths = [s for s in canonical(board.statements()) if isinstance(s, Said)]
-    assert [str(s.current) for s in paths] == ["1 A", "1 A", "500 mA", "1 A", "1 A"]
+    assert [str(s.current) for s in paths] == ["1.5 A", "1.5 A", "500 mA", "1.5 A", "1.5 A"]
     found = [s.stretches(board.circuit) for s in paths]
     # Nothing is wrong with any of them, which the solve says too: the test above.
     assert [wrong for _, wrong in found] == [()] * len(paths)

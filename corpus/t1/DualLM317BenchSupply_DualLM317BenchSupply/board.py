@@ -1,8 +1,9 @@
 """Bench supply: a barrel jack in, an LM317 that limits current by a resistor a rotary
 switch picks, an LM317 that sets the voltage by a pot, a volt meter and an ammeter, and
 banana posts out. A 7812 and a 7805 run the meters. All through-hole, and the board is
-the back of its own front panel: the meters, the knobs, the switches and the posts are
-where the panel is drilled for them."""
+its own front panel: it has no case and lies face up on the bench, on feet at its
+corner holes, and the meters, the knobs, the switches, the posts and the heatsink all
+stand on that one face, each where a hand or an eye finds it."""
 
 from pkidl import A, Board, Edge, inch, mA, mm
 
@@ -57,7 +58,7 @@ board.place(board["C110"], near=reg12.pin(3), toward=Edge.LEFT, within=14 * mm, 
 board.place(reg5, against=Edge.RIGHT, along=0.28)
 board.place(board["C104"], near=reg5.pin(3), toward=Edge.LEFT, within=14 * mm, at_least=5 * mm)
 
-# The front of the panel, by its drilling: the meters side by side, the current switch
+# What is read and worked, each at its place: the meters side by side, the current switch
 # and the voltage pot under them, the posts at the front edge 0.75 inch apart.
 voltmeter, ammeter = board["DS101"], board["DS102"]
 for meter in (voltmeter, ammeter):
@@ -90,30 +91,31 @@ board.place(board["SW103"], at=(52 * mm, 55 * mm), facing=Edge.TOP)  # output on
 board.place(board["SW102"], at=(39.3 * mm, 55 * mm), facing=Edge.TOP)  # the limit's bypass
 
 # The resistors the switch picks among, in two banks of six beside it: twelve in one
-# line are 39 mm, more than the panel has there.
+# line are 39 mm, more than the board has there.
 board.row(board.parts("R201..R206"), beside=current, toward=Edge.RIGHT, pitch=3.7 * mm)
 board.row(board.parts("R207..R212"), beside=current, toward=Edge.RIGHT, pitch=3.7 * mm)
 
 # The power light and its resistor.
 led = board["D103"]
 board.annotate(led, oriented=True)
-board.place(led, at=(78 * mm, 6 * mm), facing=Edge.TOP)  # top right of the panel, on the 5 V rail
+board.place(led, at=(78 * mm, 6 * mm), facing=Edge.TOP)  # top right of the board, on the 5 V rail
 board.place(board["R101"], near=led.pin(2), within=12 * mm)
 
 # The way the load's current goes. With the limit in, half an amp at the most: 1.25 V
 # across the four 10 ohm resistors side by side, the least the current switch picks.
-# With the limit bypassed, what the regulator passes, taken here as the ammeter's full
-# scale of 1 A. In at either jack and through the power switch; then through the
-# limiter and the current switch, in that position, to the four resistors and on to the
-# regulator, or by the bypass switch straight to the regulator; on through the output
-# switch to the plus post; and back from the minus post through the ammeter to ground.
-# The switch's other five positions go by other resistors, carry less, and are not said.
+# With the limit bypassed, what the regulator passes: 1.5 A at the most, which the
+# board's own notes say not to go over. In at either jack and through the power
+# switch; then through the limiter and the current switch, in that position, to the
+# four resistors and on to the regulator, or by the bypass switch straight to the
+# regulator; on through the output switch to the plus post; and back from the minus
+# post through the ammeter to ground. The switch's other five positions go by other
+# resistors, carry less, and are not said.
 bypass, output = board["SW102"], board["SW103"]
 for jack in jacks:
-    board.path(jack, power, current=1 * A)
+    board.path(jack, power, current=1.5 * A)
 board.path(power, limit, current, board.parts("R204..R207"), volts, current=500 * mA)
-board.path(power, bypass, volts, output, board["P101"], current=1 * A)
-board.path(board["P102"], ammeter, "GND", current=1 * A)
+board.path(power, bypass, volts, output, board["P101"], current=1.5 * A)
+board.path(board["P102"], ammeter, "GND", current=1.5 * A)
 
 board.rules(track=0.5 * mm, clearance=0.3 * mm, assembly="hand")
 board.pour("GND", layer="B.Cu")

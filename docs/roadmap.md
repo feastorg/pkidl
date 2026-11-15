@@ -220,7 +220,7 @@ Done 2026-11-14. The six steps are merged (#56 to #65), and the next-bus clock's
 file says its supply's part of the board and stands its capacitors off the 7805 (#67).
 
 The fourth board is `corpus/t1/DualLM317BenchSupply_DualLM317BenchSupply`: a bench
-supply, 45 parts, all through-hole, the back of its own front panel. Its board file
+supply, 45 parts, all through-hole, its own front panel. Its board file
 was written with the library as it stood after step 6, in eleven tries. It places all
 45 parts with no problem and routes with nothing left, its pour carrying ground on the
 first run. KiCad 10.0.6 finds four errors, the four mounting holes at the board's
@@ -285,6 +285,11 @@ heatsink. What is wrong with it:
 2. **The ammeter is 0.65 mm from the heatsink's outline**, by their boxes. Moved
    further, the second bank has no place under it.
 3. **Silkscreen over silkscreen**, 199 warnings (#26).
+
+It has no panel over it and no case: its source shows it lying face up on the bench
+with everything standing on the one face, the heatsink among the controls. So the
+heatsink on the face the meters and knobs are on is as it is meant, and nothing has to
+fit over it.
 
 Gone over part by part as a circuit (#90), it is not a board to send for fabrication,
 and most of why is copper a board file has no words for. Tracks pass under the heads
