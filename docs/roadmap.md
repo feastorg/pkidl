@@ -291,8 +291,13 @@ of the screws that hold the meters. Every track is 0.5 mm, the output's among th
 R102, which sets the voltage, reaches the regulator's output pin over track the load
 shares.
 
-Of what a board file can say, one thing is mended: the two toggles are 12.7 mm between
-centres, where they were 10.0 mm. Two are not. The posts' pads are 0.76 mm from the
+Of what a board file can say, two things are mended. The two toggles are 12.7 mm
+between centres, where they were 10.0 mm. And no copper is under the meters' screws on
+either face: each of the four has an area 6 mm across, named by hand from where the
+footprint has the hole, that the board file keeps clear. A track was 1.9 mm from the
+middle of a 3.2 mm hole and the pour 1.85 mm; none is nearer now than 4.1 mm, nor the
+pour than 3.0 mm. At 7 mm across the router leaves four connections unmade. Two are
+not mended. The posts' pads are 0.76 mm from the
 board's edge, and the posts moved in by 0.3 mm leave the second bank no place between
 them and the ammeter. And where R102 stands does not decide its track: with that one
 toggle moved 2.7 mm and no other part moved, the router took R102 to the output pin
