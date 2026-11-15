@@ -131,8 +131,9 @@ class Routed:
     # Each track and via the board that is written has in an area kept clear of copper
     # (``pkidl.build.kept_out``), a line each: nothing is changed for it.
     kept_out: tuple[str, ...] = ()
-    # Each path the board file said, in the order it was written, as the tracks of the
-    # board that is written have it (``pkidl.paths``): nothing is changed for it.
+    # Each path the board file said, as the tracks of the board that is written have it
+    # (``pkidl.paths``), in the order statements have (``pkidl.intent.canonical``): by
+    # the line each was written on. Nothing is changed for it.
     paths: tuple[Measured, ...] = ()
 
 

@@ -443,8 +443,7 @@ class Board:
     def path(self, *stops: Part | Net | str | Iterable[Part], current: Current) -> intent.Path:
         """Say the way a current goes through the board, stop by stop, and get the
         statement back. See ``pkidl.path``."""
-        statement = intent.path(*(self.net(s) if isinstance(s, str) else s for s in stops),
-                                current=current)  # fmt: skip
+        statement = intent.path(*stops, current=current)
         self.add(statement)
         return statement
 

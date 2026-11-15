@@ -588,7 +588,7 @@ class Path(Statement):
     """The way a current goes through the board, stop by stop, and how much of it. Made
     with ``path``."""
 
-    stops: tuple[Part | Net | str | tuple[Part, ...], ...]
+    stops: tuple[Part | Net | tuple[Part, ...], ...]
     current: Current
 
     def __post_init__(self) -> None:
@@ -615,6 +615,13 @@ class Path(Statement):
         if len(sides) < 2:
             raise ValueError("path() takes two parts or more: a stretch of it is the copper "
                              "between two of them")  # fmt: skip
+        # A net said by a name is the net, in the circuit the path's parts are of.
+        named = sides[0][0].circuit.net
+        object.__setattr__(self, "stops",
+                           tuple(named(s) if isinstance(s, str) else s for s in stops))  # fmt: skip
+        for side in sides:
+            if twice := [p.ref for p in side if side.count(p) > 1]:
+                raise ValueError(f"path(): {_stop(side)} has {twice[0]} twice")
         for one, two in zip(sides, sides[1:], strict=False):
             if both := [p.ref for p in one if p in two]:
                 raise ValueError(f"path(): {both[0]} is at both ends of a stretch")
@@ -626,7 +633,7 @@ class Path(Statement):
         return tuple(dict.fromkeys(p for stop in self.stops for p in _side(stop)))
 
     def data(self) -> dict[str, Any]:
-        stops = [{"net": s.name if isinstance(s, Net) else s} if isinstance(s, Net | str)
+        stops = [{"net": s.name} if isinstance(s, Net)
                  else s.ref if isinstance(s, Part) else [p.ref for p in s]
                  for s in self.stops]  # fmt: skip
         return {"path": stops, "current": self.current.ua}
@@ -634,7 +641,7 @@ class Path(Statement):
     def check(self, circuit: Circuit) -> None:
         super().check(circuit)
         for stop in self.stops:
-            if isinstance(stop, Net | str):
+            if isinstance(stop, Net):
                 circuit.net(stop)
 
     def stretches(
@@ -649,7 +656,7 @@ class Path(Statement):
         of that stretch, and one named first or last says where the path comes in or
         goes out and is no stretch. A part with no pin on a net named beside it is
         wrong."""
-        stops = [circuit.net(s) if isinstance(s, Net | str)
+        stops = [circuit.net(s) if isinstance(s, Net)
                  else tuple(circuit.part(p.ref) for p in _side(s)) for s in self.stops]  # fmt: skip
         found: list[Stretch] = []
         wrong: list[tuple[tuple[str, ...], str]] = []
@@ -1028,6 +1035,10 @@ def path(*stops: Part | Net | str | Iterable[Part], current: Current) -> Path:
     stretch is every pad the part has on the net, and every pad the parts of a list
     have, taken as one point.
 
+    A net's name is looked up where it is said, in the circuit the path's parts are of,
+    by the circuit's name for it or the one ``name_nets`` gave it: said by the net or
+    by either name, it is one statement.
+
     It places nothing and changes no copper. A build that routes the board measures
     each stretch on it (``pkidl.paths``), and the result has what it found
     (``Routed.paths``)."""
@@ -1119,12 +1130,12 @@ def _part_of(thing: Part | Pin) -> Part:
     return thing.part if isinstance(thing, Pin) else thing
 
 
-def _side(stop: Part | Net | str | tuple[Part, ...]) -> tuple[Part, ...]:
+def _side(stop: Part | Net | tuple[Part, ...]) -> tuple[Part, ...]:
     """The parts of a stop of a path: none where it is a net."""
     return stop if isinstance(stop, tuple) else (stop,) if isinstance(stop, Part) else ()
 
 
-def _stop(stop: Part | Net | str | tuple[Part, ...]) -> str:
+def _stop(stop: Part | Net | tuple[Part, ...]) -> str:
     """A stop of a path as a sentence has it: parts side by side as a list."""
     if isinstance(stop, tuple):
         return stop[0].ref if len(stop) == 1 else f"[{', '.join(p.ref for p in stop)}]"

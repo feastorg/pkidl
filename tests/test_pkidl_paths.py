@@ -18,6 +18,7 @@ import pytest
 import pkidl
 from pkidl import A, Board, Edge, mA, mm
 from pkidl.build import BuildError
+from pkidl.circuit import Circuit
 from pkidl.dsn import Via, Wire
 from pkidl.footprint import footprint_path, pad_xy
 from pkidl.importer import circuit, footprints, mechanical
@@ -172,6 +173,9 @@ def test_a_current_has_its_unit_and_reads_as_it_was_written():
     assert (str(1 * A), str(500 * mA), str(2.5 * A), str(1500 * mA)) == (
         "1 A", "500 mA", "2.5 A", "1.5 A")  # fmt: skip
     assert (1 * A).a == 1.0 and (250 * mA).a == 0.25
+    # To the nearest microamp, as a length is to the nearest nanometre.
+    assert int(2.01 * 1_000_000) == 2_009_999 and (2.01 * A).ua == 2_010_000
+    assert ((0.0006 * mA).ua, (0.0004 * mA).ua) == (1, 0)
     assert pkidl.A is A and pkidl.mA is mA and pkidl.path is path
 
 
@@ -204,6 +208,31 @@ def test_a_path_is_a_statement_of_its_stops_and_its_current(board):
         said.current = 2 * A  # type: ignore[misc]
 
 
+def test_a_path_said_any_way_is_one_statement_on_a_board_and_is_measured_once(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    (supply,) = board.name_nets({"IN": "SUPPLY"})
+    said = board.path(j1, "SUPPLY", j2, current=1 * A)
+    ways = [
+        path(j1, "SUPPLY", j2, current=1 * A),  # by the name the board file gave it
+        path(j1, "IN", j2, current=1 * A),  # by the circuit's
+        path(j1, supply, j2, current=1 * A),  # by the net
+        path(j1, board.net("SUPPLY"), j2, current=1000 * mA),
+    ]
+    for way in ways:
+        assert way == said and hash(way) == hash(said) and way.data() == said.data()
+        assert str(way) == str(said) and way.stops == said.stops
+        assert board.add(way) == (way,)
+    assert board.path(j1, "IN", j2, current=1 * A) == said
+    assert board.path(j1, supply, j2, current=1 * A) == said
+    assert [s for s in board.statements() if isinstance(s, Path)] == [said]
+    assert said.data() == {"path": ["J1", {"net": "IN"}, "J2"], "current": 1_000_000}
+    assert said.stops == (j1, supply, j2)
+    assert len(measure(board, tmp_path / "out", STRAIGHT)) == 1
+    # A name that is no net of the circuit is refused where it is said.
+    with pytest.raises(LookupError, match="no net 'NOWHERE'"):
+        path(j1, "NOWHERE", j2, current=1 * A)
+
+
 def test_a_net_a_path_names_is_one_of_the_circuit_by_either_name(board):
     j1, j2 = board.parts("J1", "J2")
     board.name_nets({"IN": "SUPPLY"})
@@ -212,8 +241,12 @@ def test_a_net_a_path_names_is_one_of_the_circuit_by_either_name(board):
     assert said.data()["path"] == ["J1", {"net": "IN"}, "J2"]
     with pytest.raises(LookupError, match="no net 'NOWHERE'"):
         board.path(j1, "NOWHERE", j2, current=1 * A)
-    with pytest.raises(LookupError, match=r"path\(J1, NOWHERE, J2, current=1 A\): no net"):
-        board.add(path(j1, "NOWHERE", j2, current=1 * A))
+    # A board whose circuit has the parts and not the net does not take the statement.
+    other = Board(circuit=Circuit({"nets": ["ELSE"], "parts": [
+        {"ref": ref, "value": "", "footprint": "", "pads": {"1": "ELSE"}} for ref in ("J1", "J2")
+    ]}))  # fmt: skip
+    with pytest.raises(LookupError, match=r"path\(J1, SUPPLY, J2, current=1 A\): no net 'IN'"):
+        other.add(said)
 
 
 @pytest.mark.parametrize(
@@ -256,6 +289,8 @@ def test_a_path_that_is_not_one_is_refused_where_it_is_said(board):
         board.path(j1, [j2, "IN"], current=1 * A)
     with pytest.raises(TypeError, match="takes parts, nets and lists of parts side by side"):
         board.path(j1, [], j2, current=1 * A)
+    with pytest.raises(ValueError, match=r"path\(\): \[Q1, Q1\] has Q1 twice"):
+        board.path(j1, [q1, q1], j2, current=1 * A)
     assert not [s for s in board.statements() if isinstance(s, Path)]
 
 
@@ -315,6 +350,17 @@ def test_parts_that_share_no_net_are_a_problem_with_the_line(board, tmp_path):
     with pytest.raises(BuildError, match="J1 and R1 share no net"):
         board.build(tmp_path / "out", router=Scripted())
     assert not (tmp_path / "out").exists()
+
+
+def test_a_net_is_shared_where_every_part_of_a_list_has_it(board):
+    j1, j3, q1, r1 = board.parts("J1", "J3", "Q1", "R1")
+    # J3 and R1 are both on OUT, and J1 is not; Q1 is.
+    for stops in ((j3, [r1, j1]), ([r1, j1], j3), ([j1, r1], j3), (j3, [j1, r1])):
+        (wrong,) = path(*stops, current=1 * A).stretches(board.circuit)[1]
+        assert wrong[1].endswith("share no net") and set(wrong[0]) == {"J1", "J3", "R1"}
+    (found,) = path(j3, [r1, q1], current=1 * A).stretches(board.circuit)[0]
+    assert str(found) == "OUT, J3 to [R1, Q1]"
+    assert [str(pin) for pin in found.ends[1]] == ["R1.1", "Q1.2", "Q1.3"]
 
 
 def test_parts_that_share_two_nets_are_told_to_name_the_one_meant(board):
@@ -421,7 +467,7 @@ def test_a_track_that_ends_on_the_middle_of_another_joins_it(board, tmp_path):
     # One that stops 1 mm short of the bar's copper does not.
     short = Wire("IN", F, 0.5, [(110.0, 60.0), (158.75, 60.0)])
     reading = one(board, tmp_path / "short", short, bar, rest)
-    assert reading.ohms is None and str(reading) == "IN, J1 to J2: not joined"
+    assert reading.ohms is None and str(reading) == "IN, J1 to J2: not joined by track"
 
 
 def test_a_track_joins_a_pad_where_its_end_is_within_the_pads_copper(board, tmp_path):
@@ -437,7 +483,7 @@ def test_a_track_joins_a_pad_where_its_end_is_within_the_pads_copper(board, tmp_
     assert inside.length == 99.5 * mm
     outside = to(208.99)  # 0.01 mm short, its round end over the pad
     assert (outside.ohms, outside.length, outside.narrowest, outside.volts) == (None,) * 4
-    assert str(outside) == "IN, J1 to J2: not joined"
+    assert str(outside) == "IN, J1 to J2: not joined by track"
 
 
 def test_a_route_through_a_via_is_the_sum_of_its_two_parts(board, tmp_path):
@@ -537,7 +583,7 @@ def test_ends_that_no_track_joins_are_said_to_be_not_joined_and_are_not_in_the_t
     assert str(measured) == (
         f"path(J1, Q1, J3, current=1 A) ({HERE}:{line}): 50.1 mΩ of track, 50.1 mV at 1 A, "
         "1 of its 2 stretches not in it\n"
-        "  IN, J1 to Q1: not joined\n"
+        "  IN, J1 to Q1: not joined by track\n"
         "  OUT, Q1 to J3: 51 mm of track, 0.5 mm at its narrowest, 50.1 mΩ, 50.1 mV"
     )
     # With no track at all there is no figure.
@@ -555,7 +601,22 @@ def test_ends_that_only_a_pour_joins_are_said_to_be_and_are_not_measured(board, 
     board.path(j1, "GND", j2, current=1 * A)
     reading = one(board, tmp_path / "out")
     assert reading.ohms is None and reading.poured
-    assert str(reading) == "GND, J1 to J2: joined through the pour of GND, not measured"
+    assert str(reading) == (
+        "GND, J1 to J2: not joined by track; GND has a pour, which is not measured"
+    )
+
+
+def test_a_pour_is_not_said_to_join_what_it_was_not_checked_to_reach(board, tmp_path):
+    # OUT is poured on the back, and the transistor's pads are on the front alone: no
+    # copper of that pour is anywhere near them. What is said is true all the same.
+    board.pour("OUT", layer="B.Cu")
+    board.path(board["Q1"], board["J3"], current=1 * A)
+    reading = one(board, tmp_path / "out")
+    assert reading.ohms is None and reading.poured
+    assert "joined through" not in str(reading)
+    assert str(reading) == (
+        "OUT, Q1 to J3: not joined by track; OUT has a pour, which is not measured"
+    )
 
 
 def test_a_track_beside_a_pour_is_measured_as_at_most_what_the_track_is(board, tmp_path):
@@ -572,16 +633,54 @@ def test_a_track_beside_a_pour_is_measured_as_at_most_what_the_track_is(board, t
         f"path(J1, GND, J2, current=1 A) ({HERE}:{line}): at most 98.3 mΩ of track, "
         "98.3 mV at 1 A\n"
         "  GND, J1 to J2: 100 mm of track, 0.5 mm at its narrowest, at most 98.3 mΩ, "
-        "98.3 mV: the pour of GND is beside it, not measured"
+        "98.3 mV: GND has a pour as well, which is not measured"
     )
 
 
-def test_paths_are_measured_in_the_order_they_were_written_each_once(board, tmp_path):
+def test_a_total_is_at_most_only_where_a_stretch_that_is_measured_is_poured(board, tmp_path):
+    j1, j2, q1 = board.parts("J1", "J2", "Q1")
+    board.pour("GND", layer="B.Cu")
+    # Round by ground, which is poured and has no track, and back on IN, which has a
+    # track and no pour: the one figure in the total is of copper with no pour.
+    board.path(j1, "GND", j2, "IN", q1, current=1 * A)
+    wire = Wire("IN", F, 0.5, [(210.0, 60.0), (210.0, 70.0), (118.0, 70.0), (118.0, 80.0)])
+    (measured,) = measure(board, tmp_path / "out", wire)
+    assert [(r.ohms is None, r.poured) for r in measured.stretches] == [
+        (True, True),
+        (False, False),
+    ]
+    assert (
+        str(measured)
+        .splitlines()[0]
+        .endswith("): 110 mΩ of track, 110 mV at 1 A, 1 of its 2 stretches not in it")
+    )
+
+
+def test_paths_are_measured_by_the_lines_they_were_written_on_each_once(board, tmp_path):
     j1, j2, q1, j3 = board.parts("J1", "J2", "Q1", "J3")
     first = board.path(j1, "IN", j2, current=1 * A)
     second = board.path(q1, j3, current=1 * A)
     board.add(first)
     assert [m.path for m in measure(board, tmp_path / "out", STRAIGHT)] == [first, second]
+    # Whatever order they were added in.
+    again = Board.from_inputs(tmp_path / "carrier")
+    for statement in reversed(board.statements()):
+        again.add(statement)
+    assert [m.path for m in measure(again, tmp_path / "again", STRAIGHT)] == [first, second]
+    # Two written on one line, in a loop, are in the order of what they say, as
+    # statements are everywhere, and not the order they were made in.
+    looped = [again.path(a, b, current=1 * A) for a, b in ((q1, j3), (j1, q1))]
+    assert looped[0].source == looped[1].source and looped[0] == second
+    assert [str(m.path) for m in measure(again, tmp_path / "looped", STRAIGHT)] == [
+        "path(J1, IN, J2, current=1 A)",
+        "path(Q1, J3, current=1 A)",
+        "path(J1, Q1, current=1 A)",
+    ]
+    assert [str(s) for s in again.statements() if isinstance(s, Path)] == [
+        "path(Q1, J3, current=1 A)",
+        "path(J1, IN, J2, current=1 A)",
+        "path(J1, Q1, current=1 A)",
+    ]
     # A board that says none has none.
     bare = Board.from_inputs(tmp_path / "carrier")
     for statement in board.statements():
@@ -613,3 +712,156 @@ def test_a_board_that_says_a_path_is_built_as_the_same_files_as_one_that_does_no
     hashes = _hashes(tmp_path / "said" / "out")
     assert hashes == _hashes(tmp_path / "plain" / "out")
     assert sorted(hashes) == ["carrier.kicad_pcb", "carrier.kicad_pro"]
+
+
+# What joins, and what is one piece of copper.
+
+
+def _chopped(step: float, wide: float) -> list[Wire]:
+    """J1.1 to J2.1 in a straight line, as tracks *step* long laid end to end."""
+    count = round(100 / step)
+    xs = [110 + 100 * i / count for i in range(count + 1)]
+    return [Wire("IN", F, wide, [(a, 60.0), (b, 60.0)]) for a, b in zip(xs, xs[1:], strict=False)]
+
+
+@pytest.mark.parametrize(
+    ("step", "wide"),
+    [(0.2, 0.5), (1, 0.5), (0.01, 3.0), (0.2, 3.0), (1, 3.0), (2, 3.0)],
+)
+def test_a_track_laid_in_pieces_however_short_is_the_one_track(board, tmp_path, step, wide):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    reading = one(board, tmp_path / "out", *_chopped(step, wide))
+    assert reading.ohms == pytest.approx(ohms(100, wide), rel=1e-9)
+    assert (reading.length, reading.narrowest) == (100 * mm, wide * mm)
+
+
+def test_a_short_piece_in_a_wide_track_is_as_long_as_it_is(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # 49 mm, 1 mm and 50 mm, 3 mm wide: the middle one shorter than half its width.
+    wires = [Wire("IN", F, 3.0, [(a, 60.0), (b, 60.0)])
+             for a, b in ((110.0, 159.0), (159.0, 160.0), (160.0, 210.0))]  # fmt: skip
+    reading = one(board, tmp_path / "straight", *wires)
+    assert reading.ohms == pytest.approx(ohms(100, 3.0), rel=1e-9) and reading.length == 100 * mm
+    # And round a corner: 50 mm along, 0.2 mm down, 50 mm along and 0.2 mm up to J2.
+    jog = Wire("IN", F, 3.0, [(110.0, 60.0), (160.0, 60.0), (160.0, 60.2), (210.0, 60.2),
+                              (210.0, 60.0)])  # fmt: skip
+    reading = one(board, tmp_path / "jog", jog)
+    assert reading.length == Length(100_400_000)
+    assert reading.ohms == pytest.approx(ohms(100.4, 3.0), rel=1e-9)
+
+
+def test_tracks_whose_ends_are_near_and_do_not_meet_are_not_joined(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+
+    # Two ends are joined where they are one place, and nowhere else: not 0.1 mm
+    # apart with their round ends over each other.
+    def gap(by: float) -> Reading:
+        return one(board, tmp_path / f"gap-{by}",
+                   Wire("IN", F, 0.5, [(110.0, 60.0), (160.0, 60.0)]),
+                   Wire("IN", F, 0.5, [(160.0 + by, 60.0), (210.0, 60.0)]))  # fmt: skip
+
+    assert gap(0.1).ohms is None
+    assert gap(0.00004).ohms == pytest.approx(ohms(100, 0.5), rel=1e-6)
+
+
+def test_an_end_joins_another_track_part_way_along_where_it_is_within_its_copper(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # A track from J1 that stops beside one 0.5 mm wide running down at 160 mm across,
+    # which goes on to J2: that track's copper is from 159.75 mm.
+    bar = Wire("IN", F, 0.5, [(160.0, 55.0), (160.0, 70.0), (210.0, 70.0), (210.0, 60.0)])
+
+    def to(x: float) -> Reading:
+        stem = Wire("IN", F, 0.5, [(110.0, 60.0), (x, 60.0)])
+        return one(board, tmp_path / f"to-{x}", stem, bar)
+
+    assert to(159.8).ohms == pytest.approx(ohms(49.8 + 70, 0.5), rel=1e-9)  # 0.2 mm off its middle
+    assert to(159.7).ohms is None  # 0.3 mm off: within its width and not its copper
+    # One that goes 0.2 mm past its middle crosses it there, and its end is no further.
+    assert to(160.2).ohms == pytest.approx(ohms(50 + 70, 0.5), rel=1e-9)
+
+
+def test_copper_laid_twice_is_the_one_strip_it_is(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # The same track again on the same layer.
+    reading = one(board, tmp_path / "twice", STRAIGHT, STRAIGHT)
+    assert reading.ohms == pytest.approx(ohms(100, 0.5), rel=1e-9)
+    # Two that run over each other from 150 to 170 mm.
+    lapped = (Wire("IN", F, 0.5, [(110.0, 60.0), (170.0, 60.0)]),
+              Wire("IN", F, 0.5, [(150.0, 60.0), (210.0, 60.0)]))  # fmt: skip
+    reading = one(board, tmp_path / "lapped", *lapped)
+    assert reading.ohms == pytest.approx(ohms(100, 0.5), rel=1e-9) and reading.length == 100 * mm
+    # A wide track laid over a narrow one is the wide one.
+    over = Wire("IN", F, 1.0, [(110.0, 60.0), (210.0, 60.0)])
+    reading = one(board, tmp_path / "over", STRAIGHT, over)
+    assert reading.ohms == pytest.approx(ohms(100, 1.0), rel=1e-9) and reading.narrowest == 1 * mm
+    # The same track on the other face is a second strip, as it was.
+    under = Wire("IN", B, 0.5, [(110.0, 60.0), (210.0, 60.0)])
+    assert one(board, tmp_path / "under", STRAIGHT, under).ohms == pytest.approx(
+        ohms(100, 0.5) / 2, rel=1e-9
+    )
+
+
+def test_a_via_part_way_along_a_track_joins_it_there(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # The front track goes on 40 mm past the via; the back one is from the via to J2.
+    front = Wire("IN", F, 0.5, [(110.0, 60.0), (200.0, 60.0)])
+    back = Wire("IN", B, 1.0, [(160.0, 60.0), (210.0, 60.0)])
+    reading = one(board, tmp_path / "out", front, back, vias=(Via("IN", VIA, (160.0, 60.0)),))
+    assert reading.ohms == pytest.approx(ohms(50, 0.5) + ohms(50, 1.0), rel=1e-9)
+    assert reading.length == 100 * mm
+    assert one(board, tmp_path / "none", front, back).ohms is None
+
+
+def test_a_track_that_runs_across_a_pad_joins_it_where_it_crosses(board, tmp_path):
+    board.path(board["Q1"], board["J3"], current=1 * A)
+
+    # Q1.3 is 1 mm square at (122, 81). A track from 6 mm left of it runs across it
+    # 0.4 mm below its middle and on to J3.1 at (172, 80).
+    def at(y: float) -> Reading:
+        wire = Wire("OUT", F, 0.5, [(116.0, y), (150.0, y), (150.0, 80.0), (172.0, 80.0)])
+        return one(board, tmp_path / f"at-{y}", wire)
+
+    across = at(81.4)
+    assert across.ohms == pytest.approx(ohms(28 + 1.4 + 22, 0.5), rel=1e-9)
+    assert across.length == 51.4 * mm
+    # One whose middle line misses the pad by 0.1 mm, its copper over the pad's edge,
+    # does not: a track is where its middle line is, as at its ends.
+    assert at(81.6).ohms is None
+
+
+def test_tracks_of_one_net_that_cross_on_one_layer_are_joined_where_they_cross(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    # From J1 along and down, to 5 mm past the second, which runs from 10 mm short of
+    # the first across it to J2: they cross at (160, 65), neither ending there.
+    first = Wire("IN", F, 0.5, [(110.0, 60.0), (160.0, 60.0), (160.0, 70.0)])
+    second = Wire("IN", F, 0.5, [(150.0, 65.0), (210.0, 65.0), (210.0, 60.0)])
+    reading = one(board, tmp_path / "front", first, second)
+    assert reading.ohms == pytest.approx(ohms(50 + 5 + 50 + 5, 0.5), rel=1e-9)
+    assert reading.length == 110 * mm
+    # On two faces they do not meet.
+    under = Wire("IN", B, 0.5, [(150.0, 65.0), (210.0, 65.0), (210.0, 60.0)])
+    assert one(board, tmp_path / "faces", first, under).ohms is None
+
+
+def test_a_figure_is_printed_plainly_whatever_its_size(board):
+    (stretch,) = path(board["Q1"], board["J3"], current=1 * A).stretches(board.circuit)[0]
+
+    def shown(ohms: float, volts: float) -> str:
+        return str(Reading(stretch, ohms, 10 * mm, 0.5 * mm, volts)).partition("narrowest, ")[2]
+
+    assert shown(0.99949, 0.0983) == "999 mΩ, 98.3 mV"
+    assert shown(0.9996, 0.9996) == "1 Ω, 1 V"
+    assert shown(1.0, 1.25) == "1 Ω, 1.25 V"
+    assert shown(999.4, 12.0) == "999 Ω, 12 V"
+    assert shown(999.6, 999.6) == "1 kΩ, 1 kV"
+    assert shown(1234.0, 1234.0) == "1.23 kΩ, 1.23 kV"
+    assert shown(2_500_000.0, 0.0) == "2500 kΩ, 0 mV"
+    assert shown(0.00009996, 0.000_000_16) == "0.1 mΩ, 0.00016 mV"
+    assert "e" not in shown(1.6e-12, 3.3e9)

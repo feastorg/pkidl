@@ -21,8 +21,13 @@ Unreleased. History before this file was reconstructed from the git log.
   as parallel, the drop at the path's current, and the length and narrowest width of
   the way of least resistance. Copper is taken at 20 °C (1.72e-8 Ω·m) and as thick as
   the new `rules(copper=)` says, 0.035 mm (1 oz) where it says nothing; a via and a
-  pad add no resistance; a pour is not measured, and neither is what a part is between
-  its own pads. It reports and changes nothing: a board file with a `path` builds the
+  pad add no resistance, and a track joins one where its middle line is within that
+  copper; tracks of one layer join where their ends meet, where one ends within the
+  other's copper and where they cross, and copper laid twice is one strip. A pour is
+  not measured, nor what it reaches: ends no track joins read `not joined by track`,
+  with `GND has a pour, which is not measured` where the net has one, and a stretch
+  whose net has a pour as well is given as `at most`. What a part is between its own
+  pads is not counted. It reports and changes nothing: a board file with a `path` builds the
   same files as without it. Sizing copper from a path is not in it yet. (#10, #90)
 - Copper, and parts, kept clear of something fixed on the board. `board.keepout(sink,
   copper=True)` takes what `board.fixed(name)` gives where it takes an area of a part:
