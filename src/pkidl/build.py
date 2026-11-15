@@ -12,7 +12,9 @@ that leaves connections unmade does not stop the build. What it says is in the r
 its pour that a track joins to its net is taken off the pour, and the result names it
 (``Routed.unjoined``). A track or a via the routed board has in an area kept clear of
 copper is in the result too (``Routed.kept_out``): the router was told of the area, and
-the board is checked for what it did.
+the board is checked for what it did. Each ``path`` the board file said is measured
+on the routed board, and what its copper comes to is in the result as well
+(``Routed.paths``).
 
 A router is given the box around the board's outline. The placement keeps parts inside
 the outline as it is drawn; the routing does not yet.
@@ -31,8 +33,10 @@ from shapely.geometry import LineString, Point, Polygon
 from pkidl.dsn import Via, Wire
 from pkidl.fill import Cut, cut_off, prefill, spare, starved, unjoin
 from pkidl.footprint import Placement, place
-from pkidl.intent import Fixed, Route, Rules
+from pkidl.intent import Fixed, Route, Rules, canonical
+from pkidl.intent import Path as Said
 from pkidl.kicad import kicad_command, unconnected
+from pkidl.paths import measured
 from pkidl.placement import Solution
 from pkidl.project import NetClass, write_project
 from pkidl.route import Freerouting
@@ -269,7 +273,10 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
             lay(built, routed)
             areas = [(spoken, layer, box) for spoken, (layer, box)
                      in zip(called, keepouts, strict=True)]  # fmt: skip
+            paths = [s for s in canonical(said) if isinstance(s, Said)]
             routed = replace(routed, judge=judged[-1] if judged else "",
-                             kept_out=kept_out(built.items, areas))  # fmt: skip
+                             kept_out=kept_out(built.items, areas),
+                             paths=measured(built.items, paths, board.circuit,
+                                            rules.copper))  # fmt: skip
         project = projected(outdir / f"{name}.kicad_pro")
     return Built(built.write(outdir / f"{name}.kicad_pcb"), project, solution, routed)

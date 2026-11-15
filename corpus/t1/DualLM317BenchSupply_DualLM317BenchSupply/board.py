@@ -4,7 +4,7 @@ banana posts out. A 7812 and a 7805 run the meters. All through-hole, and the bo
 the back of its own front panel: the meters, the knobs, the switches and the posts are
 where the panel is drilled for them."""
 
-from pkidl import Board, Edge, inch, mm
+from pkidl import A, Board, Edge, inch, mA, mm
 
 board = Board.from_inputs(__file__)  # the circuit, outline, holes and footprints beside it
 board.rails("12V", "5V")
@@ -99,6 +99,21 @@ led = board["D103"]
 board.annotate(led, oriented=True)
 board.place(led, at=(78 * mm, 6 * mm), facing=Edge.TOP)  # top right of the panel, on the 5 V rail
 board.place(board["R101"], near=led.pin(2), within=12 * mm)
+
+# The way the load's current goes. With the limit in, half an amp at the most: 1.25 V
+# across the four 10 ohm resistors side by side, the least the current switch picks.
+# With the limit bypassed, what the regulator passes, taken here as the ammeter's full
+# scale of 1 A. In at either jack and through the power switch; then through the
+# limiter and the current switch, in that position, to the four resistors and on to the
+# regulator, or by the bypass switch straight to the regulator; on through the output
+# switch to the plus post; and back from the minus post through the ammeter to ground.
+# The switch's other five positions go by other resistors, carry less, and are not said.
+bypass, output = board["SW102"], board["SW103"]
+for jack in jacks:
+    board.path(jack, power, current=1 * A)
+board.path(power, limit, current, board.parts("R204..R207"), volts, current=500 * mA)
+board.path(power, bypass, volts, output, board["P101"], current=1 * A)
+board.path(board["P102"], ammeter, "GND", current=1 * A)
 
 board.rules(track=0.5 * mm, clearance=0.3 * mm, assembly="hand")
 board.pour("GND", layer="B.Cu")

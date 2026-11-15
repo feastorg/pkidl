@@ -7,8 +7,21 @@ judge them. See ``docs/charter.md``.
 
 from pkidl.board import Board
 from pkidl.circuit import on_net, where
-from pkidl.intent import Edge, Side, align, apart, area, decouple, inside, keepout, place, row
-from pkidl.units import inch, mil, mm
+from pkidl.intent import (
+    Edge,
+    Side,
+    align,
+    apart,
+    area,
+    decouple,
+    inside,
+    keepout,
+    path,
+    place,
+    row,
+)
+from pkidl.units import A, inch, mA, mil, mm
 
-__all__ = ["Board", "Edge", "Side", "align", "apart", "area", "decouple", "inch", "inside",
-           "keepout", "mil", "mm", "on_net", "place", "row", "where"]  # fmt: skip
+__all__ = ["A", "Board", "Edge", "Side", "align", "apart", "area", "decouple", "inch",
+           "inside", "keepout", "mA", "mil", "mm", "on_net", "path", "place", "row",
+           "where"]  # fmt: skip

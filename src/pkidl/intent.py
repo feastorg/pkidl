@@ -23,6 +23,10 @@ part. It says nothing of where the part goes, so keepouts add up and never confl
 ``apart(caps, sink, 5 * mm)`` keeps parts a distance from something fixed on the board.
 It places nothing: a part that looks for its place looks that far from the thing.
 
+``path(jack, switch, regulator, current=1 * A)`` is the way a current goes through the
+board, stop by stop, and how much of it. It places nothing and changes no copper: the
+copper between each two stops is measured on the board that is routed.
+
 ``rules(track=0.25 * mm, clearance=0.2 * mm)`` and ``route()`` are about the board, not
 a part: the widths its copper is held to, and that it is routed when it is built.
 """
@@ -37,13 +41,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from fractions import Fraction
 from numbers import Real
-from pathlib import Path
+from pathlib import Path as File
 from typing import Any
 
-from pkidl.circuit import Area, Circuit, Part, Pin, natural
-from pkidl.units import Length, length, mm
+from pkidl.circuit import Area, Circuit, Net, Part, Pin, natural
+from pkidl.units import Current, Length, length, mm
 
-_HERE = str(Path(__file__).parent) + os.sep
+_HERE = str(File(__file__).parent) + os.sep
 
 
 class Edge(Enum):
@@ -76,7 +80,7 @@ class Source:
     line: int
 
     def __str__(self) -> str:
-        return f"{Path(self.file).name}:{self.line}"
+        return f"{File(self.file).name}:{self.line}"
 
 
 def _written_at() -> Source | None:
@@ -567,6 +571,135 @@ class Apart(Statement):
 
 
 @dataclass(frozen=True)
+class Stretch:
+    """One net of a path between two of its stops, and its two ends: each every pin the
+    stop has on the net, taken as one point."""
+
+    net: Net
+    ends: tuple[tuple[Pin, ...], tuple[Pin, ...]]
+
+    def __str__(self) -> str:
+        one, two = (_stop(tuple(dict.fromkeys(pin.part for pin in end))) for end in self.ends)
+        return f"{self.net}, {one} to {two}"
+
+
+@dataclass(frozen=True)
+class Path(Statement):
+    """The way a current goes through the board, stop by stop, and how much of it. Made
+    with ``path``."""
+
+    stops: tuple[Part | Net | tuple[Part, ...], ...]
+    current: Current
+
+    def __post_init__(self) -> None:
+        stops = tuple(tuple(s) if isinstance(s, Iterable) and not isinstance(s, str) else s
+                      for s in self.stops)  # fmt: skip
+        for stop in stops:
+            if not (isinstance(stop, Part | Net | str)
+                    or (isinstance(stop, tuple) and stop
+                        and all(isinstance(p, Part) for p in stop))):  # fmt: skip
+                raise TypeError("path() takes parts, nets and lists of parts side by side, "
+                                f'such as board["U1"], "GND" and board.parts("Q1", "Q2"), '
+                                f"not {stop!r}")  # fmt: skip
+        object.__setattr__(self, "stops", stops)
+        if not isinstance(self.current, Current):
+            raise TypeError("path(): current= takes a current, such as 1 * A or 500 * mA, "
+                            f"not {self.current!r}")  # fmt: skip
+        if self.current <= Current(0):
+            raise ValueError(f"path(): current= {self.current} is not a current to carry")
+        for one, two in zip(stops, stops[1:], strict=False):
+            if isinstance(one, Net | str) and isinstance(two, Net | str):
+                raise ValueError(f"path(): {one} and {two} are two nets in a row: a net is "
+                                 "named between the two parts it joins")  # fmt: skip
+        sides = [_side(stop) for stop in stops if not isinstance(stop, Net | str)]
+        if len(sides) < 2:
+            raise ValueError("path() takes two parts or more: a stretch of it is the copper "
+                             "between two of them")  # fmt: skip
+        # A net said by a name is the net, in the circuit the path's parts are of.
+        named = sides[0][0].circuit.net
+        object.__setattr__(self, "stops",
+                           tuple(named(s) if isinstance(s, str) else s for s in stops))  # fmt: skip
+        for side in sides:
+            if twice := [p.ref for p in side if side.count(p) > 1]:
+                raise ValueError(f"path(): {_stop(side)} has {twice[0]} twice")
+        every = [p for side in sides for p in side]
+        if twice := [p.ref for p in every if every.count(p) > 1]:
+            raise ValueError(f"path(): {twice[0]} is at two stops of it: a current that "
+                             "comes back through a part is a second path")  # fmt: skip
+        # A list of one part is the part, and a list is the same list in any order.
+        object.__setattr__(self, "stops", tuple(
+            s if not isinstance(s, tuple) else s[0] if len(s) == 1
+            else tuple(sorted(s, key=_by_ref)) for s in self.stops))  # fmt: skip
+
+    def __str__(self) -> str:
+        return f"path({', '.join(map(_stop, self.stops))}, current={self.current})"
+
+    def mentions(self) -> tuple[Part, ...]:
+        return tuple(dict.fromkeys(p for stop in self.stops for p in _side(stop)))
+
+    def data(self) -> dict[str, Any]:
+        stops = [{"net": s.name} if isinstance(s, Net)
+                 else s.ref if isinstance(s, Part) else [p.ref for p in s]
+                 for s in self.stops]  # fmt: skip
+        return {"path": stops, "current": self.current.ua}
+
+    def check(self, circuit: Circuit) -> None:
+        super().check(circuit)
+        for stop in self.stops:
+            if isinstance(stop, Net):
+                circuit.net(stop)
+
+    def stretches(
+        self, circuit: Circuit
+    ) -> tuple[tuple[Stretch, ...], tuple[tuple[tuple[str, ...], str], ...]]:
+        """Its stretches in *circuit*, in the order of its stops, and what is wrong with
+        it there, each the parts it is about and a sentence.
+
+        Two parts in a row are joined by the one net both have a pin on, each part of
+        a list among them: sharing none is wrong, and so is sharing several, of which
+        the one meant is named between them. A net named between two parts is the net
+        of that stretch, and one named first or last says where the path comes in or
+        goes out and is no stretch. A part with no pin on a net named beside it is
+        wrong."""
+        stops = [circuit.net(s) if isinstance(s, Net)
+                 else tuple(circuit.part(p.ref) for p in _side(s)) for s in self.stops]  # fmt: skip
+        found: list[Stretch] = []
+        wrong: list[tuple[tuple[str, ...], str]] = []
+
+        def end(side: tuple[Part, ...], net: Net) -> tuple[Pin, ...] | None:
+            pins = [[pin for pin in part.pins() if pin.net == net] for part in side]
+            for part, on in zip(side, pins, strict=True):
+                if not on:
+                    wrong.append(((part.ref,), f"{part.ref} has no pad on {net}"))
+            return tuple(pin for on in pins for pin in on) if all(pins) else None
+
+        for i, stop in enumerate(stops):
+            after = stops[i + 1] if i + 1 < len(stops) else None
+            if isinstance(stop, Net):
+                before = stops[i - 1] if i else None
+                ends = [end(side, stop) for side in (before, after) if isinstance(side, tuple)]
+                if len(ends) == 2 and ends[0] is not None and ends[1] is not None:
+                    found.append(Stretch(stop, (ends[0], ends[1])))
+            elif isinstance(after, tuple):
+                shared = [net for net in stop[0].nets()
+                          if all(net in part.nets() for part in (*stop, *after))]  # fmt: skip
+                refs = tuple(part.ref for part in (*stop, *after))
+                one, two = _stop(stop), _stop(after)
+                if not shared:
+                    wrong.append((refs, f"{one} and {two} share no net"))
+                elif len(shared) > 1:
+                    nets = [str(net) for net in shared]
+                    wrong.append((refs, f"{one} and {two} share {', '.join(nets[:-1])} and "
+                                  f"{nets[-1]}: name the one meant between them as a stop, "
+                                  f'as in path({one}, "{nets[0]}", {two}, ...)'))  # fmt: skip
+                else:
+                    ends = end(stop, shared[0]), end(after, shared[0])
+                    assert ends[0] is not None and ends[1] is not None
+                    found.append(Stretch(shared[0], (ends[0], ends[1])))
+        return tuple(found), tuple(wrong)
+
+
+@dataclass(frozen=True)
 class Region:
     """A part of the board, for parts to be said to be inside: a *share* of it from an
     *edge*, the whole of that edge's length, or a *box*, its left, top, right and bottom
@@ -663,12 +796,13 @@ BOARD = "the board"
 # How far apart each way of putting a board together keeps the pads of different parts,
 # and the parts themselves.
 ASSEMBLED = {"hand": (Length(1_270_000), Length(500_000)), "machine": (Length(0), Length(0))}
+OUNCE = Length(35_000)  # how thick the outer copper is where nothing says: 1 oz
 
 
 @dataclass(frozen=True)
 class Rules(Statement):
-    """The widths the board's copper is held to, and how far apart its parts are kept
-    for the way it is assembled. Made with ``rules``."""
+    """The widths the board's copper is held to, how far apart its parts are kept for
+    the way it is assembled, and how thick its outer copper is. Made with ``rules``."""
 
     track: Length
     clearance: Length
@@ -676,6 +810,7 @@ class Rules(Statement):
     assembly: str | None = None
     pads_apart: Length | None = None
     bodies_apart: Length | None = None
+    copper: Length = OUNCE
 
     def __post_init__(self) -> None:
         for name, value in (("track", self.track), ("clearance", self.clearance)):
@@ -692,11 +827,14 @@ class Rules(Statement):
         for name, value in (("pads_apart", self.pads_apart), ("bodies_apart", self.bodies_apart)):
             if value is not None and value < Length(0):
                 raise ValueError(f"rules(): {name}= {value} is not a distance")
+        if self.copper <= Length(0):
+            raise ValueError(f"rules(): copper= {self.copper} is not a thickness")
 
     def __str__(self) -> str:
         said = {"track": self.track, "clearance": self.clearance, "edge": self.edge,
                 "assembly": self.assembly, "pads_apart": self.pads_apart,
-                "bodies_apart": self.bodies_apart}  # fmt: skip
+                "bodies_apart": self.bodies_apart,
+                "copper": None if self.copper == OUNCE else self.copper}  # fmt: skip
         return f"rules({', '.join(f'{k}={_shown(v)}' for k, v in said.items() if v is not None)})"
 
     def mentions(self) -> tuple[Part, ...]:
@@ -715,11 +853,13 @@ class Rules(Statement):
         return {(BOARD, "track width"): self.track, (BOARD, "clearance"): self.clearance,
                 (BOARD, "clearance from the edge"): self.edge, **word,
                 (BOARD, "distance between the pads of different parts"): pads,
-                (BOARD, "distance between parts"): bodies}  # fmt: skip
+                (BOARD, "distance between parts"): bodies,
+                (BOARD, "copper thickness"): self.copper}  # fmt: skip
 
     def data(self) -> dict[str, Any]:
         said = {"assembly": self.assembly, "pads_apart": self.pads_apart,
-                "bodies_apart": self.bodies_apart}  # fmt: skip
+                "bodies_apart": self.bodies_apart,
+                "copper": None if self.copper == OUNCE else self.copper}  # fmt: skip
         return {"rules": {"track": self.track.nm, "clearance": self.clearance.nm,
                           "edge": self.edge.nm,
                           **{k: _data(v) for k, v in said.items() if v is not None}}}  # fmt: skip
@@ -888,9 +1028,34 @@ def apart(parts: Part | Iterable[Part], thing: Fixed, distance: Length | str) ->
                  length(distance), source=_written_at())  # fmt: skip
 
 
+def path(*stops: Part | Net | str | Iterable[Part], current: Current) -> Path:
+    """Say the way a *current* goes through the board, stop by stop, as ``1 * A`` or
+    ``500 * mA``. A stop is a part; a net, itself or its name; or a list of parts side
+    by side, which share the current between them. A list of one part is the part, and
+    a list is the same list in any order. A part is at one stop of a path: a current
+    that comes back through a part is a second path.
+
+    Each two parts in a row are a stretch of the path: the copper of one net between
+    them, the one net both have a pin on. Where they share several, the one meant is
+    named between them, and parts that share none are a problem. A net named first or
+    last says where the path comes into its first part or leaves its last. An end of a
+    stretch is every pad the part has on the net, and every pad the parts of a list
+    have, taken as one point.
+
+    A net's name is looked up where it is said, in the circuit the path's parts are of,
+    by the circuit's name for it or the one ``name_nets`` gave it: said by the net or
+    by either name, it is one statement.
+
+    It places nothing and changes no copper. A build that routes the board measures
+    each stretch on it (``pkidl.paths``), and the result has what it found
+    (``Routed.paths``)."""
+    return Path(stops, current, source=_written_at())  # type: ignore[arg-type]
+
+
 def rules(*, track: Length | str, clearance: Length | str, edge: Length | str = 0.5 * mm,
           assembly: str | None = None, pads_apart: Length | str | None = None,
-          bodies_apart: Length | str | None = None) -> Rules:  # fmt: skip
+          bodies_apart: Length | str | None = None,
+          copper: Length | str = OUNCE) -> Rules:  # fmt: skip
     """Say the widths the board's copper is held to: how wide a *track* is, the
     *clearance* between copper of two nets, and how far copper stays from the board's
     *edge*. They are the rules the router is given and the ones written into the
@@ -903,11 +1068,15 @@ def rules(*, track: Length | str, clearance: Length | str, edge: Length | str = 
     different parts and of what is fixed on the board. By hand that is 1.27 mm and
     0.5 mm, and by machine nothing, which is what a board that says none of it has.
     Either distance may be said, with the word or without, and is then the one. They
-    are held where the parts are placed, and nothing is written to the project for them."""
+    are held where the parts are placed, and nothing is written to the project for them.
+
+    *copper* is how thick the copper of the outer layers is: 0.035 mm, 1 oz, where
+    nothing says. A track's resistance is reckoned with it (``path``), and nothing is
+    written to the project for it."""
     return Rules(length(track), length(clearance), length(edge), assembly,
                  None if pads_apart is None else length(pads_apart),
                  None if bodies_apart is None else length(bodies_apart),
-                 source=_written_at())  # fmt: skip
+                 length(copper), source=_written_at())  # fmt: skip
 
 
 def route() -> Route:
@@ -966,6 +1135,18 @@ def _by_ref(part: Part) -> tuple:
 
 def _part_of(thing: Part | Pin) -> Part:
     return thing.part if isinstance(thing, Pin) else thing
+
+
+def _side(stop: Part | Net | tuple[Part, ...]) -> tuple[Part, ...]:
+    """The parts of a stop of a path: none where it is a net."""
+    return stop if isinstance(stop, tuple) else (stop,) if isinstance(stop, Part) else ()
+
+
+def _stop(stop: Part | Net | tuple[Part, ...]) -> str:
+    """A stop of a path as a sentence has it: parts side by side as a list."""
+    if isinstance(stop, tuple):
+        return stop[0].ref if len(stop) == 1 else f"[{', '.join(p.ref for p in stop)}]"
+    return str(stop)
 
 
 def _thing(fixed: Fixed) -> dict[str, Any]:

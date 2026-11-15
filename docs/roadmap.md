@@ -323,6 +323,15 @@ in the way: a pour is not a statement (#19), a board
 file has no words for which nets carry power (#20), a pour is filled on outer layers
 only (#21), and there is no way to write a track by hand from a pin (#22).
 
+**2026-11-15: the first slice is in.** `path(..., current=)` is a statement, and a
+build that routes the board measures it: for each stretch of one net between two
+stops, the resistance of its tracks as a network, the drop at the path's current, and
+the length and narrowest width of the way of least resistance (`Routed.paths`,
+`docs/design/board-files.md`). `rules(copper=)` says how thick the copper is. The bench
+supply's board file says the way its load current goes. It changes no copper,
+placement or routing. Not yet: sizing copper from a path, checking a drop against a
+budget, saying which copper two currents may share, and measuring a pour.
+
 ## Later
 
 T3 (stackup, impedance, differential pairs), T4 (planes, fanout, mechanical standards as

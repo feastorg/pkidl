@@ -64,6 +64,7 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `keepout(area, copper=True)` | an area kept clear | yes: placement keeps other parts out of it and says where it is, the build draws it as a rule area on each face it holds on, and the router is told to keep out of it |
 | `keepout(board.fixed(name), copper=True)` | no copper under something fixed on the board | yes: the box round the thing's outline, on its face or on both, drawn as a rule area and told to the router; pads are let be, and a track or via the routed board has in it is in the build's result |
 | `apart(parts, board.fixed(name), 5 * mm)` | parts kept a distance from something fixed | yes: a place that is looked for keeps it, and a place that is given and breaks it is a problem |
+| `path(jack, switch, regulator, current=1 * A)` | the way a current goes through the board, and how much of it | measured, not yet sized: each stretch between two stops is one net, and the build's result has what its tracks come to on the routed board. No copper is changed for it |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
@@ -626,6 +627,122 @@ of them. Routed once (2026-11-14), the board has no track on the front inside th
 heatsink's box, where it had 69.5 mm, and no via; every connection is made, 92.7 mm
 of track runs under it on the back, and KiCad's DRC reports no rule area broken. The
 corpus board file is not changed here.
+
+**As built, the way a current goes:** the first slice of milestone 3 (decided
+2026-11-15) is a statement and a measurement. It sizes nothing: a board file with a
+`path` builds the same files, byte for byte, as the same file without it.
+
+```python
+from pkidl import A, mA
+
+board.path(jack, power, limit, current=500 * mA)
+board.path(vin, board.parts("Q101", "Q103"), sw, board.parts("Q102", "Q104"), "GND", current=10 * A)
+```
+
+`path(*stops, current=)` is a statement like the others, with its line, and
+`pkidl.path` makes one for a block. A stop is a part; a net, as `board.net` gives it or
+by its name; or a list of parts side by side, which share the current. A string is a
+net's name and never a part's reference: the circuit's name for the net or the one
+`name_nets` gave it, looked up at the line in the circuit the path's parts are of. Said
+by the net or by either name it is one statement, with one data form, and is measured
+once. So is a list of one part, which is that part, and a list of the same parts in
+another order. `current=` is a current with its unit, `1 * A` or `500 * mA`, and
+anything else is refused at the line, as are two nets in a row, a part twice in one
+list, a part at two stops of one path and a path with fewer than two parts in it. A
+current that comes back through a part it has been through, as through the second pole
+of a switch, is a second path.
+
+A path is a stretch of copper between each two parts in a row, and a stretch is one
+net. Two parts in a row are joined by the one net both have a pin on. Parts that share
+none are a problem of the solve, with the line, and so are parts that share several
+(`path(J1, J2, current=1 A): J1 and J2 share IN and GND: name the one meant between
+them as a stop, as in path(J1, "IN", J2, ...)`): the net named between two parts is the
+net of that stretch. A net named first or last is no stretch: it says where the path
+comes into its first part or leaves its last. A part with no pad on a net named beside
+it is a problem (`J1 has no pad on OUT`). An end of a stretch is every pad the part has
+on the net, and every pad the parts of a list have, taken as one point.
+
+A build that routes the board measures each stretch on the board that is written, its
+tracks and vias as they are, and `Built.routed.paths` has what it found: a `Measured`
+for each path, with a `Reading` for each stretch. The paths are in the order
+statements have everywhere, whenever they were added: by the file each was written in,
+then by its line there, and two written on one line, in a loop, by what they say.
+
+```
+path(J1, Q1, J3, current=1 A) (board.py:12): 50.1 mΩ of track, 50.1 mV at 1 A, 1 of its 2 stretches not in it
+  IN, J1 to Q1: not joined by track
+  OUT, Q1 to J3: 51 mm of track, 0.5 mm at its narrowest, 50.1 mΩ, 50.1 mV
+```
+
+What is measured, and what is assumed:
+
+- **Resistance, by track.** The net's tracks are a network of resistors, a track of
+  length L and width w being ρ·L/(w·t). ρ is 1.72e-8 Ω·m, copper at 20 °C, and warmer
+  copper is more. t is the thickness of the outer copper, which
+  `rules(copper=)` says and which is 0.035 mm, 1 oz, where nothing does. The figure is
+  the resistance of the whole network between the two ends, so two tracks in parallel
+  count as in parallel. A straight 100 mm of 0.5 mm track in 1 oz copper is 98.3 mΩ.
+- **What joins.** A track is where its middle line is, and as long as that line; one
+  no longer than a tenth of a micrometre is no copper. Two points of a layer are one
+  place where they are no more than a tenth of a micrometre apart, and so are two that
+  are each one place with a third. A line passes through a point where it is no
+  further than that from it, and its point nearest is then one place with that one.
+  1. Two tracks of one layer, where an end of each is at one place.
+  2. An end of a track to another track of its layer part way along it: where the
+     point of that track's middle line nearest the end is more than a tenth of a
+     micrometre from each of that track's ends, and the end is no further from that
+     point than half that track's width. They are joined at that point.
+  3. Two tracks of one layer whose middle lines cross, where they cross, if that is
+     more than a tenth of a micrometre from each end of both.
+  4. A track to a pad or a via with copper on its layer, where the track's middle
+     line touches that copper: at the point of the line within the copper nearest the
+     pad's own place, which is where its hole is, or its middle where it has none,
+     and for a via its middle. Where pieces of track that lie within the copper join
+     several such points to each other, the pad is joined to the nearest of them
+     alone, so a track that comes into a pad in pieces counts as far as the one track
+     would.
+  5. A pad or a via to another pad or via, where the copper of the two touches on a
+     layer both have copper on.
+
+  Every track is cut at each end of a track of its layer, and at each point of 2, 3
+  and 4 on its layer, that its middle line passes through, and is joined there to
+  every other track cut there. A via and a pad have no
+  resistance of their own. Nothing else joins: not two ends near each other that are
+  not at one place, not an end beside the end of another track, and not a track whose
+  copper reaches a pad, a via or another track that its middle line stays off.
+- **Copper laid twice is one strip.** Of the pieces of track on one layer between the
+  same two places, the widest is the piece: the same track written twice, or two on
+  one line that run over each other, are no two conductors side by side, whatever
+  else joins either. Two tracks side by side that are not on one line are two,
+  however near.
+- **Ends that are one piece of copper**, pads over each other or joined by a via with
+  no track between, are joined: `joined at one place, with no track between: 0 mΩ,
+  0 mV`.
+- **Length and narrowest width** are of the way of least resistance between the ends.
+- **The drop** is the resistance times the path's current. For parts side by side the
+  whole current is taken through the stretch, their pads being one end.
+- **A pour is not measured, and neither is what it reaches.** Ends that no track
+  joins have no figure and read `not joined by track`, with `GND has a pour, which is
+  not measured` where the net has a pour anywhere on the board: the pour may join
+  them, and that is not looked at. Where tracks join the ends and the net has a pour
+  as well, the figure is given as `at most`, which it is whatever the pour reaches.
+- **A figure is printed to three figures**, written out with no exponent: in mΩ and
+  mV where that is under a thousand of them, in Ω and V where that is, and in kΩ and kV
+  otherwise.
+- **A measurement never stops a build.** One that raises is a reading that says what
+  was raised (`could not be measured: ...`, `Reading.failed`), and the board is
+  written as it would have been.
+- **Parts are not counted**: what a switch, a fuse or a sense resistor is between its
+  own pads is not in any figure.
+
+A path's total is of its measured stretches, and says how many are not in it. Nothing
+measured is a problem or a warning: it is reported. The bench supply's board file says
+the way its load current goes, in and out: the limited way through the current
+switch's 500 mA position and the four resistors of it, and the way round the limiter.
+The switch's other five positions, which carry less, are not said.
+
+Not yet: sizing copper from a path, a drop checked against one that is allowed, which
+copper two currents may share, and a pour measured.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline
@@ -1219,9 +1336,9 @@ board.place(j_bat, against=Edge.RIGHT)                 # battery out the other
 
 # The power path, with the current each stretch carries. pkidl sizes the copper for it
 # and checks the narrowest neck on the filled board.
-board.path(j_in, "D101", vin, current=10 * A)
-board.path(vin, ["Q101", "Q103"], sw, ["Q102", "Q104"], "GND", current=10 * A)
-board.path(sw, "L101", ["R110", "R113"], vbat, j_bat, current=10 * A)
+board.path(j_in, board["D101"], vin, current=10 * A)
+board.path(vin, board.parts("Q101", "Q103"), sw, board.parts("Q102", "Q104"), "GND", current=10 * A)
+board.path(sw, board["L101"], board.parts("R110", "R113"), vbat, j_bat, current=10 * A)
 
 # The switching loop: input ceramic, high side, low side, back to its ground. As small
 # as it can be; the switch node no bigger than the parts it joins.
@@ -1250,6 +1367,11 @@ capacitors go to which pins from the circuit.
 result is measurable; is a threshold stated or only minimised?); whether `path` with a
 list of parallel parts means "share the current" (it should, and the check counts each
 branch).
+
+**As built (2026-11-15):** `path` is said and measured, and sizes and checks nothing
+yet ("the way a current goes", above). A string among its stops is a net's name, so a
+part is given as a handle. Parts side by side are one end of a stretch, and the whole
+current is taken through it: no branch is counted by itself.
 
 ## T3: `usb2serial-CH340G_USB2TTL-CH340G`
 
