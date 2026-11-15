@@ -11,7 +11,8 @@ is open and belongs to no milestone is in the issue list, not here.
 
 - Charter and prior-art survey (`docs/charter.md`, `docs/survey/`).
 - Library at the root, Apache-2.0; the BREAD boards in `spike/` as an outside user,
-  GPL-3.0-or-later; kidl-spike's history carried in, kidl-spike archived.
+  GPL-3.0-or-later; the history of the repository `spike/` began in carried in, and
+  that repository archived.
 - Corpus: 15 public boards in five tiers with `circuit.json` and `mechanical.json`
   (`pkidl.importer`) and a reference scorecard (`just corpus`, the Corpus workflow).
 - Board files written first for one board per tier; API style decided: a board added
@@ -318,8 +319,7 @@ OpenMPPT: `path(..., current=)` sizing copper and checking the narrowest neck on
 filled board, loops and areas as objectives, Kelvin sense, heatsinking. This is where
 DCMT's copied copper in `spike/` gets replaced by intent.
 
-Tracked in #10, coarse until milestone 2b's count is in. What is already known to be
-in the way: a pour is not a statement (#19), a board
+Tracked in #10. What is already known to be in the way: a pour is not a statement (#19), a board
 file has no words for which nets carry power (#20), a pour is filled on outer layers
 only (#21), and there is no way to write a track by hand from a pin (#22).
 
@@ -330,7 +330,8 @@ the length and narrowest width of the way of least resistance (`Routed.paths`,
 `docs/design/board-files.md`). `rules(copper=)` says how thick the copper is. The bench
 supply's board file says the way its load current goes. It changes no copper,
 placement or routing. Not yet: sizing copper from a path, checking a drop against a
-budget, saying which copper two currents may share, and measuring a pour.
+budget, saying which copper two currents may share, and measuring a pour. What the
+measurement itself leaves is #94.
 
 ## Later
 
@@ -341,10 +342,11 @@ templates), and `spike/`'s boards rewritten in the language.
 
 The solver places one part at a time, each after what it is placed by, and goes round
 until nothing moves. It reports what it cannot hold together and does not search for
-it. Where it has been seen to stop is #9: `near=` solved alone (#14), a placement that
-does not settle (#15), a part against an edge centred on the whole edge (#16), an area
-of a part placed `near=` something (#17). Milestone
-2b says how much that costs on a board it was not built for.
+it. Where it has been seen to stop, and is open: `near=` solved alone (#14), a part
+against an edge centred on the whole edge (#16), an area of a part placed `near=`
+something (#17), a placement that goes neither round nor to rest (#72), and the time a
+solve takes with the distances said (#77). Milestones 2b to 2d say what that cost on
+boards it was not built for.
 
 ## Open, outside the milestones
 
