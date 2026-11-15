@@ -74,7 +74,7 @@ board.place(pot, at=(88 * mm, 80 * mm), facing=Edge.TOP)
 posts = board.parts("P102", "P101")  # minus on the left
 board.row(posts, along=Edge.BOTTOM, pitch=0.75 * inch)
 board.place(board["SW103"], at=(52 * mm, 55 * mm), facing=Edge.TOP)  # output on and off
-board.place(board["SW102"], at=(42 * mm, 55 * mm), facing=Edge.TOP)  # the limit's bypass
+board.place(board["SW102"], at=(39.3 * mm, 55 * mm), facing=Edge.TOP)  # the limit's bypass
 
 # The resistors the switch picks among, in two banks of six beside it: twelve in one
 # line are 39 mm, more than the panel has there.

@@ -285,6 +285,20 @@ heatsink. What is wrong with it:
    further, the second bank has no place under it.
 3. **Silkscreen over silkscreen**, 199 warnings (#26).
 
+Gone over part by part as a circuit (#90), it is not a board to send for fabrication,
+and most of why is copper a board file has no words for. Tracks pass under the heads
+of the screws that hold the meters. Every track is 0.5 mm, the output's among them.
+R102, which sets the voltage, reaches the regulator's output pin over track the load
+shares.
+
+Of what a board file can say, one thing is mended: the two toggles are 12.7 mm between
+centres, where they were 10.0 mm. Two are not. The posts' pads are 0.76 mm from the
+board's edge, and the posts moved in by 0.3 mm leave the second bank no place between
+them and the ammeter. And where R102 stands does not decide its track: with that one
+toggle moved 2.7 mm and no other part moved, the router took R102 to the output pin
+over 29.3 mm of track, 18.8 mm of it shared with the load, where it had taken 46.2 mm
+and 10.4 mm. Which copper a current shares is milestone 3's to say.
+
 The next-bus clock is assembled by hand too, since a pad starved of its pour is taken
 off it (#52): built so, two of its ground pads are, and KiCad 10.0.8 finds no error.
 Its solve takes 12 s for it, where it took 6.4 s (#77).
