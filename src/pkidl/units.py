@@ -9,6 +9,7 @@ A current has its unit too: ``1 * A``, ``500 * mA``, kept as a whole number of m
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from typing import overload
@@ -83,6 +84,8 @@ class Current:
     def __mul__(self, k: float) -> Current:
         if isinstance(k, bool) or not isinstance(k, int | float):
             return NotImplemented
+        if isinstance(k, float) and not math.isfinite(k):
+            raise ValueError(f"a current is a number of amps, not {float(k)!r}: write 1 * A")
         return Current(round(self.ua * k))
 
     __rmul__ = __mul__

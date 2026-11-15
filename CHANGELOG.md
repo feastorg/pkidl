@@ -451,6 +451,13 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- A path's measurement reads as it should at its edges. A path of one stretch with no
+  figure says `its one stretch is not measured`, where it said `none of its 1
+  stretches is measured`. `float("nan") * A` is refused as `a current is a number of
+  amps, not nan: write 1 * A`, where it was `cannot convert float NaN to integer`, and
+  an infinite number of them the same way, `not inf`, where it was an `OverflowError`.
+  And `scripts/corpus.py build` prints each
+  path a board says as it was measured, and has them in `built.json` as `paths`. (#94)
 - A pad's copper is where its drill's `(offset ...)` puts it. KiCad draws the copper
   of such a pad off its hole, turned with the pad, and the solver took it as centred
   on the hole: on the bench supply an LED's pad and a resistor's, 0.34 mm apart by

@@ -148,7 +148,9 @@ class Measured:
         at = f" ({self.path.source})" if self.path.source else ""
         ohms, volts = self.ohms, self.volts
         if ohms is None or volts is None:
-            total = f"no figure: none of its {len(self.stretches)} stretches is measured"
+            total = "no figure: its one stretch is not measured"
+            if len(self.stretches) != 1:
+                total = f"no figure: none of its {len(self.stretches)} stretches is measured"
         else:
             most = "at most " if any(r.poured for r in self.stretches if r.ohms is not None) else ""
             total = (f"{most}{_figure(ohms, 'Ω')} of track, {_figure(volts, 'V')} at "
