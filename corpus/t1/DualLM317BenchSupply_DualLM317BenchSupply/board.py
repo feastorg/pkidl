@@ -64,6 +64,19 @@ for meter in (voltmeter, ammeter):
     board.annotate(meter, oriented=True)
 board.place(voltmeter, at=(17.8 * mm, 50 * mm), facing=Edge.TOP)
 board.place(ammeter, at=(76 * mm, 46.5 * mm), facing=Edge.TOP)
+# Each meter is held by two M3 screws through the board, 13.97 mm and 14.5 mm either
+# side of its middle. No copper and no part is under a head or a standoff on either
+# face: 6 mm across, which an M3 pan head is inside. At 7 mm, for a washer, the router
+# leaves four connections unmade.
+for meter, off in ((voltmeter, 13.97 * mm), (ammeter, 14.5 * mm)):
+    half = 3 * mm
+    screws = board.annotate(
+        meter,
+        left_screw=((-off - half, -half), (-off + half, half)),
+        right_screw=((off - half, -half), (off + half, half)),
+    )
+    for screw in screws:
+        board.keepout(screw, copper=True, both_sides=True)
 board.decouple(voltmeter, [board["C108"]], within=18 * mm)
 board.decouple(ammeter, [board["C109"]], within=14 * mm)
 board.place(board["RV102"], at=(74 * mm, 38 * mm), facing=Edge.TOP)  # the ammeter's trim, above it
