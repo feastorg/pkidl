@@ -274,9 +274,13 @@ no pads of different parts nearer than 1.34 mm, no outlines nearer than 0.4 mm a
 those the resistors of a bank at their pitch, every electrolytic 5 mm or more from the
 heatsink. What is wrong with it:
 
-1. **Copper under the heatsink.** 69.5 mm of track on the front lies inside its
-   outline, where its body sits on the board. Nothing says to keep copper from under
-   a fixed thing (#82). It is the one fault to mend before this board is built.
+1. **Copper under the heatsink.** 69.5 mm of track on the front lay inside its
+   outline, where its body sits on the board. Mended 2026-11-14 (#82): the board file
+   keeps copper from under it, and holds its electrolytics 5 mm and the regulators'
+   diodes 1 mm from it by saying so, in place of two boxes worked out by hand. No
+   track or via is on the front under it now. With the diodes held 2 mm off, the
+   router left four connections unmade: the regulators are reached from the back
+   alone, and there is little room there to spare.
 2. **The ammeter is 0.65 mm from the heatsink's outline**, by their boxes. Moved
    further, the second bank has no place under it.
 3. **Silkscreen over silkscreen**, 199 warnings (#26).
