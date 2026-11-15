@@ -133,7 +133,8 @@ class Routed:
     kept_out: tuple[str, ...] = ()
     # Each path the board file said, as the tracks of the board that is written have it
     # (``pkidl.paths``), in the order statements have (``pkidl.intent.canonical``): by
-    # the line each was written on. Nothing is changed for it.
+    # the file each was written in, then its line, then what it says. Nothing is
+    # changed for it.
     paths: tuple[Measured, ...] = ()
 
 

@@ -645,9 +645,12 @@ by its name; or a list of parts side by side, which share the current. A string 
 net's name and never a part's reference: the circuit's name for the net or the one
 `name_nets` gave it, looked up at the line in the circuit the path's parts are of. Said
 by the net or by either name it is one statement, with one data form, and is measured
-once. `current=` is a current with its unit, `1 * A` or `500 * mA`, and anything else
-is refused at the line, as are two nets in a row, a part at both ends of one stretch, a
-part twice in one list and a path with fewer than two parts in it.
+once. So is a list of one part, which is that part, and a list of the same parts in
+another order. `current=` is a current with its unit, `1 * A` or `500 * mA`, and
+anything else is refused at the line, as are two nets in a row, a part twice in one
+list, a part at two stops of one path and a path with fewer than two parts in it. A
+current that comes back through a part it has been through, as through the second pole
+of a switch, is a second path.
 
 A path is a stretch of copper between each two parts in a row, and a stretch is one
 net. Two parts in a row are joined by the one net both have a pin on. Parts that share
@@ -661,9 +664,9 @@ on the net, and every pad the parts of a list have, taken as one point.
 
 A build that routes the board measures each stretch on the board that is written, its
 tracks and vias as they are, and `Built.routed.paths` has what it found: a `Measured`
-for each path, with a `Reading` for each stretch. The paths are in the order of the
-lines they were written on, and two written on one line, in a loop, in the order of
-what they say: the order statements have everywhere, whenever they were added.
+for each path, with a `Reading` for each stretch. The paths are in the order
+statements have everywhere, whenever they were added: by the file each was written in,
+then by its line there, and two written on one line, in a loop, by what they say.
 
 ```
 path(J1, Q1, J3, current=1 A) (board.py:12): 50.1 mΩ of track, 50.1 mV at 1 A, 1 of its 2 stretches not in it
@@ -679,23 +682,42 @@ What is measured, and what is assumed:
   `rules(copper=)` says and which is 0.035 mm, 1 oz, where nothing does. The figure is
   the resistance of the whole network between the two ends, so two tracks in parallel
   count as in parallel. A straight 100 mm of 0.5 mm track in 1 oz copper is 98.3 mΩ.
-- **What joins.** A track is where its middle line is, and as long as that line.
-  Two tracks of one layer are joined where their ends are at one place, to a tenth of
-  a micrometre; where an end of one is within the copper of the other part way along
-  it, which is where the point of that track's middle line nearest the end is between
-  its ends and no more than half its width from the end; and where their middle lines
-  cross. A track is joined to a pad or a via with copper on its layer where its
-  middle line is within that copper, at the point of the line there nearest the pad's
-  own place: its hole's, or the via's. Each track is split where something joins it
-  part way along. Tracks joined to each other within a pad's copper are joined to the
-  pad once, at the nearest such point of them all, so a track that comes into a pad
-  in pieces counts as far as the one track would. A via and a pad have no resistance
-  of their own. Nothing else joins: two ends 0.1 mm apart with their round ends over
-  each other do not, and neither does a track whose copper reaches a pad that its
-  middle line stays off.
+- **What joins.** A track is where its middle line is, and as long as that line; one
+  no longer than a tenth of a micrometre is no copper. Two points of a layer are one
+  place where they are no more than a tenth of a micrometre apart, and so are two that
+  are each one place with a third. A line passes through a point where it is no
+  further than that from it, and its point nearest is then one place with that one.
+  1. Two tracks of one layer, where an end of each is at one place.
+  2. An end of a track to another track of its layer part way along it: where the
+     point of that track's middle line nearest the end is more than a tenth of a
+     micrometre from each of that track's ends, and the end is no further from that
+     point than half that track's width. They are joined at that point.
+  3. Two tracks of one layer whose middle lines cross, where they cross, if that is
+     more than a tenth of a micrometre from each end of both.
+  4. A track to a pad or a via with copper on its layer, where the track's middle
+     line touches that copper: at the point of the line within the copper nearest the
+     pad's own place, which is where its hole is, or its middle where it has none,
+     and for a via its middle. Where pieces of track that lie within the copper join
+     several such points to each other, the pad is joined to the nearest of them
+     alone, so a track that comes into a pad in pieces counts as far as the one track
+     would.
+  5. A pad or a via to another pad or via, where the copper of the two touches on a
+     layer both have copper on.
+
+  Every track is cut at each end of a track of its layer, and at each point of 2, 3
+  and 4 on its layer, that its middle line passes through, and is joined there to
+  every other track cut there. A via and a pad have no
+  resistance of their own. Nothing else joins: not two ends near each other that are
+  not at one place, not an end beside the end of another track, and not a track whose
+  copper reaches a pad, a via or another track that its middle line stays off.
 - **Copper laid twice is one strip.** Of the pieces of track on one layer between the
-  same two places, the widest is the piece: the same track written twice, or two that
-  run over each other, are no two conductors side by side.
+  same two places, the widest is the piece: the same track written twice, or two on
+  one line that run over each other, are no two conductors side by side, whatever
+  else joins either. Two tracks side by side that are not on one line are two,
+  however near.
+- **Ends that are one piece of copper**, pads over each other or joined by a via with
+  no track between, are joined: `joined at one place, with no track between: 0 mΩ,
+  0 mV`.
 - **Length and narrowest width** are of the way of least resistance between the ends.
 - **The drop** is the resistance times the path's current. For parts side by side the
   whole current is taken through the stretch, their pads being one end.
@@ -704,16 +726,20 @@ What is measured, and what is assumed:
   not measured` where the net has a pour anywhere on the board: the pour may join
   them, and that is not looked at. Where tracks join the ends and the net has a pour
   as well, the figure is given as `at most`, which it is whatever the pour reaches.
-- **A figure is printed to three figures**, in mΩ and mV, Ω and V, or kΩ and kV,
-  whichever leaves it under a thousand.
+- **A figure is printed to three figures**, written out with no exponent: in mΩ and
+  mV where that is under a thousand of them, in Ω and V where that is, and in kΩ and kV
+  otherwise.
+- **A measurement never stops a build.** One that raises is a reading that says what
+  was raised (`could not be measured: ...`, `Reading.failed`), and the board is
+  written as it would have been.
 - **Parts are not counted**: what a switch, a fuse or a sense resistor is between its
   own pads is not in any figure.
 
 A path's total is of its measured stretches, and says how many are not in it. Nothing
 measured is a problem or a warning: it is reported. The bench supply's board file says
-the way its load current goes, in and out, but for the copper between its current
-switch and its sense resistors, which is a net for each position of the switch, and no
-one of them the way.
+the way its load current goes, in and out: the limited way through the current
+switch's 500 mA position and the four resistors of it, and the way round the limiter.
+The switch's other five positions, which carry less, are not said.
 
 Not yet: sizing copper from a path, a drop checked against one that is allowed, which
 copper two currents may share, and a pour measured.

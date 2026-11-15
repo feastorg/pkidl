@@ -622,9 +622,14 @@ class Path(Statement):
         for side in sides:
             if twice := [p.ref for p in side if side.count(p) > 1]:
                 raise ValueError(f"path(): {_stop(side)} has {twice[0]} twice")
-        for one, two in zip(sides, sides[1:], strict=False):
-            if both := [p.ref for p in one if p in two]:
-                raise ValueError(f"path(): {both[0]} is at both ends of a stretch")
+        every = [p for side in sides for p in side]
+        if twice := [p.ref for p in every if every.count(p) > 1]:
+            raise ValueError(f"path(): {twice[0]} is at two stops of it: a current that "
+                             "comes back through a part is a second path")  # fmt: skip
+        # A list of one part is the part, and a list is the same list in any order.
+        object.__setattr__(self, "stops", tuple(
+            s if not isinstance(s, tuple) else s[0] if len(s) == 1
+            else tuple(sorted(s, key=_by_ref)) for s in self.stops))  # fmt: skip
 
     def __str__(self) -> str:
         return f"path({', '.join(map(_stop, self.stops))}, current={self.current})"
@@ -1026,7 +1031,9 @@ def apart(parts: Part | Iterable[Part], thing: Fixed, distance: Length | str) ->
 def path(*stops: Part | Net | str | Iterable[Part], current: Current) -> Path:
     """Say the way a *current* goes through the board, stop by stop, as ``1 * A`` or
     ``500 * mA``. A stop is a part; a net, itself or its name; or a list of parts side
-    by side, which share the current between them.
+    by side, which share the current between them. A list of one part is the part, and
+    a list is the same list in any order. A part is at one stop of a path: a current
+    that comes back through a part is a second path.
 
     Each two parts in a row are a stretch of the path: the copper of one net between
     them, the one net both have a pin on. Where they share several, the one meant is
