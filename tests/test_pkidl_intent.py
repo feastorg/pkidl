@@ -379,6 +379,7 @@ def test_a_keepout_that_does_not_say_what_of_or_what_is_kept_out_is_refused(boar
     with pytest.raises(TypeError) as e:
         keepout(board["U1"], copper=True)
     assert str(e.value) == ('keepout() takes an area of a part, such as u1.area("antenna"), '
+                            "or something fixed on the board, as board.fixed(name) gives it, "
                             "not Part(ref='U1')")  # fmt: skip
     for said in ({}, {"copper": False}, {"both_sides": True}):
         with pytest.raises(ValueError) as e:

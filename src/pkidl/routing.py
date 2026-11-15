@@ -127,6 +127,9 @@ class Routed:
     # Whose word it is that the pours join what they are left to: ``KiCad``, or
     # ``model`` for pkidl's model of KiCad's fill. Empty where nothing was asked.
     judge: str = ""
+    # Each track and via the board that is written has in an area kept clear of copper
+    # (``pkidl.build.kept_out``), a line each: nothing is changed for it.
+    kept_out: tuple[str, ...] = ()
 
 
 def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:

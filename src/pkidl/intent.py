@@ -17,6 +17,11 @@ a pin.
 
 ``keepout(u1.area("antenna"), copper=True)`` is a statement too, about an area of a
 part. It says nothing of where the part goes, so keepouts add up and never conflict.
+``keepout(sink, copper=True)`` is about something fixed on the board, as
+``board.fixed`` gives it: no copper under it.
+
+``apart(caps, sink, 5 * mm)`` keeps parts a distance from something fixed on the board.
+It places nothing: a part that looks for its place looks that far from the thing.
 
 ``rules(track=0.25 * mm, clearance=0.2 * mm)`` and ``route()`` are about the board, not
 a part: the widths its copper is held to, and that it is routed when it is built.
@@ -495,16 +500,18 @@ class Decouple(Statement):
 
 @dataclass(frozen=True)
 class Keepout(Statement):
-    """What stays out of an area of a part. Made with ``keepout``."""
+    """What stays out of an area of a part, or from under something fixed on the
+    board. Made with ``keepout``."""
 
-    area: Area
+    area: Area | Fixed
     copper: bool = False
     both_sides: bool = False
 
     def __post_init__(self) -> None:
-        if not isinstance(self.area, Area):
+        if not isinstance(self.area, Area | Fixed):
             raise TypeError('keepout() takes an area of a part, such as u1.area("antenna"), '
-                            f"not {self.area!r}")  # fmt: skip
+                            "or something fixed on the board, as board.fixed(name) gives "
+                            f"it, not {self.area!r}")  # fmt: skip
         if not self.copper:
             raise ValueError(f"keepout({self.area}) does not say what is kept out: give "
                              "copper=True")  # fmt: skip
@@ -514,14 +521,49 @@ class Keepout(Statement):
         return f"keepout({self.area}, copper=True{sides})"
 
     def mentions(self) -> tuple[Part, ...]:
-        return (self.area.part,)
+        return () if isinstance(self.area, Fixed) else (self.area.part,)
 
     def data(self) -> dict[str, Any]:
+        if isinstance(self.area, Fixed):
+            return {"keepout": _thing(self.area), "copper": True, "both_sides": self.both_sides}
         return {"keepout": self.area.part.ref, "area": self.area.name, "copper": True,
                 "both_sides": self.both_sides}  # fmt: skip
 
     def check(self, circuit: Circuit) -> None:
-        circuit.part(self.area.part.ref).area(self.area.name)
+        if isinstance(self.area, Area):
+            circuit.part(self.area.part.ref).area(self.area.name)
+
+
+@dataclass(frozen=True)
+class Apart(Statement):
+    """Parts kept a distance from something fixed on the board. Made with ``apart``."""
+
+    parts: tuple[Part, ...]
+    thing: Fixed
+    distance: Length
+
+    def __post_init__(self) -> None:
+        if not self.parts or not all(isinstance(p, Part) for p in self.parts):
+            raise TypeError('apart() takes the parts kept apart, such as board["C1"] or '
+                            f'board.parts("C1", "C2"), not {self.parts!r}')  # fmt: skip
+        if not isinstance(self.thing, Fixed):
+            raise TypeError("apart() keeps parts from something fixed on the board, as "
+                            f"board.fixed(name) gives it, and from nothing else yet: not "
+                            f"{self.thing!r}")  # fmt: skip
+        if self.distance <= Length(0):
+            raise ValueError(f"apart(): {self.distance} is not a distance to keep")
+        # Keeping A and B from a thing is keeping B and A from it.
+        object.__setattr__(self, "parts", tuple(sorted(dict.fromkeys(self.parts), key=_by_ref)))
+
+    def __str__(self) -> str:
+        return f"apart({', '.join(p.ref for p in self.parts)}, {self.thing}, {self.distance})"
+
+    def mentions(self) -> tuple[Part, ...]:
+        return self.parts
+
+    def data(self) -> dict[str, Any]:
+        return {"apart": [p.ref for p in self.parts], "from": _thing(self.thing),
+                "distance": self.distance.nm}  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -818,12 +860,32 @@ def inside(area: Region, parts: Iterable[Part]) -> Inside:
     return Inside(area, tuple(parts), source=_written_at())
 
 
-def keepout(area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
+def keepout(area: Area | Fixed, *, copper: bool = False, both_sides: bool = False) -> Keepout:
     """Say what stays out of *area*, a named area of a part such as
     ``u1.area("antenna")``, wherever the part is placed. *copper*: no other part, and no
     track, via or pour, on the part's face of the board, or on both with *both_sides*.
-    Keepouts add up: an area is clear of everything any of them says."""
+    Keepouts add up: an area is clear of everything any of them says.
+
+    Or of something fixed on the board, as ``board.fixed`` gives it: the box round its
+    outline. *copper*: no track and no pour on the thing's face of the board, or on
+    either with *both_sides*, and no via. A pad is not kept out: a part placed ``on=``
+    the thing has its pads there, and a pin in a hole is reached from the face that is
+    not kept. A pad on a net with its middle inside the box that no track can reach is
+    a problem: one on the surface of a face that is kept, and any when both are.
+    Parts are kept off the thing as they are with nothing said."""
     return Keepout(area, bool(copper), bool(both_sides), source=_written_at())
+
+
+def apart(parts: Part | Iterable[Part], thing: Fixed, distance: Length | str) -> Apart:
+    """Say that each of *parts*, one part or several, is at least *distance* from
+    *thing*, something fixed on the board as ``board.fixed`` gives it: between the
+    part's outline and the thing's, each the box round it, whichever face either is on.
+    A part that looks for its place looks only where that holds, and a place that is
+    given and breaks it is a problem. Where the board's rules keep parts apart as well,
+    or a second ``apart`` speaks of the same part and thing, the largest distance is
+    the one held."""
+    return Apart((parts,) if isinstance(parts, Part) else tuple(parts), thing,
+                 length(distance), source=_written_at())  # fmt: skip
 
 
 def rules(*, track: Length | str, clearance: Length | str, edge: Length | str = 0.5 * mm,
@@ -904,6 +966,12 @@ def _by_ref(part: Part) -> tuple:
 
 def _part_of(thing: Part | Pin) -> Part:
     return thing.part if isinstance(thing, Pin) else thing
+
+
+def _thing(fixed: Fixed) -> dict[str, Any]:
+    """All that makes something fixed the thing it is: two may go by one label."""
+    return {"footprint": fixed.footprint, "x": fixed.x.nm, "y": fixed.y.nm, "rot": fixed.rot,
+            "back": fixed.back}  # fmt: skip
 
 
 def _shown(value: Any) -> str:

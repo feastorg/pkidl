@@ -23,6 +23,7 @@ from pkidl.edge import shape as edge_shape
 from pkidl.footprint import VERSION, Placement, footprint_path, gen_uuid, pad_at, place
 from pkidl.intent import (
     Align,
+    Apart,
     Conflict,
     Decouple,
     Edge,
@@ -293,6 +294,10 @@ class Board:
             except LookupError as e:
                 raise LookupError(f"{statement}: {e.args[0]}") from None
             on = statement.on if isinstance(statement, Place) else None
+            if isinstance(statement, Apart):
+                on = statement.thing
+            elif isinstance(statement, Keepout) and isinstance(statement.area, Fixed):
+                on = statement.area
             if on is not None and on not in self.fixed:
                 there = _listed([f.label for f in self.fixed]) if self.fixed else "nothing"
                 raise LookupError(f"{statement}: {on} is not fixed on this board, which "
@@ -420,10 +425,18 @@ class Board:
         self.add(statement)
         return statement
 
-    def keepout(self, area: Area, *, copper: bool = False, both_sides: bool = False) -> Keepout:
-        """Say what stays out of an area of a part, and get the statement back. See
-        ``pkidl.keepout``."""
+    def keepout(self, area: Area | Fixed, *, copper: bool = False,
+                both_sides: bool = False) -> Keepout:  # fmt: skip
+        """Say what stays out of an area of a part, or from under something fixed on
+        the board, and get the statement back. See ``pkidl.keepout``."""
         statement = intent.keepout(area, copper=copper, both_sides=both_sides)
+        self.add(statement)
+        return statement
+
+    def apart(self, parts: Part | Iterable[Part], thing: Fixed, distance: Length | str) -> Apart:
+        """Say that parts are kept a distance from something fixed on the board, and
+        get the statement back. See ``pkidl.apart``."""
+        statement = intent.apart(parts, thing, distance)
         self.add(statement)
         return statement
 

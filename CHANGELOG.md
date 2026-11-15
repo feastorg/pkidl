@@ -9,6 +9,25 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- Copper, and parts, kept clear of something fixed on the board. `board.keepout(sink,
+  copper=True)` takes what `board.fixed(name)` gives where it takes an area of a part:
+  no track and no pour in the box round the thing's outline on its face, or on either
+  face with `both_sides=True`, and no via. It is a rule area in the board that is
+  written and a keepout for the router. Pads are let be, so a pin in a hole of a part
+  placed `on=` the thing is still reached from the face that is not kept. A pad on a
+  net with its middle inside the box that no track can reach is a problem of the solve
+  naming the part: a pad on the surface of a kept face, and any pad when both faces
+  are kept. It keeps no part out, which
+  a fixed thing does already. `board.apart(parts, sink, 5 * mm)` keeps the outline of
+  each part that far from the thing's, whichever face either is on. A part that looks
+  for its place (`near=`, `after=`, `before=`, a row beside a part) keeps it, and a
+  place that is given and breaks it is a problem (`C101 is 0.6 mm from 530002B02500G at
+  (186.055, 149.225), and apart(...) keeps it 5 mm from it`). Of `bodies_apart` and
+  every `apart` that speaks of a part and a thing the largest holds, two `apart`
+  statements are never a conflict, and a part `on=` a thing it is kept apart from is a
+  problem. `Routed.kept_out` lists each track and via the routed board has in an area
+  kept clear of copper, a fixed thing's or a part's. A board that says none of this is
+  built byte for byte as before. (#82)
 - Room between parts by how the board is assembled. `board.rules(track=0.5 * mm,
   clearance=0.3 * mm, assembly="hand")` keeps the copper of pads of different parts
   1.27 mm apart, whatever their nets, and the outlines of parts 0.5 mm from each other

@@ -1118,7 +1118,9 @@ def test_the_corpus_build_says_each_pad_taken_off_its_pour(tmp_path, monkeypatch
     line = ("C5.1 is taken off the pour of GND on B.Cu, which starved its relief: a track "
             "joins it to the rest of GND")  # fmt: skip
     left = Cut("GND", ("ESP1.2",), "B.Cu", starved=True)
-    routed = Routed((), (), (("", Run((), (), 0)),), left=(left,), unjoined=(line,), judge="model")
+    in_it = "a via of B at (123, 51) is in U1's antenna area, which is kept clear of copper"
+    routed = Routed((), (), (("", Run((), (), 0)),), left=(left,), unjoined=(line,),
+                    judge="model", kept_out=(in_it,))  # fmt: skip
     made = SimpleNamespace(routed=routed, solution=SimpleNamespace(poses={}, chosen=()))
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "board.py").write_text(
@@ -1130,8 +1132,10 @@ def test_the_corpus_build_says_each_pad_taken_off_its_pour(tmp_path, monkeypatch
     assert script.build(tmp_path / "out") == 0
     said = json.loads((tmp_path / "out" / "b" / "built.json").read_text())
     assert said["unjoined"] == [line] and said["left"] == [str(left)]
+    assert said["kept_out"] == [in_it]
     printed = capsys.readouterr().out.splitlines()
     assert f"    {line}" in printed and f"    left on the board as built: {left}" in printed
+    assert f"    {in_it}" in printed
 
 
 def test_the_model_is_asked_again_of_the_board_with_each_pad_it_named_off(
@@ -1158,3 +1162,244 @@ def test_the_model_is_asked_again_of_the_board_with_each_pad_it_named_off(
     assert seen == [[], ["P1.3"], ["P1.3", "R1.2"]]
     assert [line.split()[0] for line in built.routed.unjoined] == ["P1.3", "R1.2"]
     assert sorted(_off_the_pour(built.board)) == ["P1.3", "R1.2"] and built.routed.left == ()
+
+
+# A heatsink in the mounting hole's place: 12 by 8 mm about (120, 66), from 114 to 126 mm
+# across and 62 to 70 down, on two pins that are on no net.
+SINK = """(footprint "Sink:S" (layer "F.Cu") (at 120 66)
+    (property "Reference" "REF**" (at 0 0) (layer "F.SilkS"))
+    (fp_rect (start -6 -4) (end 6 4) (stroke (width 0.05) (type solid)) (fill no)
+      (layer "F.CrtYd"))
+    (pad "" thru_hole circle (at -5 0) (size 2 2) (drill 1.2) (layers "*.Cu"))
+    (pad "" thru_hole circle (at 5 0) (size 2 2) (drill 1.2) (layers "*.Cu"))))"""
+SINK_BOX = [(114.0, 62.0), (126.0, 62.0), (126.0, 70.0), (114.0, 70.0)]
+SINK_NAME = "S at (120, 66)"
+
+
+@pytest.fixture
+def sunk(tmp_path: Path) -> Board:
+    """The board with the heatsink on it and the header standing on the heatsink, as
+    a regulator does: its pins at 117.46, 120 and 122.54 mm across, 68 mm down, inside
+    the heatsink's outline. The module is against the top, and the resistor by it."""
+    d = tmp_path / "sunk"
+    head, hole, _ = SOURCE.partition('(footprint "Mech:M3"')
+    assert hole
+    source = parse(head + SINK)
+    d.mkdir()
+    (d / "circuit.json").write_text(json.dumps(circuit(source)))
+    (d / "mechanical.json").write_text(json.dumps(mechanical(source)))
+    for name, lib in footprints(source)[0].items():
+        path = d / "footprints" / footprint_path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(dumps(lib) + "\n")
+    board = Board.from_inputs(d)
+    u1, p1, r1 = board.parts("U1", "P1", "R1")
+    board.annotate(u1, antenna=((6 * mm, -4 * mm), (9 * mm, -1 * mm)))
+    board.place(p1, on=board.fixed("S"), at=(-2.54 * mm, 2 * mm), facing=Edge.TOP)
+    board.place(u1, against=Edge.TOP, facing=Edge.TOP)
+    board.place(r1, near=u1.pin(2), within=4 * mm)
+    return board
+
+
+def _routed(board: Board) -> Board:
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)
+    board.route()
+    return board
+
+
+def test_copper_kept_from_under_something_fixed_is_a_rule_area_on_its_face(sunk, tmp_path):
+    sink = sunk.fixed("S")
+    assert sink.label == SINK_NAME
+    # With nothing said there is no rule area: nothing is kept from under it.
+    assert _rule_areas(parse(sunk.build(tmp_path / "plain").board.read_text())) == []
+    sunk.keepout(sink, copper=True)
+    built = sunk.build(tmp_path / "front")
+    written = parse(built.board.read_text())
+    assert _rule_areas(written) == [(SINK_NAME, "F.Cu", SINK_BOX)]
+    (zone,) = [z for z in find_all(written, "zone") if find(z, "keepout") is not None]
+    rule = find(zone, "keepout")
+    assert rule is not None
+    # No track, via or pour; pads are let be, the thing's own and those of a part on it.
+    assert {str(r[0]): str(r[1]) for r in rule[1:]} == {
+        "tracks": "not_allowed", "vias": "not_allowed", "pads": "allowed",
+        "copperpour": "not_allowed", "footprints": "allowed",
+    }  # fmt: skip
+    # The header is on it, its pins inside the area, as it was.
+    placed = {_ref(fp): fp for fp in find_all(written, "footprint")}
+    assert pad_xy(placed["P1"], "2") == pytest.approx((120, 68))
+
+
+def test_copper_kept_from_under_something_fixed_on_both_sides_is_a_rule_area_on_each(
+    board, tmp_path
+):
+    # The mounting hole, 3.2 mm across at (136, 76).
+    hole = board.fixed("M3")
+    box = [(134.4, 74.4), (137.6, 74.4), (137.6, 77.6), (134.4, 77.6)]
+    board.keepout(hole, copper=True, both_sides=True)
+    board.keepout(hole, copper=True)  # said of the front again: it is drawn once
+    board.keepout(board["U1"].area("antenna"), copper=True)
+    written = parse(board.build(tmp_path).board.read_text())
+    assert _rule_areas(written) == [
+        ("U1 antenna", "F.Cu", _rule_areas(written)[0][2]),
+        ("M3 at (136, 76)", "F.Cu", box),
+        ("M3 at (136, 76)", "B.Cu", box),
+    ]
+
+
+def test_the_router_is_told_of_the_copper_kept_from_under_something_fixed(sunk, tmp_path):
+    from pkidl.dsn import write_dsn
+
+    _routed(sunk).keepout(sunk.fixed("S"), copper=True)
+    router = Scripted()
+    sunk.build(tmp_path / "out", router=router)
+    ((_, job, _, _),) = router.asked
+    assert [(layer, list(box)) for layer, box in job.keepouts] == [("F.Cu", SINK_BOX)]
+    # As a router reads it: a keepout on the front layer and none on the back, y up.
+    areas = [(layer, list(box)) for layer, box in job.keepouts]
+    dsn = write_dsn(tmp_path / "told.dsn", list(job.footprints), list(job.outline),
+                    list(job.netclasses), {}, areas=areas)  # fmt: skip
+    kept = [line.strip() for line in dsn.read_text().splitlines() if "polygon" in line]
+    assert kept == ['(keepout "" (polygon F.Cu 0  114000 -62000  126000 -62000  126000 -70000  '
+                    "114000 -70000  114000 -62000))"]  # fmt: skip
+    # With nothing said the router is told of none.
+    plain = Scripted()
+    sink_free = sunk.statements()[-1]
+    del sunk._statements[sink_free]
+    sunk.build(tmp_path / "plain", router=plain)
+    assert list(plain.asked[0][1].keepouts) == []
+
+
+def test_a_pour_does_not_fill_under_something_fixed_on_the_face_kept_clear(sunk, tmp_path):
+    from shapely.geometry import Point as At
+
+    from pkidl.fill import fills
+
+    def filled(said: bool) -> dict[str, bool]:
+        """Whether each layer's pour covers a point under the heatsink, clear of every
+        pad there: 2 mm above its middle."""
+        board = Board.from_inputs(tmp_path / "sunk")
+        for statement in sunk.statements():
+            board.add(statement)
+        _routed(board)
+        for layer in ("F.Cu", "B.Cu"):
+            board.pour("GND", layer=layer)
+        if said:
+            board.keepout(board.fixed("S"), copper=True)
+        router = Scripted()
+        built = board.build(tmp_path / f"filled-{said}", router=router)
+        items = [n for n in parse(built.board.read_text())[1:] if isinstance(n, list)]
+        outline = [(100.0, 50.0), (140.0, 50.0), (140.0, 80.0), (100.0, 80.0)]
+        over = {layer: False for layer in ("F.Cu", "B.Cu")}
+        for _, layer, piece in fills(items, outline, 0.5):
+            over[layer] = over[layer] or piece.contains(At(120, 64))
+        # And the pour the router is told of is the same.
+        told = {layer: False for layer in ("F.Cu", "B.Cu")}
+        for _, layer, plane in router.asked[0][1].planes:
+            xs, ys = [x for x, _ in plane], [y for _, y in plane]
+            told[layer] = told[layer] or (min(xs) < 114 and max(xs) > 126
+                                          and min(ys) < 62 and max(ys) > 70)  # fmt: skip
+        assert all(told.values())
+        return over
+
+    assert filled(False) == {"F.Cu": True, "B.Cu": True}
+    assert filled(True) == {"F.Cu": False, "B.Cu": True}
+
+
+F, B = "F.Cu", "B.Cu"
+
+
+def test_a_track_or_a_via_in_an_area_kept_clear_of_copper_is_in_the_builds_result(sunk, tmp_path):
+    sink = sunk.fixed("S")
+    _routed(sunk).keepout(sink, copper=True)
+    # With nothing proposed nothing is in it: not the heatsink's own pins, and not
+    # the pins of the header that stands on it.
+    built = sunk.build(tmp_path / "none", router=Scripted())
+    assert built.routed is not None and built.routed.kept_out == ()
+    # A track across it on the front, 12 mm of it inside, in two segments; one on the
+    # back, where nothing is kept; one that ends 0.5 mm short of it on the front; and
+    # a via in it, and one outside.
+    wires = (
+        Wire("A", F, 0.25, [(110.0, 64.0), (120.0, 64.0), (130.0, 64.0)]),
+        Wire("B", B, 0.25, [(110.0, 65.0), (130.0, 65.0)]),
+        Wire("B", F, 0.25, [(110.0, 63.0), (113.375, 63.0)]),
+        Wire("GND", F, 0.25, [(120.0, 75.0), (120.0, 69.0)]),
+    )
+    vias = (Via("B", VIA, (124.0, 63.0)), Via("B", VIA, (110.0, 65.0)))
+    built = sunk.build(tmp_path / "some", router=Scripted(Run(wires, vias, 0)))
+    assert built.routed is not None
+    assert built.routed.kept_out == (
+        f"A has 2 segments of track in {SINK_NAME} on F.Cu, which is kept clear of copper: "
+        "12 mm of it",
+        f"GND has 1 segment of track in {SINK_NAME} on F.Cu, which is kept clear of copper: "
+        "1 mm of it",
+        f"a via of B at (124, 63) is in {SINK_NAME}, which is kept clear of copper",
+    )
+    # The board is written with them all the same: the result says, and nothing is changed.
+    written = parse(built.board.read_text())
+    assert len(find_all(written, "segment")) == 5 and len(find_all(written, "via")) == 2
+    # With nothing said of the heatsink none of it is anything.
+    board = Board.from_inputs(tmp_path / "sunk")
+    for statement in sunk.statements()[:-1]:
+        board.add(statement)
+    built = board.build(tmp_path / "plain", router=Scripted(Run(wires, vias, 0)))
+    assert built.routed is not None and built.routed.kept_out == ()
+
+
+def test_a_track_whose_width_alone_reaches_into_an_area_kept_clear_is_in_the_result(sunk, tmp_path):
+    # The heatsink's box starts 114 mm across. A track 0.25 mm wide down the board
+    # 0.05 mm left of it has 0.075 mm of its copper inside and none of its middle
+    # line; one 0.2 mm left of it is 0.075 mm clear.
+    _routed(sunk).keepout(sunk.fixed("S"), copper=True)
+
+    def beside(x: float) -> tuple[str, ...]:
+        wires = (Wire("B", F, 0.25, [(x, 63.0), (x, 69.0)]),)
+        built = sunk.build(tmp_path / f"at-{x}", router=Scripted(Run(wires, (), 0)))
+        assert built.routed is not None
+        return built.routed.kept_out
+
+    assert beside(113.95) == (
+        f"B has 1 segment of track in {SINK_NAME} on F.Cu, which is kept clear of copper: "
+        "0 mm of it",
+    )
+    assert beside(113.8) == ()
+
+
+def test_copper_in_an_area_of_a_part_or_on_either_face_kept_clear_is_in_the_result(board, tmp_path):
+    hole = board.fixed("M3")  # 3.2 mm across at (136, 76), from 134.4 to 137.6 mm
+    _routed(board).keepout(hole, copper=True, both_sides=True)
+    board.keepout(board["U1"].area("antenna"), copper=True)
+    built = board.build(tmp_path / "none", router=Scripted())
+    assert built.routed is not None and built.routed.kept_out == ()
+    (antenna, _) = built.solution.keepouts
+    x0, y0, x1, y1 = (v.mm for v in antenna.box)
+    wires = (
+        Wire("A", B, 0.25, [(130.0, 76.0), (139.0, 76.0)]),  # under the hole, on the back
+        Wire("A", F, 0.25, [(x0 - 1, y0 + 1), (x1 + 1, y0 + 1)]),  # across the antenna
+        Wire("B", B, 0.25, [(x0 - 1, y0 + 1), (x1 + 1, y0 + 1)]),  # and under it
+    )
+    vias = (Via("B", VIA, (x0 + 1, y0 + 1)),)
+    built = board.build(tmp_path / "some", router=Scripted(Run(wires, vias, 0)))
+    assert built.routed is not None
+    assert built.routed.kept_out == (
+        "A has 1 segment of track in M3 at (136, 76) on B.Cu, which is kept clear of copper: "
+        "3.2 mm of it",
+        "A has 1 segment of track in U1's antenna area on F.Cu, which is kept clear of "
+        "copper: 3 mm of it",
+        "a via of B at (123, 51) is in U1's antenna area, which is kept clear of copper",
+    )
+    # The antenna is from 122 to 125 mm across at the top of the board.
+    assert (x0, y0, x1, y1) == (122, 50, 125, 53)
+
+
+def test_a_part_on_something_kept_clear_on_both_sides_is_not_built(sunk, tmp_path):
+    said = sunk.keepout(sunk.fixed("S"), copper=True, both_sides=True)
+    line = _line_no() - 1
+    with pytest.raises(BuildError) as e:
+        sunk.build(tmp_path)
+    (problem,) = e.value.problems
+    assert problem.startswith(
+        f"P1.1, P1.2 and P1.3 are inside the outline of {SINK_NAME}, which is kept clear of "
+        "copper on both sides: no track can reach them ("
+    )
+    assert problem.endswith(f"{HERE}:{line})") and said in sunk.statements()
+    assert not list(tmp_path.glob("*.kicad_pcb"))
