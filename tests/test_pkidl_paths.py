@@ -1251,7 +1251,8 @@ def test_a_reading_that_failed_says_whether_its_net_has_a_pour(board, tmp_path, 
 
 
 @pytest.mark.parametrize("order", [(0, 1, 2), (2, 0, 1)])
-def test_a_track_that_stops_short_of_another_cuts_it_nowhere(board, tmp_path, order):
+@pytest.mark.parametrize("down", [True, False])
+def test_a_track_that_stops_short_of_another_cuts_it_nowhere(board, tmp_path, order, down):
     j1, j2 = board.parts("J1", "J2")
     board.path(j1, "IN", j2, current=1 * A)
     # A second track laid all but on the first: 0.2 um below its middle line at 130 mm
@@ -1261,11 +1262,13 @@ def test_a_track_that_stops_short_of_another_cuts_it_nowhere(board, tmp_path, or
     two = one(board, tmp_path / "two", STRAIGHT, lapped)
     assert two.ohms == pytest.approx(ohms(20 + 15 + 15 + 20, 0.5), rel=1e-6)
     # A third comes down at 150 mm and stops 1 mm short of them: its line crosses
-    # theirs past its end, and that is no crossing. Neither is cut there, and what
-    # they are is what they were, whichever is laid first.
-    short = Wire("IN", F, 0.5, [(150.0, 70.0), (150.0, 61.0)])
+    # theirs past its end, or before its start laid the other way, and that is no
+    # crossing. Neither is cut there, and what they are is what they were, whichever
+    # is laid first.
+    ends = [(150.0, 70.0), (150.0, 61.0)]
+    short = Wire("IN", F, 0.5, ends if down else ends[::-1])
     wires = (STRAIGHT, lapped, short)
-    three = one(board, tmp_path / "three", *(wires[n] for n in order))
+    three = one(board, tmp_path / f"three-{down}", *(wires[n] for n in order))
     assert three.ohms == pytest.approx(two.ohms, rel=1e-9)
     assert (three.length, three.narrowest) == (two.length, two.narrowest)
 

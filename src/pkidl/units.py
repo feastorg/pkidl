@@ -85,7 +85,7 @@ class Current:
         if isinstance(k, bool) or not isinstance(k, int | float):
             return NotImplemented
         if isinstance(k, float) and not math.isfinite(k):
-            raise ValueError(f"a current is a number of amps, not {k!r}: write 1 * A")
+            raise ValueError(f"a current is a number of amps, not {float(k)!r}: write 1 * A")
         return Current(round(self.ua * k))
 
     __rmul__ = __mul__
