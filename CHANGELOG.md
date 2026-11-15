@@ -23,7 +23,7 @@ Unreleased. History before this file was reconstructed from the git log.
   the new `rules(copper=)` says, 0.035 mm (1 oz) where it says nothing; a via and a
   pad add no resistance, and a track joins one where its middle line is within that
   copper; tracks of one layer join where their ends meet, where one ends within the
-  other's copper and where they cross, a pad and a via join where their copper
+  other's copper part way along it, not beside its end, and where they cross, a pad and a via join where their copper
   touches, and copper laid twice is one strip. A measurement never stops a build: one
   that raises is a reading that says so. A pour is
   not measured, nor what it reaches: ends no track joins read `not joined by track`,
