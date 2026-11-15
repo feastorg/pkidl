@@ -21,12 +21,12 @@ sink = board.fixed("530002B02500G")
 limit, volts = board["U102"], board["U103"]
 board.place(limit, on=sink, at=(12.7 * mm, -3.81 * mm), of=limit.pin(2), facing=Edge.RIGHT)
 board.place(volts, on=sink, at=(12.7 * mm, 3.81 * mm), of=volts.pin(2), facing=Edge.LEFT)
-# What stands by the heatsink stands 5 mm clear of it: the limiter's parts to its left,
-# the regulator's to its right, and no electrolytic nearer.
-left = board.area(box=((0 * mm, 0 * mm), (31.5 * mm, 46 * mm)))
-right = board.area(box=((67.5 * mm, 0 * mm), (99 * mm, 46 * mm)))
-board.inside(left, board.parts("D101", "D102", "C105", "C101", "C102", "C103"))
-board.inside(right, board.parts("R102", "C106", "C107", "D104", "D105"))
+# No copper runs on the front under the heatsink, whose body sits there. The
+# electrolytics stand 5 mm clear of it for its heat, and the regulators' diodes and
+# resistor 1 mm, room for an iron beside its fins.
+board.keepout(sink, copper=True)
+board.apart(board.parts("C101", "C105", "C106", "C107"), sink, 5 * mm)
+board.apart(board.parts("D101", "D102", "D104", "D105", "R102", "C103"), sink, 1 * mm)
 board.place(board["D101"], near=limit.pin(2), within=30 * mm)
 board.place(board["D102"], near=limit.pin(1), within=30 * mm)
 board.place(board["C105"], near=limit.pin(1), within=30 * mm, at_least=8 * mm)

@@ -314,6 +314,10 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- The bench supply's board file keeps copper from under its heatsink
+  (`keepout(sink, copper=True)`) and says how far its electrolytics and its diodes
+  stand from it (`apart`), in place of two areas worked out by hand.
+
 - The next-bus clock's board file is assembled by hand: `assembly="hand"` in its rules.
   No pads of different parts are nearer than 1.3 mm, where they were 0.3 mm.
 
