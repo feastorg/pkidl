@@ -614,3 +614,23 @@ def test_the_bench_supplys_board_file_places_every_part_by_what_it_says():
     near = min(a[2].distance(b[2]) for i, a in enumerate(pads) for b in pads[i + 1:]
                if a[0] != b[0])  # fmt: skip
     assert near >= 1.27 - 1e-6  # assembly="hand", whatever the nets
+
+
+def test_the_bench_supplys_board_file_says_the_way_its_load_current_goes():
+    from pkidl.intent import Path as Said
+    from pkidl.intent import canonical
+
+    supply = CORPUS / "t1" / "DualLM317BenchSupply_DualLM317BenchSupply"
+    board = runpy.run_path(str(supply / "board.py"))["board"]
+    paths = [s for s in canonical(board.statements()) if isinstance(s, Said)]
+    assert {str(s.current) for s in paths} == {"500 mA"}
+    found = [s.stretches(board.circuit) for s in paths]
+    # Nothing is wrong with any of them, which the solve says too: the test above.
+    assert [wrong for _, wrong in found] == [()] * len(paths)
+    assert [[str(stretch) for stretch in stretches] for stretches, _ in found] == [
+        ["JACK, CON101 to SW101"],
+        ["JACK, CON102 to SW101"],
+        ["RAW, SW101 to U102", "/current_limit_r/R_LIM+, U102 to SW201"],
+        ["VOUT, U103 to SW103", "N-0000010, SW103 to P101"],
+        ["N-0000014, P102 to DS102"],
+    ]

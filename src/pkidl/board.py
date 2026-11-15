@@ -40,7 +40,7 @@ from pkidl.intent import (
 )
 from pkidl.placement import Problem, Solution, _listed, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
-from pkidl.units import Length, length, mm
+from pkidl.units import Current, Length, length, mm
 
 if TYPE_CHECKING:
     from shapely.geometry import Polygon
@@ -440,15 +440,25 @@ class Board:
         self.add(statement)
         return statement
 
+    def path(self, *stops: Part | Net | str | Iterable[Part], current: Current) -> intent.Path:
+        """Say the way a current goes through the board, stop by stop, and get the
+        statement back. See ``pkidl.path``."""
+        statement = intent.path(*(self.net(s) if isinstance(s, str) else s for s in stops),
+                                current=current)  # fmt: skip
+        self.add(statement)
+        return statement
+
     def rules(self, *, track: Length | str, clearance: Length | str,
               edge: Length | str = 0.5 * mm, assembly: str | None = None,
               pads_apart: Length | str | None = None,
-              bodies_apart: Length | str | None = None) -> Rules:  # fmt: skip
-        """Say the widths the board's copper is held to and how far apart its parts are
-        kept for the way it is assembled, and get the statement back. See
-        ``pkidl.intent.rules``."""
+              bodies_apart: Length | str | None = None,
+              copper: Length | str = intent.OUNCE) -> Rules:  # fmt: skip
+        """Say the widths the board's copper is held to, how far apart its parts are
+        kept for the way it is assembled and how thick its copper is, and get the
+        statement back. See ``pkidl.intent.rules``."""
         statement = intent.rules(track=track, clearance=clearance, edge=edge, assembly=assembly,
-                                 pads_apart=pads_apart, bodies_apart=bodies_apart)  # fmt: skip
+                                 pads_apart=pads_apart, bodies_apart=bodies_apart,
+                                 copper=copper)  # fmt: skip
         self.add(statement)
         return statement
 

@@ -79,6 +79,10 @@ What each statement means here:
   reported. Of the rules' distance between parts and every ``apart`` that speaks of
   the part and the thing, the largest holds. A part ``on=`` the thing it is kept
   apart from is a problem, and is left where it was put.
+- ``path``: it places nothing. Its stretches are found from the circuit
+  (``Path.stretches``), and what is wrong with them is reported: two parts in a row
+  that share no net, or several with none of them named, and a part with no pad on a
+  net named beside it.
 
 Which way round a part is, where nothing says, is the way that makes its connections
 shortest. A part's outline is the box around its pads, courtyard and fabrication
@@ -140,6 +144,7 @@ from pkidl.intent import (
     Fixed,
     Inside,
     Keepout,
+    Path,
     Place,
     Region,
     Row,
@@ -571,6 +576,10 @@ class _Solver:
             self.unordered.append(Problem(
                 (ref,), f"{ref} is placed on {thing}, and {most} keeps it {most.distance} "
                 "from it", tuple(said_of)))  # fmt: skip
+        for s in statements:
+            if isinstance(s, Path):
+                for refs, why in s.stretches(circuit)[1]:
+                    self.unordered.append(Problem(refs, f"{s}: {why}", (s,)))
         for s in statements:
             if isinstance(s, Row):
                 for part in s.parts:

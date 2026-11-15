@@ -3,6 +3,8 @@
 A length is kept as a whole number of nanometres, as KiCad stores it, so two ways of
 writing the same distance are the same value and sums do not drift. A bare number is not
 a length: nothing here guesses its unit.
+
+A current has its unit too: ``1 * A``, ``500 * mA``, kept as a whole number of microamps.
 """
 
 from __future__ import annotations
@@ -60,9 +62,37 @@ class Length:
         return Length(-self.nm)
 
 
+@dataclass(frozen=True, order=True)
+class Current:
+    ua: int
+
+    def __post_init__(self) -> None:
+        if type(self.ua) is not int:
+            raise TypeError(f"a current is a whole number of microamps, not {self.ua!r}: "
+                            "write 1 * A")  # fmt: skip
+
+    @property
+    def a(self) -> float:
+        return self.ua / 1_000_000
+
+    def __str__(self) -> str:
+        if abs(self.ua) >= 1_000_000:
+            return f"{self.ua / 1_000_000:.6f}".rstrip("0").rstrip(".") + " A"
+        return f"{self.ua / 1_000:.3f}".rstrip("0").rstrip(".") + " mA"
+
+    def __mul__(self, k: float) -> Current:
+        if isinstance(k, bool) or not isinstance(k, int | float):
+            return NotImplemented
+        return Current(round(self.ua * k))
+
+    __rmul__ = __mul__
+
+
 mm = Length(1_000_000)
 mil = Length(25_400)
 inch = Length(25_400_000)
+A = Current(1_000_000)
+mA = Current(1_000)
 
 _UNITS = {"mm": mm, "mil": mil, "in": inch, "inch": inch}
 

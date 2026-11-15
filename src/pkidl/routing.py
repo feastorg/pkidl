@@ -41,6 +41,7 @@ from pkidl.sexpr import Node, find, find_all
 if TYPE_CHECKING:
     from pkidl.board import Board
     from pkidl.fill import Cut
+    from pkidl.paths import Measured
 
 Point = tuple[float, float]
 
@@ -130,6 +131,9 @@ class Routed:
     # Each track and via the board that is written has in an area kept clear of copper
     # (``pkidl.build.kept_out``), a line each: nothing is changed for it.
     kept_out: tuple[str, ...] = ()
+    # Each path the board file said, in the order it was written, as the tracks of the
+    # board that is written have it (``pkidl.paths``): nothing is changed for it.
+    paths: tuple[Measured, ...] = ()
 
 
 def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
