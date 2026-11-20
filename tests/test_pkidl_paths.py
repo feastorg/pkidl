@@ -1660,43 +1660,51 @@ def test_a_rule_says_the_most_a_path_carries_on_a_net_of_its_class(tmp_path):
     ]
 
 
-def test_a_rules_file_a_build_left_is_gone_when_the_board_has_no_wider_net(tmp_path):
+def test_a_board_with_no_wider_net_leaves_what_is_at_the_path_of_its_rules_file_alone(tmp_path):
     out = tmp_path / "out"
     wide = carrier(tmp_path / "wide")
     wide.path(wide["J1"], "IN", wide["J2"], current=2 * A)
     wide.build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
-    left = out / "carrier.kicad_dru"
-    assert left.exists()
-    # The same board with the path taken out of its board file, built where it was.
-    carrier(tmp_path / "plain").build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
-    assert sorted(f.name for f in out.iterdir()) == ["carrier.kicad_pcb", "carrier.kicad_pro"]
-    # A board not routed has it taken away as well, and one with no file has none.
-    wide.build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
-    assert left.exists()
-    for _ in range(2):
-        carrier(tmp_path / f"bare{_}", routed=False).build(out, name="carrier")
-        assert not left.exists()
+    left = (out / "carrier.kicad_dru").read_bytes()
+    assert b'(rule "0.926 mm width"' in left
+    # The same board with the path taken out of its board file, built where it was:
+    # the file the earlier build wrote stays, with a class no net is in now.
+    built = carrier(tmp_path / "plain").build(out, name="carrier",
+                                              router=Scripted(Run((STRAIGHT,), (), 0)))  # fmt: skip
+    assert (out / "carrier.kicad_dru").read_bytes() == left
+    assert built.project is not None and _classes(built.project) == ([("Default", 0.5, 0.2)], [])
 
 
-@pytest.mark.parametrize(
-    "text",
-    [
-        # A rule of someone's own, alone and beside one a build writes.
-        '(version 1)\n\n(rule "hole"\n  (constraint hole_clearance (min 2mm)))\n',
-        '(version 1)\n\n(rule "0.926 mm width"\n  (constraint track_width (min 0.926mm)))\n'
-        '\n(rule "Default width"\n  (constraint track_width (min 0.5mm)))\n',
-        "(version 1)\n",  # and one with no rule in it
-        "",
-    ],
-)
-def test_a_rules_file_that_is_not_a_builds_is_let_be(board, tmp_path, text):
+@pytest.mark.parametrize("routed", [True, False])
+def test_a_board_with_no_wider_net_is_built_whatever_is_at_the_path_of_its_rules_file(
+    tmp_path, routed
+):
     out = tmp_path / "out"
     out.mkdir()
-    (out / "carrier.kicad_dru").write_text(text)
-    (out / "other.kicad_dru").write_text('(version 1)\n\n(rule "0.926 mm width"\n)\n')
+    # Somebody's own, and not text a build could read: a degree sign as Latin-1 has it.
+    own = '(version 1)\n# keep 5 \xb0C in hand\n(rule "0.926 mm width"\n)\n'.encode("latin-1")
+    (out / "carrier.kicad_dru").write_bytes(own)
+    with pytest.raises(UnicodeDecodeError):
+        (out / "carrier.kicad_dru").read_text(encoding="utf-8")
+    board = carrier(tmp_path / "carrier", routed=routed)
+    board.path(board["J1"], "IN", board["J2"], current=1 * A)  # 0.278 mm: no wider than a track
+    built = board.build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert built.board.read_text().startswith("(kicad_pcb") and built.project is not None
+    assert (out / "carrier.kicad_dru").read_bytes() == own
+    assert sorted(f.name for f in out.iterdir()) == [
+        "carrier.kicad_dru", "carrier.kicad_pcb", "carrier.kicad_pro"]  # fmt: skip
+
+
+def test_a_board_with_a_wider_net_writes_its_rules_file_over_what_is_at_its_path(board, tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "carrier.kicad_dru").write_bytes(
+        '(version 1)\n# 5 \xb0C\n(rule "mine"\n)\n'.encode("latin-1")
+    )
+    board.path(board["J1"], "IN", board["J2"], current=2 * A)
     board.build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
-    assert (out / "carrier.kicad_dru").read_text() == text
-    assert (out / "other.kicad_dru").exists()  # a build's by its form, and another board's
+    wrote = (out / "carrier.kicad_dru").read_text()
+    assert '(rule "0.926 mm width"' in wrote and "mine" not in wrote
 
 
 def test_a_reading_that_could_not_be_measured_has_its_current_and_what_that_needs(

@@ -766,7 +766,7 @@ amps, ΔT in °C, and the width W and the copper's thickness Th in mils, so W =
 1.5 A 0.562 mm and 3 A 1.874 mm. pkidl routes on outer layers only, and the fit for an
 inner layer is not in it.
 
-No KiCad this project uses reckons so. The calculator of KiCad 10.0.8 is by IPC-2221,
+KiCad 10.0.8's calculator does not reckon so. It is by IPC-2221,
 I = 0.048 · ΔT^0.44 · A^0.725 for an outer layer with the track's section A in square
 mils, which for 1.5 A at 10 °C in 1 oz copper is 0.5255 mm: narrower than the
 0.562 mm here. pkidl uses the fit because IPC-2152 took the place of IPC-2221's
@@ -794,10 +794,17 @@ a thickness that is not more than nothing is refused.
   width alone is what KiCad draws a new track at, and no minimum. Above each rule is
   why, for whoever opens the file: `a path's 1.5 A needs 0.562 mm to warm by no more
   than 10 °C in 0.035 mm copper`, the current being the most a path carries on a net
-  of the class. A build into a directory where an earlier one left such a file takes
-  it away when the board has no wider net any more. It takes away only a file whose
-  every rule is one a build writes, the least width of a class named for its width:
-  a rules file with any other rule in it is somebody's, and is let be.
+  of the class.
+- **The rules file is the build's, where it writes one.** KiCad reads only the rules
+  file named for the project, so a build whose board has a wider net writes
+  `<name>.kicad_dru` whole, in place of whatever is at that path: a rule of one's own
+  put there is lost to the next such build, and nothing merges the two. A build whose
+  board has no wider net writes none and leaves that path alone, not opening what is
+  there. So a file an earlier build left stays when a board stops having a wider
+  net, holding to a class no net is in, and KiCad's DRC then has nothing to hold to
+  it: on such a pair, a project with no member and the rules file left from a build
+  that had one, KiCad 10.0.8 found no track too narrow and said nothing of the rule,
+  where with the member it found the one track that was (2026-11-20).
 - **A net is in its class by a pattern only its name matches.** KiCad reads each
   entry of a project's `netclass_patterns` as a regular expression and as a wildcard,
   and takes a net that either matches whole, in the case written. Written as it is,
@@ -809,7 +816,11 @@ a thickness that is not more than nothing is refused.
   matched nothing, and `*` and `?` as `\x2a` and `\x3f`, which leaves the wildcard
   nothing to read (`pkidl.project.exactly`). The router is told of each net by its
   name as it is. What is left: a net named as another's pattern is written, `V\+`
-  beside `V+`, is taken with it.
+  beside `V+`, is taken with it. A project also has a map from a net's name to its
+  classes (`netclass_assignments`), and KiCad 10.0.8 took every name tried from it
+  as itself. Patterns are written as most of the demo projects KiCad ships with have
+  them: of those that give a class its nets, eight do it by patterns and two by the
+  map, and those two have net-class labels in their schematics.
 - **A reading says where the copper is narrower than its current needs.** Each
   `Reading` has its path's current and what that needs (`Reading.needs`), and reads
   `0.5 mm at its narrowest where 1.5 A needs 0.562 mm` where the narrowest track on
@@ -874,7 +885,9 @@ measured or sized, where the fit stops holding for a large current, and inner la
 Nor a via: every class has the one via, 0.8 mm with a 0.4 mm hole, so a via on a net
 sized for its current is not sized for it, and a reading counts a via as no
 resistance and leaves it out of the narrowest width. At some current the barrel of a
-via is the neck of its net, and nothing here measures it.
+via is the neck of its net, and nothing here measures it. Nor the rules file a build
+leaves when a board stops having a wider net, which stays; nor a rule of one's own
+beside a build's, which the next build writes over.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline

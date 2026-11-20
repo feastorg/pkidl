@@ -68,10 +68,14 @@ def test_a_net_is_written_as_the_pattern_that_only_its_name_matches(net, pattern
 
 
 @pytest.mark.parametrize(
-    "net", ["GND", "N-0000018", "/current_limit_r/R_LIM-", "/a/b", "R S", "T~#<>,;:'T", "+", ""]
-)
+    "net",
+    ["GND", "N-0000018", "/current_limit_r/R_LIM-", "/a/b", "R S", "T~#<>,;:'T", "", "a=b",
+     "it's", "#H", "~RST", "<a>", "a&b", "50%", "a,b", "a;b", "a:b", "a!", "@x", "-N", "N-",
+     "/sheet/sub/NET"],
+)  # fmt: skip
 def test_a_name_kicad_reads_as_itself_is_its_own_pattern(net):
-    assert exactly(net) == (net if net != "+" else r"\+")
+    assert exactly(net) == net
+    assert exactly("+") == r"\+"
     assert exactly("all+.*?()[]{}|^$\\") == r"all\+\.\x2a\x3f\(\)\[\][{][}]\|\^\$\\"
 
 

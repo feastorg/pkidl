@@ -17,8 +17,8 @@ Unreleased. History before this file was reconstructed from the git log.
   branch has it (`common/track_width_calculations.cpp`, read 2026-11-19; ΔT = 215.3 ·
   I² · W^-1.15 · Th^-1, amps, °C and mils), with the copper as thick as
   `rules(copper=)` says, taken up to the next whole micrometre (`pkidl.paths.needed`):
-  1.5 A at 10 °C in 1 oz copper needs 0.562 mm. It is not what a released KiCad
-  reckons: the calculator of KiCad 10.0.8 is by IPC-2221, and gives 0.5255 mm for the
+  1.5 A at 10 °C in 1 oz copper needs 0.562 mm. It is not what KiCad 10.0.8's
+  calculator reckons: that is by IPC-2221, and gives 0.5255 mm for the
   same. `needed` refuses a current, a rise or a thickness that is not more than
   nothing, and gives a width for any current however large: nothing says where the
   fit stops holding. A net is never narrower
@@ -28,9 +28,10 @@ Unreleased. History before this file was reconstructed from the git log.
   and their nets, `<name>.kicad_pro` has them, and a `<name>.kicad_dru` beside it,
   written only where there is such a class, makes each class's width the least KiCad's
   DRC allows a track of it, as an error, with the reason above each rule (`a path's
-  1.5 A needs 0.562 mm to warm by no more than 10 °C in 0.035 mm copper`). A board
-  built where an earlier build left such a file, and that has no wider net now, has
-  it taken away; a rules file with any other rule in it is let be. Each `Reading` has its path's current and
+  1.5 A needs 0.562 mm to warm by no more than 10 °C in 0.035 mm copper`). The file
+  is written whole over whatever is at its path, so a rule of one's own put there is
+  lost to the next such build; a build of a board with no wider net leaves that path
+  alone, and a file an earlier build left there stays. Each `Reading` has its path's current and
   what that needs (`Reading.needs`), and says `0.5 mm at its narrowest where 1.5 A
   needs 0.562 mm` where the copper on the way is narrower; nothing fails for it. A
   board with no `path`, or none whose current needs more than `rules(track=)`, is

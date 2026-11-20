@@ -180,8 +180,8 @@ def needed(current: Current, rise: Rise, copper: Length) -> Length:
     It is Brooks and Adam's fit to the charts of IPC-2152 for an outer layer, as the
     source of KiCad's master branch has it (``common/track_width_calculations.cpp``
     and ``pcb_calculator/tracks_width_versus_current_formula.md``, read 2026-11-19),
-    which no KiCad this project uses has yet: the calculator of KiCad 10.0.8 is by
-    IPC-2221 and gives a narrower track. ΔT = 215.3 · I² · W^-1.15 · Th^-1, with the
+    and not as KiCad 10.0.8's calculator reckons: that is by IPC-2221, and gives a
+    narrower track. ΔT = 215.3 · I² · W^-1.15 · Th^-1, with the
     current I in amps, the rise ΔT in °C, and the width W and the thickness Th in
     mils, so W = (215.3 · I² / (ΔT · Th)) ^ (1 / 1.15). 1.5 A at 10 °C in 1 oz copper
     is 0.562 mm. A track of an inner layer warms more for the same current, and is

@@ -351,7 +351,8 @@ the width is for heat, and a drop wants a shorter way or a pour, which nothing h
 gives it. Not yet: a track let narrow into a pad, checking a drop against a budget
 and sizing for one, saying which copper two currents may share, measuring or sizing
 a pour, a via sized for the current of its net or counted in a reading, where the
-fit stops holding for a large current, and inner layers.
+fit stops holding for a large current, the rules file a build leaves when a board
+stops having a wider net, a rule of one's own beside a build's, and inner layers.
 
 ## Later
 

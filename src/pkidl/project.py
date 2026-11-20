@@ -79,7 +79,13 @@ def exactly(net: str) -> str:
     so the wildcard has neither to read. A name with none of them is its own pattern.
 
     What is left: a net named as the pattern itself is written, ``V\\+`` beside
-    ``V+``, is taken with it, by the wildcard."""
+    ``V+``, is taken with it, by the wildcard.
+
+    A project also has a map from a net's name to its classes
+    (``netclass_assignments``), and KiCad 10.0.8 took every name tried from it as
+    itself. Patterns are written here as most of the demo projects that KiCad ships
+    with have them: of those that give a class its nets, eight do it by patterns and
+    two by the map, and those two have net-class labels in their schematics."""
     return "".join(_MEANT.get(c, c) for c in net)
 
 
