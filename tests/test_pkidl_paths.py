@@ -120,7 +120,7 @@ def carrier(
     board = Board.from_inputs(d)
     for ref, (x, y) in places.items():
         board.place(board[ref], at=(x * mm, y * mm), facing=Edge.TOP)
-    board.rules(track=0.5 * mm, clearance=0.2 * mm, **said)
+    board.rules(**{"track": 0.5 * mm, "clearance": 0.2 * mm, **said})
     if routed:
         board.route()
     return board
@@ -1513,13 +1513,13 @@ def test_kicad_is_held_to_the_width_of_each_class_as_the_least(board, tmp_path):
         built.project.with_suffix(".kicad_dru").read_text()
         == """(version 1)
 
-# the 0.926 mm netclass width, as a minimum
+# a path's 2 A needs 0.926 mm to warm by no more than 10 °C in 0.035 mm copper
 (rule "0.926 mm width"
   (severity error)
   (condition "A.NetClass == '0.926 mm'")
   (constraint track_width (min 0.926mm)))
 
-# the 1.874 mm netclass width, as a minimum
+# a path's 3 A needs 1.874 mm to warm by no more than 10 °C in 0.035 mm copper
 (rule "1.874 mm width"
   (severity error)
   (condition "A.NetClass == '1.874 mm'")
@@ -1596,3 +1596,162 @@ def test_what_a_reading_needs_is_by_the_rise_and_the_copper_the_board_says(tmp_p
     reading = one(warm, tmp_path / "out", STRAIGHT)
     assert reading.needs == needed(2 * A, 20 * degC, 0.07 * mm) == Length(278_000)
     assert " 0.5 mm at its narrowest, " in str(reading)
+
+
+def test_a_wider_class_has_the_clearance_the_boards_rules_say(tmp_path):
+    from pkidl.dsn import write_dsn
+
+    board = carrier(tmp_path / "carrier", clearance=0.35 * mm)
+    board.path(board["J1"], "IN", board["J2"], current=2 * A)
+    router = Scripted(Run((STRAIGHT,), (), 0))
+    built = board.build(tmp_path / "out", router=router)
+    job = router.asked[0][1]
+    assert list(job.netclasses) == [NetClass("Default", 0.35, 0.5),
+                                    NetClass("0.926 mm", 0.35, 0.926)]  # fmt: skip
+    dsn = write_dsn(tmp_path / "told.dsn", list(job.footprints), list(job.outline),
+                    list(job.netclasses), {c: list(n) for c, n in job.members.items()})  # fmt: skip
+    told = [line.strip() for line in dsn.read_text().splitlines()]
+    assert [told[n + 2] for n, line in enumerate(told) if line.startswith("(class ")] == [
+        "(rule (width 500) (clearance 350))",
+        "(rule (width 926) (clearance 350))",
+    ]
+    assert built.project is not None
+    assert _classes(built.project)[0] == [("Default", 0.5, 0.35), ("0.926 mm", 0.926, 0.35)]
+
+
+def test_the_classes_are_in_the_order_of_their_widths_and_not_of_their_names(board, tmp_path):
+    j1, j2, j3 = board.parts("J1", "J2", "J3")
+    # 5 A needs 4.556 mm and 10 A 15.208 mm, which a list of names has first.
+    board.path(j1, "IN", j2, current=10 * A)
+    board.path(j3, "GND", board["J4"], current=5 * A)
+    router = Scripted(Run((STRAIGHT,), (), 0))
+    built = board.build(tmp_path / "out", router=router)
+    names = ["Default", "4.556 mm", "15.208 mm"]
+    assert sorted(names[1:]) == names[:0:-1]
+    assert [c.name for c in router.asked[0][1].netclasses] == names
+    assert built.project is not None
+    assert [name for name, _, _ in _classes(built.project)[0]] == names
+    rules = built.project.with_suffix(".kicad_dru").read_text()
+    assert [line for line in rules.splitlines() if line.startswith("(rule")] == [
+        '(rule "4.556 mm width"',
+        '(rule "15.208 mm width"',
+    ]
+
+
+def test_a_rule_says_the_most_a_path_carries_on_a_net_of_its_class(tmp_path):
+    board = carrier(tmp_path / "carrier", rise=20 * degC, copper=0.07 * mm)
+    j1, j2, q1, j3 = board.parts("J1", "J2", "Q1", "J3")
+    # Two currents that need one width to the micrometre, the larger said second, and
+    # a third on the net of the first that is less than either.
+    board.path(j1, "IN", j2, current=3.9995 * A)
+    board.path(q1, j3, current=4 * A)
+    board.path(j1, "IN", q1, current=1 * A)
+    assert needed(3.9995 * A, 20 * degC, 0.07 * mm) == needed(4 * A, 20 * degC, 0.07 * mm)
+    built = board.build(tmp_path / "out", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert built.project is not None
+    assert _classes(built.project) == (
+        [("Default", 0.5, 0.2), ("0.926 mm", 0.926, 0.2)],
+        [{"netclass": "0.926 mm", "pattern": "IN"}, {"netclass": "0.926 mm", "pattern": "OUT"}],
+    )
+    said = built.project.with_suffix(".kicad_dru").read_text().splitlines()
+    assert said[2:4] == [
+        "# a path's 4 A needs 0.926 mm to warm by no more than 20 °C in 0.07 mm copper",
+        '(rule "0.926 mm width"',
+    ]
+
+
+def test_a_rules_file_a_build_left_is_gone_when_the_board_has_no_wider_net(tmp_path):
+    out = tmp_path / "out"
+    wide = carrier(tmp_path / "wide")
+    wide.path(wide["J1"], "IN", wide["J2"], current=2 * A)
+    wide.build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
+    left = out / "carrier.kicad_dru"
+    assert left.exists()
+    # The same board with the path taken out of its board file, built where it was.
+    carrier(tmp_path / "plain").build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert sorted(f.name for f in out.iterdir()) == ["carrier.kicad_pcb", "carrier.kicad_pro"]
+    # A board not routed has it taken away as well, and one with no file has none.
+    wide.build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert left.exists()
+    for _ in range(2):
+        carrier(tmp_path / f"bare{_}", routed=False).build(out, name="carrier")
+        assert not left.exists()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # A rule of someone's own, alone and beside one a build writes.
+        '(version 1)\n\n(rule "hole"\n  (constraint hole_clearance (min 2mm)))\n',
+        '(version 1)\n\n(rule "0.926 mm width"\n  (constraint track_width (min 0.926mm)))\n'
+        '\n(rule "Default width"\n  (constraint track_width (min 0.5mm)))\n',
+        "(version 1)\n",  # and one with no rule in it
+        "",
+    ],
+)
+def test_a_rules_file_that_is_not_a_builds_is_let_be(board, tmp_path, text):
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "carrier.kicad_dru").write_text(text)
+    (out / "other.kicad_dru").write_text('(version 1)\n\n(rule "0.926 mm width"\n)\n')
+    board.build(out, name="carrier", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert (out / "carrier.kicad_dru").read_text() == text
+    assert (out / "other.kicad_dru").exists()  # a build's by its form, and another board's
+
+
+def test_a_reading_that_could_not_be_measured_has_its_current_and_what_that_needs(
+    board, tmp_path, monkeypatch
+):
+    from pkidl import paths
+
+    board.path(board["J1"], "IN", board["J2"], current=2 * A)
+
+    def broken(*_):
+        raise RuntimeError("no such luck")
+
+    monkeypatch.setattr(paths, "_between", broken)
+    built = board.build(tmp_path / "out", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert built.routed is not None
+    ((reading,),) = (m.stretches for m in built.routed.paths)
+    assert reading.failed == "RuntimeError: no such luck"
+    assert (reading.current, reading.needs) == (2 * A, Length(926_000))
+
+
+@pytest.mark.parametrize(
+    ("current", "rise", "copper", "told"),
+    [
+        (0 * A, 10 * degC, 0.035 * mm, r"needed\(\): 0 mA is not a current to carry"),
+        (-1.5 * A, 10 * degC, 0.035 * mm, r"needed\(\): -1.5 A is not a current to carry"),
+        (1 * A, 0 * degC, 0.035 * mm, r"needed\(\): 0 °C is not a rise"),
+        (1 * A, -10 * degC, 0.035 * mm, r"needed\(\): -10 °C is not a rise"),
+        (1 * A, 10 * degC, 0 * mm, r"needed\(\): 0 mm is not a thickness"),
+        (1 * A, 10 * degC, -0.035 * mm, r"needed\(\): -0.035 mm is not a thickness"),
+    ],
+)
+def test_a_width_is_not_given_for_what_is_no_current_rise_or_thickness(current, rise, copper, told):
+    with pytest.raises(ValueError, match=told):
+        needed(current, rise, copper)
+
+
+def test_a_net_named_with_what_kicad_reads_as_a_pattern_is_in_its_class_alone(tmp_path):
+    from pkidl.dsn import write_dsn
+
+    # A net V+, on a path, and a net V, on none, which the name V+ read as a pattern is.
+    named = SOURCE.replace('(net "IN")', '(net "V+")').replace('(net "OUT")', '(net "V")')
+    named = named.replace('(net "LOAD")', '(net "Net-(R1-Pad2)")')
+    board = carrier(tmp_path / "carrier", source=named)
+    board.path(board["J1"], "V+", board["J2"], current=2 * A)
+    board.path(board.parts("R1", "R2"), board["J4"], current=2 * A)
+    router = Scripted(Run((), (), 0))
+    built = board.build(tmp_path / "out", router=router)
+    # The router is told of each net by its name, and KiCad by a pattern only it matches.
+    job = router.asked[0][1]
+    assert dict(job.members) == {"0.926 mm": ["Net-(R1-Pad2)", "V+"]}
+    dsn = write_dsn(tmp_path / "told.dsn", list(job.footprints), list(job.outline),
+                    list(job.netclasses), {c: list(n) for c, n in job.members.items()})  # fmt: skip
+    assert '    (class "0.926 mm" "Net-(R1-Pad2)" "V+"' in dsn.read_text().splitlines()
+    assert built.project is not None
+    assert _classes(built.project)[1] == [
+        {"netclass": "0.926 mm", "pattern": "Net-\\(R1-Pad2\\)"},
+        {"netclass": "0.926 mm", "pattern": "V\\+"},
+    ]

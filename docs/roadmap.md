@@ -339,7 +339,8 @@ placement or routing. What the measurement itself leaves is #94.
 **2026-11-20: a path's current sets the width of its nets' tracks.** Each net a path
 goes through is laid as wide as its current needs to warm by no more than
 `rules(rise=)`, 10 °C where nothing says, by the fit to IPC-2152 for an outer layer
-that KiCad's calculator uses, and never narrower than `rules(track=)`. The nets of a
+that the source of KiCad's master branch has (read 2026-11-19) and KiCad 10.0.8's
+calculator, which is by IPC-2221, has not, and never narrower than `rules(track=)`. The nets of a
 width are a net class the router, the project and a `.kicad_dru` all have, and a
 reading says where the narrowest track is narrower than its current needs. On the
 bench supply the six nets of its 1.5 A paths are 0.562 mm wide. A wider track leaves
@@ -349,7 +350,8 @@ kept (#101), and KiCad finds every connection made. The way round the limiter is
 the width is for heat, and a drop wants a shorter way or a pour, which nothing here
 gives it. Not yet: a track let narrow into a pad, checking a drop against a budget
 and sizing for one, saying which copper two currents may share, measuring or sizing
-a pour, and inner layers.
+a pour, a via sized for the current of its net or counted in a reading, where the
+fit stops holding for a large current, and inner layers.
 
 ## Later
 

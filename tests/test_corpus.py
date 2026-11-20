@@ -653,3 +653,55 @@ def test_the_bench_supplys_board_file_says_the_way_its_load_current_goes():
         ],
         ["N-0000014, P102 to DS102"],
     ]
+
+
+@pytest.mark.slow
+def test_the_bench_supplys_board_file_is_routed_with_the_nets_of_its_paths_as_wide_as_they_need(
+    tmp_path,
+):
+    """Where Freerouting is installed. The one corpus board that says the way a current
+    goes: what KiCad's DRC makes of the board this writes is ``just corpus``."""
+    try:
+        router_command()
+    except RouterError as e:
+        pytest.skip(str(e))
+    supply = CORPUS / "t1" / "DualLM317BenchSupply_DualLM317BenchSupply"
+    built = runpy.run_path(str(supply / "board.py"))["board"].build(tmp_path, "supply")
+    assert built.routed is not None and built.project is not None
+    # Every connection is made by the router's count, in each run, and the pours leave
+    # nothing cut off on the board that is written.
+    assert built.routed.runs and [run.unrouted for _, run in built.routed.runs] == [0] * len(
+        built.routed.runs
+    )
+    assert built.routed.left == ()
+    # 1.5 A needs 0.562 mm and a track is 0.5 mm: the six nets of the stretches of its
+    # 1.5 A paths are a class of that width, in the project and held to it by a rule.
+    said = json.loads(built.project.read_text())["net_settings"]
+    assert [(c["name"], c["track_width"], c["clearance"]) for c in said["classes"]] == [
+        ("Default", 0.5, 0.3),
+        ("0.562 mm", 0.562, 0.3),
+    ]
+    wide = ["/current_limit_r/R_LIM-", "N-0000010", "N-0000014", "N-0000017", "N-0000018",
+            "N-000006"]  # fmt: skip
+    assert said["netclass_patterns"] == [{"netclass": "0.562 mm", "pattern": net} for net in wide]
+    rules = built.project.with_suffix(".kicad_dru").read_text()
+    assert (
+        "# a path's 1.5 A needs 0.562 mm to warm by no more than 10 °C in 0.035 mm copper" in rules
+    )
+    assert "(constraint track_width (min 0.562mm))" in rules
+    # Every track of those nets is that wide, and no other is.
+    made = parse(built.board.read_text())
+    widths = {}
+    for segment in find_all(made, "segment"):
+        net, width = find(segment, "net"), find(segment, "width")
+        assert net is not None and width is not None
+        widths.setdefault(str(net[1]) in wide, set()).add(float(str(width[1])))
+    assert widths == {True: {0.562}, False: {0.5}}
+    # Each stretch of each path is joined by track no narrower than its current needs.
+    readings = [r for m in built.routed.paths for r in m.stretches]
+    assert len(built.routed.paths) == 5 and len(readings) == 11
+    for reading in readings:
+        assert reading.failed == "" and reading.ohms is not None, str(reading)
+        assert reading.narrowest is not None and reading.needs is not None
+        assert reading.narrowest >= reading.needs, str(reading)
+    assert {str(r.needs) for r in readings} == {"0.562 mm", "0.084 mm"}

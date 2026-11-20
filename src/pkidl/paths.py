@@ -177,16 +177,39 @@ def needed(current: Current, rise: Rise, copper: Length) -> Length:
     """How wide a track of an outer layer is to carry *current* and be no more than
     *rise* warmer for it, in copper *copper* thick: up to the next whole micrometre.
 
-    It is Brooks and Adam's fit to the charts of IPC-2152 for an outer layer, as
-    KiCad's calculator has it (``common/track_width_calculations.cpp`` and
-    ``pcb_calculator/tracks_width_versus_current_formula.md``): ΔT = 215.3 · I² ·
-    W^-1.15 · Th^-1, with the current I in amps, the rise ΔT in °C, and the width W
-    and the thickness Th in mils, so W = (215.3 · I² / (ΔT · Th)) ^ (1 / 1.15). 1.5 A
-    at 10 °C in 1 oz copper is 0.562 mm. A track of an inner layer warms more for the
-    same current, and is not what this says."""
+    It is Brooks and Adam's fit to the charts of IPC-2152 for an outer layer, as the
+    source of KiCad's master branch has it (``common/track_width_calculations.cpp``
+    and ``pcb_calculator/tracks_width_versus_current_formula.md``, read 2026-11-19),
+    which no KiCad this project uses has yet: the calculator of KiCad 10.0.8 is by
+    IPC-2221 and gives a narrower track. ΔT = 215.3 · I² · W^-1.15 · Th^-1, with the
+    current I in amps, the rise ΔT in °C, and the width W and the thickness Th in
+    mils, so W = (215.3 · I² / (ΔT · Th)) ^ (1 / 1.15). 1.5 A at 10 °C in 1 oz copper
+    is 0.562 mm. A track of an inner layer warms more for the same current, and is
+    not what this says.
+
+    The fit is to IPC-2152's data, and nothing here says where it stops holding: a
+    width is given for any current, however large. A current, a rise or a thickness
+    that is not more than nothing is refused."""
+    if current <= Current(0):
+        raise ValueError(f"needed(): {current} is not a current to carry")
+    if rise <= Rise(0):
+        raise ValueError(f"needed(): {rise} is not a rise")
+    if copper <= Length(0):
+        raise ValueError(f"needed(): {copper} is not a thickness")
     thick = copper / mil
     wide = (215.3 * current.a**2 / (rise.degrees * thick)) ** (1 / 1.15)
     return Length(math.ceil(wide * mil.nm / 1000) * 1000)
+
+
+def carried(paths: Sequence[Path], circuit: Circuit) -> dict[str, Current]:
+    """The most any of *paths* carries on each net that is the net of a stretch of one,
+    by the net's name in *circuit*: the largest of their currents, not their sum."""
+    most: dict[str, Current] = {}
+    for path in paths:
+        for stretch in path.stretches(circuit)[0]:
+            net = stretch.net.name
+            most[net] = max(most.get(net, path.current), path.current)
+    return most
 
 
 def widths(paths: Sequence[Path], circuit: Circuit, rules: Rules) -> dict[str, Length]:
@@ -197,12 +220,8 @@ def widths(paths: Sequence[Path], circuit: Circuit, rules: Rules) -> dict[str, L
     needs (``needed``), and one on stretches of several paths as wide as the largest
     of their currents needs: not their sum. A net no path goes through, and one whose
     current needs no more than ``rules(track=)``, is not among them."""
-    most: dict[str, Current] = {}
-    for path in paths:
-        for stretch in path.stretches(circuit)[0]:
-            net = stretch.net.name
-            most[net] = max(most.get(net, path.current), path.current)
-    wide = {net: needed(current, rules.rise, rules.copper) for net, current in most.items()}
+    wide = {net: needed(current, rules.rise, rules.copper)
+            for net, current in carried(paths, circuit).items()}  # fmt: skip
     return {net: wide[net] for net in sorted(wide) if wide[net] > rules.track}
 
 

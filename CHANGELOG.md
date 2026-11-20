@@ -13,16 +13,24 @@ Unreleased. History before this file was reconstructed from the git log.
   of a stretch of a `path` is laid, the whole of it, as wide as the current needs to
   warm its tracks by no more than the new `rules(rise=)` allows: `10 * degC` where
   nothing says, with the new unit `degC` for a difference in temperature. The width is
-  Brooks and Adam's fit to IPC-2152 for an outer layer, as KiCad's calculator has it
-  (ΔT = 215.3 · I² · W^-1.15 · Th^-1, amps, °C and mils), with the copper as thick as
+  Brooks and Adam's fit to IPC-2152 for an outer layer, as the source of KiCad's master
+  branch has it (`common/track_width_calculations.cpp`, read 2026-11-19; ΔT = 215.3 ·
+  I² · W^-1.15 · Th^-1, amps, °C and mils), with the copper as thick as
   `rules(copper=)` says, taken up to the next whole micrometre (`pkidl.paths.needed`):
-  1.5 A at 10 °C in 1 oz copper needs 0.562 mm. A net is never narrower
+  1.5 A at 10 °C in 1 oz copper needs 0.562 mm. It is not what a released KiCad
+  reckons: the calculator of KiCad 10.0.8 is by IPC-2221, and gives 0.5255 mm for the
+  same. `needed` refuses a current, a rise or a thickness that is not more than
+  nothing, and gives a width for any current however large: nothing says where the
+  fit stops holding. A net is never narrower
   than `rules(track=)`; one on several paths takes the largest of their currents, not
   their sum; and the net into parts side by side is given the whole current. The nets
   of a width are a net class named for it (`0.562 mm`): the router is given the classes
   and their nets, `<name>.kicad_pro` has them, and a `<name>.kicad_dru` beside it,
   written only where there is such a class, makes each class's width the least KiCad's
-  DRC allows a track of it, as an error. Each `Reading` has its path's current and
+  DRC allows a track of it, as an error, with the reason above each rule (`a path's
+  1.5 A needs 0.562 mm to warm by no more than 10 °C in 0.035 mm copper`). A board
+  built where an earlier build left such a file, and that has no wider net now, has
+  it taken away; a rules file with any other rule in it is let be. Each `Reading` has its path's current and
   what that needs (`Reading.needs`), and says `0.5 mm at its narrowest where 1.5 A
   needs 0.562 mm` where the copper on the way is narrower; nothing fails for it. A
   board with no `path`, or none whose current needs more than `rules(track=)`, is
@@ -38,7 +46,7 @@ Unreleased. History before this file was reconstructed from the git log.
   KiCad 10.0.8 finds nothing unconnected and no track under its class's width. The
   way round its limiter is 273 mΩ and drops 410 mV at 1.5 A, where at 0.5 mm it was
   318 mΩ and 476 mV: it is about 312 mm of track, and a width for heat does not shorten
-  it. (#10)
+  it. A via is not sized: each class has the one via, and no reading counts one. (#10)
 - The way a current goes through the board, said and measured. `board.path(jack, power,
   limit, current=1 * A)`, or `pkidl.path(...)` in a block, is a statement: its stops
   are parts, nets (a `Net` or its name) and lists of parts side by side, and
@@ -365,6 +373,17 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A net in a class is in it alone, whatever its name. `write_project` wrote each
+  member's name as its `netclass_patterns` entry, and KiCad reads an entry as a
+  pattern: as a regular expression and as a wildcard, taking a net that either
+  matches whole. So a member `V+` put a net `V` in its class, `A.B` took `AxB`, `D*`
+  took `DATA` and `Net-(U1-Pad3)` took `Net-U1-Pad3` (KiCad 10.0.8, by its DRC); a
+  net two classes' patterns matched was in both. Each name is now written as the
+  pattern only it matches (`pkidl.project.exactly`): a backslash before each
+  character an expression reads as other than itself, a brace as `[{]`, and `*` and
+  `?` by their numbers. A name with none of those is written as it was, so a project
+  whose members have none is the same file. What is left: a net named as another's
+  pattern is written, `V\+` beside `V+`, is taken with it.
 - A net keeps its pour where what a run left cut off from it can be joined by a
   track. A build's run with the pours known that made every connection and left pads
   of a poured net cut off is no longer routed again at once with that net carried by

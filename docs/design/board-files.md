@@ -756,12 +756,27 @@ board.rules(track=0.5 * mm, clearance=0.3 * mm, rise=20 * degC)
 `rules(rise=)` is how much warmer than the board a track may be, `10 * degC` where
 nothing says, and like `copper=` it is said once and written nowhere in the project
 itself. The width is Brooks and Adam's fit to the charts of IPC-2152 for an outer
-layer, as KiCad's calculator has it: ΔT = 215.3 · I² · W^-1.15 · Th^-1, with I in
+layer, as the source of KiCad's master branch has it
+(`common/track_width_calculations.cpp` and
+`pcb_calculator/tracks_width_versus_current_formula.md`, read 2026-11-19): ΔT =
+215.3 · I² · W^-1.15 · Th^-1, with I in
 amps, ΔT in °C, and the width W and the copper's thickness Th in mils, so W =
 (215.3 · I² / (ΔT · Th)) ^ (1 / 1.15), taken up to the next whole micrometre
 (`pkidl.paths.needed`). At 10 °C in 1 oz copper, 500 mA needs 0.084 mm, 1 A 0.278 mm,
 1.5 A 0.562 mm and 3 A 1.874 mm. pkidl routes on outer layers only, and the fit for an
 inner layer is not in it.
+
+No KiCad this project uses reckons so. The calculator of KiCad 10.0.8 is by IPC-2221,
+I = 0.048 · ΔT^0.44 · A^0.725 for an outer layer with the track's section A in square
+mils, which for 1.5 A at 10 °C in 1 oz copper is 0.5255 mm: narrower than the
+0.562 mm here. pkidl uses the fit because IPC-2152 took the place of IPC-2221's
+charts in 2009. A width checked against the calculator of an installed KiCad will
+not agree with it.
+
+The fit is to IPC-2152's data, and nothing here says where it stops holding: `needed`
+gives a width for any current, 45.7 m of it for 1000 A, and what it gives for a
+current beyond that data is the fit's and nobody's measurement. A current, a rise or
+a thickness that is not more than nothing is refused.
 
 - **Never narrower than a track.** A net whose current needs no more than
   `rules(track=)` is laid at that, in the Default class, as a net no path goes
@@ -776,7 +791,25 @@ inner layer is not in it.
   each net at its class's width; `<name>.kicad_pro` has them and which nets are in
   each; and `<name>.kicad_dru`, written beside it only where there is such a class,
   holds each to its width as the least a track of it may be, as an error: a class's
-  width alone is what KiCad draws a new track at, and no minimum.
+  width alone is what KiCad draws a new track at, and no minimum. Above each rule is
+  why, for whoever opens the file: `a path's 1.5 A needs 0.562 mm to warm by no more
+  than 10 °C in 0.035 mm copper`, the current being the most a path carries on a net
+  of the class. A build into a directory where an earlier one left such a file takes
+  it away when the board has no wider net any more. It takes away only a file whose
+  every rule is one a build writes, the least width of a class named for its width:
+  a rules file with any other rule in it is somebody's, and is let be.
+- **A net is in its class by a pattern only its name matches.** KiCad reads each
+  entry of a project's `netclass_patterns` as a regular expression and as a wildcard,
+  and takes a net that either matches whole, in the case written. Written as it is,
+  the name `V+` is a pattern for `V` and `VV`, `A.B` for `AxB`, `D*` for `DATA` and
+  `Net-(U1-Pad3)` for `Net-U1-Pad3`; and a net two classes' patterns match is in
+  both, held to whichever's rule is later in the rules file (KiCad 10.0.8, by its
+  DRC, 2026-11-20). So a name is written with a backslash before each of `\ ^ $ . |
+  + ( ) [ ]`, a brace as `[{]` or `[}]`, since two with backslashes round a name
+  matched nothing, and `*` and `?` as `\x2a` and `\x3f`, which leaves the wildcard
+  nothing to read (`pkidl.project.exactly`). The router is told of each net by its
+  name as it is. What is left: a net named as another's pattern is written, `V\+`
+  beside `V+`, is taken with it.
 - **A reading says where the copper is narrower than its current needs.** Each
   `Reading` has its path's current and what that needs (`Reading.needs`), and reads
   `0.5 mm at its narrowest where 1.5 A needs 0.562 mm` where the narrowest track on
@@ -837,7 +870,11 @@ nothing here chooses one.
 
 Not yet: a track let narrow into a pad it does not fit, a drop checked against one
 that is allowed and copper sized for it, which copper two currents may share, a pour
-measured or sized, and inner layers.
+measured or sized, where the fit stops holding for a large current, and inner layers.
+Nor a via: every class has the one via, 0.8 mm with a 0.4 mm hole, so a via on a net
+sized for its current is not sized for it, and a reading counts a via as no
+resistance and leaves it out of the narrowest width. At some current the barrel of a
+via is the neck of its net, and nothing here measures it.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline

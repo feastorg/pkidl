@@ -22,8 +22,10 @@ A net a ``path`` goes through whose current needs a wider track than the board's
 ``rules(track=)`` is in a net class of that width, named for it (``0.562 mm``): the
 router lays the whole net that wide, the project has the class and its nets, and
 ``<name>.kicad_dru`` beside it holds KiCad to the width as the least a track of the
-class may be, which a class alone does not. A board with no such net has the one
-class, and no such file is written for it.
+class may be, which a class alone does not, and says above each rule the current that
+needs it. A board with no such net has the one class and no such file: none is
+written for it, and one an earlier build left in *outdir* is taken away, where every
+rule in it is one a build writes.
 
 A router is given the box around the board's outline. The placement keeps parts inside
 the outline as it is drawn; the routing does not yet.
@@ -32,6 +34,7 @@ the outline as it is drawn; the routing does not yet.
 from __future__ import annotations
 
 import copy
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -45,7 +48,7 @@ from pkidl.footprint import Placement, place
 from pkidl.intent import Fixed, Route, Rules, canonical
 from pkidl.intent import Path as Said
 from pkidl.kicad import kicad_command, unconnected
-from pkidl.paths import measured, widths
+from pkidl.paths import carried, measured, widths
 from pkidl.placement import Solution
 from pkidl.project import NetClass, width_rules, write_project, write_rules
 from pkidl.route import Freerouting
@@ -144,6 +147,16 @@ def kept_out(
     return tuple(said)
 
 
+def _left(rules: Path) -> bool:
+    """Whether the rules file at *rules* is one a build left there: a file whose rules
+    are each the least width of a class named for its width, and nothing else. A
+    rules file with any other rule in it is somebody's, and is let be."""
+    if not rules.is_file():
+        return False
+    named = re.findall(r'^\(rule "(.*)"$', rules.read_text(), flags=re.M)
+    return bool(named) and all(re.fullmatch(r"[\d.]+ mm width", name) for name in named)
+
+
 def build(board: Board, outdir: Path, name: str, router: Router | None = None) -> Built:
     """Write *board*'s KiCad files into *outdir* as ``<name>.kicad_pcb`` and
     ``<name>.kicad_pro``, with what the router read and wrote beside them. *router*
@@ -203,6 +216,13 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 classes.append(NetClass(str(wide), rules.clearance.mm, wide.mm))
             members.setdefault(str(wide), []).append(net)
         classes.sort(key=lambda c: (c.name != "Default", c.track_width))
+        # Why each is as wide as it is, for whoever opens the rules file: the most a
+        # path carries on a net of the class.
+        most = carried(paths, board.circuit)
+        why = {c.name: (c.track_width,
+                        f"a path's {max(most[net] for net in members[c.name])} needs {c.name} "
+                        f"to warm by no more than {rules.rise} in {rules.copper} copper")
+               for c in classes[1:]}  # fmt: skip
 
         def projected(path: Path) -> Path:
             """The board's rules as a KiCad project at *path*."""
@@ -311,5 +331,7 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
         project = projected(outdir / f"{name}.kicad_pro")
         if members:
             # A class's width is what KiCad draws a track at, and no minimum: this is.
-            write_rules(outdir / f"{name}.kicad_dru", width_rules(classes[1:], "error"))
+            write_rules(outdir / f"{name}.kicad_dru", width_rules(classes[1:], "error", why))
+        elif _left(outdir / f"{name}.kicad_dru"):
+            (outdir / f"{name}.kicad_dru").unlink()  # an earlier build's, of classes gone
     return Built(built.write(outdir / f"{name}.kicad_pcb"), project, solution, routed)
