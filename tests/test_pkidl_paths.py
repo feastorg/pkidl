@@ -10,23 +10,24 @@ here hands back what a test wrote, so each track is where the test put it.
 import hashlib
 import json
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path as File
 
 import pytest
 
 import pkidl
-from pkidl import A, Board, Edge, mA, mm
+from pkidl import A, Board, Edge, degC, mA, mm
 from pkidl.build import BuildError
 from pkidl.circuit import Circuit
 from pkidl.dsn import Via, Wire
 from pkidl.footprint import footprint_path, pad_xy
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.intent import Path, Rules, Stretch, path, rules
-from pkidl.paths import Measured, Reading
+from pkidl.paths import Measured, Reading, needed, widths
+from pkidl.project import NetClass
 from pkidl.routing import Job, Run
 from pkidl.sexpr import dumps, find_all, parse
-from pkidl.units import Length
+from pkidl.units import Length, Rise
 
 HERE = "test_pkidl_paths.py"
 
@@ -102,10 +103,12 @@ def ohms(long: float, wide: float, thick: float = 0.035) -> float:
 
 
 def carrier(
-    d: File, source: str = SOURCE, places: dict[str, tuple[float, float]] = PLACES
-) -> Board:
+    d: File, source: str = SOURCE, places: dict[str, tuple[float, float]] = PLACES,
+    routed: bool = True, **said: object,
+) -> Board:  # fmt: skip
     """The board above from inputs written into *d*, each part placed and the board
-    to be routed."""
+    to be routed, unless it is not *routed*, to its rules and what else of them is
+    *said*."""
     drawn = parse(source)
     d.mkdir()
     (d / "circuit.json").write_text(json.dumps(circuit(drawn)))
@@ -117,8 +120,9 @@ def carrier(
     board = Board.from_inputs(d)
     for ref, (x, y) in places.items():
         board.place(board[ref], at=(x * mm, y * mm), facing=Edge.TOP)
-    board.rules(track=0.5 * mm, clearance=0.2 * mm)
-    board.route()
+    board.rules(track=0.5 * mm, clearance=0.2 * mm, **said)
+    if routed:
+        board.route()
     return board
 
 
@@ -602,8 +606,10 @@ def test_parts_side_by_side_are_one_end_and_the_whole_current_is_taken_through(b
     assert measured.volts == pytest.approx(2 * (ohms(19, 0.5) + ohms(31, 0.5) / 2), rel=1e-9)
     assert measured.unmeasured == 0
     assert str(measured).splitlines()[1:] == [
-        "  OUT, J3 to [R1, R2]: 19 mm of track, 0.5 mm at its narrowest, 18.7 mΩ, 37.3 mV",
-        "  LOAD, [R1, R2] to J4: 31 mm of track, 0.5 mm at its narrowest, 15.2 mΩ, 30.5 mV",
+        "  OUT, J3 to [R1, R2]: 19 mm of track, 0.5 mm at its narrowest where 2 A needs "
+        "0.926 mm, 18.7 mΩ, 37.3 mV",
+        "  LOAD, [R1, R2] to J4: 31 mm of track, 0.5 mm at its narrowest where 2 A needs "
+        "0.926 mm, 15.2 mΩ, 30.5 mV",
     ]
 
 
@@ -1337,3 +1343,256 @@ def test_the_corpus_build_says_each_path_as_it_was_measured(board, tmp_path, mon
     monkeypatch.setattr("builtins.MADE", SimpleNamespace(routed=None, solution=made.solution))
     assert script.build(tmp_path / "out") == 0
     assert json.loads((tmp_path / "out" / "b" / "built.json").read_text())["paths"] == []
+
+
+# How wide a current needs its tracks, and the nets that are laid that wide.
+
+
+def _warms(amps: float, wide: Length, thick: Length) -> float:
+    """How much a track warms by the fit, in degrees, the lengths in mils."""
+    return 215.3 * amps**2 * (wide.mm / 0.0254) ** -1.15 / (thick.mm / 0.0254)
+
+
+def test_a_current_needs_the_width_the_fit_to_ipc_2152_gives_an_outer_layer():
+    ounce = 0.035 * mm
+    # 22.10 mil and 3.27 mil, each up to the next whole micrometre.
+    assert needed(1.5 * A, 10 * degC, ounce) == Length(562_000)
+    assert needed(500 * mA, 10 * degC, ounce) == Length(84_000)
+    for amps, rise, thick in ((1.5, 10, ounce), (0.5, 10, ounce), (7, 25, 0.07 * mm)):
+        wide = needed(amps * A, rise * degC, thick)
+        assert wide.nm % 1000 == 0
+        # Put back into the fit, it warms by no more than the rise, and a micrometre
+        # less by more.
+        assert _warms(amps, wide, thick) <= rise < _warms(amps, wide - Length(1000), thick)
+        assert _warms(amps, wide, thick) == pytest.approx(rise, rel=0.02)
+    # Wider for more current, for thinner copper and for a smaller rise.
+    wide = [needed(amps * A, 10 * degC, ounce) for amps in (0.5, 1, 1.5, 2, 5, 10)]
+    assert wide == sorted(set(wide))
+    assert needed(1.5 * A, 10 * degC, 0.018 * mm) > needed(1.5 * A, 10 * degC, ounce)
+    assert needed(1.5 * A, 10 * degC, ounce) > needed(1.5 * A, 10 * degC, 0.07 * mm)
+    assert needed(1.5 * A, 5 * degC, ounce) > needed(1.5 * A, 10 * degC, ounce)
+    assert needed(1.5 * A, 10 * degC, ounce) > needed(1.5 * A, 20 * degC, ounce)
+
+
+def test_how_much_a_track_may_warm_is_a_rule_and_ten_degrees_where_none_is_said(board):
+    (said,) = [s for s in board.statements() if isinstance(s, Rules)]
+    assert said.rise == 10 * degC
+    # A board that does not say it reads, and is as data, what it was.
+    assert str(said) == "rules(track=0.5 mm, clearance=0.2 mm, edge=0.5 mm)"
+    assert said.data() == {"rules": {"track": 500_000, "clearance": 200_000, "edge": 500_000}}
+    assert said.claims()["the board", "temperature rise"] == 10 * degC
+    assert rules(track=0.5 * mm, clearance=0.2 * mm, rise=10 * degC) == said
+    two = rules(track=0.5 * mm, clearance=0.2 * mm, rise=20 * degC)
+    assert two.rise == Rise(20_000) and two != said
+    assert str(two) == "rules(track=0.5 mm, clearance=0.2 mm, edge=0.5 mm, rise=20 °C)"
+    assert two.data() == {"rules": {"track": 500_000, "clearance": 200_000, "edge": 500_000,
+                                    "rise": 20_000}}  # fmt: skip
+    json.dumps(two.data())
+    assert two.claims()["the board", "temperature rise"] == 20 * degC
+    # Said once, as each rule is.
+    board.add(two)
+    (conflict,) = board.conflicts()
+    assert str(conflict).startswith("the board: temperature rise is 10 °C (")
+    assert " and 20 °C (" in str(conflict)
+    with pytest.raises(ValueError, match=r"rules\(\): rise= 0 °C is not a rise"):
+        board.rules(track=0.5 * mm, clearance=0.2 * mm, rise=0 * degC)
+    with pytest.raises(ValueError, match=r"rules\(\): rise= -5 °C is not a rise"):
+        board.rules(track=0.5 * mm, clearance=0.2 * mm, rise=-5 * degC)
+    for bare in (10, 10.0, "10", True, 10 * mm):
+        with pytest.raises(TypeError, match=r"rise= takes a rise in temperature, such as "
+                                            r"10 \* degC, not"):  # fmt: skip
+            board.rules(track=0.5 * mm, clearance=0.2 * mm, rise=bare)
+    assert len([s for s in board.statements() if isinstance(s, Rules)]) == 2
+
+
+def _wide(board: Board) -> dict[str, Length]:
+    (said,) = [s for s in board.statements() if isinstance(s, Rules)]
+    paths = [s for s in board.statements() if isinstance(s, Path)]
+    return widths(paths, board.circuit, said)
+
+
+def test_a_net_no_path_goes_through_is_no_wider_than_a_track(board):
+    assert _wide(board) == {}
+
+
+def test_a_path_whose_current_needs_less_than_a_track_widens_nothing(board):
+    # 1 A needs 0.278 mm, and a track is 0.5 mm.
+    board.path(board["J1"], "IN", board["J2"], current=1 * A)
+    assert needed(1 * A, 10 * degC, 0.035 * mm) == Length(278_000)
+    assert _wide(board) == {}
+
+
+def test_the_nets_of_a_path_are_as_wide_as_its_current_needs_and_no_other_net_is(board):
+    j3, j4 = board.parts("J3", "J4")
+    board.path("IN", board["Q1"], j3, board.parts("R1", "R2"), "LOAD", j4, "GND", current=2 * A)
+    # OUT twice and LOAD: IN and GND say where it comes in and goes out, and are no
+    # stretch. Parts side by side do not halve what their net is given.
+    assert _wide(board) == {"LOAD": Length(926_000), "OUT": Length(926_000)}
+    assert list(_wide(board)) == ["LOAD", "OUT"]
+
+
+@pytest.mark.parametrize(
+    ("said", "wide"),
+    [({}, {"IN": Length(926_000)}), ({"rise": 20 * degC}, {"IN": Length(507_000)}),
+     ({"rise": 21 * degC}, {}), ({"copper": 0.07 * mm}, {"IN": Length(507_000)}),
+     ({"copper": 0.08 * mm}, {}), ({"track": 0.926 * mm}, {}),
+     ({"track": 0.925 * mm}, {"IN": Length(926_000)})],
+)  # fmt: skip
+def test_a_net_is_as_wide_as_the_boards_rise_and_copper_ask_and_never_narrower_than_a_track(
+    board, said, wide
+):
+    path = board.path(board["J1"], "IN", board["J2"], current=2 * A)
+    held = rules(**{"track": 0.5 * mm, "clearance": 0.2 * mm, **said})
+    assert widths([path], board.circuit, held) == wide
+
+
+def test_a_net_on_two_paths_takes_the_larger_of_their_currents_and_not_their_sum(board):
+    j1, j2, q1 = board.parts("J1", "J2", "Q1")
+    board.path(j1, "IN", j2, current=2 * A)
+    board.path(j1, "IN", q1, board["J3"], current=3 * A)
+    three, five = needed(3 * A, 10 * degC, 0.035 * mm), needed(5 * A, 10 * degC, 0.035 * mm)
+    assert (three, five) == (Length(1_874_000), Length(4_556_000))
+    assert _wide(board) == {"IN": three, "OUT": three}
+    # Whichever is said first.
+    other = [s for s in board.statements() if isinstance(s, Path)][::-1]
+    (said,) = [s for s in board.statements() if isinstance(s, Rules)]
+    assert widths(other, board.circuit, said) == {"IN": three, "OUT": three}
+
+
+def _classes(project: File) -> tuple[list[tuple[str, float, float]], list[dict[str, str]]]:
+    wrote = json.loads(project.read_text())["net_settings"]
+    return ([(c["name"], c["track_width"], c["clearance"]) for c in wrote["classes"]],
+            wrote["netclass_patterns"])  # fmt: skip
+
+
+def test_a_wider_net_is_in_a_class_of_its_width_for_the_router_and_in_the_project(board, tmp_path):
+    from pkidl.dsn import write_dsn
+
+    j1, j2, q1, j3 = board.parts("J1", "J2", "Q1", "J3")
+    board.path(j1, "IN", j2, current=2 * A)
+    board.path(q1, j3, board.parts("R1", "R2"), board["J4"], current=2 * A)
+    board.path(j3, "GND", board["J4"], current=3 * A)
+    router = Scripted(Run((STRAIGHT,), (), 0))
+    built = board.build(tmp_path / "out", router=router)
+    job = router.asked[0][1]
+    # A class a width, named for it, the narrowest first after Default.
+    assert list(job.netclasses) == [NetClass("Default", 0.2, 0.5), NetClass("0.926 mm", 0.2, 0.926),
+                                    NetClass("1.874 mm", 0.2, 1.874)]  # fmt: skip
+    assert dict(job.members) == {"0.926 mm": ["IN", "LOAD", "OUT"], "1.874 mm": ["GND"]}
+    assert (job.neck_down, job.fan_out) == (False, False)
+    assert all(asked.netclasses == job.netclasses and asked.members == job.members
+               for _, asked, _, _ in router.asked)  # fmt: skip
+    # As a router reads it: each net in its class, at its width.
+    dsn = write_dsn(tmp_path / "told.dsn", list(job.footprints), list(job.outline),
+                    list(job.netclasses), {c: list(n) for c, n in job.members.items()})  # fmt: skip
+    told = [line.strip() for line in dsn.read_text().splitlines()]
+    assert [
+        (told[n], told[n + 2]) for n, line in enumerate(told) if line.startswith("(class ")
+    ] == [
+        ('(class "0.926 mm" "IN" "LOAD" "OUT"', "(rule (width 926) (clearance 200))"),
+        ('(class "1.874 mm" "GND"', "(rule (width 1874) (clearance 200))"),
+    ]
+    # The project has the classes and which nets are in each.
+    assert built.project is not None
+    assert _classes(built.project) == (
+        [("Default", 0.5, 0.2), ("0.926 mm", 0.926, 0.2), ("1.874 mm", 1.874, 0.2)],
+        [{"netclass": "0.926 mm", "pattern": "IN"}, {"netclass": "0.926 mm", "pattern": "LOAD"},
+         {"netclass": "0.926 mm", "pattern": "OUT"}, {"netclass": "1.874 mm", "pattern": "GND"}],
+    )  # fmt: skip
+    assert json.loads(built.project.read_text())["board"]["design_settings"]["rules"][
+        "min_track_width"] == 0.5  # fmt: skip
+
+
+def test_kicad_is_held_to_the_width_of_each_class_as_the_least(board, tmp_path):
+    j1, j2, q1, j3 = board.parts("J1", "J2", "Q1", "J3")
+    board.path(j1, "IN", j2, current=2 * A)
+    board.path(q1, j3, current=3 * A)
+    built = board.build(tmp_path / "out", router=Scripted(Run((STRAIGHT,), (), 0)))
+    assert built.project is not None
+    assert (
+        built.project.with_suffix(".kicad_dru").read_text()
+        == """(version 1)
+
+# the 0.926 mm netclass width, as a minimum
+(rule "0.926 mm width"
+  (severity error)
+  (condition "A.NetClass == '0.926 mm'")
+  (constraint track_width (min 0.926mm)))
+
+# the 1.874 mm netclass width, as a minimum
+(rule "1.874 mm width"
+  (severity error)
+  (condition "A.NetClass == '1.874 mm'")
+  (constraint track_width (min 1.874mm)))
+"""
+    )
+    assert sorted(f.name for f in (tmp_path / "out").iterdir()) == [
+        "carrier.kicad_dru", "carrier.kicad_pcb", "carrier.kicad_pro"]  # fmt: skip
+
+
+def test_a_board_that_is_not_routed_has_its_wider_nets_in_the_project_all_the_same(tmp_path):
+    bare = carrier(tmp_path / "carrier", routed=False)
+    bare.path(bare["J1"], "IN", bare["J2"], current=2 * A)
+    built = bare.build(tmp_path / "out", router=Scripted())
+    assert built.routed is None and built.project is not None
+    assert _classes(built.project) == ([("Default", 0.5, 0.2), ("0.926 mm", 0.926, 0.2)],
+                                       [{"netclass": "0.926 mm", "pattern": "IN"}])  # fmt: skip
+    assert built.project.with_suffix(".kicad_dru").exists()
+
+
+@pytest.mark.parametrize("amps", [None, 1])
+def test_a_board_with_no_wider_net_has_the_one_class_and_no_rules_file(board, tmp_path, amps):
+    if amps is not None:
+        board.path(board["J1"], "IN", board["J2"], current=amps * A)
+    router = Scripted(Run((STRAIGHT,), (), 0))
+    built = board.build(tmp_path / "out", router=router)
+    job = router.asked[0][1]
+    assert list(job.netclasses) == [NetClass("Default", 0.2, 0.5)] and dict(job.members) == {}
+    assert built.project is not None
+    assert _classes(built.project) == ([("Default", 0.5, 0.2)], [])
+    assert sorted(f.name for f in (tmp_path / "out").iterdir()) == [
+        "carrier.kicad_pcb", "carrier.kicad_pro"]  # fmt: skip
+
+
+def test_a_reading_has_what_its_current_needs_and_says_so_where_the_track_is_narrower(
+    board, tmp_path
+):
+    j1, j2 = board.parts("J1", "J2")
+    board.path(j1, "IN", j2, current=1 * A)
+    board.path(j1, "IN", j2, current=2 * A)
+    board.path(board["Q1"], board["J3"], current=2 * A)
+    wide = Wire("IN", F, 0.926, [(110.0, 60.0), (160.0, 60.0)])
+    neck = Wire("IN", F, 0.925, [(160.0, 60.0), (210.0, 60.0)])
+    for other, least, short in ((0.925, "0.925 mm", " where 2 A needs 0.926 mm"),
+                                (0.926, "0.926 mm", ""), (1.5, "0.926 mm", "")):  # fmt: skip
+        wires = (wide, replace(neck, width=other))
+        less, more, apart = measure(board, tmp_path / f"out{other}", *wires)
+        # Each reading has its own path's current and what that needs, measured or not.
+        assert [(r.current, r.needs) for m in (less, more, apart) for r in m.stretches] == [
+            (1 * A, Length(278_000)),
+            (2 * A, Length(926_000)),
+            (2 * A, Length(926_000)),
+        ]
+        (lesser,), (greater,), (unjoined,) = less.stretches, more.stretches, apart.stretches
+        assert str(greater).startswith(
+            f"IN, J1 to J2: 100 mm of track, {least} at its narrowest{short}, "
+        )
+        # The same copper is wide enough for the path that carries less.
+        assert str(lesser).startswith(f"IN, J1 to J2: 100 mm of track, {least} at its narrowest, ")
+        assert str(unjoined) == "OUT, Q1 to J3: not joined by track"
+    # A reading made with nothing said of what it needs reads as it did.
+    assert str(Reading(greater.stretch, 0.1, 10 * mm, 0.1 * mm, 0.2)) == (
+        "IN, J1 to J2: 10 mm of track, 0.1 mm at its narrowest, 100 mΩ, 200 mV"
+    )
+    assert str(Reading(greater.stretch, 0.1, 10 * mm, 0.1 * mm, 0.2, True, "", 2 * A, 1 * mm)) == (
+        "IN, J1 to J2: 10 mm of track, 0.1 mm at its narrowest where 2 A needs 1 mm, at most "
+        "100 mΩ, 200 mV: IN has a pour as well, which is not measured"
+    )
+
+
+def test_what_a_reading_needs_is_by_the_rise_and_the_copper_the_board_says(tmp_path):
+    warm = carrier(tmp_path / "carrier", rise=20 * degC, copper=0.07 * mm)
+    warm.path(warm["J1"], "IN", warm["J2"], current=2 * A)
+    reading = one(warm, tmp_path / "out", STRAIGHT)
+    assert reading.needs == needed(2 * A, 20 * degC, 0.07 * mm) == Length(278_000)
+    assert " 0.5 mm at its narrowest, " in str(reading)

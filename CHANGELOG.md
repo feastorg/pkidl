@@ -9,6 +9,27 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- A path's current sets how wide the tracks of its nets are. Every net that is the net
+  of a stretch of a `path` is laid, the whole of it, as wide as the current needs to
+  warm its tracks by no more than the new `rules(rise=)` allows: `10 * degC` where
+  nothing says, with the new unit `degC` for a difference in temperature. The width is
+  Brooks and Adam's fit to IPC-2152 for an outer layer, as KiCad's calculator has it
+  (ΔT = 215.3 · I² · W^-1.15 · Th^-1, amps, °C and mils), with the copper as thick as
+  `rules(copper=)` says, taken up to the next whole micrometre (`pkidl.paths.needed`):
+  1.5 A at 10 °C in 1 oz copper needs 0.562 mm. A net is never narrower
+  than `rules(track=)`; one on several paths takes the largest of their currents, not
+  their sum; and the net into parts side by side is given the whole current. The nets
+  of a width are a net class named for it (`0.562 mm`): the router is given the classes
+  and their nets, `<name>.kicad_pro` has them, and a `<name>.kicad_dru` beside it,
+  written only where there is such a class, makes each class's width the least KiCad's
+  DRC allows a track of it, as an error. Each `Reading` has its path's current and
+  what that needs (`Reading.needs`), and says `0.5 mm at its narrowest where 1.5 A
+  needs 0.562 mm` where the copper on the way is narrower; nothing fails for it. A
+  board with no `path`, or none whose current needs more than `rules(track=)`, is
+  built byte for byte as before. A board with a wider net is routed differently: its
+  tracks are wider, and where it is routed again without its pours the wider nets are
+  routed first, alone. The bench supply, whose 1.5 A paths put six nets at 0.562 mm,
+  is built with 7 connections unmade where it had none. (#10)
 - The way a current goes through the board, said and measured. `board.path(jack, power,
   limit, current=1 * A)`, or `pkidl.path(...)` in a block, is a statement: its stops
   are parts, nets (a `Net` or its name) and lists of parts side by side, and
@@ -29,8 +50,7 @@ Unreleased. History before this file was reconstructed from the git log.
   not measured, nor what it reaches: ends no track joins read `not joined by track`,
   with `GND has a pour, which is not measured` where the net has one, and a stretch
   whose net has a pour as well is given as `at most`. What a part is between its own
-  pads is not counted. It reports and changes nothing: a board file with a `path` builds the
-  same files as without it. Sizing copper from a path is not in it yet. (#10, #90)
+  pads is not counted. The measurement reports and changes nothing. (#10, #90)
 - Copper, and parts, kept clear of something fixed on the board. `board.keepout(sink,
   copper=True)` takes what `board.fixed(name)` gives where it takes an area of a part:
   no track and no pour in the box round the thing's outline on its face, or on either

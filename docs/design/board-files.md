@@ -64,7 +64,7 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `keepout(area, copper=True)` | an area kept clear | yes: placement keeps other parts out of it and says where it is, the build draws it as a rule area on each face it holds on, and the router is told to keep out of it |
 | `keepout(board.fixed(name), copper=True)` | no copper under something fixed on the board | yes: the box round the thing's outline, on its face or on both, drawn as a rule area and told to the router; pads are let be, and a track or via the routed board has in it is in the build's result |
 | `apart(parts, board.fixed(name), 5 * mm)` | parts kept a distance from something fixed | yes: a place that is looked for keeps it, and a place that is given and breaks it is a problem |
-| `path(jack, switch, regulator, current=1 * A)` | the way a current goes through the board, and how much of it | measured, not yet sized: each stretch between two stops is one net, and the build's result has what its tracks come to on the routed board. No copper is changed for it |
+| `path(jack, switch, regulator, current=1 * A)` | the way a current goes through the board, and how much of it | sized by heating, and measured: each stretch between two stops is one net, whose tracks are as wide as the current needs where that is wider than `rules(track=)`, and the build's result has what its tracks come to on the routed board |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
@@ -629,8 +629,10 @@ of track runs under it on the back, and KiCad's DRC reports no rule area broken.
 corpus board file is not changed here.
 
 **As built, the way a current goes:** the first slice of milestone 3 (decided
-2026-11-15) is a statement and a measurement. It sizes nothing: a board file with a
-`path` builds the same files, byte for byte, as the same file without it.
+2026-11-15) is a statement and a measurement, and the second (2026-11-19) has the
+current set how wide the tracks of its nets are. A board file with a `path` whose
+current needs no more than `rules(track=)` builds the same files, byte for byte, as
+the same file without it.
 
 ```python
 from pkidl import A, mA
@@ -741,8 +743,60 @@ the way its load current goes, in and out: the limited way through the current
 switch's 500 mA position and the four resistors of it, and the way round the limiter.
 The switch's other five positions, which carry less, are not said.
 
-Not yet: sizing copper from a path, a drop checked against one that is allowed, which
-copper two currents may share, and a pour measured.
+**How wide a current needs its tracks.** Every net that is the net of a stretch has
+its tracks, all of them and not only those between the two stops, as wide as the
+path's current needs to warm them by no more than the board allows:
+
+```python
+from pkidl import degC
+
+board.rules(track=0.5 * mm, clearance=0.3 * mm, rise=20 * degC)
+```
+
+`rules(rise=)` is how much warmer than the board a track may be, `10 * degC` where
+nothing says, and like `copper=` it is said once and written nowhere in the project
+itself. The width is Brooks and Adam's fit to the charts of IPC-2152 for an outer
+layer, as KiCad's calculator has it: ΔT = 215.3 · I² · W^-1.15 · Th^-1, with I in
+amps, ΔT in °C, and the width W and the copper's thickness Th in mils, so W =
+(215.3 · I² / (ΔT · Th)) ^ (1 / 1.15), taken up to the next whole micrometre
+(`pkidl.paths.needed`). At 10 °C in 1 oz copper, 500 mA needs 0.084 mm, 1 A 0.278 mm,
+1.5 A 0.562 mm and 3 A 1.874 mm. pkidl routes on outer layers only, and the fit for an
+inner layer is not in it.
+
+- **Never narrower than a track.** A net whose current needs no more than
+  `rules(track=)` is laid at that, in the Default class, as a net no path goes
+  through is.
+- **The largest current, not the sum.** A net on stretches of several paths is as
+  wide as the largest of their currents needs. Two paths over one net are often two
+  ways through a switch, and nothing yet says which copper two currents share.
+- **Parts side by side do not share it out.** The net into a list of parts, and the
+  net out of it, is given the path's whole current.
+- **A net class a width.** The nets of one width are a net class named for it
+  (`0.562 mm`), with the board's clearance. The router is given the classes and lays
+  each net at its class's width; `<name>.kicad_pro` has them and which nets are in
+  each; and `<name>.kicad_dru`, written beside it only where there is such a class,
+  holds each to its width as the least a track of it may be, as an error: a class's
+  width alone is what KiCad draws a new track at, and no minimum.
+- **A reading says where the copper is narrower than its current needs.** Each
+  `Reading` has its path's current and what that needs (`Reading.needs`), and reads
+  `0.5 mm at its narrowest where 1.5 A needs 0.562 mm` where the narrowest track on
+  the way is narrower. It is reported and stops nothing.
+
+Where a board is routed again without its pours (`poured`, below), the nets of the
+wider classes are routed first and alone, as `staged` routes every class but Default.
+
+On the bench supply (2026-11-19, `scripts/corpus.py build` of that board alone, then
+`kicad-cli pcb drc --refill-zones --severity-all`, KiCad 10.0.8), six nets are in the
+one class `0.562 mm`, 105 of the board's 252 segments of track are that wide, and no
+track is narrower than its class. The way round the limiter that was 318 mΩ at 0.5 mm
+has 160 mΩ in the three of its four stretches that are joined. The board is not the
+better for it yet: routed with its pours, a 0.562 mm track leaves one pad of the
+voltmeter apart from the ground pour, so the board is routed again with ground by
+tracks, and KiCad then finds 7 connections unmade where it found none.
+
+Not yet: a track let narrow into a pad it does not fit, a drop checked against one
+that is allowed, which copper two currents may share, a pour measured or sized, and
+inner layers.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline
@@ -1080,7 +1134,7 @@ the join is kept, and the next run, with ground by tracks, is the routing it had
 wires and 23 vias. A build of it takes about seven and a half minutes for the three
 runs, 2.6, 3.5 and 1.1 minutes, where it took under two before the pour was known.
 
-A build routes with `neck_down` and `fan_out` off: the board file's one track width is
+A build routes with `neck_down` and `fan_out` off: a class's track width is
 the least its rules allow, so a track that narrows into a pin is an error, and in
 Freerouting 2.5.0 the fan-out stage narrows its stubs to three quarters of the track
 width whatever the neck-down setting is. On the fan controller the 27
@@ -1096,15 +1150,16 @@ Open after this:
 - **A `Run` says a number**, not which connections are unmade. The charter's "routed,
   partly routed, infeasible or not found" needs the nets named, which Freerouting's
   log does not give and its REST API does.
-- **Stages come from net classes**: a class other than Default is routed first. A
-  board file has no words yet for which nets those are.
+- **Stages come from net classes**: a class other than Default is routed first. The
+  nets a `path` makes wider are the only ones a board file has words for yet.
 
 **As built, the build** (`pkidl.build`): `board.rules(track=, clearance=, edge=)` and
 `board.route()` are statements like the rest: each is said once, and a second `rules`
 that gives a width differently is a conflict with both lines. `board.build(dir)` solves
 what was said, puts each part where the solution has it, draws each kept area as a rule
 area on the faces it holds on, has the router route the board if the board file said
-`route()`, and writes `<name>.kicad_pcb` and `<name>.kicad_pro` into `dir`, the name
+`route()`, and writes `<name>.kicad_pcb` and `<name>.kicad_pro` into `dir`, and
+`<name>.kicad_dru` where a `path` makes a net wider, the name
 being the directory the inputs came from unless `name=` gives another. It gives back a
 `Built`: the two files, the solution, and what the router proposed.
 
@@ -1182,8 +1237,9 @@ Open after this:
   2026-11-13: a build routes with the pours known, checks each poured net is one
   piece, and where it is not says what was cut off and routes again with that net
   carried by tracks. That is `poured`, above.
-- **Every net is in one class**, with the board's one track width and clearance.
-  Classes, and so the stages, wait for words that say which nets carry power.
+- **Every net is in one class**, with the board's one track width and clearance,
+  but for the nets a `path` makes wider, each in a class of its width. Classes of
+  another clearance wait for words that say which nets need one.
 - **The build does not have KiCad check the board it writes.** It asks KiCad one thing,
   where KiCad is installed: what the pours leave unconnected (`poured`, above). Refill
   and DRC of the finished board are `just corpus`'s, on the files the build wrote.

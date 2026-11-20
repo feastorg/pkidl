@@ -40,7 +40,7 @@ from pkidl.intent import (
 )
 from pkidl.placement import Problem, Solution, _listed, solve
 from pkidl.sexpr import Node, Sym, dumps, find, find_all, num, parse
-from pkidl.units import Current, Length, length, mm
+from pkidl.units import Current, Length, Rise, length, mm
 
 if TYPE_CHECKING:
     from shapely.geometry import Polygon
@@ -451,13 +451,14 @@ class Board:
               edge: Length | str = 0.5 * mm, assembly: str | None = None,
               pads_apart: Length | str | None = None,
               bodies_apart: Length | str | None = None,
-              copper: Length | str = intent.OUNCE) -> Rules:  # fmt: skip
+              copper: Length | str = intent.OUNCE,
+              rise: Rise = intent.RISE) -> Rules:  # fmt: skip
         """Say the widths the board's copper is held to, how far apart its parts are
-        kept for the way it is assembled and how thick its copper is, and get the
-        statement back. See ``pkidl.intent.rules``."""
+        kept for the way it is assembled, how thick its copper is and how much a track
+        may warm, and get the statement back. See ``pkidl.intent.rules``."""
         statement = intent.rules(track=track, clearance=clearance, edge=edge, assembly=assembly,
                                  pads_apart=pads_apart, bodies_apart=bodies_apart,
-                                 copper=copper)  # fmt: skip
+                                 copper=copper, rise=rise)  # fmt: skip
         self.add(statement)
         return statement
 

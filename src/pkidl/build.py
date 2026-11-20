@@ -18,6 +18,13 @@ the board is checked for what it did. Each ``path`` the board file said is measu
 on the routed board, and what its copper comes to is in the result as well
 (``Routed.paths``).
 
+A net a ``path`` goes through whose current needs a wider track than the board's
+``rules(track=)`` is in a net class of that width, named for it (``0.562 mm``): the
+router lays the whole net that wide, the project has the class and its nets, and
+``<name>.kicad_dru`` beside it holds KiCad to the width as the least a track of the
+class may be, which a class alone does not. A board with no such net has the one
+class, and no such file is written for it.
+
 A router is given the box around the board's outline. The placement keeps parts inside
 the outline as it is drawn; the routing does not yet.
 """
@@ -38,9 +45,9 @@ from pkidl.footprint import Placement, place
 from pkidl.intent import Fixed, Route, Rules, canonical
 from pkidl.intent import Path as Said
 from pkidl.kicad import kicad_command, unconnected
-from pkidl.paths import measured
+from pkidl.paths import measured, widths
 from pkidl.placement import Solution
-from pkidl.project import NetClass, write_project
+from pkidl.project import NetClass, width_rules, write_project, write_rules
 from pkidl.route import Freerouting
 from pkidl.routing import Job, Routed, Router, lay, poured, relieved
 from pkidl.sexpr import Node, find, num
@@ -188,13 +195,21 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
     project = routed = None
     if rules is not None:
         classes = [NetClass("Default", rules.clearance.mm, rules.track.mm)]
+        # A net a path makes wider is in a class of its width, named for the width.
+        paths = [s for s in canonical(said) if isinstance(s, Said)]
+        members: dict[str, list[str]] = {}
+        for net, wide in widths(paths, board.circuit, rules).items():
+            if str(wide) not in members:
+                classes.append(NetClass(str(wide), rules.clearance.mm, wide.mm))
+            members.setdefault(str(wide), []).append(net)
+        classes.sort(key=lambda c: (c.name != "Default", c.track_width))
 
         def projected(path: Path) -> Path:
             """The board's rules as a KiCad project at *path*."""
             return write_project(
                 path,
                 netclasses=classes,
-                members={},
+                members=members,
                 rules={"min_clearance": rules.clearance.mm, "min_track_width": rules.track.mm,
                        "min_copper_edge_clearance": rules.edge.mm},
                 severities={},
@@ -256,11 +271,11 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 footprints=[item for item in built.items if item[0] == "footprint"],
                 outline=outline,
                 netclasses=classes,
-                members={},
+                members=members,
                 edge_clearance=rules.edge.mm,
                 keepouts=keepouts,
-                # The board's one track width is its minimum: a track that necks into
-                # a pin is narrower than the rules allow, and so is a fan-out stub.
+                # A class's track width is its minimum: a track that necks into a pin
+                # is narrower than the rules allow, and so is a fan-out stub.
                 neck_down=False,
                 fan_out=False,
                 # Each pour as it fills round the parts before there is a track, sized
@@ -289,10 +304,12 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
             lay(built, routed)
             areas = [(spoken, layer, box) for spoken, (layer, box)
                      in zip(called, keepouts, strict=True)]  # fmt: skip
-            paths = [s for s in canonical(said) if isinstance(s, Said)]
             routed = replace(routed, judge=judged[-1] if judged else "",
                              kept_out=kept_out(built.items, areas),
                              paths=measured(built.items, paths, board.circuit,
-                                            rules.copper))  # fmt: skip
+                                            rules.copper, rules.rise))  # fmt: skip
         project = projected(outdir / f"{name}.kicad_pro")
+        if members:
+            # A class's width is what KiCad draws a track at, and no minimum: this is.
+            write_rules(outdir / f"{name}.kicad_dru", width_rules(classes[1:], "error"))
     return Built(built.write(outdir / f"{name}.kicad_pcb"), project, solution, routed)

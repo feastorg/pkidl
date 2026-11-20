@@ -24,11 +24,13 @@ part. It says nothing of where the part goes, so keepouts add up and never confl
 It places nothing: a part that looks for its place looks that far from the thing.
 
 ``path(jack, switch, regulator, current=1 * A)`` is the way a current goes through the
-board, stop by stop, and how much of it. It places nothing and changes no copper: the
-copper between each two stops is measured on the board that is routed.
+board, stop by stop, and how much of it. It places nothing. The tracks of each net it
+goes through are as wide as its current needs, and the copper between each two stops
+is measured on the board that is routed.
 
 ``rules(track=0.25 * mm, clearance=0.2 * mm)`` and ``route()`` are about the board, not
 a part: the widths its copper is held to, and that it is routed when it is built.
+``rules(rise=20 * degC)`` is how much a track may warm with the current it carries.
 """
 
 from __future__ import annotations
@@ -45,7 +47,7 @@ from pathlib import Path as File
 from typing import Any
 
 from pkidl.circuit import Area, Circuit, Net, Part, Pin, natural
-from pkidl.units import Current, Length, length, mm
+from pkidl.units import Current, Length, Rise, length, mm
 
 _HERE = str(File(__file__).parent) + os.sep
 
@@ -797,12 +799,14 @@ BOARD = "the board"
 # and the parts themselves.
 ASSEMBLED = {"hand": (Length(1_270_000), Length(500_000)), "machine": (Length(0), Length(0))}
 OUNCE = Length(35_000)  # how thick the outer copper is where nothing says: 1 oz
+RISE = Rise(10_000)  # how much a track may warm with its current where nothing says
 
 
 @dataclass(frozen=True)
 class Rules(Statement):
     """The widths the board's copper is held to, how far apart its parts are kept for
-    the way it is assembled, and how thick its outer copper is. Made with ``rules``."""
+    the way it is assembled, how thick its outer copper is, and how much a track may
+    warm with the current it carries. Made with ``rules``."""
 
     track: Length
     clearance: Length
@@ -811,6 +815,7 @@ class Rules(Statement):
     pads_apart: Length | None = None
     bodies_apart: Length | None = None
     copper: Length = OUNCE
+    rise: Rise = RISE
 
     def __post_init__(self) -> None:
         for name, value in (("track", self.track), ("clearance", self.clearance)):
@@ -829,12 +834,18 @@ class Rules(Statement):
                 raise ValueError(f"rules(): {name}= {value} is not a distance")
         if self.copper <= Length(0):
             raise ValueError(f"rules(): copper= {self.copper} is not a thickness")
+        if not isinstance(self.rise, Rise):
+            raise TypeError("rules(): rise= takes a rise in temperature, such as 10 * degC, "
+                            f"not {self.rise!r}")  # fmt: skip
+        if self.rise <= Rise(0):
+            raise ValueError(f"rules(): rise= {self.rise} is not a rise")
 
     def __str__(self) -> str:
         said = {"track": self.track, "clearance": self.clearance, "edge": self.edge,
                 "assembly": self.assembly, "pads_apart": self.pads_apart,
                 "bodies_apart": self.bodies_apart,
-                "copper": None if self.copper == OUNCE else self.copper}  # fmt: skip
+                "copper": None if self.copper == OUNCE else self.copper,
+                "rise": None if self.rise == RISE else self.rise}  # fmt: skip
         return f"rules({', '.join(f'{k}={_shown(v)}' for k, v in said.items() if v is not None)})"
 
     def mentions(self) -> tuple[Part, ...]:
@@ -854,12 +865,14 @@ class Rules(Statement):
                 (BOARD, "clearance from the edge"): self.edge, **word,
                 (BOARD, "distance between the pads of different parts"): pads,
                 (BOARD, "distance between parts"): bodies,
-                (BOARD, "copper thickness"): self.copper}  # fmt: skip
+                (BOARD, "copper thickness"): self.copper,
+                (BOARD, "temperature rise"): self.rise}  # fmt: skip
 
     def data(self) -> dict[str, Any]:
         said = {"assembly": self.assembly, "pads_apart": self.pads_apart,
                 "bodies_apart": self.bodies_apart,
-                "copper": None if self.copper == OUNCE else self.copper}  # fmt: skip
+                "copper": None if self.copper == OUNCE else self.copper,
+                "rise": None if self.rise == RISE else self.rise}  # fmt: skip
         return {"rules": {"track": self.track.nm, "clearance": self.clearance.nm,
                           "edge": self.edge.nm,
                           **{k: _data(v) for k, v in said.items() if v is not None}}}  # fmt: skip
@@ -1046,16 +1059,24 @@ def path(*stops: Part | Net | str | Iterable[Part], current: Current) -> Path:
     by the circuit's name for it or the one ``name_nets`` gave it: said by the net or
     by either name, it is one statement.
 
-    It places nothing and changes no copper. A build that routes the board measures
-    each stretch on it (``pkidl.paths``), and the result has what it found
-    (``Routed.paths``)."""
+    It places nothing. Every net that is the net of a stretch has its tracks, all of
+    them, as wide as the current needs to warm them by no more than the board's
+    ``rules(rise=)`` allow (``pkidl.paths.needed``), where that is wider than
+    ``rules(track=)``, and never narrower than it. A net on stretches of several paths
+    takes the largest of their currents and not their sum: two paths over one net are
+    often two ways through a switch, and nothing yet says which copper two currents
+    share. A net that parts side by side share is given the path's whole current, not
+    a share of it.
+
+    A build that routes the board measures each stretch on it (``pkidl.paths``), and
+    the result has what it found (``Routed.paths``)."""
     return Path(stops, current, source=_written_at())  # type: ignore[arg-type]
 
 
 def rules(*, track: Length | str, clearance: Length | str, edge: Length | str = 0.5 * mm,
           assembly: str | None = None, pads_apart: Length | str | None = None,
           bodies_apart: Length | str | None = None,
-          copper: Length | str = OUNCE) -> Rules:  # fmt: skip
+          copper: Length | str = OUNCE, rise: Rise = RISE) -> Rules:  # fmt: skip
     """Say the widths the board's copper is held to: how wide a *track* is, the
     *clearance* between copper of two nets, and how far copper stays from the board's
     *edge*. They are the rules the router is given and the ones written into the
@@ -1072,11 +1093,16 @@ def rules(*, track: Length | str, clearance: Length | str, edge: Length | str = 
 
     *copper* is how thick the copper of the outer layers is: 0.035 mm, 1 oz, where
     nothing says. A track's resistance is reckoned with it (``path``), and nothing is
-    written to the project for it."""
+    written to the project for it.
+
+    *rise* is how much warmer than the board around it a track may be with the current
+    it carries: ``10 * degC`` where nothing says. The tracks of a net a ``path`` goes
+    through are as wide as keeps them within it, and nothing is written to the project
+    for the rise itself."""
     return Rules(length(track), length(clearance), length(edge), assembly,
                  None if pads_apart is None else length(pads_apart),
                  None if bodies_apart is None else length(bodies_apart),
-                 length(copper), source=_written_at())  # fmt: skip
+                 length(copper), rise, source=_written_at())  # fmt: skip
 
 
 def route() -> Route:
@@ -1176,6 +1202,8 @@ def _spoken(value: object) -> str:
 def _data(value: Any) -> Any:
     if isinstance(value, Length):
         return value.nm
+    if isinstance(value, Rise):
+        return value.mk
     if isinstance(value, bool | int | float):
         return value
     if isinstance(value, Edge | Side):

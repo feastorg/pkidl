@@ -333,10 +333,21 @@ build that routes the board measures it: for each stretch of one net between two
 stops, the resistance of its tracks as a network, the drop at the path's current, and
 the length and narrowest width of the way of least resistance (`Routed.paths`,
 `docs/design/board-files.md`). `rules(copper=)` says how thick the copper is. The bench
-supply's board file says the way its load current goes. It changes no copper,
-placement or routing. Not yet: sizing copper from a path, checking a drop against a
-budget, saying which copper two currents may share, and measuring a pour. What the
-measurement itself leaves is #94.
+supply's board file says the way its load current goes. It changed no copper,
+placement or routing. What the measurement itself leaves is #94.
+
+**2026-11-19: a path's current sets the width of its nets' tracks.** Each net a path
+goes through is laid as wide as its current needs to warm by no more than
+`rules(rise=)`, 10 °C where nothing says, by the fit to IPC-2152 for an outer layer
+that KiCad's calculator uses, and never narrower than `rules(track=)`. The nets of a
+width are a net class the router, the project and a `.kicad_dru` all have, and a
+reading says where the narrowest track is narrower than its current needs. On the
+bench supply the six nets of its 1.5 A paths are 0.562 mm wide, and the board comes
+out worse connected: a wider track leaves one pad apart from the ground pour, the
+board is routed again without the pour, and 7 connections are unmade where none
+were. Not yet: a track let narrow into a pad, checking a drop against a budget,
+saying which copper two currents may share, measuring or sizing a pour, and inner
+layers.
 
 ## Later
 

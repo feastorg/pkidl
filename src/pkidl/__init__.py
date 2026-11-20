@@ -20,8 +20,8 @@ from pkidl.intent import (
     place,
     row,
 )
-from pkidl.units import A, inch, mA, mil, mm
+from pkidl.units import A, degC, inch, mA, mil, mm
 
-__all__ = ["A", "Board", "Edge", "Side", "align", "apart", "area", "decouple", "inch",
-           "inside", "keepout", "mA", "mil", "mm", "on_net", "path", "place", "row",
+__all__ = ["A", "Board", "Edge", "Side", "align", "apart", "area", "decouple", "degC",
+           "inch", "inside", "keepout", "mA", "mil", "mm", "on_net", "path", "place", "row",
            "where"]  # fmt: skip
