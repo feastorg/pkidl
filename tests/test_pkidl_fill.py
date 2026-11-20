@@ -4,7 +4,20 @@ from shapely.geometry import Point as SPoint
 from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
-from pkidl.fill import Cut, cut_off, fills, prefill, spare, starved, unjoin
+from pkidl.fill import (
+    Cut,
+    cut_off,
+    fills,
+    landings,
+    prefill,
+    spare,
+    standing,
+    starved,
+    surplus,
+    unjoin,
+    unnet,
+    unreached,
+)
 from pkidl.sexpr import dumps, find_all, parse
 
 OUTLINE = [(0.0, 0.0), (30.0, 0.0), (30.0, 30.0), (0.0, 30.0)]
@@ -728,3 +741,212 @@ def test_a_pad_is_taken_off_every_pour_by_what_is_written_on_it():
     assert [dumps(item) for item in items] == before
     assert all(new is old for new, old in zip(unjoin(items, []), items, strict=True))
     assert unjoin(items, ["A.1"])[3] is items[3]
+
+
+def test_a_pad_no_pour_reaches_though_one_is_drawn_over_it_is_one_a_router_counts_joined():
+    # C1's pad lies in the pour's outline with copper off each side: no spoke reaches.
+    boxed = _items(*_boxed_in(0.6), _relieved("GND"))
+    assert [(c.pads, c.layer) for c in cut_off(boxed, OUTLINE, 0.5)] == [(("C1.1",), None)]
+    assert unreached(boxed, OUTLINE, 0.5) == {"C1.1": "GND"}
+    # With room for its spokes nothing is cut off, and no pad is named.
+    assert unreached(_items(*_boxed_in(3.0), _relieved("GND")), OUTLINE, 0.5) == {}
+    # Once it is off the pour it is still cut off, and is no more a pad to take off.
+    off = unjoin(boxed, ["C1.1"])
+    assert [c.pads for c in cut_off(off, OUTLINE, 0.5)] == [("C1.1",)]
+    assert unreached(off, OUTLINE, 0.5) == {}
+
+
+def test_a_pad_cut_off_where_no_pour_is_drawn_over_it_is_not_one_to_take_off():
+    # The pour is the left half of the board; C2's pad is outside it.
+    left = [(2.0, 2.0), (14.0, 2.0), (14.0, 28.0), (2.0, 28.0)]
+    outside = _items(*TWO, _fp("C3", 8, 20, [("1", 0, 0, 1, "GND")]), _zone("GND", left))
+    assert [c.pads for c in cut_off(outside, OUTLINE, 0.5)] == [("C2.1",)]
+    assert unreached(outside, OUTLINE, 0.5) == {}
+    # Nor a pad on the back, under a pour on the front.
+    under = ('(footprint "t" (layer "B.Cu") (at 10 10 0) (property "Reference" "B1") '
+             '(pad "1" smd rect (at 0 0) (size 1 1) (layers "B.Cu") (net "GND")))')  # fmt: skip
+    back = _items(*TWO, _fp("C3", 20, 20, [("1", 0, 0, 1, "GND")]), under, _relieved("GND"))
+    assert [c.pads for c in cut_off(back, OUTLINE, 0.5)] == [("B1.1",)]
+    assert unreached(back, OUTLINE, 0.5) == {}
+
+
+# Ground on both sides of a wall across its pour: three pads left of it, the most, and
+# two right of it, on a piece apart that joins them to each other.
+BEYOND = [_one("C1", 5, 15), _one("C3", 8, 20), _one("C5", 8, 8),
+          _one("C2", 25, 15), _one("C4", 22, 20)]  # fmt: skip
+
+
+def test_pads_a_piece_of_pour_apart_joins_to_each_other_stay_on_it_and_one_alone_does_not():
+    items = _items(*BEYOND, _relieved("GND"), WALL)
+    assert [(c.pads, c.layer) for c in cut_off(items, OUTLINE, 0.5)] == [(("C2.1", "C4.1"), "F.Cu")]
+    assert unreached(items, OUTLINE, 0.5) == {}
+    # A pad alone on its piece is one the pour joins to nothing, and a relief into a
+    # piece that only the pad holds is starved once a track joins the pad.
+    alone = _board(ALONE, *ISLAND)
+    assert [(c.pads, c.layer) for c in cut_off(alone, OUTLINE, 0.5)] == [(("A.1",), "F.Cu")]
+    assert unreached(alone, OUTLINE, 0.5) == {"A.1": "GND"}
+    joined = [*unjoin(alone, ["A.1"]), *_items(*CARRIED[:2])]
+    assert cut_off(joined, OUTLINE, 0.5) == [] and starved(joined, OUTLINE, 0.5) == []
+
+
+def test_a_piece_of_pour_apart_is_no_plane_once_its_pads_are_said_to_be_cut_off():
+    items = _items(*BEYOND, _relieved("GND"), WALL)
+    assert len(fills(items, OUTLINE, 0.5)) == 2
+    assert len(landings(items, OUTLINE, 0.5, wide=0.5)) == 2
+    (rest,) = landings(items, OUTLINE, 0.5, wide=0.5, but={"C2.1", "C4.1"})
+    plane = Polygon(rest[2]).buffer(0)
+    assert plane.contains(SPoint(5, 15)) and not plane.intersects(SPoint(25, 15))
+    # With one of them not said, the piece is a plane for that pad.
+    assert len(landings(items, OUTLINE, 0.5, wide=0.5, but={"C2.1"})) == 2
+
+
+def test_of_pads_cut_off_together_a_router_is_told_of_the_first_and_of_any_a_track_is_on():
+    items = _items(*BEYOND, _relieved("GND"), WALL)
+    cuts = cut_off(items, OUTLINE, 0.5)
+    # Only the piece of pour joins the two: a track to the first joins both.
+    assert surplus(items, cuts) == {"C4.1"}
+    # A track between them is copper the router is told of: they are one thing to join.
+    tracked = [*items, *_items(_track("GND", (25, 15), (22, 20)))]
+    assert surplus(tracked, cut_off(tracked, OUTLINE, 0.5)) == set()
+    # A pad with a track of its own that ends nowhere stays, with its track.
+    stub = _items(*BEYOND, _one("C6", 25, 25), _relieved("GND"), WALL,
+                  _track("GND", (25, 25), (27, 25)))  # fmt: skip
+    (cut,) = cut_off(stub, OUTLINE, 0.5)
+    assert cut.pads == ("C2.1", "C4.1", "C6.1") and surplus(stub, [cut]) == {"C4.1"}
+    # One pad cut off alone, or only starved, leaves nothing out.
+    assert surplus(items, [Cut("GND", ("C2.1",), "F.Cu")]) == set()
+    assert surplus(items, [Cut("GND", ("C2.1", "C4.1"), "F.Cu", starved=True)]) == set()
+
+
+def test_a_pad_is_put_on_no_net_in_a_copy_of_its_footprint():
+    items = _items(*BEYOND, _relieved("GND"), WALL)
+    hidden = unnet(items, {"C4.1"})
+    nets = [str(net[1]) for item in hidden[:5] for net in find_all(find_all(item, "pad")[0], "net")]
+    assert nets == ["GND", "GND", "GND", "GND", ""]
+    assert [new is old for new, old in zip(hidden, items, strict=True)] == [
+        True, True, True, True, False, True, True,
+    ]  # fmt: skip
+    assert unnet(items, ()) == items and '(net "GND")' in dumps(items[4])
+    # The pad is copper still, and no longer one of its net's.
+    assert [c.pads for c in cut_off(hidden, OUTLINE, 0.5)] == [("C2.1",)]
+
+
+def test_a_pad_cut_off_that_says_how_it_joins_a_pour_is_not_one_to_take_off():
+    around = [("1", -1.6, 0, 1, "SIG"), ("2", 1.6, 0, 1, "SIG"),
+              ("3", 0, -1.6, 1, "SIG"), ("4", 0, 1.6, 1, "SIG")]  # fmt: skip
+    rest = [TWO[1], _fp("C3", 20, 20, [("1", 0, 0, 1, "GND")]), _fp("X1", 5, 15, around)]
+
+    def named(more="", of_fp=""):
+        items = _items(_one("C1", 5, 15, more=more, of_fp=of_fp), *rest, _relieved("GND"))
+        return [c.pads for c in cut_off(items, OUTLINE, 0.5)], unreached(items, OUTLINE, 0.5)
+
+    assert named() == ([("C1.1",)], {"C1.1": "GND"})
+    assert named("(zone_connect 0)") == ([("C1.1",)], {})
+    assert named(of_fp="(zone_connect 0)") == ([("C1.1",)], {})
+    assert named("(zone_connect 2)") == ([], {})
+    # One that says a relief says what the zone does.
+    assert named("(zone_connect 1)") == ([("C1.1",)], {"C1.1": "GND"})
+
+
+def test_a_track_can_end_anywhere_in_the_planes_a_join_is_told_of():
+    off = unjoin(_items(*_boxed_in(0.6), _relieved("GND")), ["C1.1"])
+    ((_, _, whole),) = fills(off, OUTLINE, 0.5)
+    for wide in (0.5, 1.2):
+        (land,) = landings(off, OUTLINE, 0.5, wide=wide)
+        assert land[:2] == ("GND", "F.Cu")
+        inner = Polygon(land[2]).buffer(0)
+        # A track that wide with its middle anywhere in it has its copper in the pour,
+        # and the plane is all of the pour that is so.
+        assert whole.buffer(TOL).covers(inner.buffer(wide / 2))
+        assert abs(inner.area - whole.buffer(-wide / 2).area) < 0.01
+        # The pad taken off is not on it, and the others are.
+        assert not inner.intersects(SPoint(5, 15)) and inner.contains(SPoint(25, 15))
+
+
+def test_a_neck_narrower_than_the_track_parts_the_plane_and_a_part_with_no_pad_is_left_out():
+    # The pour gets through the wall by a neck 1.1 mm wide.
+    both = _items(*LEFT, *REST, *WALL_WITH_A_GAP, _relieved("GND"))
+    assert len(fills(both, OUTLINE, 0.5)) == 1 and cut_off(both, OUTLINE, 0.5) == []
+    assert [len(landings(both, OUTLINE, 0.5, wide=wide)) for wide in (0.5, 1.0, 1.2)] == [1, 1, 2]
+    # A part that only pads said to be cut off lie on is left out, joined fill though
+    # it is: those pads are then on no plane, and are the router's to bring to the rest.
+    assert len(landings(both, OUTLINE, 0.5, wide=1.2, but={"A.1", "B.1"})) == 1
+    # With no pad left of the wall, what is parted there is nothing a router has to join.
+    right = _items(*REST, *WALL_WITH_A_GAP, _relieved("GND"))
+    assert [len(landings(right, OUTLINE, 0.5, wide=wide)) for wide in (0.5, 1.2)] == [1, 1]
+    wide, narrow = (
+        Polygon(landings(right, OUTLINE, 0.5, wide=w)[0][2]).buffer(0).area for w in (0.5, 1.2)
+    )
+    assert narrow < wide / 2
+
+
+def test_a_piece_apart_is_no_plane_though_a_pad_of_the_rest_lies_on_it_unjoined():
+    # C6 is right of the wall with C2 and C4, with copper off three sides of it: one
+    # spoke of its relief reaches their piece of the pour, which does not join it. A
+    # track on the back carries it to C1, left of the wall, so it is one of the rest.
+    around = [("1", -1.6, 0, 1, "SIG"), ("3", 0, -1.6, 1, "SIG"), ("4", 0, 1.6, 1, "SIG")]
+    carried = ['(via (at 5 15) (size 0.6) (net "GND"))', '(via (at 25 25) (size 0.6) (net "GND"))',
+               _back("GND", (5, 15), (25, 25))]  # fmt: skip
+    items = _items(*BEYOND, _one("C6", 25, 25), _fp("X1", 25, 25, around), _relieved("GND"),
+                   WALL, *carried)  # fmt: skip
+    (cut,) = cut_off(items, OUTLINE, 0.5)
+    assert cut.pads == ("C2.1", "C4.1") and _starved(items) == [("GND", ("C6.1",), "F.Cu", True)]
+    # The piece right of the wall joins only the pads cut off: a track that ended in it
+    # would end on nothing of the rest.
+    (rest,) = landings(items, OUTLINE, 0.5, wide=0.5, but=cut.pads)
+    plane = Polygon(rest[2]).buffer(0)
+    assert plane.contains(SPoint(8, 20)) and not plane.intersects(SPoint(25, 15).buffer(3))
+    # With C6 joined to that piece, by room for its spokes, the piece is of the rest.
+    roomy = _items(*BEYOND, _one("C6", 25, 25), _relieved("GND"), WALL, *carried)
+    assert cut_off(roomy, OUTLINE, 0.5) == []
+    assert len(landings(roomy, OUTLINE, 0.5, wide=0.5)) == 2
+
+
+def test_a_pad_is_put_on_no_net_and_the_other_pads_of_its_footprint_are_left():
+    two = _fp("U1", 20, 10, [("1", 0, 0, 1, "GND"), ("2", 2, 0, 1, "GND"), ("3", 4, 0, 1, "SIG")])
+    (hidden,) = unnet(_items(two), {"U1.2"})
+    assert [str(net[1]) for pad in find_all(hidden, "pad") for net in find_all(pad, "net")] == [
+        "GND", "", "SIG",
+    ]  # fmt: skip
+
+
+def test_what_is_cut_off_is_asked_with_the_pads_the_pour_joins_to_nothing_off_it():
+    # K is in the only way through the wall, 2.1 mm wide: the gap of its relief, 0.8 mm
+    # round it, parts the pour, and with copper beside it one spoke has room. So K is
+    # cut off, no pour reaching it, and A and B are, on the piece left of the wall.
+    plug = ('(footprint "t" (layer "F.Cu") (at 15 15 0) (property "Reference" "K") '
+            '(pad "1" smd rect (at 0 0) (size 0.6 0.6) (layers "F.Cu") (net "GND")))')  # fmt: skip
+    items = _items(*LEFT, *REST, MOST, *WIDE_GAP, plug, _one("X", 13.5, 15, "SIG"),
+                   _relieved("GND", gap=0.8))  # fmt: skip
+    assert [(c.pads, c.layer) for c in cut_off(items, OUTLINE, 0.5)] == [
+        (("A.1", "B.1"), "F.Cu"),
+        (("K.1",), None),
+    ]
+    # Off the pour, K is kept clear of by 0.2 mm and the pour fills past it: A and B
+    # are joined to the rest, and K alone is left to join. That is how it stands.
+    apart, planes, told = standing(items, OUTLINE, 0.5, wide=0.25)
+    assert apart == {"K.1": "GND"}
+    assert [c.pads for c in cut_off(told, OUTLINE, 0.5)] == [("K.1",)]
+    (plane,) = planes
+    whole = Polygon(plane[2]).buffer(0)
+    assert whole.contains(SPoint(5, 15)) and whole.contains(SPoint(25, 15))
+    assert not whole.intersects(SPoint(15, 15).buffer(0.3))
+    # Neither A nor B is put on no net, and K is off the pour in what the router is told.
+    a, b, k = told[0], told[1], told[7]
+    assert ['(net "GND")' in dumps(fp) for fp in (a, b, k)] == [True, True, True]
+    assert "(zone_connect 0)" in dumps(k) and "zone_connect" not in dumps(a)
+
+
+def test_how_the_pours_stand_is_the_pads_to_take_off_the_planes_and_one_pad_of_each_piece():
+    items = _items(*BEYOND, _relieved("GND"), WALL)
+    apart, planes, told = standing(items, OUTLINE, 0.5, wide=0.5)
+    assert apart == {} and len(planes) == 1
+    assert not Polygon(planes[0][2]).buffer(0).intersects(SPoint(25, 15))
+    assert [str(net[1]) for fp in told[:5] for net in find_all(find_all(fp, "pad")[0], "net")] == [
+        "GND", "GND", "GND", "GND", "",
+    ]  # fmt: skip
+    # A pad alone on its piece is taken off it, and the planes are of the board so.
+    alone = _board(ALONE, *ISLAND)
+    apart, planes, told = standing(alone, OUTLINE, 0.5, wide=0.5)
+    assert apart == {"A.1": "GND"} and len(planes) == 1
+    assert "(zone_connect 0)" in dumps(told[0])

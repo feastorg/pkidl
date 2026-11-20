@@ -7,6 +7,7 @@ in ``test_pkidl_route.py``.
 
 import json
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -612,9 +613,11 @@ def test_a_board_with_a_pour_is_routed_with_it_known_and_checked_with_what_was_p
     nothing = Scripted()
     built = board.build(tmp_path / "first", router=nothing)
     assert built.routed is not None
-    assert [stage for stage, *_ in nothing.asked] == ["poured", ""]
+    # It is asked to join them by a track, lays none, and is asked again with no pour.
+    assert [stage for stage, *_ in nothing.asked] == ["poured", "poured-join", ""]
     assert [(net, layer) for net, layer, _ in nothing.asked[0][1].planes] == [("GND", "B.Cu")]
-    assert list(nothing.asked[1][1].planes) == []
+    assert nothing.asked[1][1].only == {"GND"} and list(nothing.asked[2][1].planes) == []
+    assert built.routed.joined == () and built.routed.taken_off == ()
     assert [str(c) for c in built.routed.cut] == [
         "R1.2 is cut off from the rest of GND: no pour reaches there",
         "U1.3 is cut off from the rest of GND: no pour reaches there",
@@ -712,7 +715,7 @@ def test_what_kicad_leaves_unconnected_is_said_in_its_words_and_routed_again(
     router = Scripted()
     built = _poured(board).build(tmp_path / "out", router=router)
     assert built.routed is not None
-    assert [stage for stage, *_ in router.asked] == ["poured", ""]
+    assert [stage for stage, *_ in router.asked] == ["poured", "poured-join", ""]
     (cut,) = built.routed.cut
     assert (cut.net, cut.pads) == ("GND", ("P1.3",))
     assert str(cut) == ("KiCad, of GND: Zone [GND] on B.Cu, priority 0 and PTH pad 3 [GND] of P1")
@@ -1103,6 +1106,260 @@ def test_a_board_whose_pour_starves_no_pad_is_written_as_it_was_and_kicad_asked_
     assert "zone_connect" not in built.board.read_text()
 
 
+class Fencing:
+    """A router that, with the pours known, brings the module's ground pad down to the
+    pour by a via and fences C5's ground pad in on the back with tracks of another
+    net on three sides, 0.9 mm from its middle, so that one spoke of its relief has
+    room and the pour still lies over the pad; and that, asked to join, lays *join*
+    besides. It keeps what it was asked."""
+
+    def __init__(self, board: Board, tmp_path: Path, join: bool = True) -> None:
+        plain = board.build(tmp_path / "placed", router=Scripted())
+        placed = {_ref(fp): fp for fp in find_all(parse(plain.board.read_text()), "footprint")}
+        (ex, ey), (cx, cy), at_u1 = (pad_xy(placed[ref], pad) for ref, pad in GROUND)
+        box = [(cx - 0.9, cy - 0.9), (cx + 0.9, cy - 0.9), (cx + 0.9, cy + 0.9),
+               (cx - 0.9, cy + 0.9)]  # fmt: skip
+        self.fence = tuple(Wire("B", "B.Cu", 0.25, [a, b])
+                           for a, b in zip(box, box[1:], strict=False))  # fmt: skip
+        self.down = Via("GND", VIA, at_u1)
+        # From C5's pad along the front to the header's ground pin, which the pour joins.
+        self.join = (Wire("GND", "F.Cu", 0.25, [(cx, cy), (ex, ey)]),) if join else ()
+        self.asked: list[tuple[str, Job]] = []
+
+    def route(self, job: Job, outdir: Path, name: str, stage: str = "") -> Run:
+        self.asked.append((stage, job))
+        if stage == "poured":
+            return Run(self.fence, (self.down,), 0)
+        if stage == "poured-join":
+            return Run(self.join, (self.down,), 0)
+        return Run((*self.fence, *self.join), (self.down,), 0)
+
+
+def test_a_pad_the_pour_is_cut_off_from_is_joined_by_a_track_and_the_pour_kept(tmp_path):
+    from shapely.geometry import Point as ShapelyPoint
+    from shapely.geometry import Polygon as ShapelyPolygon
+
+    board = _clock(tmp_path)
+    router = Fencing(board, tmp_path)
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None and built.routed.judge == "model"
+    # The run with the pour known is kept, and one more joins the pad: no run without.
+    assert [stage for stage, _ in router.asked[-2:]] == ["poured", "poured-join"]
+    assert [str(c) for c in built.routed.cut] == [
+        "C5.1 is cut off from the rest of GND: no pour reaches there"
+    ]
+    # That run routes ground alone, round the first run's tracks, with the pour as it
+    # fills round them and less the pad: a plane a track 0.25 mm wide can end in.
+    _, first = router.asked[-2]
+    _, join = router.asked[-1]
+    assert join.only == {"GND"} and list(join.wires) == list(router.fence)
+    assert list(join.vias) == [router.down]
+    ((net, layer, known),) = first.planes
+    ((_, _, stands),) = join.planes
+    assert (net, layer) == ("GND", "B.Cu")
+    at_c5 = ShapelyPoint(router.fence[0].points[0][0] + 0.9, router.fence[0].points[0][1] + 0.9)
+    assert ShapelyPolygon(known).buffer(0).contains(at_c5)
+    assert not ShapelyPolygon(stands).buffer(0).intersects(at_c5.buffer(0.9))
+    assert (
+        ShapelyPolygon(known).buffer(0.001).covers(ShapelyPolygon(stands).buffer(0).buffer(0.125))
+    )
+    # The check passed what it laid, and the result says what was done.
+    assert built.routed.left == ()
+    assert built.routed.joined == (
+        "GND keeps its pour: 12.379 mm of track on F.Cu joins what was cut off to the rest of GND",
+    )
+    assert built.routed.taken_off == ("C5.1",) and built.routed.unjoined == (
+        "C5.1 is taken off the pour of GND, which joins it to nothing: a track joins it to "
+        "the rest of GND",
+    )
+    # The board written has that track, the pad off the pour, and the pour.
+    written = parse(built.board.read_text())
+    assert _off_the_pour(built.board) == ["C5.1"]
+    assert len(find_all(written, "segment")) == 4 and len(find_all(written, "zone")) == 1
+
+
+def test_a_pad_whose_join_is_not_laid_stays_on_its_pour_and_the_net_is_routed_again(tmp_path):
+    board = _clock(tmp_path)
+    router = Fencing(board, tmp_path, join=False)
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    assert [stage for stage, _ in router.asked[-3:]] == ["poured", "poured-join", ""]
+    assert built.routed.joined == () and built.routed.taken_off == ()
+    assert built.routed.unjoined == () and _off_the_pour(built.board) == []
+    # What the check finds of the board routed again is said of the board as built.
+    assert [c.pads for c in built.routed.cut] == [("C5.1",)]
+    assert [c.pads for c in built.routed.left if not c.starved] == [("C5.1",)]
+
+
+def test_kicad_is_asked_of_a_join_with_the_pad_off_its_pour_and_its_word_stands(
+    tmp_path, kicad_in_turn
+):
+    board = _clock(tmp_path)
+    router = Fencing(board, tmp_path)
+    apart = {"type": "unconnected_items", "severity": "error",
+             "description": "Missing connection between items",
+             "items": [{"description": "PTH pad 1 [GND] of C5"},
+                       {"description": "Zone [GND] on B.Cu, priority 0"}]}  # fmt: skip
+    shown = kicad_in_turn({"unconnected_items": [apart], "violations": [STARVED_C5]},
+                          {"unconnected_items": [], "violations": []})  # fmt: skip
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None and built.routed.judge == "KiCad"
+    assert [stage for stage, _ in router.asked[-2:]] == ["poured", "poured-join"]
+    # KiCad said the pad is cut off and starved; it was shown the join with the pad off
+    # its pour, passed it, and is asked no more: the pad is taken off once.
+    assert [sorted(_off_the_pour(pcb)) for pcb in shown()] == [[], ["C5.1"]]
+    assert len(built.routed.cut) == 2 and built.routed.left == ()
+    assert built.routed.taken_off == ("C5.1",) and len(built.routed.unjoined) == 1
+    assert len(built.routed.joined) == 1
+    assert built.board.read_text() == shown()[-1].read_text()
+
+
+def test_a_join_kicad_finds_nothing_unconnected_of_and_a_relief_starved_is_not_kept(
+    tmp_path, kicad_in_turn
+):
+    board = _clock(tmp_path)
+    router = Fencing(board, tmp_path)
+    apart = {"type": "unconnected_items", "severity": "error",
+             "description": "Missing connection between items",
+             "items": [{"description": "PTH pad 1 [GND] of C5"},
+                       {"description": "Zone [GND] on B.Cu, priority 0"}]}  # fmt: skip
+    # KiCad's second report, of the join, has nothing unconnected and a relief starved
+    # at a pad the join did not touch.
+    shown = kicad_in_turn({"unconnected_items": [apart], "violations": []},
+                          {"unconnected_items": [], "violations": [STARVED_ESP1]})  # fmt: skip
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None and built.routed.judge == "KiCad"
+    # As with the first run, what KiCad passes has no relief starved either: a track
+    # for ground would not mend that one, so no join is asked for again, nothing of
+    # this one is kept, and ground gives up its pour.
+    assert [stage for stage, _ in router.asked[-3:]] == ["poured", "poured-join", ""]
+    assert [sorted(_off_the_pour(pcb)) for pcb in shown()] == [[], ["C5.1"], []]
+    assert built.routed.joined == () and built.routed.taken_off == ()
+    assert [c.starved for c in built.routed.cut] == [False, True]
+    assert _off_the_pour(built.board) == []
+
+
+def _isle(ref: str) -> str:
+    """A part with a ground pad through the board and a pad of another net beside it."""
+    return f"""(footprint "Device:T" (layer "F.Cu") (at 0 0)
+    (property "Reference" "{ref}" (at 0 0) (layer "F.SilkS"))
+    (property "Value" "T" (at 0 0) (layer "F.Fab"))
+    (fp_rect (start -1 -1) (end 3.5 1) (stroke (width 0.05) (type solid)) (fill no)
+      (layer "F.CrtYd"))
+    (pad "1" thru_hole rect (at 0 0) (size 1.2 1.2) (drill 0.7) (layers "*.Cu") (net "GND"))
+    (pad "2" smd rect (at 2.5 0) (size 1 1) (layers "F.Cu") (net "A")))"""
+
+
+# Five such parts: three along the top, the most of ground, and two below them.
+ISLES = {"M1": (5, 5), "M2": (20, 5), "M3": (33, 5), "I1": (10, 20), "I2": (22, 20)}
+
+
+def _isles(tmp_path: Path) -> tuple[Board, dict[str, tuple[float, float]]]:
+    """The board of ISLES with a ground pour on the back, to be routed, and where each
+    part's ground pad is."""
+    d = tmp_path / "isles"
+    source = parse('(kicad_pcb\n  (gr_rect (start 100 50) (end 140 80) (layer "Edge.Cuts"))\n'
+                   + "\n".join(_isle(ref) for ref in ISLES) + ")")  # fmt: skip
+    d.mkdir()
+    (d / "circuit.json").write_text(json.dumps(circuit(source)))
+    (d / "mechanical.json").write_text(json.dumps(mechanical(source)))
+    for name, lib in footprints(source)[0].items():
+        path = d / "footprints" / footprint_path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(dumps(lib) + "\n")
+    board = Board.from_inputs(d)
+    for ref, (x, y) in ISLES.items():
+        board.place(board.parts(ref)[0], at=(x * mm, y * mm))
+    return _poured(board), {ref: (100.0 + x, 50.0 + y) for ref, (x, y) in ISLES.items()}
+
+
+class InTurns:
+    """A router that lays *fence* with the pours known, the next of *joins* besides
+    each time it is asked to join, and keeps what it was asked."""
+
+    def __init__(self, fence: Sequence[Wire], joins: Sequence[Sequence[Wire]]) -> None:
+        self.fence, self.joins = tuple(fence), [tuple(j) for j in joins]
+        self.asked: list[tuple[str, Job]] = []
+
+    def route(self, job: Job, outdir: Path, name: str, stage: str = "") -> Run:
+        self.asked.append((stage, job))
+        return Run(self.joins.pop(0) if "join" in stage else self.fence, (), 0)
+
+
+def _fenced(at: tuple[float, float], to: tuple[float, float], open_left: bool) -> list[Wire]:
+    """Tracks of another net on the back round the box from 2 mm before *at* to 2 mm
+    past *to*, or 0.9 mm from each where its left side is left open."""
+    by = 0.9 if open_left else 2.0
+    box = [(at[0] - by, at[1] - by), (to[0] + by, at[1] - by), (to[0] + by, to[1] + by),
+           (at[0] - by, to[1] + by)]  # fmt: skip
+    ends = zip(box, box[1:] if open_left else box[1:] + box[:1], strict=False)
+    return [Wire("A", "B.Cu", 0.25, [a, b]) for a, b in ends]
+
+
+def test_pads_on_a_piece_of_pour_apart_are_joined_through_one_of_them(tmp_path):
+    from shapely.geometry import Point as ShapelyPoint
+    from shapely.geometry import Polygon as ShapelyPolygon
+
+    board, at = _isles(tmp_path)
+    join = Wire("GND", "F.Cu", 0.25, [at["I1"], at["M1"]])
+    router = InTurns(_fenced(at["I1"], at["I2"], open_left=False), [[join]])
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    assert [stage for stage, _ in router.asked] == ["poured", "poured-join"]
+    assert [str(c) for c in built.routed.cut] == [
+        "I1.1, I2.1 are cut off from the rest of GND: on a piece of its pour on B.Cu that is "
+        "apart from the rest, fenced in by tracks of A"
+    ]
+    _, asked = router.asked[1]
+    # The piece the two are on is no plane of the join: the one plane has the three
+    # pads of the rest on it and neither of these.
+    ((_, _, outline),) = asked.planes
+    plane = ShapelyPolygon(outline).buffer(0)
+    assert [plane.contains(ShapelyPoint(at[ref])) for ref in ISLES] == [
+        True, True, True, False, False,
+    ]  # fmt: skip
+    # The router is told of the first of the two. The other is on no net, and the pad
+    # beside it in its footprint is on its own still.
+    told = {_ref(fp): [str(net[1]) for pad in find_all(fp, "pad")
+                       for net in find_all(pad, "net")] for fp in asked.footprints}  # fmt: skip
+    assert told == {ref: ["" if ref == "I2" else "GND", "A"] for ref in ISLES}
+    # One track joins both, and both stay on their pour in the board that is written.
+    assert built.routed.joined == (
+        "GND keeps its pour: 15.811 mm of track on F.Cu joins what was cut off to the rest of GND",
+    )
+    assert built.routed.taken_off == () and built.routed.left == ()
+    assert _off_the_pour(built.board) == [] and built.board.read_text().count('(net "GND")') == 7
+
+
+def test_a_second_join_is_told_of_the_board_with_the_first_ones_pads_off_their_pour(tmp_path):
+    from shapely.geometry import Point as ShapelyPoint
+    from shapely.geometry import Polygon as ShapelyPolygon
+
+    board, at = _isles(tmp_path)
+    first = Wire("GND", "F.Cu", 0.25, [at["I1"], at["M1"]])
+    second = Wire("GND", "F.Cu", 0.25, [at["I2"], at["M2"]])
+    fence = [*_fenced(at["I1"], at["I1"], open_left=True),
+             *_fenced(at["I2"], at["I2"], open_left=True)]  # fmt: skip
+    # The first join brings one of the two pads to the rest, and the second the other.
+    router = InTurns(fence, [[first], [first, second]])
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    assert [stage for stage, _ in router.asked] == ["poured", "poured-join", "poured-join-2"]
+    assert [c.pads for c in built.routed.cut] == [("I1.1",), ("I2.1",), ("I2.1",)]
+    # Both pads were taken off the pour for the first. The second is told of the pour
+    # as it fills with them off still, though a track joins one of them by then: cut
+    # back from each, and nowhere over either.
+    assert built.routed.taken_off == ("I1.1", "I2.1")
+    for _, asked in router.asked[1:]:
+        ((_, _, outline),) = asked.planes
+        plane = ShapelyPolygon(outline).buffer(0)
+        assert not plane.intersects(ShapelyPoint(at["I1"]).buffer(0.9))
+        assert not plane.intersects(ShapelyPoint(at["I2"]).buffer(0.9))
+    assert list(router.asked[2][1].wires) == [first, *fence]
+    assert sorted(_off_the_pour(built.board)) == ["I1.1", "I2.1"] and built.routed.left == ()
+    assert len(built.routed.joined) == 1 and len(built.routed.unjoined) == 2
+
+
 def test_the_corpus_build_says_each_pad_taken_off_its_pour(tmp_path, monkeypatch, capsys):
     import importlib.util
     from types import SimpleNamespace
@@ -1119,8 +1376,9 @@ def test_the_corpus_build_says_each_pad_taken_off_its_pour(tmp_path, monkeypatch
             "joins it to the rest of GND")  # fmt: skip
     left = Cut("GND", ("ESP1.2",), "B.Cu", starved=True)
     in_it = "a via of B at (123, 51) is in U1's antenna area, which is kept clear of copper"
+    kept = "GND keeps its pour: 1 via joins what was cut off to the rest of GND"
     routed = Routed((), (), (("", Run((), (), 0)),), left=(left,), unjoined=(line,),
-                    judge="model", kept_out=(in_it,))  # fmt: skip
+                    judge="model", kept_out=(in_it,), joined=(kept,))  # fmt: skip
     made = SimpleNamespace(routed=routed, solution=SimpleNamespace(poses={}, chosen=()))
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "board.py").write_text(
@@ -1132,8 +1390,9 @@ def test_the_corpus_build_says_each_pad_taken_off_its_pour(tmp_path, monkeypatch
     assert script.build(tmp_path / "out") == 0
     said = json.loads((tmp_path / "out" / "b" / "built.json").read_text())
     assert said["unjoined"] == [line] and said["left"] == [str(left)]
-    assert said["kept_out"] == [in_it]
+    assert said["kept_out"] == [in_it] and said["joined"] == [kept]
     printed = capsys.readouterr().out.splitlines()
+    assert f"    {kept}" in printed
     assert f"    {line}" in printed and f"    left on the board as built: {left}" in printed
     assert f"    {in_it}" in printed
 

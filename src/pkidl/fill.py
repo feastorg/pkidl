@@ -306,6 +306,79 @@ def prefill(
             for net, layer, piece in fills(items, outline, edge, clearances)]  # fmt: skip
 
 
+def landings(
+    items: list[Node],
+    outline: list[Point] | Polygon,
+    edge: float,
+    clearances: dict[str, float] | None = None,
+    *,
+    wide: float,
+    but: Collection[str] = (),
+) -> list[Plane]:
+    """Each pour's fill of a routed board where a track *wide* mm across can end in it:
+    planes as ``prefill`` makes them, of each piece of the fill less what is nearer its
+    edge than half that width. The middle of a track anywhere in one has all its copper
+    in the pour, which a point of the fill itself does not: a router told of the whole
+    fill can choose to end a track in a corner of it that the track does not fit, and
+    lay nothing. A neck of the fill narrower than the track parts a piece in two.
+
+    A part is a plane only where a pad of its net lies on it and it has fill that the
+    board's copper joins to a pad of its net, as ``cut_off`` has pads joined, the pads
+    *but* (as ``C5.1``) not counted either time: with the pads that are cut off given,
+    a piece of pour that joins only those is no plane, though a pad of the rest lies on
+    it with a relief that does not join it. What only the gaps round the net's own pads
+    part from the rest is not a piece of its own, and is in the plane with the rest.
+    Other arguments as for ``fills``."""
+    zones = _pours(items)
+    copper = {layer: _copper(items, layer) for layer in ("F.Cu", "B.Cu")}
+    pieces = fills(items, outline, edge, clearances)
+    joined: dict[str, list[tuple[str, Polygon]]] = {}  # a net: its fill joined to a pad
+    for net in {n for n, _, _ in pieces}:
+        nodes, of, _ = _on(items, net)
+        poured, whole = _parts(zones, pieces, net, nodes, of)
+        root, _, _ = _joined(nodes, of, poured, whole)
+        held = {root(i) for i in of if nodes[i][0] not in but}
+        joined[net] = [on for j, on in enumerate(poured) if root(len(nodes) + j) in held]
+    found: list[Plane] = []
+    for net, layer, piece in pieces:
+        pads = [s for n, s, _, of in copper[layer] if n == net and of is not None
+                and f"{_ref(of[0])}.{of[1][1]}" not in but]  # fmt: skip
+        inner = piece.buffer(-wide / 2)
+        for part in getattr(inner, "geoms", [inner]):
+            if (
+                isinstance(part, Polygon)
+                and not part.is_empty
+                and any(part.intersects(s) for s in pads)
+                and any(on == layer and part.intersects(fill) for on, fill in joined[net])
+            ):
+                found.append((net, layer, [(round(x, 4), round(y, 4)) for x, y in _slit(part)]))
+    return found
+
+
+def standing(
+    items: list[Node],
+    outline: list[Point] | Polygon,
+    edge: float,
+    clearances: dict[str, float] | None = None,
+    *,
+    wide: float,
+) -> tuple[dict[str, str], list[Plane], list[Node]]:
+    """How a routed board's pours stand, for a router asked to join what they leave cut
+    off: the pads to take off them (``unreached``); with those off, the planes a track
+    *wide* mm across can end in, less each piece that joins only pads cut off
+    (``landings``); and the board's items with those pads off, and with the pads one
+    track joins together on no net but for one (``surplus``, ``unnet``). What is cut
+    off is asked of the board with the pads off: a pour is cut back from a pad that
+    joins none by its clearance and not by the gap of a relief, and can fill what the
+    gap parted. Other arguments as for ``fills``."""
+    apart = unreached(items, outline, edge, clearances)
+    off = unjoin(items, apart)
+    cuts = cut_off(off, outline, edge, clearances)
+    planes = landings(off, outline, edge, clearances, wide=wide,
+                      but={pad for c in cuts for pad in c.pads})  # fmt: skip
+    return apart, planes, unnet(off, surplus(off, cuts))
+
+
 @dataclass(frozen=True)
 class Cut:
     """Pads of a poured net that the board's copper joins to each other and not to the
@@ -530,6 +603,74 @@ def spare(items: list[Node]) -> set[str]:
                 said.setdefault(nodes[i][0], set()).add(_says(fp, pad))
             found |= {name for name, says in said.items() if says == {""}}
     return found
+
+
+def unreached(
+    items: list[Node],
+    outline: list[Point] | Polygon,
+    edge: float,
+    clearances: dict[str, float] | None = None,
+) -> dict[str, str]:
+    """The pads of a routed board, as ``C5.1`` and each with its net, that are cut off
+    (``cut_off``) and that a pour of their net, drawn over them to join them by a
+    relief, joins to nothing: one no pour reaches, which a router told of that pour
+    counts as joined, and one alone on a piece of pour apart from the rest, whose
+    relief is starved once a track joins it. Arguments as for ``fills``. A pad that
+    joins no pour or joins solidly, by what it, its footprint or the zone says, is not
+    among them."""
+    zones = _pours(items)
+    found: dict[str, str] = {}
+    for c in cut_off(items, outline, edge, clearances):
+        if c.layer is not None and len(c.pads) > 1:
+            continue
+        nodes, of, _ = _on(items, c.net)
+        for i, (fp, pad) in of.items():
+            if nodes[i][0] in c.pads and any(
+                _net(z) == c.net and _relief(z, fp, pad) == "thermal"
+                and any(layer in nodes[i][1] and _outline(z).intersects(nodes[i][1][layer])
+                        for layer in _layers(z))
+                for z in zones
+            ):  # fmt: skip
+                found[nodes[i][0]] = c.net
+    return found
+
+
+def surplus(items: list[Node], cuts: Collection[Cut]) -> set[str]:
+    """Of the pads each of *cuts* names as cut off together, those a router asked to
+    join them to the rest of their net is better not told of, as ``C5.1``: each but the
+    first that no track or via joins to anything, the piece of pour they are on being
+    all that joins it to the others. One track to the first joins them all; a router
+    told of each lays a track to each."""
+    found: set[str] = set()
+    for c in cuts:
+        if c.starved or len(c.pads) < 2:
+            continue
+        nodes, of, _ = _on(items, c.net)
+        root, _, _ = _joined(nodes, of, [], [])
+        size: dict[int, int] = {}
+        for i in range(len(nodes)):
+            size[root(i)] = size.get(root(i), 0) + 1
+        found |= {nodes[i][0] for i in of
+                  if nodes[i][0] in c.pads[1:] and size[root(i)] == 1}  # fmt: skip
+    return found
+
+
+def unnet(items: list[Node], pads: Collection[str]) -> list[Node]:
+    """*items* with each of *pads* (as ``C5.1``) on no net, in a copy of its footprint:
+    copper a router keeps clear of and joins nothing to. With no pads, the items as
+    they are."""
+    out = []
+    for item in items:
+        if str(item[0]) == "footprint" and any(
+            f"{_ref(item)}.{pad[1]}" in pads for pad in find_all(item, "pad")
+        ):
+            item = copy.deepcopy(item)
+            for pad in find_all(item, "pad"):
+                net = find(pad, "net")
+                if f"{_ref(item)}.{pad[1]}" in pads and net is not None:
+                    net[1:] = [""]
+        out.append(item)
+    return out
 
 
 def unjoin(items: list[Node], pads: Collection[str]) -> list[Node]:

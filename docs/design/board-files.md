@@ -871,14 +871,90 @@ back a `Routed`: the tracks and vias proposed, each once, and each stage's run. 
 is on the board until `lay(board, routed)` puts it there. What a router says of its
 own work is reported and not trusted: KiCad's DRC judges the board.
 
-`poured(router, job, outdir, name, cut)` is how a build routes: with the board's pours
+`poured(router, job, outdir, name, cut, refill)` is how a build routes: with the board's pours
 known to the router, carrying their nets, where that can be shown to hold. A router
 told of a pour counts every pad on it as joined, and tracks across the pour can leave a
 piece of it apart with pads on it. So the run is checked: the pours are filled
 round what was proposed and each poured net's pads, tracks, vias and pieces of pour are
 asked to be all joined. Where they are, that run is the routing. Where they are
-not, what was cut off is in the result (`Routed.cut`), and the board is routed again
-with that net carried by tracks and its pour beside them, as a board was before.
+not, what was cut off is in the result (`Routed.cut`), and it is mended, the smaller
+way first.
+
+A run that made every connection and left pads of a poured net cut off keeps its
+tracks, and the router is asked for a track to join what was cut off to the rest of
+its net: a run named `poured-join`, of the nets cut off alone, with everything laid so
+far fixed. What it is told of the pours is how they stand now, by the model
+(`pkidl.fill.standing`, which a build gives `poured` as its sixth argument, `refill`):
+
+- **The pours as they fill round the tracks**, less each piece that joins only pads
+  cut off: a piece is a plane where it has fill that the copper joins to a pad not
+  cut off, as the check has pads joined, and such a pad lying on a piece with a
+  relief that does not join it does not make the piece one. A pad on no plane is one
+  the router has to bring to the rest of its net. Freerouting
+  2.5.0 does not join two planes of a net to each other: handed a piece apart as a
+  plane of its own it counts a connection to make and lays nothing (two planes with a
+  pad on each, 2026-11-19), so it is the pads that are joined.
+- **One pad of each piece apart.** The pads a piece of pour joins to each other need
+  one track between them, not one each: all but the first are on no net in the
+  footprints the router is given (`pkidl.fill.surplus`, `unnet`), copper to keep clear
+  of. A pad with a track or a via of its own stays, with it. They all stay on their
+  pour in the board that is written.
+- **Less each pad the pour joins to nothing** (`pkidl.fill.unreached`): one no pour
+  reaches though one is drawn over it, whose relief has no room, and which a router
+  told of the pour counts joined because its middle is inside the outline; and one
+  alone on a piece apart, whose relief KiCad calls starved once a track joins the
+  pad. The pad is taken off the pour, `(zone_connect 0)` in the board that is
+  written, as a starved pad that a track joins is: the pour is cut back from it and
+  the track alone joins it. A pad that says it joins no pour, or joins solidly, is
+  left as it says.
+- **Less what is nearer a piece's edge than half a track** (`pkidl.fill.landings`).
+  Anywhere in what is left, the middle of a track has all its copper in the pour.
+  Told of the whole fill, Freerouting 2.5.0 aimed one board's joining track at the
+  nearest corner of the pour, 0.3 mm from the pad between two other nets' copper,
+  could not lay it there, and tried nothing else in 18 passes (2026-11-19). A neck of
+  the pour narrower than a track parts a plane in two, and a part that no pad still
+  joined lies on is left out.
+- **The pour of a net that is not being joined is a keepout**, as much of it as would
+  be its plane: drawn in by half a track, and only the parts a pad of its net lies
+  on. The check found it whole, and a track laid for the join does not cross that
+  much of it. Two nets joined in one run have each its planes and no keepout of the
+  other's: their tracks may cross each other's pours, as in the first run.
+
+It is the model that says all of this, whoever the judge is: KiCad's report names
+pads and no copper. Where the model sees nothing cut off that KiCad does, the router
+is told nothing new, lays nothing, and the net gives up its pour as before. So it
+does for pads on a part of the pour that only the gaps round its own net's pads cut
+from the rest: that part is no piece of its own, so it is inside a plane's outline
+with the rest, the router counts its pads joined, and a track for another pad can
+end in it and reach nothing. The check finds that, and no such join is kept.
+
+What the run lays is checked as the first run was, with the pads taken off. Where the
+check finds nothing it is the routing: `Routed.joined` has a line for each net, and
+`Routed.taken_off` and `Routed.unjoined` each pad taken off. The two judges do not
+ask the same of a join, as they do not of the first run. KiCad's report has each
+relief it finds starved beside what it leaves unconnected, of any pad of a poured
+net, and a join it reports one after is not kept, whether the join touched that pad
+or not: a track would not mend it, so the net gives up its pour, as it does after a
+first run KiCad says the same of. The model's check of a join says only what is cut
+off, and what it finds starved is asked of the board that is written.
+
+```
+C5.1 is cut off from the rest of GND: no pour reaches there
+GND keeps its pour: 12.379 mm of track on F.Cu joins what was cut off to the rest of GND
+C5.1 is taken off the pour of GND, which joins it to nothing: a track joins it to the rest of GND
+```
+
+A check that still finds something cut off is mended the same way, three times at most
+(`JOINS`). Nothing is said to be joined that a check did not pass, and the check is all
+that decides: every connection a join is asked for is of a net the check is of, so
+what the router says it left unmade of one (`poured-join: 1 unrouted`) is reported
+and is no verdict. A router that says so of a join the check does not pass is not
+asked again. Where the run lays nothing, where the check is not passed, and where a
+track for the net would not mend what was found (a net with no pour, a first run that
+left connections unmade, a relief that is only starved), nothing laid for the join is
+kept, no pad is taken off, and the board is routed again with that net carried by
+tracks and its pour beside them, as a board was before. `Routed.cut` has what each
+check found, in order, so what a join did not mend is there twice.
 
 The board routed again is asked the same question. Each check asks KiCad afresh, so
 one can be KiCad's and the next the model's, and `Routed.judge` names who answered
@@ -997,8 +1073,12 @@ P2.3 is cut off from the rest of GND: on a piece of its pour on B.Cu that is apa
 P5.1, Q3.2 are cut off from the rest of GND: on a piece of its pour on B.Cu that is apart from the rest, fenced in by tracks of /sense1, /sense2, /sense3
 ```
 
-and the second run, with ground by tracks, is the routing it had: 204 wires and 23 vias.
-A build of it takes about four minutes for the two runs, where it took under two.
+A run to join them lays a track from P2.3 to the pour and one from P5.1 to the via of
+Q3.2, the other pad on its piece, and cannot lay one from that piece to the rest
+(`poured-join: 1 unrouted`): the check finds P5.1 and Q3.2 cut off still, nothing of
+the join is kept, and the next run, with ground by tracks, is the routing it had: 204
+wires and 23 vias. A build of it takes about seven and a half minutes for the three
+runs, 2.6, 3.5 and 1.1 minutes, where it took under two before the pour was known.
 
 A build routes with `neck_down` and `fan_out` off: the board file's one track width is
 the least its rules allow, so a track that narrows into a pin is an error, and in
