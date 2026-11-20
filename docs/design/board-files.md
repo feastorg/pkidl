@@ -884,11 +884,13 @@ A run that made every connection and left pads of a poured net cut off keeps its
 tracks, and the router is asked for a track to join what was cut off to the rest of
 its net: a run named `poured-join`, of the nets cut off alone, with everything laid so
 far fixed. What it is told of the pours is how they stand now, by the model
-(`refill`, the sixth argument of `poured`):
+(`pkidl.fill.standing`, which a build gives `poured` as its sixth argument, `refill`):
 
-- **The pours as they fill round the tracks**, less each piece that is apart from the
-  rest of its net. A pad on no plane is one the router has to bring to the rest of
-  its net, and a track that ends in a plane ends in the body of the pour. Freerouting
+- **The pours as they fill round the tracks**, less each piece that joins only pads
+  cut off: a piece is a plane where it has fill that the copper joins to a pad not
+  cut off, as the check has pads joined, and such a pad lying on a piece with a
+  relief that does not join it does not make the piece one. A pad on no plane is one
+  the router has to bring to the rest of its net. Freerouting
   2.5.0 does not join two planes of a net to each other: handed a piece apart as a
   plane of its own it counts a connection to make and lays nothing (two planes with a
   pad on each, 2026-11-19), so it is the pads that are joined.
@@ -910,20 +912,31 @@ far fixed. What it is told of the pours is how they stand now, by the model
   Told of the whole fill, Freerouting 2.5.0 aimed one board's joining track at the
   nearest corner of the pour, 0.3 mm from the pad between two other nets' copper,
   could not lay it there, and tried nothing else in 18 passes (2026-11-19). A neck of
-  the pour narrower than a track parts a plane in two, and the part with no pad that
-  is still joined on it is left out.
-- **Every other net's pour is a keepout**, as much of it as would be its plane: the
-  check found it whole, and a track laid for the join does not cross it.
+  the pour narrower than a track parts a plane in two, and a part that no pad still
+  joined lies on is left out.
+- **The pour of a net that is not being joined is a keepout**, as much of it as would
+  be its plane: drawn in by half a track, and only the parts a pad of its net lies
+  on. The check found it whole, and a track laid for the join does not cross that
+  much of it. Two nets joined in one run have each its planes and no keepout of the
+  other's: their tracks may cross each other's pours, as in the first run.
 
 It is the model that says all of this, whoever the judge is: KiCad's report names
 pads and no copper. Where the model sees nothing cut off that KiCad does, the router
 is told nothing new, lays nothing, and the net gives up its pour as before. So it
 does for pads on a part of the pour that only the gaps round its own net's pads cut
-from the rest: they are inside a plane's outline, and the router counts them joined.
+from the rest: that part is no piece of its own, so it is inside a plane's outline
+with the rest, the router counts its pads joined, and a track for another pad can
+end in it and reach nothing. The check finds that, and no such join is kept.
 
-What the run lays is checked as the first run was, with the pads taken off. With
-nothing cut off it is the routing: `Routed.joined` has a line for each net, and
-`Routed.taken_off` and `Routed.unjoined` each pad taken off.
+What the run lays is checked as the first run was, with the pads taken off. Where the
+check finds nothing it is the routing: `Routed.joined` has a line for each net, and
+`Routed.taken_off` and `Routed.unjoined` each pad taken off. The two judges do not
+ask the same of a join, as they do not of the first run. KiCad's report has each
+relief it finds starved beside what it leaves unconnected, of any pad of a poured
+net, and a join it reports one after is not kept, whether the join touched that pad
+or not: a track would not mend it, so the net gives up its pour, as it does after a
+first run KiCad says the same of. The model's check of a join says only what is cut
+off, and what it finds starved is asked of the board that is written.
 
 ```
 C5.1 is cut off from the rest of GND: no pour reaches there

@@ -20,10 +20,10 @@ pad on it as joined, and tracks across the pour can leave a piece of it apart wi
 pads on it. Where the check finds that of a run that made every connection, what was
 cut off is joined to the rest of its net by a track: the run's tracks are kept, the
 router is told of the pours as they fill round them, less each pad its pour joins to
-nothing and each piece apart from the rest, and is asked for the nets cut off alone.
-The check is asked again of what it lays. Where that does not mend it, the board is
-routed again with that net carried by tracks, the pour beside them. Either way what
-was cut off is in the result.
+nothing and each piece that joins only pads cut off, and is asked for the nets cut
+off alone. The check is asked again of what it lays. Where that does not mend it, the
+board is routed again with that net carried by tracks, the pour beside them. Either
+way what was cut off is in the result.
 
 ``relieved`` mends what the board that is written is then found to have wrong where it
 can be mended with no connection changed: a pad starved of its pour that a track joins
@@ -276,15 +276,17 @@ def poured(
     first, where *refill* is given. It is asked how the pours stand with the run's
     wires and vias laid and the pads taken off so far off them: the pads cut off that
     their pour joins to nothing, each with its net, to take off it; the planes the
-    pours fill to with those taken off as well, less each piece apart from the rest of
-    its net; and the footprints as the router is to be told of them, which have the
+    pours fill to with those taken off as well, less each piece that joins only pads
+    cut off; and the footprints as the router is to be told of them, which have the
     pads one track joins together on no net but for one. A run of the ``join`` stage
     then routes the nets cut off alone, the run's copper fixed, those planes theirs and
-    every other net's a keepout: a pad on no plane is one the router has to bring to
-    the rest of its net, by a track that ends on a pad or a track of the net or in its
-    pour. *cut* is asked of what it lays, with the pads taken off as its third
-    argument. With nothing cut off that is the routing: ``Routed.joined`` says what was
-    laid for each net, ``Routed.taken_off`` and ``Routed.unjoined`` each pad taken off.
+    the planes of each net it does not route keepouts: a pad on no plane is one the
+    router has to bring to the rest of its net, by a track that ends on a pad or a
+    track of the net or in its pour. *cut* is asked of what it lays, with the pads
+    taken off as its third argument. Where it finds nothing that is the routing:
+    ``Routed.joined`` says what was laid for each net, ``Routed.taken_off`` and
+    ``Routed.unjoined`` each pad taken off. A relief it names as starved is something
+    found, as it is of a run of ``poured``: a join is not kept for it.
     A connection the router says it left unmade does not undo that: each one it was
     asked for is of a net the check is of. A check that still finds something cut off
     is mended the same way, ``JOINS`` times at most, and not again once the router has
@@ -364,7 +366,9 @@ def _join(
                 only=nets,
                 wires=_with(list(wires), list(job.wires)),
                 vias=vias,
-                # Another net's pour is whole by the check: nothing laid here crosses it.
+                # The pour of a net not routed here is whole by the check: no track
+                # is laid across as much of it as is its plane. The nets that are
+                # routed here cross each other's, as in the run with the pours known.
                 keepouts=[
                     *job.keepouts,
                     *((layer, poly) for n, layer, poly in pieces if n in pours - nets),
@@ -391,7 +395,7 @@ def _join(
         wires = [*join.wires, *(w for w in wires if w.net not in nets)]
         vias = [*join.vias, *(v for v in vias if v.net not in nets)]
         # Every connection this run was asked for is of a net the check is of: what
-        # it says it left unmade is no verdict where the check finds nothing cut off.
+        # it says it left unmade is no verdict where the check finds nothing.
         found = list(cut(wires, vias, tuple(off)))
         cuts += found
         if found and join.unrouted:

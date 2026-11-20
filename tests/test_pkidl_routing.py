@@ -541,6 +541,22 @@ def test_a_join_the_router_says_it_left_unmade_is_judged_by_the_check(tmp_path):
     assert routed.joined == () and routed.taken_off == () and routed.unjoined == ()
 
 
+def test_a_join_whose_check_finds_a_relief_starved_and_nothing_cut_off_is_not_kept(tmp_path):
+    # KiCad's check says the pads it joins by too few spokes as well as what it leaves
+    # unconnected. One such, of a pad the join had nothing to do with, is not nothing
+    # found: as for the first run, the run does not stand, and a track would not mend it.
+    first, join = Run((A_ROUTE,), (), 0), Run((JOINING,), (), 0)
+    again = Run((A_ROUTE, GND_ROUTE), (), 0)
+    stands = [({"C5.2": "GND"}, [GND_LAND], FOOTPRINTS)]
+    router = Mending([first, join, again], [[APART], [C5], []], stands)
+    whole = job(ONE_CLASS, planes=[GND_POUR])
+    routed = poured(router, whole, tmp_path, "b", router.cut, router.refill)
+    assert [stage for stage, _ in router.asked] == ["poured", "poured-join", ""]
+    assert len(router.stood) == 1
+    assert routed.wires == (A_ROUTE, GND_ROUTE) and routed.cut == (APART, C5)
+    assert routed.joined == () and routed.taken_off == () and routed.unjoined == ()
+
+
 def test_a_join_the_check_does_not_pass_is_tried_a_set_number_of_times(tmp_path):
     more = [Wire("GND", "F.Cu", 0.5, [(16.0, 13.0), (16.0 + n, 13.0)]) for n in (1, 2)]
     joins = [Run((JOINING,), (), 0), Run((JOINING, more[0]), (), 0),

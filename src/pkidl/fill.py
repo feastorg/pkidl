@@ -320,14 +320,27 @@ def landings(
     edge than half that width. The middle of a track anywhere in one has all its copper
     in the pour, which a point of the fill itself does not: a router told of the whole
     fill can choose to end a track in a corner of it that the track does not fit, and
-    lay nothing. A neck of the fill narrower than the track parts a piece in two. A
-    part with no pad of its net on it is left out, the pads *but* (as ``C5.1``) not
-    counted: with the pads that are cut off given, a piece apart from the rest is no
-    plane, and a track that ends in a plane ends on the rest of the net. Other
-    arguments as for ``fills``."""
+    lay nothing. A neck of the fill narrower than the track parts a piece in two.
+
+    A part is a plane only where a pad of its net lies on it and it has fill that the
+    board's copper joins to a pad of its net, as ``cut_off`` has pads joined, the pads
+    *but* (as ``C5.1``) not counted either time: with the pads that are cut off given,
+    a piece of pour that joins only those is no plane, though a pad of the rest lies on
+    it with a relief that does not join it. What only the gaps round the net's own pads
+    part from the rest is not a piece of its own, and is in the plane with the rest.
+    Other arguments as for ``fills``."""
+    zones = _pours(items)
     copper = {layer: _copper(items, layer) for layer in ("F.Cu", "B.Cu")}
+    pieces = fills(items, outline, edge, clearances)
+    joined: dict[str, list[tuple[str, Polygon]]] = {}  # a net: its fill joined to a pad
+    for net in {n for n, _, _ in pieces}:
+        nodes, of, _ = _on(items, net)
+        poured, whole = _parts(zones, pieces, net, nodes, of)
+        root, _, _ = _joined(nodes, of, poured, whole)
+        held = {root(i) for i in of if nodes[i][0] not in but}
+        joined[net] = [on for j, on in enumerate(poured) if root(len(nodes) + j) in held]
     found: list[Plane] = []
-    for net, layer, piece in fills(items, outline, edge, clearances):
+    for net, layer, piece in pieces:
         pads = [s for n, s, _, of in copper[layer] if n == net and of is not None
                 and f"{_ref(of[0])}.{of[1][1]}" not in but]  # fmt: skip
         inner = piece.buffer(-wide / 2)
@@ -336,9 +349,34 @@ def landings(
                 isinstance(part, Polygon)
                 and not part.is_empty
                 and any(part.intersects(s) for s in pads)
+                and any(on == layer and part.intersects(fill) for on, fill in joined[net])
             ):
                 found.append((net, layer, [(round(x, 4), round(y, 4)) for x, y in _slit(part)]))
     return found
+
+
+def standing(
+    items: list[Node],
+    outline: list[Point] | Polygon,
+    edge: float,
+    clearances: dict[str, float] | None = None,
+    *,
+    wide: float,
+) -> tuple[dict[str, str], list[Plane], list[Node]]:
+    """How a routed board's pours stand, for a router asked to join what they leave cut
+    off: the pads to take off them (``unreached``); with those off, the planes a track
+    *wide* mm across can end in, less each piece that joins only pads cut off
+    (``landings``); and the board's items with those pads off, and with the pads one
+    track joins together on no net but for one (``surplus``, ``unnet``). What is cut
+    off is asked of the board with the pads off: a pour is cut back from a pad that
+    joins none by its clearance and not by the gap of a relief, and can fill what the
+    gap parted. Other arguments as for ``fills``."""
+    apart = unreached(items, outline, edge, clearances)
+    off = unjoin(items, apart)
+    cuts = cut_off(off, outline, edge, clearances)
+    planes = landings(off, outline, edge, clearances, wide=wide,
+                      but={pad for c in cuts for pad in c.pads})  # fmt: skip
+    return apart, planes, unnet(off, surplus(off, cuts))
 
 
 @dataclass(frozen=True)

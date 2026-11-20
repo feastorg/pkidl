@@ -33,19 +33,7 @@ from typing import TYPE_CHECKING
 from shapely.geometry import LineString, Point, Polygon
 
 from pkidl.dsn import Via, Wire
-from pkidl.fill import (
-    Cut,
-    Plane,
-    cut_off,
-    landings,
-    prefill,
-    spare,
-    starved,
-    surplus,
-    unjoin,
-    unnet,
-    unreached,
-)
+from pkidl.fill import Cut, Plane, cut_off, prefill, spare, standing, starved, unjoin
 from pkidl.footprint import Placement, place
 from pkidl.intent import Fixed, Route, Rules, canonical
 from pkidl.intent import Path as Said
@@ -255,19 +243,14 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                        ) -> tuple[dict[str, str], list[Plane], list[Node]]:  # fmt: skip
                 """How the pours stand with these laid and the pads *off* taken off
                 them, by pkidl's model, which steers the router as ``prefill`` does and
-                judges nothing: the pads cut off that the pour joins to nothing;
-                the pours as they fill with those off as well, where a track of the
-                board's widest class can end in them and less each piece apart from
-                the rest of its net; and the footprints, with the pads cut off
-                together that one track joins on no net but for one."""
-                tried = laid(wires, vias, off)
-                apart = unreached(tried.items, *fill_as)
-                items = unjoin(tried.items, apart)
-                cuts = cut_off(items, *fill_as)
-                planes = landings(items, *fill_as, wide=max(c.track_width for c in classes),
-                                  but={pad for c in cuts for pad in c.pads})  # fmt: skip
-                return apart, planes, [item for item in unnet(items, surplus(items, cuts))
-                                       if item[0] == "footprint"]  # fmt: skip
+                judges nothing (``pkidl.fill.standing``): the pads cut off that the
+                pour joins to nothing; the pours as they fill with those off as well,
+                where a track of the board's widest class can end in them and less
+                each piece that joins only pads cut off; and the footprints, with the
+                pads cut off together that one track joins on no net but for one."""
+                wide = max(c.track_width for c in classes)
+                apart, planes, items = standing(laid(wires, vias, off).items, *fill_as, wide=wide)
+                return apart, planes, [item for item in items if item[0] == "footprint"]
 
             job = Job(
                 footprints=[item for item in built.items if item[0] == "footprint"],
