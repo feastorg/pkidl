@@ -5,6 +5,10 @@ writing the same distance are the same value and sums do not drift. A bare numbe
 a length: nothing here guesses its unit.
 
 A current has its unit too: ``1 * A``, ``500 * mA``, kept as a whole number of microamps.
+
+So has how much warmer one thing is than another: ``10 * degC``, kept as a whole number
+of thousandths of a degree. It is a difference and no temperature: nothing here says
+how warm a thing is.
 """
 
 from __future__ import annotations
@@ -91,11 +95,39 @@ class Current:
     __rmul__ = __mul__
 
 
+@dataclass(frozen=True, order=True)
+class Rise:
+    mk: int
+
+    def __post_init__(self) -> None:
+        if type(self.mk) is not int:
+            raise TypeError(f"a rise in temperature is a whole number of thousandths of a "
+                            f"degree, not {self.mk!r}: write 10 * degC")  # fmt: skip
+
+    @property
+    def degrees(self) -> float:
+        return self.mk / 1_000
+
+    def __str__(self) -> str:
+        return f"{self.mk / 1_000:.3f}".rstrip("0").rstrip(".") + " °C"
+
+    def __mul__(self, k: float) -> Rise:
+        if isinstance(k, bool) or not isinstance(k, int | float):
+            return NotImplemented
+        if isinstance(k, float) and not math.isfinite(k):
+            raise ValueError(f"a rise in temperature is a number of degrees, not {float(k)!r}: "
+                             "write 10 * degC")  # fmt: skip
+        return Rise(round(self.mk * k))
+
+    __rmul__ = __mul__
+
+
 mm = Length(1_000_000)
 mil = Length(25_400)
 inch = Length(25_400_000)
 A = Current(1_000_000)
 mA = Current(1_000)
+degC = Rise(1_000)
 
 _UNITS = {"mm": mm, "mil": mil, "in": inch, "inch": inch}
 

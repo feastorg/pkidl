@@ -6,6 +6,12 @@ its tracks and vias as they are. Nothing is changed for what is found, and nothi
 found is a problem: ``Routed.paths`` has it. A measurement never stops a build: one
 that raises is a reading that says so (``Reading.failed``).
 
+Before the board is routed, a path's current says how wide the tracks of its nets are
+(``widths``): as wide as keeps a track of an outer layer no more than the board's
+``rules(rise=)`` warmer for the current (``needed``), and no narrower than its
+``rules(track=)``. Each reading has what its own path's current needs, and says so
+where the narrowest of the tracks it found is narrower.
+
 A stretch is one net between two ends, each end every pad its part has on the net,
 taken as one point. Its resistance is that of the net's tracks between them, as a
 network: a track of length L and width w is ρ·L/(w·t), with ρ of copper at 20 °C and t
@@ -62,7 +68,7 @@ from __future__ import annotations
 import heapq
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 
 import numpy as np
@@ -73,9 +79,9 @@ from shapely.ops import nearest_points
 from pkidl.circuit import Circuit
 from pkidl.fill import _layers, _net, _num, _on, _pours, _xy
 from pkidl.footprint import pad_at
-from pkidl.intent import Path, Stretch
+from pkidl.intent import Path, Rules, Stretch
 from pkidl.sexpr import Node
-from pkidl.units import Length
+from pkidl.units import Current, Length, Rise, mil
 
 RHO = 1.72e-8  # ohm metres: copper at 20 °C
 _NEAR = 1e-6  # millimetres: a point this near copper is within it
@@ -93,7 +99,9 @@ class Reading:
     joins its ends, and no width where its ends are one piece of copper with no track
     between. *poured* is whether its net has a pour on the board: a pour is not
     measured, and where it reaches is not looked at. *failed* is why it could not be
-    measured, where measuring it raised."""
+    measured, where measuring it raised. *current* is the path's, and *needs* how wide
+    a track is to carry it (``needed``): where the narrowest is narrower, that is said,
+    and nothing is changed for it."""
 
     stretch: Stretch
     ohms: float | None = None
@@ -102,6 +110,8 @@ class Reading:
     volts: float | None = None
     poured: bool = False
     failed: str = ""
+    current: Current | None = None
+    needs: Length | None = None
 
     def __str__(self) -> str:
         net = self.stretch.net
@@ -116,8 +126,11 @@ class Reading:
         most, pour = "", ""
         if self.poured:
             most, pour = "at most ", f": {net} has a pour as well, which is not measured"
+        short = ""
+        if self.needs is not None and self.narrowest < self.needs:
+            short = f" where {self.current} needs {self.needs}"
         return (f"{self.stretch}: {round(self.length.mm, 1):g} mm of track, {self.narrowest} "
-                f"at its narrowest, {most}{figures}{pour}")  # fmt: skip
+                f"at its narrowest{short}, {most}{figures}{pour}")  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -158,6 +171,58 @@ class Measured:
             if self.unmeasured:
                 total += f", {self.unmeasured} of its {len(self.stretches)} stretches not in it"
         return "\n".join([f"{self.path}{at}: {total}", *(f"  {r}" for r in self.stretches)])
+
+
+def needed(current: Current, rise: Rise, copper: Length) -> Length:
+    """How wide a track of an outer layer is to carry *current* and be no more than
+    *rise* warmer for it, in copper *copper* thick: up to the next whole micrometre.
+
+    It is Brooks and Adam's fit to the charts of IPC-2152 for an outer layer, as the
+    source of KiCad's master branch has it (``common/track_width_calculations.cpp``
+    and ``pcb_calculator/tracks_width_versus_current_formula.md``, read 2026-11-19),
+    and not as KiCad 10.0.8's calculator reckons: that is by IPC-2221, and gives a
+    narrower track. ΔT = 215.3 · I² · W^-1.15 · Th^-1, with the
+    current I in amps, the rise ΔT in °C, and the width W and the thickness Th in
+    mils, so W = (215.3 · I² / (ΔT · Th)) ^ (1 / 1.15). 1.5 A at 10 °C in 1 oz copper
+    is 0.562 mm. A track of an inner layer warms more for the same current, and is
+    not what this says.
+
+    The fit is to IPC-2152's data, and nothing here says where it stops holding: a
+    width is given for any current, however large. A current, a rise or a thickness
+    that is not more than nothing is refused."""
+    if current <= Current(0):
+        raise ValueError(f"needed(): {current} is not a current to carry")
+    if rise <= Rise(0):
+        raise ValueError(f"needed(): {rise} is not a rise")
+    if copper <= Length(0):
+        raise ValueError(f"needed(): {copper} is not a thickness")
+    thick = copper / mil
+    wide = (215.3 * current.a**2 / (rise.degrees * thick)) ** (1 / 1.15)
+    return Length(math.ceil(wide * mil.nm / 1000) * 1000)
+
+
+def carried(paths: Sequence[Path], circuit: Circuit) -> dict[str, Current]:
+    """The most any of *paths* carries on each net that is the net of a stretch of one,
+    by the net's name in *circuit*: the largest of their currents, not their sum."""
+    most: dict[str, Current] = {}
+    for path in paths:
+        for stretch in path.stretches(circuit)[0]:
+            net = stretch.net.name
+            most[net] = max(most.get(net, path.current), path.current)
+    return most
+
+
+def widths(paths: Sequence[Path], circuit: Circuit, rules: Rules) -> dict[str, Length]:
+    """How wide the tracks of each net are that *paths* make wider than the board's
+    *rules* have a track, by the net's name in *circuit*, in the order of the names.
+
+    A net that is the net of a stretch of a path is as wide as the path's current
+    needs (``needed``), and one on stretches of several paths as wide as the largest
+    of their currents needs: not their sum. A net no path goes through, and one whose
+    current needs no more than ``rules(track=)``, is not among them."""
+    wide = {net: needed(current, rules.rise, rules.copper)
+            for net, current in carried(paths, circuit).items()}  # fmt: skip
+    return {net: wide[net] for net in sorted(wide) if wide[net] > rules.track}
 
 
 def _figure(value: float, unit: str) -> str:
@@ -426,12 +491,13 @@ def _between(
 
 
 def measured(
-    items: list[Node], paths: Sequence[Path], circuit: Circuit, copper: Length
+    items: list[Node], paths: Sequence[Path], circuit: Circuit, copper: Length, rise: Rise
 ) -> tuple[Measured, ...]:
     """Each of *paths* as a routed board's *items* have it (see the module), their
-    stretches found in *circuit* and the board's copper *copper* thick. It does not
-    raise for what the board is: a stretch whose measuring raises has a reading that
-    says what was raised."""
+    stretches found in *circuit* and the board's copper *copper* thick. Each reading
+    has how wide a track its path's current needs to warm by no more than *rise*. It
+    does not raise for what the board is: a stretch whose measuring raises has a
+    reading that says what was raised."""
     poured = {_net(zone) for zone in _pours(items)}
     nets: dict[str, _Tracks] = {}
 
@@ -454,11 +520,13 @@ def measured(
     found = []
     for path in paths:
         readings = []
+        needs = needed(path.current, rise, copper)
         for stretch in path.stretches(circuit)[0]:
             try:
-                readings.append(read(stretch, path.current.a))
+                reading = read(stretch, path.current.a)
             except Exception as e:  # whatever it is, the board is still written
-                readings.append(Reading(stretch, poured=stretch.net.name in poured,
-                                        failed=f"{type(e).__name__}: {e}"))  # fmt: skip
+                reading = Reading(stretch, poured=stretch.net.name in poured,
+                                  failed=f"{type(e).__name__}: {e}")  # fmt: skip
+            readings.append(replace(reading, current=path.current, needs=needs))
         found.append(Measured(path, tuple(readings)))
     return tuple(found)

@@ -54,6 +54,41 @@ class NetClass:
         }
 
 
+# What KiCad reads in a netclass pattern as other than itself, and how each is written
+# to be read as itself.
+_MEANT = {
+    **{c: "\\" + c for c in "\\^$.|+()[]"},
+    "{": "[{]",
+    "}": "[}]",
+    "*": "\\x2a",
+    "?": "\\x3f",
+}
+
+
+def exactly(net: str) -> str:
+    """The netclass pattern that puts the net named *net* in a class, and no other net.
+
+    KiCad reads a pattern two ways and takes a net that either matches whole, with
+    the case as written: as a regular expression, and as a wildcard, in which ``*``
+    and ``?`` stand for any characters and the rest for themselves (KiCad 10.0.8,
+    by its DRC). A name written as it is is so a pattern for other names: ``V+``
+    takes ``V`` and ``VV``, ``A.B`` takes ``AxB`` and ``Net-(U1-Pad3)`` takes
+    ``Net-U1-Pad3``. Here each character an expression reads as other than itself has
+    a backslash before it; a brace is in a class of its own, ``[{]``, since two with
+    backslashes round a name match nothing; and ``*`` and ``?`` are by their numbers,
+    so the wildcard has neither to read. A name with none of them is its own pattern.
+
+    What is left: a net named as the pattern itself is written, ``V\\+`` beside
+    ``V+``, is taken with it, by the wildcard.
+
+    A project also has a map from a net's name to its classes
+    (``netclass_assignments``), and KiCad 10.0.8 took every name tried from it as
+    itself. Patterns are written here as most of the demo projects that KiCad ships
+    with have them: of those that give a class its nets, eight do it by patterns and
+    two by the map, and those two have net-class labels in their schematics."""
+    return "".join(_MEANT.get(c, c) for c in net)
+
+
 def write_project(
     path: Path,
     *,
@@ -62,14 +97,17 @@ def write_project(
     rules: dict[str, float | bool],
     severities: dict[str, str],
 ) -> Path:
-    """Write *path*. ``members`` maps a netclass name to exact net names.
+    """Write *path*. ``members`` maps a netclass name to exact net names: each is
+    written as the pattern that matches that name alone (``exactly``).
 
     The first netclass must be ``Default``; it applies to every net not listed.
     """
     if not netclasses or netclasses[0].name != "Default":
         raise ValueError("the first netclass must be 'Default'")
     patterns = [
-        {"netclass": cls, "pattern": net} for cls in sorted(members) for net in sorted(members[cls])
+        {"netclass": cls, "pattern": exactly(net)}
+        for cls in sorted(members)
+        for net in sorted(members[cls])
     ]
     project = {
         "board": {
