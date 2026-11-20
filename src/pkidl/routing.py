@@ -17,8 +17,13 @@ KiCad's DRC judges the board the routes are written into.
 ``poured`` routes a board whose pours are to carry their nets: with the pours known to
 the router and free to be crossed, then checked. A router told of a pour counts every
 pad on it as joined, and tracks across the pour can leave a piece of it apart with
-pads on it. Where the check finds that, the board is routed again with that net
-carried by tracks, the pour beside them, and what was cut off is in the result.
+pads on it. Where the check finds that of a run that made every connection, what was
+cut off is joined to the rest of its net by a track: the run's tracks are kept, the
+router is told of the pours as they fill round them, less each pad its pour joins to
+nothing and each piece apart from the rest, and is asked for the nets cut off alone.
+The check is asked again of what it lays. Where that does not mend it, the board is
+routed again with that net carried by tracks, the pour beside them. Either way what
+was cut off is in the result.
 
 ``relieved`` mends what the board that is written is then found to have wrong where it
 can be mended with no connection changed: a pad starved of its pour that a track joins
@@ -29,6 +34,7 @@ to its net is taken off the pour.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -45,8 +51,13 @@ if TYPE_CHECKING:
 
 Point = tuple[float, float]
 
-POWER, CROSS, POURED = "power", "cross", "poured"
+POWER, CROSS, POURED, JOIN = "power", "cross", "poured", "join"
 TURNS = 5  # the times a board's pours are checked again for pads taken off them
+JOINS = 3  # the times what a run left cut off is joined by track, and checked again
+Plane = tuple[str, str, Sequence[Point]]  # net, layer, hole-free polygon in board mm
+# How a board's pours stand with wires and vias laid and pads off them (``poured``).
+Refill = Callable[[Sequence[Wire], Sequence[Via], Sequence[str]],
+                  tuple[Mapping[str, str], Sequence[Plane], Sequence[Node]]]  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -114,16 +125,17 @@ class Routed:
     wires: tuple[Wire, ...]
     vias: tuple[Via, ...]
     runs: tuple[tuple[str, Run], ...]
-    # What a run with the pours known left cut off, for which the board was routed
-    # again with those nets carried by tracks (``poured``).
+    # What a run with the pours known left cut off, and what each check of a track
+    # laid to join it still found: for which it was joined by track (``joined``), or
+    # the board routed again with those nets carried by tracks (``poured``).
     cut: tuple[Cut, ...] = ()
     # What the same check finds of the board as it was routed last, where that was
     # without its pours: they are still drawn, round the tracks that carry their nets,
     # and what they leave wrong is on the board that is written. Once ``relieved``, what
     # the last check finds of the board that is written, however it was routed.
     left: tuple[Cut, ...] = ()
-    # Each pad taken off its pour (``relieved``), a line a pad: the pad, its net, the
-    # layer of the pour, and that a track joins it.
+    # Each pad taken off its pour (``poured``, ``relieved``), a line a pad: the pad,
+    # its net, the layer of the pour where it starved the pad, and that a track joins it.
     unjoined: tuple[str, ...] = ()
     # Whose word it is that the pours join what they are left to: ``KiCad``, or
     # ``model`` for pkidl's model of KiCad's fill. Empty where nothing was asked.
@@ -136,6 +148,13 @@ class Routed:
     # the file each was written in, then its line, then what it says. Nothing is
     # changed for it.
     paths: tuple[Measured, ...] = ()
+    # Each net that kept its pour though a run left some of it cut off, a line a net:
+    # the track and vias laid to join what was cut off to the rest of it, which the
+    # check then found joined.
+    joined: tuple[str, ...] = ()
+    # The pads taken off their pours for those joins, as ``C5.1``: the pour joined each
+    # to nothing, and the track does. Each is a line of ``unjoined``.
+    taken_off: tuple[str, ...] = ()
 
 
 def staged(router: Router, job: Job, outdir: Path, name: str) -> Routed:
@@ -240,7 +259,8 @@ def poured(
     job: Job,
     outdir: Path,
     name: str,
-    cut: Callable[[Sequence[Wire], Sequence[Via]], Sequence[Cut]],
+    cut: Callable[..., Sequence[Cut]],
+    refill: Refill | None = None,
 ) -> Routed:
     """Route the whole board *job* describes with its pours carrying their nets, where
     they can be shown to (see the module).
@@ -250,26 +270,55 @@ def poured(
     cost minutes against a plane; *cut* is then asked what the wires and vias it
     proposes leave cut off (``pkidl.fill.cut_off`` on the board with them laid). With
     nothing cut off and nothing the router says it left unmade, that run is the
-    routing. Otherwise the nets cut off lose their planes and the board is routed
-    again, by ``staged`` once no plane is left: what is routed last is the routing,
-    and ``Routed.cut`` has what each earlier run left cut off. A board routed by
+    routing.
+
+    A run that made every connection and left pads of poured nets cut off is mended
+    first, where *refill* is given. It is asked how the pours stand with the run's
+    wires and vias laid and the pads taken off so far off them: the pads cut off that
+    their pour joins to nothing, each with its net, to take off it; the planes the
+    pours fill to with those taken off as well, less each piece apart from the rest of
+    its net; and the footprints as the router is to be told of them, which have the
+    pads one track joins together on no net but for one. A run of the ``join`` stage
+    then routes the nets cut off alone, the run's copper fixed, those planes theirs and
+    every other net's a keepout: a pad on no plane is one the router has to bring to
+    the rest of its net, by a track that ends on a pad or a track of the net or in its
+    pour. *cut* is asked of what it lays, with the pads taken off as its third
+    argument. With nothing cut off that is the routing: ``Routed.joined`` says what was
+    laid for each net, ``Routed.taken_off`` and ``Routed.unjoined`` each pad taken off.
+    A connection the router says it left unmade does not undo that: each one it was
+    asked for is of a net the check is of. A check that still finds something cut off
+    is mended the same way, ``JOINS`` times at most, and not again once the router has
+    said it left a connection unmade. Nothing is joined for a run of ``poured`` that
+    left a connection unmade, by a run that lays nothing, for a net with no pour, or
+    where nothing found is cut off but only starved.
+
+    Otherwise the nets the run left cut off lose their planes, nothing laid to join
+    them is kept, and the board is routed again, by ``staged`` once no plane is left:
+    what is routed last is the routing, and ``Routed.cut`` has what each earlier check
+    found cut off. A board routed by
     ``staged`` still has its pours drawn, as copper beside the tracks, and *cut* is
     asked of it too: what it finds is ``Routed.left``, and nothing is changed for it.
     Only the nets that have pours are checked. What a router says it left unmade of
     the others, and of a board routed with no pour left, is in each ``Run`` and is its
     own word.
     """
-    planes, runs, cuts = list(job.planes), [], []
+    planes, runs, cuts, turn = list(job.planes), [], [], 0
     while planes:
-        stage = POURED if not runs else f"{POURED}-{len(runs) + 1}"
-        run = router.route(replace(job, planes=planes, cross_planes=True, quick=True),
-                           outdir, name, stage)  # fmt: skip
+        turn += 1
+        stage = POURED if turn == 1 else f"{POURED}-{turn}"
+        known = replace(job, planes=planes, cross_planes=True, quick=True)
+        run = router.route(known, outdir, name, stage)
         runs.append((stage, run))
         found = list(cut(run.wires, run.vias))
         cuts += found
         if not found and not run.unrouted:
             return Routed(tuple(_with(list(run.wires), list(job.wires))), tuple(run.vias),
                           tuple(runs), tuple(cuts))  # fmt: skip
+        if refill is not None and not run.unrouted:
+            mended = _join(router, known, outdir, name, stage, run, found, cut, refill,
+                           runs, cuts)  # fmt: skip
+            if mended is not None:
+                return mended
         # The nets cut off give up their pours. Where none of them has one left to give,
         # a run that left a connection unmade or a net already carried by tracks, there
         # is no net to blame and every pour gives way: each turn has fewer than the last.
@@ -278,6 +327,97 @@ def poured(
     rest = staged(router, replace(job, planes=()), outdir, name)
     left = tuple(cut(rest.wires, rest.vias)) if job.planes else ()
     return Routed(rest.wires, rest.vias, (*runs, *rest.runs), tuple(cuts), left)
+
+
+def _join(
+    router: Router,
+    job: Job,
+    outdir: Path,
+    name: str,
+    stage: str,
+    run: Run,
+    found: Sequence[Cut],
+    cut: Callable[..., Sequence[Cut]],
+    refill: Refill,
+    runs: list[tuple[str, Run]],
+    cuts: list[Cut],
+) -> Routed | None:
+    """The routing of *job*, a run of ``poured`` with its planes, with what its *run*
+    left cut off (*found*) joined to the rest of its net by track, the pours kept: None
+    where that is not done or the check does not pass it (``poured``). Each run made
+    for it is added to *runs* and what each check of one finds to *cuts*, either way."""
+    pours = {net for net, _, _ in job.planes}
+    wires, vias = list(run.wires), list(run.vias)
+    off: dict[str, str] = {}  # each pad taken off its pour, and its net
+    laid: dict[str, tuple[float, set[str], int]] = {}  # a net: mm of track, on, vias
+    for turn in range(1, JOINS + 1):
+        nets = frozenset(c.net for c in found)
+        if not nets <= pours or all(c.starved for c in found):
+            return None
+        more, pieces, footprints = refill(wires, vias, tuple(off))
+        off.update((pad, net) for pad, net in more.items() if net in nets)
+        named = f"{stage}-{JOIN}" if turn == 1 else f"{stage}-{JOIN}-{turn}"
+        join = router.route(
+            replace(
+                job,
+                footprints=footprints,
+                only=nets,
+                wires=_with(list(wires), list(job.wires)),
+                vias=vias,
+                # Another net's pour is whole by the check: nothing laid here crosses it.
+                keepouts=[
+                    *job.keepouts,
+                    *((layer, poly) for n, layer, poly in pieces if n in pours - nets),
+                ],
+                planes=[p for p in pieces if p[0] in nets],
+            ),
+            outdir,
+            name,
+            named,
+        )
+        runs.append((named, join))
+        had, holed = {s for w in wires for s in _segments(w)}, {(v.net, v.at) for v in vias}
+        new = [s for w in join.wires for s in _segments(w) - had]
+        drilled = [v for v in join.vias if (v.net, v.at) not in holed]
+        if not (new or drilled):
+            return None
+        for net in sorted(nets & ({of for of, _, _ in new} | {v.net for v in drilled})):
+            mm, on, holes = laid.get(net, (0.0, set(), 0))
+            laid[net] = (
+                mm + _length(join.wires, net) - _length(wires, net),
+                on | {layer for of, layer, _ in new if of == net},
+                holes + sum(v.net == net for v in drilled),
+            )
+        wires = [*join.wires, *(w for w in wires if w.net not in nets)]
+        vias = [*join.vias, *(v for v in vias if v.net not in nets)]
+        # Every connection this run was asked for is of a net the check is of: what
+        # it says it left unmade is no verdict where the check finds nothing cut off.
+        found = list(cut(wires, vias, tuple(off)))
+        cuts += found
+        if found and join.unrouted:
+            return None
+        if not found:
+            said = []
+            for net, (mm, on, holes) in laid.items():
+                by = [f"{round(mm, 3):g} mm of track on {' and '.join(sorted(on))}"] if on else []
+                by += ["1 via"] if holes == 1 else [f"{holes} vias"] if holes else []
+                said.append(f"{net} keeps its pour: {' and '.join(by)} "
+                            f"{'joins' if len(by) == 1 and holes < 2 else 'join'} what was "
+                            f"cut off to the rest of {net}")  # fmt: skip
+            return Routed(
+                tuple(_with(wires, list(job.wires))), tuple(vias), tuple(runs), tuple(cuts),
+                joined=tuple(said), taken_off=tuple(off),
+                unjoined=tuple(f"{pad} is taken off the pour of {net}, which joins it to "
+                               f"nothing: a track joins it to the rest of {net}"
+                               for pad, net in off.items()),
+            )  # fmt: skip
+    return None
+
+
+def _length(wires: Sequence[Wire], net: str) -> float:
+    """How long the *wires* of *net* are, in mm."""
+    return sum(math.dist(a, b) for w in wires if w.net == net
+               for a, b in zip(w.points, w.points[1:], strict=False))  # fmt: skip
 
 
 def relieved(
@@ -299,8 +439,12 @@ def relieved(
 
     ``Routed.unjoined`` names each pad taken off, and ``Routed.left`` is what the last
     check found: a starved pad that only the pour joins is there, left as it was. No
-    track or via is changed, and where nothing is taken off *check* is not asked."""
-    found, off, said = list(found), [], []
+    track or via is changed, and where nothing is taken off *check* is not asked.
+
+    The pads *routed* already has off their pours (``Routed.taken_off``) stay off: each
+    check is asked with them among the pads, none is taken off again, and their lines
+    of ``Routed.unjoined`` are kept, first."""
+    found, off, said = list(found), list(routed.taken_off), []
     spared: Collection[str] | None = None
     for _ in range(turns):
         starved = {pad: c for c in found if c.starved for pad in c.pads if pad not in off}
@@ -316,7 +460,7 @@ def relieved(
                         f"relief: a track joins it to the rest of {c.net}")  # fmt: skip
         off += take
         found = list(check(tuple(off)))
-    return replace(routed, left=tuple(found), unjoined=tuple(said))
+    return replace(routed, left=tuple(found), unjoined=(*routed.unjoined, *said))
 
 
 def lay(board: Board, routed: Routed) -> None:

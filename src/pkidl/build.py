@@ -8,7 +8,9 @@ it was: built twice, it gives the same files twice.
 A board is not built from statements that conflict or do not hold, or with a part
 nothing places: ``BuildError`` says each, with the line it was written on. A router
 that leaves connections unmade does not stop the build. What it says is in the result
-(``Built.routed``), and KiCad's DRC judges the board that was written. A pad starved of
+(``Built.routed``), and KiCad's DRC judges the board that was written. What a run with
+the pours known leaves cut off is joined to the rest of its net by a track where one
+can be laid, the pour kept, and the result says so (``Routed.joined``). A pad starved of
 its pour that a track joins to its net is taken off the pour, and the result names it
 (``Routed.unjoined``). A track or a via the routed board has in an area kept clear of
 copper is in the result too (``Routed.kept_out``): the router was told of the area, and
@@ -31,7 +33,19 @@ from typing import TYPE_CHECKING
 from shapely.geometry import LineString, Point, Polygon
 
 from pkidl.dsn import Via, Wire
-from pkidl.fill import Cut, cut_off, prefill, spare, starved, unjoin
+from pkidl.fill import (
+    Cut,
+    Plane,
+    cut_off,
+    landings,
+    prefill,
+    spare,
+    starved,
+    surplus,
+    unjoin,
+    unnet,
+    unreached,
+)
 from pkidl.footprint import Placement, place
 from pkidl.intent import Fixed, Route, Rules, canonical
 from pkidl.intent import Path as Said
@@ -218,14 +232,14 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 lay(tried, Routed(tuple(wires), tuple(vias), ()))
                 return tried
 
-            def cut(wires: Sequence[Wire], vias: Sequence[Via],
-                    off: Sequence[str] | None = None) -> list[Cut]:  # fmt: skip
-                """What the board's pours would leave cut off with these laid: by
-                KiCad's own fill where KiCad is installed, and by pkidl's model of it
-                where it is not or does not finish. Asked with the pads *off* their
-                pours, it is of the board to be written, and the model then says the
-                pads its pours starve as well, as KiCad does each time."""
-                tried = laid(wires, vias, off or ())
+            def cut(wires: Sequence[Wire], vias: Sequence[Via], off: Sequence[str] = (),
+                    written: bool = False) -> list[Cut]:  # fmt: skip
+                """What the board's pours would leave cut off with these laid and the
+                pads *off* taken off their pours: by KiCad's own fill where KiCad is
+                installed, and by pkidl's model of it where it is not or does not
+                finish. Asked of the board to be *written*, the model says the pads its
+                pours starve as well, as KiCad does each time."""
+                tried = laid(wires, vias, off)
                 if kicad_command() is not None:
                     # KiCad fills to the board's own rules: its project goes with it.
                     projected(outdir / f"{name}-poured-check.kicad_pro")
@@ -235,7 +249,25 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                         return found
                 judged.append(MODEL)
                 found = cut_off(tried.items, *fill_as)
-                return found if off is None else [*found, *starved(tried.items, *fill_as)]
+                return [*found, *starved(tried.items, *fill_as)] if written else found
+
+            def refill(wires: Sequence[Wire], vias: Sequence[Via], off: Sequence[str]
+                       ) -> tuple[dict[str, str], list[Plane], list[Node]]:  # fmt: skip
+                """How the pours stand with these laid and the pads *off* taken off
+                them, by pkidl's model, which steers the router as ``prefill`` does and
+                judges nothing: the pads cut off that the pour joins to nothing;
+                the pours as they fill with those off as well, where a track of the
+                board's widest class can end in them and less each piece apart from
+                the rest of its net; and the footprints, with the pads cut off
+                together that one track joins on no net but for one."""
+                tried = laid(wires, vias, off)
+                apart = unreached(tried.items, *fill_as)
+                items = unjoin(tried.items, apart)
+                cuts = cut_off(items, *fill_as)
+                planes = landings(items, *fill_as, wide=max(c.track_width for c in classes),
+                                  but={pad for c in cuts for pad in c.pads})  # fmt: skip
+                return apart, planes, [item for item in unnet(items, surplus(items, cuts))
+                                       if item[0] == "footprint"]  # fmt: skip
 
             job = Job(
                 footprints=[item for item in built.items if item[0] == "footprint"],
@@ -253,19 +285,20 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
                 # routed board shows it still is.
                 planes=prefill(unrouted, *fill_as),
             )
-            routed = poured(router or Freerouting(), job, outdir, name, cut)
+            routed = poured(router or Freerouting(), job, outdir, name, cut, refill)
             if judged:
                 # The board to be written: as routed with its pours where that run
-                # stood, which the check passed, or as routed again, of which it found
-                # ``left``. The model was not asked there what its pours starve.
+                # stood, which the check passed, with any pad a join took off its pour
+                # off it, or as routed again, of which it found ``left``. The model was
+                # not asked there what its pours starve.
                 wires, vias, found = routed.wires, routed.vias, list(routed.left)
                 if judged[-1] == MODEL:
-                    found += starved(laid(wires, vias).items, *fill_as)
-                off: list[str] = []  # the pads taken off their pours, as last asked
+                    found += starved(laid(wires, vias, routed.taken_off).items, *fill_as)
+                off = list(routed.taken_off)  # the pads taken off their pours, as last asked
 
                 def again(pads: Sequence[str]) -> list[Cut]:
                     off[:] = pads
-                    return cut(wires, vias, pads)
+                    return cut(wires, vias, pads, True)
 
                 routed = relieved(routed, found, again,
                                   lambda: spare(laid(wires, vias).items))  # fmt: skip

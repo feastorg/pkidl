@@ -283,11 +283,14 @@ def test_the_t0_board_file_builds_its_circuit_with_every_part_placed(tmp_path):
     assert built.solution.free == () and built.solution.problems == ()
     # The router is asked for the whole board with the ground pour known, its fill one
     # piece on the back. This one proposed nothing, which leaves the module's ground
-    # pad on the front joined to no other, so it is asked again with no pour.
-    (known, poured, _, _), (stage, job, outdir, name) = router.asked
+    # pad on the front joined to no other, so it is asked to join that by a track, lays
+    # none, and is asked again with no pour.
+    (known, poured, _, _), (mend, join, _, _), (stage, job, outdir, name) = router.asked
     assert known == "poured" and [(net, layer) for net, layer, _ in poured.planes] == [
         ("GND", "B.Cu")
     ]
+    assert mend == "poured-join" and join.only == {"GND"}
+    assert [(net, layer) for net, layer, _ in join.planes] == [("GND", "B.Cu")]
     assert built.routed is not None
     assert [str(c).partition(":")[0] for c in built.routed.cut] == [
         "U1.15 is cut off from the rest of GND"
@@ -531,9 +534,15 @@ def test_the_fan_controllers_board_file_is_routed_by_freerouting_with_nothing_le
     assert built.routed is not None
     # With the ground pour known the router makes every connection by its own count,
     # and tracks on the back leave pads of ground on pieces of the pour apart from the
-    # rest. That is found and said, and the board is routed again with ground carried
-    # by tracks: the routing that stands.
-    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [("poured", 0), ("", 0)]
+    # rest. That is found and said. A run to join them brings one pad to the pour and
+    # cannot bring the piece two others are on, so nothing of it is kept, and the board
+    # is routed again with ground carried by tracks: the routing that stands.
+    assert [(stage, run.unrouted) for stage, run in built.routed.runs] == [
+        ("poured", 0),
+        ("poured-join", 1),
+        ("", 0),
+    ]
+    assert built.routed.joined == () and built.routed.taken_off == ()
     assert built.routed.cut and {c.net for c in built.routed.cut} == {"GND"}
     assert all(c.layer == "B.Cu" and c.fenced for c in built.routed.cut)
     # The board routed again is checked with its pour beside the tracks: nothing left.

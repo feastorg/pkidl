@@ -336,6 +336,31 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Changed
 
+- A net keeps its pour where what a run left cut off from it can be joined by a
+  track. A build's run with the pours known that made every connection and left pads
+  of a poured net cut off is no longer routed again at once with that net carried by
+  tracks. Its tracks are kept, and the router is asked for the nets cut off alone
+  (`<name>-poured-join.dsn`), told of the pours as they fill round those tracks: where
+  a track can end in them (`pkidl.fill.landings`), so that it is not aimed at a
+  corner of the pour it does not fit, and less each piece apart from the rest, so
+  that a track ending in a plane ends on the body of the pour. Of the pads a piece
+  apart joins to each other the router is told of one (`pkidl.fill.surplus`,
+  `unnet`), and one track joins them. A pad the pour joins to nothing, one no pour
+  reaches though one is drawn over it or one alone on a piece apart
+  (`pkidl.fill.unreached`), is taken off the pour, `(zone_connect 0)` in the board
+  that is written, and joined by the track alone. Every other pour is kept out of.
+  What is laid is checked as the run was, by KiCad where it is installed: with
+  nothing cut off it is the routing, `Routed.joined` has a line for each net with
+  the track and vias laid, and `Routed.taken_off` and `Routed.unjoined` each pad
+  taken off. A check that still finds something cut off is mended the same way,
+  three times at most. What the router says it left unmade of a join is in its run
+  and decides nothing where the check finds nothing cut off. Where nothing is laid or
+  the check is not passed, the net gives up its pour as before and nothing laid to
+  join it is kept. `Routed.cut` has what every check found, and `scripts/corpus.py build`
+  prints each line. A board whose first run leaves nothing cut off is built as it
+  was, byte for byte. `pkidl.routing.poured` takes how the pours stand as a sixth
+  argument, `refill`, and asks its check with the pads taken off as a third.
+
 - The bench supply's two toggle switches are 12.7 mm between centres, where they were
   10.0 mm.
 
