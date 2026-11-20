@@ -27,9 +27,18 @@ Unreleased. History before this file was reconstructed from the git log.
   needs 0.562 mm` where the copper on the way is narrower; nothing fails for it. A
   board with no `path`, or none whose current needs more than `rules(track=)`, is
   built byte for byte as before. A board with a wider net is routed differently: its
-  tracks are wider, and where it is routed again without its pours the wider nets are
-  routed first, alone. The bench supply, whose 1.5 A paths put six nets at 0.562 mm,
-  is built with 7 connections unmade where it had none. (#10)
+  tracks are wider; a run that joins what a pour left cut off is told of the classes
+  as the first run is, so a track that joins a net of a wider class is laid that
+  wide, and the pours stand for it where a track of the widest class can end in
+  them, whichever net is joined; and where the board is routed again without its
+  pours the wider nets are routed first, alone. The bench supply's 1.5 A paths put
+  six nets at 0.562 mm (built 2026-11-20, `poured: 0 unrouted, poured-join: 0
+  unrouted`): 112 of its 223 segments of track are that wide, one pad of ground that
+  a wider track fences off its pour is joined by 3.371 mm of track and a via, and
+  KiCad 10.0.8 finds nothing unconnected and no track under its class's width. The
+  way round its limiter is 273 mΩ and drops 410 mV at 1.5 A, where at 0.5 mm it was
+  318 mΩ and 476 mV: it is about 312 mm of track, and a width for heat does not shorten
+  it. (#10)
 - The way a current goes through the board, said and measured. `board.path(jack, power,
   limit, current=1 * A)`, or `pkidl.path(...)` in a block, is a statement: its stops
   are parts, nets (a `Net` or its name) and lists of parts side by side, and

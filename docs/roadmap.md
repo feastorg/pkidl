@@ -336,18 +336,20 @@ the length and narrowest width of the way of least resistance (`Routed.paths`,
 supply's board file says the way its load current goes. It changed no copper,
 placement or routing. What the measurement itself leaves is #94.
 
-**2026-11-19: a path's current sets the width of its nets' tracks.** Each net a path
+**2026-11-20: a path's current sets the width of its nets' tracks.** Each net a path
 goes through is laid as wide as its current needs to warm by no more than
 `rules(rise=)`, 10 °C where nothing says, by the fit to IPC-2152 for an outer layer
 that KiCad's calculator uses, and never narrower than `rules(track=)`. The nets of a
 width are a net class the router, the project and a `.kicad_dru` all have, and a
 reading says where the narrowest track is narrower than its current needs. On the
-bench supply the six nets of its 1.5 A paths are 0.562 mm wide, and the board comes
-out worse connected: a wider track leaves one pad apart from the ground pour, the
-board is routed again without the pour, and 7 connections are unmade where none
-were. Not yet: a track let narrow into a pad, checking a drop against a budget,
-saying which copper two currents may share, measuring or sizing a pour, and inner
-layers.
+bench supply the six nets of its 1.5 A paths are 0.562 mm wide. A wider track leaves
+one pad apart from the ground pour, which a track and a via then join with the pour
+kept (#101), and KiCad finds every connection made. The way round the limiter is
+273 mΩ where it was 318 mΩ and still drops 410 mV at 1.5 A, over about 312 mm of track:
+the width is for heat, and a drop wants a shorter way or a pour, which nothing here
+gives it. Not yet: a track let narrow into a pad, checking a drop against a budget
+and sizing for one, saying which copper two currents may share, measuring or sizing
+a pour, and inner layers.
 
 ## Later
 

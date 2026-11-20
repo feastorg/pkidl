@@ -1178,6 +1178,77 @@ def test_a_pad_the_pour_is_cut_off_from_is_joined_by_a_track_and_the_pour_kept(t
     assert len(find_all(written, "segment")) == 4 and len(find_all(written, "zone")) == 1
 
 
+def test_a_cut_off_pad_of_a_wider_net_is_joined_in_its_class_where_its_width_can_end(
+    tmp_path, monkeypatch
+):
+    from shapely.geometry import Polygon as ShapelyPolygon
+
+    import pkidl.build
+    from pkidl import A
+    from pkidl.dsn import write_dsn
+
+    board = _clock(tmp_path)
+    # 2 A needs 0.926 mm, and a track is 0.25 mm: ground is in a class of that width.
+    board.path(board["ESP1"], "GND", board["C5"], current=2 * A)
+    router = Fencing(board, tmp_path)
+    asked: list[float] = []
+    standing = pkidl.build.standing
+    monkeypatch.setattr(pkidl.build, "standing",
+                        lambda *a, wide: asked.append(wide) or standing(*a, wide=wide))  # fmt: skip
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None
+    assert [stage for stage, _ in router.asked[-2:]] == ["poured", "poured-join"]
+    assert len(built.routed.joined) == 1 and built.routed.taken_off == ("C5.1",)
+    # The run that joins is told of the classes and their nets as the first run is.
+    (_, first), (_, join) = router.asked[-2:]
+    classes = [NetClass("Default", 0.2, 0.25), NetClass("0.926 mm", 0.2, 0.926)]
+    assert list(first.netclasses) == list(join.netclasses) == classes
+    assert dict(first.members) == dict(join.members) == {"0.926 mm": ["GND"]}
+    assert join.only is not None and join.only == {"GND"}
+    assert (join.neck_down, join.fan_out) == (False, False)
+    # As a router reads it: ground alone is routed, at its class's width, round the
+    # first run's tracks at their own.
+    dsn = write_dsn(tmp_path / "told.dsn", list(join.footprints), list(join.outline),
+                    list(join.netclasses), {c: list(n) for c, n in join.members.items()},
+                    only=set(join.only), fixed=(list(join.wires), list(join.vias)))  # fmt: skip
+    told = [line.strip() for line in dsn.read_text().splitlines()]
+    assert [
+        (told[n], told[n + 2]) for n, line in enumerate(told) if line.startswith("(class ")
+    ] == [('(class "0.926 mm" "GND"', "(rule (width 926) (clearance 200))")]
+    assert [line.split()[3] for line in told if line.startswith("(wire ")] == ["250"] * 3
+    # The pour stands where a track of the widest class can end in it, not one of the
+    # board's own width: drawn in by half of 0.926 mm.
+    assert asked == [0.926]
+    ((_, _, known),) = first.planes
+    ((_, _, stands),) = join.planes
+    whole, lands = ShapelyPolygon(known).buffer(0), ShapelyPolygon(stands).buffer(0)
+    assert whole.buffer(0.001).covers(lands.buffer(0.463))
+    assert not whole.buffer(0.001).covers(lands.buffer(0.5))
+
+
+def test_kicad_is_shown_a_join_with_the_classes_the_board_is_written_with(tmp_path, kicad_in_turn):
+    from pkidl import A
+
+    board = _clock(tmp_path)
+    board.path(board["ESP1"], "GND", board["C5"], current=2 * A)
+    router = Fencing(board, tmp_path)
+    apart = {"type": "unconnected_items", "severity": "error",
+             "description": "Missing connection between items",
+             "items": [{"description": "PTH pad 1 [GND] of C5"},
+                       {"description": "Zone [GND] on B.Cu, priority 0"}]}  # fmt: skip
+    shown = kicad_in_turn({"unconnected_items": [apart], "violations": []},
+                          {"unconnected_items": [], "violations": []})  # fmt: skip
+    built = board.build(tmp_path / "out", router=router)
+    assert built.routed is not None and built.routed.judge == "KiCad"
+    assert len(shown()) == 2 and built.project is not None
+    (check,) = (tmp_path / "out").glob("*-poured-check.kicad_pro")
+    said = json.loads(check.read_text())["net_settings"]
+    assert [(c["name"], c["track_width"]) for c in said["classes"]] == [
+        ("Default", 0.25), ("0.926 mm", 0.926)]  # fmt: skip
+    assert said["netclass_patterns"] == [{"netclass": "0.926 mm", "pattern": "GND"}]
+    assert said == json.loads(built.project.read_text())["net_settings"]
+
+
 def test_a_pad_whose_join_is_not_laid_stays_on_its_pour_and_the_net_is_routed_again(tmp_path):
     board = _clock(tmp_path)
     router = Fencing(board, tmp_path, join=False)

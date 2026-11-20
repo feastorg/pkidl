@@ -629,7 +629,7 @@ of track runs under it on the back, and KiCad's DRC reports no rule area broken.
 corpus board file is not changed here.
 
 **As built, the way a current goes:** the first slice of milestone 3 (decided
-2026-11-15) is a statement and a measurement, and the second (2026-11-19) has the
+2026-11-15) is a statement and a measurement, and the second (2026-11-20) has the
 current set how wide the tracks of its nets are. A board file with a `path` whose
 current needs no more than `rules(track=)` builds the same files, byte for byte, as
 the same file without it.
@@ -782,21 +782,62 @@ inner layer is not in it.
   `0.5 mm at its narrowest where 1.5 A needs 0.562 mm` where the narrowest track on
   the way is narrower. It is reported and stops nothing.
 
-Where a board is routed again without its pours (`poured`, below), the nets of the
-wider classes are routed first and alone, as `staged` routes every class but Default.
+A run that joins what a pour left cut off (`poured`, below) is told of the classes and
+their nets as the first run is: a track laid to join a net of a wider class is of
+that class, at its width. The pours stand for that run where a track of the widest
+class can end in them, whichever net is joined. Where a board is routed again without
+its pours, the nets of the wider classes are routed first and alone, as `staged`
+routes every class but Default.
 
-On the bench supply (2026-11-19, `scripts/corpus.py build` of that board alone, then
-`kicad-cli pcb drc --refill-zones --severity-all`, KiCad 10.0.8), six nets are in the
-one class `0.562 mm`, 105 of the board's 252 segments of track are that wide, and no
-track is narrower than its class. The way round the limiter that was 318 mΩ at 0.5 mm
-has 160 mΩ in the three of its four stretches that are joined. The board is not the
-better for it yet: routed with its pours, a 0.562 mm track leaves one pad of the
-voltmeter apart from the ground pour, so the board is routed again with ground by
-tracks, and KiCad then finds 7 connections unmade where it found none.
+On the bench supply (2026-11-20, `scripts/corpus.py`'s build of that board alone, its
+pours checked by pkidl's model, then `kicad-cli pcb drc --refill-zones --severity-all
+--format json` on the board as written, KiCad 10.0.8), the six nets of the stretches
+of its 1.5 A paths are in the one class `0.562 mm`: `/current_limit_r/R_LIM-`,
+`N-0000010`, `N-0000014`, `N-0000017`, `N-0000018` and `N-000006`, by the circuit's
+names for them. Its 500 mA path needs 0.084 mm, and the two nets only it goes through
+stay at 0.5 mm. Of the board's 223 segments of track 112 are 0.562 mm wide and 111
+are 0.5 mm. The build says:
+
+```
+poured: 0 unrouted, poured-join: 0 unrouted; pours checked by model
+    DS101.3 is cut off from the rest of GND: no pour reaches there
+    GND keeps its pour: 3.371 mm of track on F.Cu and 1 via join what was cut off to the rest of GND
+    DS101.3 is taken off the pour of GND, which joins it to nothing: a track joins it to the rest of GND
+    path(CON101, SW101, current=1.5 A) (board.py:115): 13.6 mΩ of track, 20.4 mV at 1.5 A
+      JACK, CON101 to SW101: 15.5 mm of track, 0.562 mm at its narrowest, 13.6 mΩ, 20.4 mV
+    path(CON102, SW101, current=1.5 A) (board.py:115): 23.9 mΩ of track, 35.8 mV at 1.5 A
+      JACK, CON102 to SW101: 27.3 mm of track, 0.562 mm at its narrowest, 23.9 mΩ, 35.8 mV
+    path(SW101, U102, SW201, [R204, R205, R206, R207], U103, current=500 mA) (board.py:116): 163 mΩ of track, 81.6 mV at 500 mA
+      RAW, SW101 to U102: 40.2 mm of track, 0.562 mm at its narrowest, 35.2 mΩ, 17.6 mV
+      /current_limit_r/R_LIM+, U102 to SW201: 68.7 mm of track, 0.5 mm at its narrowest, 67.5 mΩ, 33.7 mV
+      N-0000021, SW201 to [R204, R205, R206, R207]: 7.6 mm of track, 0.5 mm at its narrowest, 6.78 mΩ, 3.39 mV
+      /current_limit_r/R_LIM-, [R204, R205, R206, R207] to U103: 61.6 mm of track, 0.562 mm at its narrowest, 53.8 mΩ, 26.9 mV
+    path(SW101, SW102, U103, SW103, P101, current=1.5 A) (board.py:117): 273 mΩ of track, 410 mV at 1.5 A
+      RAW, SW101 to SW102: 63.1 mm of track, 0.562 mm at its narrowest, 55.2 mΩ, 82.8 mV
+      /current_limit_r/R_LIM-, SW102 to U103: 124.6 mm of track, 0.562 mm at its narrowest, 109 mΩ, 163 mV
+      VOUT, U103 to SW103: 87.3 mm of track, 0.562 mm at its narrowest, 76.3 mΩ, 114 mV
+      N-0000010, SW103 to P101: 37.5 mm of track, 0.562 mm at its narrowest, 32.8 mΩ, 49.2 mV
+    path(P102, DS102, GND, current=1.5 A) (board.py:118): 39.4 mΩ of track, 59.1 mV at 1.5 A
+      N-0000014, P102 to DS102: 45 mm of track, 0.562 mm at its narrowest, 39.4 mΩ, 59.1 mV
+```
+
+A 0.562 mm track of `N-000006` on the back fences one pad of the voltmeter off the
+ground pour, which the join mends with the pour kept. Ground is in the Default class,
+and its joining track is 0.5 mm wide. KiCad finds nothing unconnected, the 4 errors
+of copper too near the edge and 309 warnings that the board has at one width, no
+relief starved, and no track under its class's width.
+
+**What a width for heat does not do.** At 1.5 A and 10 °C the fit asks 0.562 mm, a
+track that warms no more than it may. The way round the bench supply's limiter is
+then 273 mΩ where at 0.5 mm it was 318 mΩ, and still drops 410 mV at 1.5 A where it
+dropped 476 mV: its four stretches are about 312 mm of track. Resistance goes with length
+over width, and the width a current needs for heat does not shorten its path: a drop
+that matters wants a shorter way, a wider track than heat asks, or a pour, and
+nothing here chooses one.
 
 Not yet: a track let narrow into a pad it does not fit, a drop checked against one
-that is allowed, which copper two currents may share, a pour measured or sized, and
-inner layers.
+that is allowed and copper sized for it, which copper two currents may share, a pour
+measured or sized, and inner layers.
 
 **As built, the outline and the holes:** a part lies inside the board's outline as it
 is drawn, and clear of its mounting holes. `board.edge()` is the area the outline
@@ -961,7 +1002,8 @@ far fixed. What it is told of the pours is how they stand now, by the model
   written, as a starved pad that a track joins is: the pour is cut back from it and
   the track alone joins it. A pad that says it joins no pour, or joins solidly, is
   left as it says.
-- **Less what is nearer a piece's edge than half a track** (`pkidl.fill.landings`).
+- **Less what is nearer a piece's edge than half a track** (`pkidl.fill.landings`):
+  a track of the board's widest class, where a `path` makes some nets wider.
   Anywhere in what is left, the middle of a track has all its copper in the pour.
   Told of the whole fill, Freerouting 2.5.0 aimed one board's joining track at the
   nearest corner of the pour, 0.3 mm from the pad between two other nets' copper,
