@@ -28,11 +28,14 @@ class Regions:
 
 
 def regions(board: Node, nets: set[str] | None = None) -> dict[str, Regions]:
-    """Each net's pour regions on *board* (filled), or only *nets*'."""
+    """Each net's pour regions on *board* (filled), or only *nets*'. A teardrop, which
+    KiCad saves as a zone, is not a pour."""
     pieces: dict[str, list[tuple[str, Polygon]]] = {}
     for z in find_all(board, "zone"):
         n = find(z, "net_name") or find(z, "net")
         if find(z, "keepout") is not None or n is None or not str(n[-1]):
+            continue
+        if (attr := find(z, "attr")) is not None and find(attr, "teardrop") is not None:
             continue
         net = str(n[-1])
         if nets is not None and net not in nets:

@@ -542,6 +542,11 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.measure.regions`, and the scorecard's `poured_nets` and `split_pours` with it,
+  takes a teardrop for no pour. KiCad saves each teardrop as a zone, and each was
+  counted as a piece of its net's pour: on GateMateA1-EVB, whose 1,330 zones are 1,312
+  teardrops, 261 nets read as poured and 205 as split, where 7 and 7 are. No corpus
+  reference has a teardrop, so no score changes. (#108)
 - `pkidl.importer` names apart what a board names alike, and says so in
   `pkidl.importer.renamed(board)`, which `scripts/corpus.py extract` prints. Parts that
   share a reference (the TERES boards' mounting holes with a pad on ground, all
