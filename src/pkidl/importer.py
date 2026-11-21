@@ -20,7 +20,11 @@ from __future__ import annotations
 
 from collections import Counter
 
+from shapely.geometry import Point, Polygon
+
 from pkidl.circuit import natural
+from pkidl.edge import JOIN
+from pkidl.edge import shape as edge_shape
 from pkidl.footprint import board_xy, library_form
 from pkidl.sexpr import Node, dumps, find, find_all
 
@@ -101,6 +105,26 @@ def _footprint_edge(fp: Node) -> list[dict]:
     return items
 
 
+def _drawn(items: list[dict], edge: Polygon | None) -> tuple[str, str]:
+    """What a footprint's Edge.Cuts *items* are of the board whose edge is *edge*, as a
+    sentence says it, with its verb, and then again as its object: the board's outline,
+    where each point they are drawn through is on the outside of *edge*, or the cut-outs
+    they are on the inside of. Where they are some of each, or the board has no one
+    edge, they are its edge."""
+    points = [Point(item[k]) for item in items for k in ("start", "mid", "end") if k in item]
+    points += [Point(p) for item in items for p in item.get("pts", [])]
+    if edge is not None and points:
+        if all(edge.exterior.distance(p) <= JOIN for p in points):
+            return "the board's outline is", "the outline"
+        cut = {i for p in points for i, ring in enumerate(edge.interiors)
+               if ring.distance(p) <= JOIN}  # fmt: skip
+        if all(any(ring.distance(p) <= JOIN for ring in edge.interiors) for p in points):
+            if len(cut) == 1:
+                return "a cut-out of the board is", "the cut-out"
+            return f"{len(cut)} cut-outs of the board are", "the cut-outs"
+    return "part of the board's edge is", "it"
+
+
 def circuit(board: Node) -> dict:
     """``{"parts": [{ref, value, footprint, pads: {number: net}}], "nets": [...]}``,
     parts sorted by reference. Pads on no net are left out of ``pads``; a footprint
@@ -125,12 +149,13 @@ def renamed(board: Node) -> list[str]:
 
     It also says what is read that a board's author may not expect: a part of the
     circuit that is a mounting hole as well, with the net it is on (``mechanical``); a
-    part of the circuit whose footprint draws the board's outline (the outline is read,
-    and the part is still placed as any other, not fixed where the outline needs it,
-    unless it is a hole); by footprint name with their number, footprints whose pads are
-    all drilled and on no net but are not holes, so that a hole left out can be seen;
-    and, by footprint name, how many of its items are on KiCad's UNDEFINED layer and
-    left out of it (``footprints``)."""
+    part of the circuit whose footprint draws the board's outline or a cut-out in it,
+    told apart by where on the board's edge it is drawn (it is read, and the part is
+    still placed as any other, not fixed where the edge needs it, unless it is a hole);
+    by footprint name with their number, footprints whose pads are all drilled and on no
+    net but are not holes, so that a hole left out can be seen; and, by footprint name,
+    how many of its items are on KiCad's UNDEFINED layer and left out of it
+    (``footprints``)."""
     return _Read(board).said
 
 
@@ -248,17 +273,21 @@ class _Read:
                                  f"{next(iter(pads.values()))}, {self.name[id(fp)]}: fixed "
                                  "where the board has it, and a part of the circuit with "
                                  "its net")  # fmt: skip
+        try:
+            edge: Polygon | None = edge_shape(_outline(board))
+        except ValueError:  # an outline that is not one board: nothing is told apart
+            edge = None
         for fp, _ in self.parts:
             if any(_is_edge(c) for c in fp[2:]):
-                ref = self.ref[id(fp)]
+                ref, name = self.ref[id(fp)], self.name[id(fp)]
+                what = _drawn(_footprint_edge(fp), edge)
                 where = (
-                    "is placed as any part, not fixed where it draws the outline"
+                    f"is placed as any part, not fixed where it draws {what[1]}"
                     if id(fp) not in self.held
                     else "is fixed where the board has it"
                 )
-                self.said.append(f"{ref}: the board's outline is drawn in its footprint, "
-                                 f"{self.name[id(fp)]}; the outline is read, and {ref} "
-                                 f"{where}")  # fmt: skip
+                self.said.append(f"{ref}: {what[0]} drawn in its footprint, {name}; "
+                                 f"{what[1]} is read, and {ref} {where}")  # fmt: skip
         left = Counter(str(fp[1]) for fp in fps if _drilled_on_no_net(fp) and not _is_hole(fp))
         for name, n in sorted(left.items()):
             self.said.append(f"{name}: {n} footprint{'s' if n > 1 else ''} of drilled pads "
@@ -338,6 +367,26 @@ def mechanical(board: Node) -> dict:
     on a net all on one net, the largest at least 2 mm across, and it draws no body on
     silkscreen or fab: a grounded standoff. It is fixed where the board has it, and
     stays in the circuit with its net."""
+    outline = _outline(board)
+    holes = []
+    read = _Read(board)
+    for fp in read.holes:
+        at, layer = find(fp, "at"), find(fp, "layer")
+        assert at is not None and layer is not None
+        hole = {"ref": read.ref.get(id(fp), _property(fp, "Reference")),
+                "footprint": read.name[id(fp)], "at": [float(at[1]), float(at[2])],
+                "rot": float(at[3]) if len(at) > 3 else 0.0,
+                "back": str(layer[1]).startswith("B."),
+                "drills": [_drill(fp, p) for p in find_all(fp, "pad")]}  # fmt: skip
+        if id(fp) in read.held:
+            hole["part"] = True
+        holes.append(hole)
+    return {"outline": outline, "holes": sorted(holes, key=lambda h: h["ref"]), "fixed": {}}
+
+
+def _outline(board: Node) -> list[dict]:
+    """The Edge.Cuts items as drawn, on the board or in a footprint, in an order of their
+    own."""
     outline = []
     for kind in EDGE_ITEMS:
         for g in find_all(board, kind):
@@ -353,21 +402,8 @@ def mechanical(board: Node) -> dict:
             outline.append(item)
     for fp in find_all(board, "footprint"):
         outline += _footprint_edge(fp)
-    holes = []
-    read = _Read(board)
-    for fp in read.holes:
-        at, layer = find(fp, "at"), find(fp, "layer")
-        assert at is not None and layer is not None
-        hole = {"ref": read.ref.get(id(fp), _property(fp, "Reference")),
-                "footprint": read.name[id(fp)], "at": [float(at[1]), float(at[2])],
-                "rot": float(at[3]) if len(at) > 3 else 0.0,
-                "back": str(layer[1]).startswith("B."),
-                "drills": [_drill(fp, p) for p in find_all(fp, "pad")]}  # fmt: skip
-        if id(fp) in read.held:
-            hole["part"] = True
-        holes.append(hole)
     outline.sort(key=lambda i: (i["type"], str(i)))
-    return {"outline": outline, "holes": sorted(holes, key=lambda h: h["ref"]), "fixed": {}}
+    return outline
 
 
 def _shape(lib: Node) -> str:

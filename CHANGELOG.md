@@ -575,6 +575,14 @@ Unreleased. History before this file was reconstructed from the git log.
   written from their inputs now loads. On iMX233-OLinuXino-MAXI, `C82` and `C83`
   carried a version of `C0603_DWS` that differed only in those items, and no longer
   differ.
+- `pkidl.importer.renamed(board)` tells a cut-out drawn in a part's footprint from the
+  board's outline. It said "the board's outline" of any Edge.Cuts a part draws, so
+  SparkFun's Qwiic Power Meter's U1, an SO-16 Wide Power package that cuts a 1.27 mm
+  slot under itself, was said to draw the outline. Items all on the outside of the
+  board's edge are "the board's outline", items all on cut-outs "a cut-out of the
+  board", and where they are some of each, or the outline is not one board, "part of
+  the board's edge". A part that is a hole on a net is said to be fixed where the board
+  has it.
 - `pkidl.measure.regions`, and the scorecard's `poured_nets` and `split_pours` with it,
   takes a teardrop for no pour. KiCad saves each teardrop as a zone, and each was
   counted as a piece of its net's pour: on GateMateA1-EVB, whose 1,330 zones are 1,312

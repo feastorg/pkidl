@@ -169,7 +169,7 @@ def test_an_outline_drawn_in_a_footprint_is_read_where_kicad_has_it_on_the_board
 def test_a_part_whose_footprint_draws_the_outline_is_said_to_float():
     # OLIMEXINO-2560's PLATFORM1, whose pads are the Arduino header pins. A hole, or a
     # logo, drawing the outline goes unsaid: a hole is fixed, a logo is not placed.
-    edge = '(fp_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))'
+    edge = '(fp_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))'
     pin = '(pad "1" thru_hole circle (at 0 0) (size 1.7 1.7) (drill 1) (net "GND"))'
     hole = '(pad "" np_thru_hole circle (at 0 0) (size 3 3) (drill 3))'
 
@@ -345,3 +345,21 @@ def test_items_on_kicads_undefined_layer_are_left_out_of_a_footprint_and_counted
     assert drawn == [["layer", "F.SilkS"]]
     assert renamed(board) == [
         "E:C0603_DWS: 2 items on KiCad's UNDEFINED layer left out of the footprint"]  # fmt: skip
+
+
+def test_a_cut_out_drawn_in_a_part_is_said_to_be_one():
+    # SparkFun's Qwiic Power Meter: U1's SO-16 Wide package cuts a slot under it.
+    slot = '(fp_rect (start -7 -0.635) (end 7 0.635) (layer "Edge.Cuts"))'
+    pad = '(pad "1" smd rect (at 0 -5) (size 1 1) (layers "F.Cu") (net "IP+"))'
+    part = (
+        f'(footprint "P:SO16W" (at 20 15) (layer "F.Cu") (property "Reference" "U1") {pad} {slot})'
+    )
+    outline = '(gr_rect (start 0 0) (end 40 30) (layer "Edge.Cuts"))'
+    assert renamed(_board(outline, part)) == [
+        "U1: a cut-out of the board is drawn in its footprint, P:SO16W; the cut-out is read, "
+        "and U1 is placed as any part, not fixed where it draws the cut-out"]  # fmt: skip
+    # Where it is all there is, it is the outline; and where what is drawn does not
+    # close, what it is cannot be told.
+    assert renamed(_board(part))[0].startswith("U1: the board's outline is drawn")
+    assert renamed(_board(part.replace("fp_rect", "fp_line")))[0].startswith(
+        "U1: part of the board's edge is drawn")  # fmt: skip
