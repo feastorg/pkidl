@@ -23,9 +23,10 @@ Point = tuple[float, float]
 
 ARC = 0.001  # mm: how far a line standing in for an arc may be from it
 # mm: how far apart two ends may be and still meet. KiCad 10.0.8's DRC takes a square
-# with a 9.9 um gap in it for a closed outline, and one with 10.1 um for one that does
+# with a 10.0 um gap in it for a closed outline, and one with 10.1 um for one that does
 # not close.
 JOIN = 0.01
+_NM = 1e6  # nanometres in a millimetre: KiCad's unit, in which ends are measured
 
 
 def _point(value: Any) -> Point:
@@ -33,17 +34,32 @@ def _point(value: Any) -> Point:
 
 
 def _joined(lines: list[list[Point]]) -> list[LineString]:
-    """*lines* (each its points in order) with each end moved onto the first end before
-    it that is within ``JOIN`` of it, so that ends KiCad takes to meet do."""
-    ends: list[Point] = []
+    """*lines* (each its points in order) with the ends KiCad takes to meet moved onto
+    one point. Each end is joined to the end nearest it, if that is within ``JOIN``; the
+    ends joined, one to another or by way of others, meet at the lowest of them (x, then
+    y). So the order the lines are drawn in does not matter. Ends are measured apart in
+    whole nanometres, as KiCad measures them: a gap of ``JOIN`` joins wherever the board
+    sits, which in millimetres it would not (``100.01 - 100 > 0.01``)."""
+    ends = [pts[i] for pts in lines for i in (0, -1)]
+    nm = [(round(x * _NM), round(y * _NM)) for x, y in ends]
+    reach = round(JOIN * _NM) ** 2
+    up = list(range(len(ends)))
 
-    def snap(p: Point) -> Point:
-        near = next((q for q in ends if math.dist(p, q) <= JOIN), None)
-        if near is None:
-            ends.append(p)
-        return near or p
+    def top(i: int) -> int:
+        while up[i] != i:
+            i = up[i]
+        return i
 
-    return [LineString([snap(pts[0]), *pts[1:-1], snap(pts[-1])]) for pts in lines]
+    for i, (x, y) in enumerate(nm):
+        apart = [((x - a) ** 2 + (y - b) ** 2, (a, b), j)
+                 for j, (a, b) in enumerate(nm) if j != i]  # fmt: skip
+        if apart and (near := min(apart))[0] <= reach:
+            up[top(i)] = top(near[2])
+    meet: dict[int, Point] = {}
+    for i, p in enumerate(ends):
+        meet[top(i)] = min(meet.get(top(i), p), p)
+    return [LineString([meet[top(2 * k)], *pts[1:-1], meet[top(2 * k + 1)]])
+            for k, pts in enumerate(lines)]  # fmt: skip
 
 
 def _arc(start: Point, mid: Point, end: Point) -> list[Point]:

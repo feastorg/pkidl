@@ -84,12 +84,41 @@ def test_a_line_that_closes_nothing_is_ignored_within_the_box_around_the_board()
 
 
 def test_ends_closer_than_kicad_joins_them_meet():
-    # KiCad 10.0.8's DRC closes a 9.9 um gap and not a 10.1 um one (pkidl.edge.JOIN).
+    # KiCad 10.0.8's DRC closes a 10.0 um gap and not a 10.1 um one (pkidl.edge.JOIN).
     # Minibot's outline has gaps of up to 6.6 um, at the ends of lines and of arcs.
     gap = [*SQUARE[:3], _line((0, 10), (0, 0.0099))]
     assert shape(gap).area == pytest.approx(100, abs=1e-3)
     arc = {"type": "gr_arc", "start": [10.0066, 0], "mid": [12, 5], "end": [10, 10.005]}
     assert shape([*SQUARE[:1], arc, *SQUARE[2:]]).area > 100
+
+
+def test_a_gap_of_exactly_ten_micrometres_joins_wherever_the_board_sits():
+    # KiCad 10.0.8's DRC finds no fault with a 10.0 um gap and reports invalid_outline
+    # for a 10.1 um one. In millimetres, 100.01 - 100 is 0.010000000000005.
+    def square(x: float, gap: float) -> list[dict]:
+        corners = [(x, x), (x + 10, x), (x + 10, x + 10), (x, x + 10)]
+        sides = [_line(a, b) for a, b in zip(corners, corners[1:] + corners[:1], strict=True)]
+        return [*sides[:3], _line((x, x + 10), (x, x + gap))]
+
+    for x in (0, 100, 1234.5):
+        assert shape(square(x, 0.01)).area == pytest.approx(100, abs=1e-3)
+        with pytest.raises(ValueError, match="does not close"):
+            shape(square(x, 0.0101))
+
+
+def test_an_end_joins_the_end_nearest_it_whatever_order_the_items_are_in():
+    # A corner whose ends are 7 um apart, and a spur ending 8 um from one of them and
+    # 15 um from the other. Joined to the first end within 10 um, the corner stayed open
+    # when the spur came first.
+    spur = _line((1, 1), (0, 0))
+    sides = [_line((0.015, 0), (10, 0)), *SQUARE[1:3], _line((0, 10), (0.008, 0))]
+    first, last = shape([spur, *sides]), shape([*sides, spur])
+    assert first.equals(last) and first.area == pytest.approx(100, abs=1e-3)
+    # A step of 9 um, each end of it meeting another end exactly: those are the ends
+    # nearest, and the step is kept, not folded into one point with the ends 9 um off.
+    corners = [(0, 0), (5, 0), (5, 0.009), (10, 0.009), (10, 10), (0, 10)]
+    step = [_line(a, b) for a, b in zip(corners, corners[1:] + corners[:1], strict=True)]
+    assert shape(step).area == pytest.approx(100 - 5 * 0.009, abs=1e-6)
 
 
 @pytest.mark.parametrize(

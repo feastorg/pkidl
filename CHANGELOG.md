@@ -579,10 +579,13 @@ Unreleased. History before this file was reconstructed from the git log.
   footprint it writes: placed with them, the outline was drawn twice, and KiCad's DRC
   reported it as `malformed outline (self-intersecting)`. (#108)
 - `Board.edge()` joins two ends of an outline no more than 10 micrometres apart, as
-  KiCad does: KiCad 10.0.8's DRC closes a square with a 9.9 um gap in it and not one
-  with 10.1 um (`pkidl.edge.JOIN`). Minibot's outline, with gaps of up to 6.6 um, was
-  refused as not closing; and ESP32-PoE-ISO's slot, drawn with gaps of 2 and 8 um, was
-  taken for lines that close nothing and left out of its board. eduArdu's outline
+  KiCad does: KiCad 10.0.8's DRC closes a square with a 10.0 um gap in it and not one
+  with 10.1 um (`pkidl.edge.JOIN`). Ends are measured apart in whole nanometres, as
+  KiCad measures them, so a 10.0 um gap joins wherever the board sits; and each end
+  joins the end nearest it, so the order the items are drawn in does not change the
+  outline. Minibot's outline, with gaps of up to 6.6 um, was refused as not closing;
+  and ESP32-PoE-ISO's slot, whose ends miss each other by 2 and 8.5 nm, was taken for
+  lines that close nothing and left out of its board. eduArdu's outline
   (gaps of 12 and 25 um) and OSHW-GHOST's (25 um) are still refused, as KiCad's DRC
   refuses them. (#108)
 - `pkidl.importer.mechanical()` reads a hole with an oval drill, `(drill oval W H)`: it
