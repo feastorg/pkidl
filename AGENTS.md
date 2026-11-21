@@ -51,4 +51,11 @@ Freerouting are skipped where it is not installed, and run in CI.
 - `src/pkidl` never imports from `spike/`; `spike/` uses pkidl's public API as an
   outside project would.
 - pkidl is Apache-2.0; `spike/` is GPL-3.0-or-later. A fixture from another project
-  keeps its own `LICENSE` beside it; commit only permissively licensed boards.
+  keeps its own `LICENSE` beside it.
+- Which boards are in the corpus is the owner's to say. A board is not left out, or
+  ranked, for its licence: its source and its licence are recorded with it
+  (`corpus/PROVENANCE.md`), and a question of licence or permission is put to the
+  owner.
+- A figure about a corpus board that its author does not state (a current, a
+  temperature, a copper weight) is pkidl's own, and is said to be wherever it is
+  written. A reference is a bar only for what `corpus/PROVENANCE.md` says it is.

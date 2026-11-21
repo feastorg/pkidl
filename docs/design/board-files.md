@@ -638,7 +638,7 @@ the same file without it.
 from pkidl import A, mA
 
 board.path(jack, power, limit, current=500 * mA)
-board.path(vin, board.parts("Q101", "Q103"), sw, board.parts("Q102", "Q104"), "GND", current=10 * A)
+board.path(vin, board.parts("Q101", "Q103"), sw, board.parts("Q102", "Q104"), "GND", current=8 * A)
 ```
 
 `path(*stops, current=)` is a statement like the others, with its line, and
@@ -1547,8 +1547,11 @@ Solar in on an XT30 (J103), through a blocking diode (D101, a 10 A dual Schottky
 input rail; two paralleled high-side FETs (Q101, Q103) and two low-side (Q102, Q104)
 around the switch node; a 3.3 uH inductor (L101); two paralleled 10 mOhm sense
 resistors (R110, R113) whose ends U101 reads on pins 9 and 10; the battery rail out on
-a second XT30 (J104). Bulk and ceramic capacitors on both rails. About 10 A (the diode's
-and connectors' rating). Board 74.8 x 47 mm, no holes.
+a second XT30 (J104). Bulk and ceramic capacitors on both rails. Its author states no
+current for it. The sense resistors, 5 mOhm together, set 8 A of charge current by the
+BQ24650's 40 mV (`corpus/PROVENANCE.md`); until 2026-11-21 this said "about 10 A", which
+was the rating of its diode and connectors and not the design's. Board 74.8 x 47 mm, no
+holes.
 
 ```python
 from pkidl import A, Board, Edge, mm
@@ -1564,9 +1567,9 @@ board.place(j_bat, against=Edge.RIGHT)                 # battery out the other
 
 # The power path, with the current each stretch carries. pkidl sizes the copper for it
 # and checks the narrowest neck on the filled board.
-board.path(j_in, board["D101"], vin, current=10 * A)
-board.path(vin, board.parts("Q101", "Q103"), sw, board.parts("Q102", "Q104"), "GND", current=10 * A)
-board.path(sw, board["L101"], board.parts("R110", "R113"), vbat, j_bat, current=10 * A)
+board.path(j_in, board["D101"], vin, current=8 * A)
+board.path(vin, board.parts("Q101", "Q103"), sw, board.parts("Q102", "Q104"), "GND", current=8 * A)
+board.path(sw, board["L101"], board.parts("R110", "R113"), vbat, j_bat, current=8 * A)
 
 # The switching loop: input ceramic, high side, low side, back to its ground. As small
 # as it can be; the switch node no bigger than the parts it joins.

@@ -11,9 +11,17 @@ every change to pkidl is judged by (`docs/charter.md`, "How success is measured"
 | `t3`: USB | differential pairs, impedance, length matching |
 | `t4`: four layers | stackup, inner planes, fanout, via types |
 
-The boards come from PCBench, through Freerouting's fixtures at `842ad83`. Only boards
-whose source repository carries a permissive licence are here; each keeps its `LICENSE`.
-`manifest.json` records each board's tier, licence, source and the sha256 of its files.
+The boards come from PCBench, through Freerouting's fixtures at `842ad83`; each keeps
+its `LICENSE`. `manifest.json` records each board's tier, licence, source and the sha256
+of its files.
+
+**`PROVENANCE.md` says where each board comes from and what it is evidence of**: its
+author's repository and commit, whether it was ever made, and the ratings its author
+states, which for most is none. A reference is a bar for what the scorecard counts and
+for nothing its author did not state: read it before holding a board file to one.
+
+Which boards are here is the owner's to say, and none is left out for its licence.
+Boards that Olimex, SparkFun and Adafruit make and sell are to be added beside these.
 
 ## Each board
 
