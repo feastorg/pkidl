@@ -577,7 +577,10 @@ Unreleased. History before this file was reconstructed from the git log.
   platform or a logo footprint, and `Board.from_inputs` then raised
   `min() iterable argument is empty`. `footprints()` leaves those items out of the
   footprint it writes: placed with them, the outline was drawn twice, and KiCad's DRC
-  reported it as `malformed outline (self-intersecting)`. (#108)
+  reported it as `malformed outline (self-intersecting)`. Where the footprint is a
+  part of the circuit, as OLIMEXINO-2560's and OLIMEXINO-STM32F3's `PLATFORM1` and
+  STMP157-OLinuXino-LIME2's `LIME2_PLATFORM1` are, the part is still placed as any
+  other, and `pkidl.importer.renamed(board)` says so, naming it. (#108)
 - `Board.edge()` joins two ends of an outline no more than 10 micrometres apart, as
   KiCad does: KiCad 10.0.8's DRC closes a square with a 10.0 um gap in it and not one
   with 10.1 um (`pkidl.edge.JOIN`). Ends are measured apart in whole nanometres, as

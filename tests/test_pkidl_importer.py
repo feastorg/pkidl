@@ -156,6 +156,26 @@ def test_an_outline_drawn_in_a_footprint_is_read_where_kicad_has_it_on_the_board
     assert Polygon(polys[0]).area == pytest.approx(2)
 
 
+def test_a_part_whose_footprint_draws_the_outline_is_said_to_float():
+    # OLIMEXINO-2560's PLATFORM1, whose pads are the Arduino header pins. A hole, or a
+    # logo, drawing the outline goes unsaid: a hole is fixed, a logo is not placed.
+    edge = '(fp_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))'
+    pin = '(pad "1" thru_hole circle (at 0 0) (size 1.7 1.7) (drill 1) (net "GND"))'
+    hole = '(pad "" np_thru_hole circle (at 0 0) (size 3 3) (drill 3))'
+
+    def fp(name: str, ref: str, *children: str) -> str:
+        head = f'(footprint "{name}" (at 0 0) (layer "F.Cu") (property "Reference" "{ref}")'
+        return " ".join([head, *children, edge]) + ")"
+
+    board = _board(fp("C:Platform", "PLATFORM1", pin), fp("H:M3", "H1", hole),
+                   fp("L:Logo", "G***"))  # fmt: skip
+    assert len(mechanical(board)["outline"]) == 3
+    assert renamed(board) == [
+        "PLATFORM1: the board's outline is drawn in its footprint, C:Platform; the outline "
+        "is read, and PLATFORM1 is placed as any part, not fixed where it draws the outline"
+    ]
+
+
 def _part(ref: str, at: str, size: str = "1 1", pad_first: bool = True, silk: str = "1 0") -> str:
     pad = f'(pad "1" smd rect (at 0 0) (size {size}) (layers "F.Cu") (net "VCC"))'
     line = f'(fp_line (start 0 0) (end {silk}) (layer "F.SilkS"))'

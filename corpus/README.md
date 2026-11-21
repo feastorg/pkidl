@@ -56,7 +56,8 @@ version most of them carry keeps the name and each other is written under the na
 `_2`, `_3` and on, its parts pointing at it; where versions differ in no more than their
 drawings, `footprints/` holds the version most of them carry, and `manifest.json` lists
 the parts that carry another (`other_footprint_versions`). Parts that share a reference
-are told apart the same way, by where they are. `extract` prints each name it gives.
+are told apart the same way, by where they are. `extract` prints each name it gives,
+and each part whose footprint draws the board's outline.
 
 ## The scorecard
 

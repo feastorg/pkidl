@@ -112,7 +112,11 @@ def renamed(board: Node) -> list[str]:
     the board (x, then y) keeps it and the others are given it with ``_2``, ``_3`` and
     on, past any reference the board has. Where versions of one footprint name differ
     in their pads, the version most footprints carry keeps the name and each other is
-    written under the name with ``_2``, ``_3`` and on, its parts and holes with it."""
+    written under the name with ``_2``, ``_3`` and on, its parts and holes with it.
+
+    It also says what is read that a board's author may not expect: a part of the
+    circuit whose footprint draws the board's outline (the outline is read, and the part
+    is still placed as any other, not fixed where the outline needs it)."""
     return _Read(board).said
 
 
@@ -173,8 +177,7 @@ def _free(name: str, taken: set[str]) -> str:
 class _Read:
     """What the importer reads of a board's footprints: the parts of its circuit with
     their pads on nets, its holes, the reference and footprint name each goes by, the
-    library footprint each name stands for, and what was named otherwise than the board
-    names it."""
+    library footprint each name stands for, and what ``renamed`` says of them."""
 
     def __init__(self, board: Node) -> None:
         fps = find_all(board, "footprint")
@@ -191,6 +194,13 @@ class _Read:
         self.libs: dict[str, Node] = {}
         self.differ: dict[str, list[str]] = {}
         self._names(fps)
+        for fp, _ in self.parts:
+            if any(_is_edge(c) for c in fp[2:]):
+                ref = self.ref[id(fp)]
+                self.said.append(f"{ref}: the board's outline is drawn in its footprint, "
+                                 f"{self.name[id(fp)]}; the outline is read, and {ref} "
+                                 "is placed as any part, not fixed where it draws the "
+                                 "outline")  # fmt: skip
 
     def _refs(self, fps: list[Node]) -> None:
         taken = {_property(fp, "Reference").lower() for fp in fps}
