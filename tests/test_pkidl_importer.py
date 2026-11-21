@@ -68,6 +68,17 @@ def test_unnumbered_drills_are_each_where_they_are():
     assert (hole["rot"], hole["back"]) == (90.0, True)
 
 
+def test_an_oval_drill_is_its_two_sizes_and_the_pads_angle_on_the_board():
+    slot = """(kicad_pcb (footprint "Mech:Slot" (layer "F.Cu") (at 20 15 90)
+      (property "Reference" "H1")
+      (pad "" np_thru_hole oval (at 0 0 135) (size 2 4) (drill oval 2 4) (layers "*.Cu"))
+      (pad "" np_thru_hole circle (at 6 2 90) (size 3 3) (drill 2 (offset 0.5 0))
+        (layers "*.Cu"))))"""
+    (hole,) = mechanical(parse(slot))["holes"]
+    # A round hole keeps its form, and is where its pad is: the offset moves the copper.
+    assert hole["drills"] == [[20.0, 15.0, 2.0, 4.0, 135.0], [22.0, 9.0, 2.0]]
+
+
 def _part(ref: str, at: str, size: str = "1 1", pad_first: bool = True) -> str:
     pad = f'(pad "1" smd rect (at 0 0) (size {size}) (layers "F.Cu") (net "VCC"))'
     line = '(fp_line (start 0 0) (end 1 0) (layer "F.SilkS"))'

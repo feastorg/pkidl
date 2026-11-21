@@ -36,11 +36,16 @@ def _xy(node: Node | None) -> list[float] | None:
 
 
 def _drill(fp: Node, pad: Node) -> list[float]:
-    """``[x, y, diameter]`` of a drilled pad, on the board. By the pad's own position, not
-    its number: a hole's pads are often unnumbered."""
+    """``[x, y, diameter]`` of a drilled pad, on the board, or ``[x, y, width, height,
+    angle]`` of an oval one: its size along the pad's own axes, and the pad's angle on
+    the board. By the pad's own position, not its number: a hole's pads are often
+    unnumbered. The hole is where the pad is; a drill's ``offset`` moves its copper."""
     at, drill = find(pad, "at"), find(pad, "drill")
     assert at is not None and drill is not None
-    return [*board_xy(fp, float(at[1]), float(at[2])), float(drill[1])]
+    xy = board_xy(fp, float(at[1]), float(at[2]))
+    if drill[1] == "oval":
+        return [*xy, float(drill[2]), float(drill[3]), float(at[3]) if len(at) > 3 else 0.0]
+    return [*xy, float(drill[1])]
 
 
 def circuit(board: Node) -> dict:

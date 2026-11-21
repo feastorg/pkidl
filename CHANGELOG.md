@@ -542,6 +542,11 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.importer.mechanical()` reads a hole with an oval drill, `(drill oval W H)`: it
+  raised `could not convert string to float: 'oval'`, and MOD-ENV, Minibot and
+  ESP32-PoE-ISO of Olimex's boards could not be read. An oval drill is
+  `[x, y, width, height, angle]` in `drills`, its sizes along the pad's own axes and
+  the pad's angle on the board; a round one is `[x, y, diameter]` as before. (#108)
 - A path's measurement reads as it should at its edges. A path of one stretch with no
   figure says `its one stretch is not measured`, where it said `none of its 1
   stretches is measured`. `float("nan") * A` is refused as `a current is a number of
