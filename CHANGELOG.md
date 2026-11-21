@@ -542,6 +542,63 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.measure.regions`, and the scorecard's `poured_nets` and `split_pours` with it,
+  takes a teardrop for no pour. KiCad saves each teardrop as a zone, and each was
+  counted as a piece of its net's pour: on GateMateA1-EVB, whose 1,330 zones are 1,312
+  teardrops, 261 nets read as poured and 205 as split, where 7 and 7 are. No corpus
+  reference has a teardrop, so no score changes. (#108)
+- `pkidl.importer` names apart what a board names alike, and says so in
+  `pkidl.importer.renamed(board)`, which `scripts/corpus.py extract` prints. Parts that
+  share a reference (the TERES boards' mounting holes with a pad on ground, all
+  `MountingHole`; ESP32-ADF's two `MH3`) made `Board.from_inputs` raise `MountingHole
+  is in the circuit twice`: the first by position on the board, x then y, keeps the
+  reference and the others are given it with `_2`, `_3` and on, past any reference the
+  board has. Versions of one footprint name that differ in their pads (number, type,
+  shape, place, size or drill) were written as the one most parts carry, so a part
+  with another had pads that were not its own, and LCD-OLinuXino-15.6FHD raised `its
+  footprint ... has no pad 0`: each other version is now written under the name with
+  `_2`, `_3` and on, and its parts and holes point at it. Versions that differ only in
+  their drawings keep the rule of the most parts. Of the corpus, the SWR meter's R8,
+  drilled 1.001 mm where the other resistors of its footprint are drilled 0.8 mm, is
+  now `Resistor_Horizontal_RM10mm_2`. (#108)
+- `pkidl.importer.mechanical()` takes for mounting holes only a footprint whose pads,
+  all drilled and on no net, are each a hole with at most a ring of copper round it:
+  unplated, or a round pad on a round drill or an oval one on an oval drill, centred
+  on it. Any footprint of drilled pads on no net was a hole, so AgonLight2-PROTO's 554
+  square prototyping pads read as 554 mounting holes, and SMT-PROTOBOARD's 32 grids
+  and headers as 32. A hole with a ring of vias round it is still one, and so is a
+  heatsink's pair of pins. `pkidl.importer.renamed(board)` says, a line for each
+  footprint name with how many, the footprints of drilled pads on no net that are not
+  holes, so a hole left out can be seen. (#108)
+- `pkidl.importer.mechanical()` reads an outline drawn in a footprint, as KiCad takes
+  Edge.Cuts items in a footprint for part of the board's outline: each where it is on
+  the board, by the footprint's position, turn and side, and a rectangle turned off
+  square as the polygon of its corners. It read none, and said nothing; six of
+  Olimex's boards (FOSDEM-MUSIC-BOX, Lime2-SHIELD, OLIMEXINO-2560, STMP1-OLinuXino,
+  OLIMEXINO-STM32F3, STMP157-OLinuXino-LIME2) have their outline only in a case's
+  platform or a logo footprint, and `Board.from_inputs` then raised
+  `min() iterable argument is empty`. `footprints()` leaves those items out of the
+  footprint it writes: placed with them, the outline was drawn twice, and KiCad's DRC
+  reported it as `malformed outline (self-intersecting)`. Where the footprint is a
+  part of the circuit, as OLIMEXINO-2560's and OLIMEXINO-STM32F3's `PLATFORM1` and
+  STMP157-OLinuXino-LIME2's `LIME2_PLATFORM1` are, the part is still placed as any
+  other, and `pkidl.importer.renamed(board)` says so, naming it. (#108)
+- `Board.edge()` joins two ends of an outline no more than 10 micrometres apart, as
+  KiCad does: KiCad 10.0.8's DRC closes a square with a 10.0 um gap in it and not one
+  with 10.1 um (`pkidl.edge.JOIN`). Ends are measured apart in whole nanometres, as
+  KiCad measures them, so a 10.0 um gap joins wherever the board sits. Ends join in
+  pairs, the closest first, and never in chains: an 8 um line in a corner's gap takes
+  one of the corner's ends, not both, as KiCad's DRC has it. So the order the items
+  are drawn in does not change the outline, and no end moves more than 10 um. Minibot's outline, with gaps of up to 6.6 um, was refused as not closing;
+  and ESP32-PoE-ISO's slot, whose ends miss each other by 2 and 8.5 nm, was taken for
+  lines that close nothing and left out of its board. eduArdu's outline
+  (gaps of 12 and 25 um) and OSHW-GHOST's (25 um) are still refused, as KiCad's DRC
+  refuses them. (#108)
+- `pkidl.importer.mechanical()` reads a hole with an oval drill, `(drill oval W H)`: it
+  raised `could not convert string to float: 'oval'`, and MOD-ENV, Minibot and
+  ESP32-PoE-ISO of Olimex's boards could not be read. An oval drill is
+  `[x, y, width, height, angle]` in `drills`, its sizes along the pad's own axes and
+  the pad's angle on the board; a round one is `[x, y, diameter]` as before. (#108)
 - A path's measurement reads as it should at its edges. A path of one stretch with no
   figure says `its one stretch is not measured`, where it said `none of its 1
   stretches is measured`. `float("nan") * A` is refused as `a current is a number of

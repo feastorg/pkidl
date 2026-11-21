@@ -339,19 +339,16 @@
   },
   "qrp_swr_meter_swr_meter_rev_a": {
    "licence": "MIT",
-   "other_footprint_versions": {
-    "Resistors_ThroughHole:Resistor_Horizontal_RM10mm": [
-     "R8"
-    ]
-   },
+   "other_footprint_versions": {},
    "pcbench": "scripts/benchmark/fixtures/PCBench/qrp_swr_meter_swr_meter_rev_a/raw.kicad_pcb",
    "sha256": {
     "LICENSE": "f56bbda51c1953478d21381fb9d7ee62845d11c59ba27e364d874c2d5548bd11",
-    "circuit.json": "14f349dee5e6ff5423f3e0db2783be38805c84a20a3da865509f217ad83759d6",
+    "circuit.json": "590f8484d71c5fc871152c5b803f6638f7ed44ba9f7b75baea5fbe2f96a76089",
     "footprints/Connect.pretty/SMB_Straight.kicad_mod": "2de374b11c3d451e68388c92c8c97d9a9385c2b5dec4f88a47f7642a5a1ceff8",
     "footprints/Mounting_Holes.pretty/MountingHole_3.2mm_M3.kicad_mod": "5e65b5ded5f8e4bee7be9768dee77645963b4667aa23bc5f3b0e6bc7cef88a52",
     "footprints/Potentiometers.pretty/Potentiometer_Triwood_RM-065.kicad_mod": "8f80c162f09e7b33b1ea4ee37fb725a7d1b9990f323159516c9948ac2c2ecab5",
     "footprints/Resistors_ThroughHole.pretty/Resistor_Horizontal_RM10mm.kicad_mod": "ec323bfa91214d88428091aadcc689785fd93a768a8c3cda597b6086f3507bc7",
+    "footprints/Resistors_ThroughHole.pretty/Resistor_Horizontal_RM10mm_2.kicad_mod": "8efe34d806d325fc8e345fae219aa07a6219a939aeb7ddf45e96ba1fdf5373c8",
     "footprints/custom_kicad_footprints.pretty/Capacitor_Disc_D6_P7.5.kicad_mod": "0158ad2fab9c4b4385a73c60283abfa0e41a1784200a657f994b12686ceed877",
     "footprints/custom_kicad_footprints.pretty/Diode_DO-35_SOD27_Horizontal_RM10.kicad_mod": "d4c662caa873641da0a799b9c7bedab530ed7be6258508d5c3781623e22b9be6",
     "footprints/custom_kicad_footprints.pretty/Microampermeter.kicad_mod": "c6f55fb95202ba1d2d61ad0aab203769f79b55b1a23d062341698687bb895336",

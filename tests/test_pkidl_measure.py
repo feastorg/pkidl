@@ -38,6 +38,15 @@ def test_a_through_hole_pad_of_the_net_joins_them():
     assert regions(_board(FRONT, BACK, pad))["GND"].count == 1
 
 
+def test_a_teardrop_is_not_a_pour():
+    # KiCad saves a teardrop as a zone: 1,312 of GateMateA1-EVB's 1,330 zones are.
+    drop = ZONE.format(net="VS", layer="F.Cu", pts=_square(30, 30, 31, 31)).replace(
+        '(layer "F.Cu")', '(layer "F.Cu") (attr (teardrop (type padvia)))', 1
+    )
+    got = regions(_board(FRONT, drop))
+    assert set(got) == {"GND"} and got["GND"].count == 1
+
+
 def test_keepouts_and_other_nets_are_not_counted():
     keepout = '(zone (net "") (layer "F.Cu") (keepout (tracks not_allowed)))'
     vs = ZONE.format(net="VS", layer="F.Cu", pts=_square(30, 30, 40, 40))

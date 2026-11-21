@@ -5,7 +5,8 @@ a circle or a polygon. ``shape`` joins them into the area they enclose, which is
 part has to lie inside. A board is rarely the box around its outline: its corners are
 rounded, or it is cut to fit a case.
 
-An arc becomes short straight lines no further than a micrometre from it.
+An arc becomes short straight lines no further than a micrometre from it. Two ends meet
+where they are no more than 10 micrometres apart, as KiCad joins them.
 """
 
 from __future__ import annotations
@@ -21,10 +22,45 @@ from shapely.ops import polygonize_full, unary_union
 Point = tuple[float, float]
 
 ARC = 0.001  # mm: how far a line standing in for an arc may be from it
+# mm: how far apart two ends may be and still meet. KiCad 10.0.8's DRC takes a square
+# with a 10.0 um gap in it for a closed outline, and one with 10.1 um for one that does
+# not close.
+JOIN = 0.01
+_NM = 1e6  # nanometres in a millimetre: KiCad's unit, in which ends are measured
 
 
 def _point(value: Any) -> Point:
     return round(float(value[0]), 6), round(float(value[1]), 6)
+
+
+def _joined(lines: list[list[Point]]) -> list[LineString]:
+    """*lines* (each its points in order) with the ends KiCad takes to meet moved onto
+    one point. Ends are joined in pairs, never in chains, as KiCad walks an outline from
+    one end to the next: the two ends of different lines closest together, if within
+    ``JOIN``, are joined first, then the closest two of those left, and so on. A joined
+    pair meets at the lower of its ends (x, then y). So the order the lines are drawn in
+    does not matter, and no end moves further than ``JOIN``. Ends are measured apart in
+    whole nanometres, as KiCad measures them: a gap of ``JOIN`` joins wherever the board
+    sits, which in millimetres it would not (``100.01 - 100 > 0.01``)."""
+    ends = [pts[i] for pts in lines for i in (0, -1)]
+    nm = [(round(x * _NM), round(y * _NM)) for x, y in ends]
+    reach = round(JOIN * _NM) ** 2
+    pairs = []
+    for i, p in enumerate(nm):
+        for j in range(i - i % 2 + 2, len(nm)):  # an end of a later line
+            q = nm[j]
+            apart = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
+            if apart <= reach:  # closest first; ties by where the ends are, not the order
+                pairs.append((apart, min(p, q), max(p, q), i, j))
+    pairs.sort()
+    meet = list(ends)
+    taken: set[int] = set()
+    for _, _, _, i, j in pairs:
+        if i not in taken and j not in taken:
+            taken |= {i, j}
+            meet[i] = meet[j] = min(ends[i], ends[j])
+    return [LineString([meet[2 * k], *pts[1:-1], meet[2 * k + 1]])
+            for k, pts in enumerate(lines)]  # fmt: skip
 
 
 def _arc(start: Point, mid: Point, end: Point) -> list[Point]:
@@ -82,14 +118,14 @@ def shape(items: Iterable[Mapping[str, Any]]) -> Polygon:
     ``ValueError`` for an outline that does not close, or has a line left over that
     reaches outside that box, and for one that encloses two areas apart from each
     other."""
-    lines: list[LineString] = []
+    lines: list[list[Point]] = []
     loops: list[Polygon] = []  # what is drawn closed: a rectangle, a circle, a polygon
     for item in items:
         kind = item["type"]
         if kind == "gr_line":
-            lines.append(LineString([_point(item["start"]), _point(item["end"])]))
+            lines.append([_point(item["start"]), _point(item["end"])])
         elif kind == "gr_arc":
-            lines.append(LineString(_arc(*(_point(item[k]) for k in ("start", "mid", "end")))))
+            lines.append(_arc(*(_point(item[k]) for k in ("start", "mid", "end"))))
         elif kind == "gr_rect":
             (x0, y0), (x1, y1) = _point(item["start"]), _point(item["end"])
             loops.append(Polygon([(x0, y0), (x1, y0), (x1, y1), (x0, y1)]))
@@ -103,7 +139,7 @@ def shape(items: Iterable[Mapping[str, Any]]) -> Polygon:
     open_ended = "the outline does not close: its items do not meet end to end"
     rest: list[Any] = []
     if lines:
-        found, *rest = polygonize_full(unary_union(lines))
+        found, *rest = polygonize_full(unary_union(_joined(lines)))
         loops += [Polygon(face.exterior) for face in found.geoms]
     if not loops:
         raise ValueError(open_ended)

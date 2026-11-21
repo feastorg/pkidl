@@ -106,6 +106,30 @@ def test_holes_sharing_a_reference_are_items_of_their_own(inputs):
     assert len(uuids) > 10 and len(set(uuids)) == len(uuids)
 
 
+def test_an_outline_drawn_in_a_footprint_is_drawn_once(tmp_path):
+    # A case's platform: its outline and a mounting hole in one footprint, and no
+    # outline on the board, as Olimex's STMP1-OLinuXino has it.
+    source = parse("""(kicad_pcb (footprint "Case:Platform" (layer "F.Cu") (at 10 10)
+      (property "Reference" "REF**")
+      (fp_rect (start 0 0) (end 40 30) (layer "Edge.Cuts"))
+      (fp_line (start 0 0) (end 40 30) (layer "Cmts.User"))
+      (pad "" np_thru_hole circle (at 4 4) (size 3.2 3.2) (drill 3.2) (layers "*.Cu"))))""")
+    (tmp_path / "circuit.json").write_text(json.dumps(circuit(source)))
+    (tmp_path / "mechanical.json").write_text(json.dumps(mechanical(source)))
+    (lib,) = footprints(source)[0].values()
+    assert [str(c[0]) for c in lib if isinstance(c, list) and str(c[0]).startswith("fp_")] == [
+        "fp_line"]  # the platform less its outline  # fmt: skip
+    path = tmp_path / "footprints" / footprint_path("Case:Platform")
+    path.parent.mkdir(parents=True)
+    path.write_text(dumps(lib))
+    board = Board.from_inputs(tmp_path)
+    edge = board.edge()
+    assert edge is not None and edge.bounds == (10, 10, 50, 40)
+    # KiCad takes an outline drawn twice for one that crosses itself.
+    assert mechanical(_written(board))["outline"] == [
+        {"type": "gr_rect", "start": [10.0, 10.0], "end": [50.0, 40.0]}]  # fmt: skip
+
+
 def test_a_part_whose_footprint_is_missing_is_named(inputs):
     (inputs / "footprints" / footprint_path("Device:R")).unlink()
     with pytest.raises(ValueError, match="R1: no footprint 'Device:R' at .*R.kicad_mod"):

@@ -35,7 +35,7 @@ from pathlib import Path
 
 from pkidl.build import BuildError
 from pkidl.footprint import footprint_path
-from pkidl.importer import circuit, footprints, mechanical
+from pkidl.importer import circuit, footprints, mechanical, renamed
 from pkidl.measure import regions
 from pkidl.sexpr import Node, dumps, find, find_all, parse
 
@@ -114,6 +114,8 @@ def extract() -> None:
               f"{len(written)} footprints")  # fmt: skip
         for name, refs in differ.items():
             print(f"     {name}: {', '.join(refs)} carry another version of it")
+        for line in renamed(board):
+            print(f"     {line}")
     _dump(CORPUS / "manifest.json", manifest)
 
 
