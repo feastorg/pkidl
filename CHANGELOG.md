@@ -542,6 +542,13 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `Board.edge()` joins two ends of an outline no more than 10 micrometres apart, as
+  KiCad does: KiCad 10.0.8's DRC closes a square with a 9.9 um gap in it and not one
+  with 10.1 um (`pkidl.edge.JOIN`). Minibot's outline, with gaps of up to 6.6 um, was
+  refused as not closing; and ESP32-PoE-ISO's slot, drawn with gaps of 2 and 8 um, was
+  taken for lines that close nothing and left out of its board. eduArdu's outline
+  (gaps of 12 and 25 um) and OSHW-GHOST's (25 um) are still refused, as KiCad's DRC
+  refuses them. (#108)
 - `pkidl.importer.mechanical()` reads a hole with an oval drill, `(drill oval W H)`: it
   raised `could not convert string to float: 'oval'`, and MOD-ENV, Minibot and
   ESP32-PoE-ISO of Olimex's boards could not be read. An oval drill is

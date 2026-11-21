@@ -83,10 +83,22 @@ def test_a_line_that_closes_nothing_is_ignored_within_the_box_around_the_board()
     assert shape([*SQUARE, _line((4, 4), (5, 5))]).area == 100
 
 
+def test_ends_closer_than_kicad_joins_them_meet():
+    # KiCad 10.0.8's DRC closes a 9.9 um gap and not a 10.1 um one (pkidl.edge.JOIN).
+    # Minibot's outline has gaps of up to 6.6 um, at the ends of lines and of arcs.
+    gap = [*SQUARE[:3], _line((0, 10), (0, 0.0099))]
+    assert shape(gap).area == pytest.approx(100, abs=1e-3)
+    arc = {"type": "gr_arc", "start": [10.0066, 0], "mid": [12, 5], "end": [10, 10.005]}
+    assert shape([*SQUARE[:1], arc, *SQUARE[2:]]).area > 100
+
+
 @pytest.mark.parametrize(
     ("items", "message"),
     [
         (SQUARE[:3], "the outline does not close: its items do not meet end to end"),
+        # As KiCad, one 10.1 um apart do not: eduArdu's and OSHW-GHOST's outlines.
+        ([*SQUARE[:3], _line((0, 10), (0, 0.0101))],
+         "the outline does not close: its items do not meet end to end"),
         ([], "the outline does not close: its items do not meet end to end"),
         ([{"type": "gr_text", "start": [0, 0]}],
          "outline: 'gr_text' is not something Edge.Cuts is drawn with"),
