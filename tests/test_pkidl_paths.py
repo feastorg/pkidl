@@ -23,6 +23,7 @@ from pkidl.dsn import Via, Wire
 from pkidl.footprint import footprint_path, pad_xy
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.intent import Path, Rules, Stretch, path, rules
+from pkidl.neck import KICAD, MODEL, Piece
 from pkidl.paths import Measured, Reading, needed, widths
 from pkidl.project import NetClass
 from pkidl.routing import Job, Run
@@ -525,7 +526,9 @@ def test_a_track_joins_a_pad_where_its_end_is_within_the_pads_copper(board, tmp_
     assert inside.length == 99.5 * mm
     outside = to(208.99)  # 0.01 mm short, its round end over the pad
     assert (outside.ohms, outside.length, outside.narrowest, outside.volts) == (None,) * 4
-    assert str(outside) == "IN, J1 to J2: not joined by track"
+    # Its copper touches the pad's all the same, and that is said: a neck.
+    assert str(outside) == ("IN, J1 to J2: not joined by track; a neck of 0.497 mm, of track "
+                            "at (209.011, 60) on F.Cu")  # fmt: skip
 
 
 def test_a_route_through_a_via_is_the_sum_of_its_two_parts(board, tmp_path):
@@ -609,8 +612,11 @@ def test_parts_side_by_side_are_one_end_and_the_whole_current_is_taken_through(b
         "  OUT, J3 to [R1, R2]: 19 mm of track, 0.5 mm at its narrowest where 2 A needs "
         "0.926 mm, 18.7 mΩ, 37.3 mV",
         "  LOAD, [R1, R2] to J4: 31 mm of track, 0.5 mm at its narrowest where 2 A needs "
-        "0.926 mm, 15.2 mΩ, 30.5 mV",
+        "0.926 mm, 15.2 mΩ, 30.5 mV; a neck of 1 mm in 2 pieces, the widest 0.5 mm of track "
+        "at (191.5, 78) on F.Cu",
     ]
+    # Two tracks side by side are a neck of both, which is all the current needs here.
+    assert (load.neck, load.narrowest, len(load.across)) == (1 * mm, 0.5 * mm, 2)
 
 
 def test_ends_that_no_track_joins_are_said_to_be_not_joined_and_are_not_in_the_total(
@@ -639,27 +645,37 @@ def test_ends_that_no_track_joins_are_said_to_be_not_joined_and_are_not_in_the_t
     )
 
 
-def test_ends_that_only_a_pour_joins_are_said_to_be_and_are_not_measured(board, tmp_path):
+def test_ends_that_only_a_pour_joins_have_its_neck_and_no_figure_for_its_resistance(
+    board, tmp_path
+):
     j1, j2 = board.parts("J1", "J2")
     board.pour("GND", layer="B.Cu")
     board.path(j1, "GND", j2, current=1 * A)
     reading = one(board, tmp_path / "out")
-    assert reading.ohms is None and reading.poured
+    assert reading.ohms is None and reading.volts is None and reading.poured
+    # Each pin is in the pour on the four spokes of its relief, 0.5 mm wide.
+    assert (reading.neck, reading.filled) == (2 * mm, MODEL)
+    assert [(p.width, p.layer, p.of) for p in reading.across] == [
+        (0.5 * mm, B, "the relief of J1.2")
+    ] * 4
     assert str(reading) == (
-        "GND, J1 to J2: not joined by track; GND has a pour, which is not measured"
+        "GND, J1 to J2: not joined by track; GND has a pour, whose resistance is not measured; "
+        "a neck of 2 mm in 4 pieces, the widest 0.5 mm of the relief of J1.2 at "
+        "(109.17, 64.83) on B.Cu, on pkidl's model of the fill"
     )
 
 
-def test_a_pour_is_not_said_to_join_what_it_was_not_checked_to_reach(board, tmp_path):
+def test_a_pour_that_does_not_reach_the_ends_is_said_not_to_join_them(board, tmp_path):
     # OUT is poured on the back, and the transistor's pads are on the front alone: no
-    # copper of that pour is anywhere near them. What is said is true all the same.
+    # copper of that pour is anywhere near them.
     board.pour("OUT", layer="B.Cu")
     board.path(board["Q1"], board["J3"], current=1 * A)
     reading = one(board, tmp_path / "out")
     assert reading.ohms is None and reading.poured
-    assert "joined through" not in str(reading)
+    assert (reading.neck, reading.across, reading.filled) == (Length(0), (), MODEL)
     assert str(reading) == (
-        "OUT, Q1 to J3: not joined by track; OUT has a pour, which is not measured"
+        "OUT, Q1 to J3: not joined by track; OUT has a pour, which does not join them "
+        "either, on pkidl's model of the fill"
     )
 
 
@@ -677,8 +693,13 @@ def test_a_track_beside_a_pour_is_measured_as_at_most_what_the_track_is(board, t
         f"path(J1, GND, J2, current=1 A) ({HERE}:{line}): at most 98.3 mΩ of track, "
         "98.3 mV at 1 A\n"
         "  GND, J1 to J2: 100 mm of track, 0.5 mm at its narrowest, at most 98.3 mΩ, "
-        "98.3 mV: GND has a pour as well, which is not measured"
+        "98.3 mV: GND has a pour as well, whose resistance is not measured; a neck of 2.5 mm "
+        "in 5 pieces, the widest 0.5 mm of the relief of J1.2 at (109.17, 64.83) on B.Cu, on "
+        "pkidl's model of the fill"
     )
+    # The track and the four spokes side by side: the drop is still of the track alone.
+    assert (reading.neck, reading.narrowest) == (2.5 * mm, 0.5 * mm)
+    assert sorted(p.of for p in reading.across) == ["the relief of J1.2"] * 4 + ["track"]
 
 
 def test_a_total_is_at_most_only_where_a_stretch_that_is_measured_is_poured(board, tmp_path):
@@ -1343,6 +1364,202 @@ def test_the_corpus_build_says_each_path_as_it_was_measured(board, tmp_path, mon
     monkeypatch.setattr("builtins.MADE", SimpleNamespace(routed=None, solution=made.solution))
     assert script.build(tmp_path / "out") == 0
     assert json.loads((tmp_path / "out" / "b" / "built.json").read_text())["paths"] == []
+
+
+# The neck of a stretch, through all the copper of its net (tests/test_pkidl_neck.py
+# has the shapes it is right on).
+
+
+def test_one_chain_of_tracks_has_its_narrowest_for_a_neck_and_reads_as_it_did(board, tmp_path):
+    board.path(board["J1"], "IN", board["J2"], current=1 * A)
+    chain = (
+        Wire("IN", F, 0.8, [(110.0, 60.0), (150.0, 60.0)]),
+        Wire("IN", F, 0.3, [(150.0, 60.0), (150.0, 70.0), (180.0, 70.0)]),
+        Wire("IN", B, 0.6, [(180.0, 70.0), (210.0, 60.0)]),
+    )
+    reading = one(board, tmp_path / "out", *chain, vias=(Via("IN", VIA, (180.0, 70.0)),))
+    assert reading.neck == reading.narrowest == 0.3 * mm
+    (piece,) = reading.across
+    assert (piece.width, piece.layer, piece.of, reading.filled) == (0.3 * mm, F, "track", "")
+    assert str(reading) == ("IN, J1 to J2: 111.6 mm of track, 0.3 mm at its narrowest, 116 mΩ, "
+                            "116 mV")  # fmt: skip
+    # Nothing is said twice of a reading whose neck is the narrowest of its tracks, and
+    # a neck that is not is said after the rest.
+    assert str(replace(reading, neck=0.29 * mm, across=(replace(piece, width=0.29 * mm),))) == (
+        f"{reading}; a neck of 0.29 mm, of track at ({piece.at[0].mm:g}, {piece.at[1].mm:g}) "
+        "on F.Cu"
+    )
+
+
+def test_a_via_joins_two_layers_and_its_pad_can_be_the_neck_of_wide_tracks(board, tmp_path):
+    # Tracks 3 mm wide, through a via 0.8 mm across: the copper round the via's pad is
+    # less than the tracks are wide. The via's barrel is not in it.
+    board.path(board["J1"], "IN", board["J2"], current=1 * A)
+    wide = (
+        Wire("IN", F, 3.0, [(110.0, 60.0), (160.0, 60.0)]),
+        Wire("IN", B, 3.0, [(160.0, 60.0), (210.0, 60.0)]),
+    )
+    reading = one(board, tmp_path / "out", *wide, vias=(Via("IN", VIA, (160.0, 60.0)),))
+    assert reading.narrowest == 3 * mm and reading.neck == Length(2_512_000)
+    assert str(reading) == (
+        "IN, J1 to J2: 100 mm of track, 3 mm at its narrowest, 16.4 mΩ, 16.4 mV; a neck of "
+        "2.512 mm, of the copper round a via at (160, 60) on F.Cu"
+    )
+
+
+def test_a_reading_says_where_its_neck_is_narrower_than_its_current_needs(board, tmp_path):
+    j1, j2 = board.parts("J1", "J2")
+    board.pour("GND", layer="B.Cu")
+    board.path(j1, "GND", j2, current=3 * A)  # needs 1.874 mm: the 2 mm of spokes will do
+    board.path(j1, "GND", j2, current=4 * A)  # needs 3.091 mm: they will not
+    (enough,), (short,) = (m.stretches for m in measure(board, tmp_path / "out"))
+    assert (enough.neck, enough.needs) == (2 * mm, Length(1_874_000))
+    assert (short.neck, short.needs) == (2 * mm, Length(3_091_000))
+    assert "; a neck of 2 mm in 4 pieces, the widest 0.5 mm of the relief of" in str(enough)
+    assert str(short) == (
+        "GND, J1 to J2: not joined by track; GND has a pour, whose resistance is not measured; "
+        "a neck of 2 mm where 4 A needs 3.091 mm in 4 pieces, the widest 0.5 mm of the relief "
+        "of J1.2 at (109.17, 64.83) on B.Cu, on pkidl's model of the fill"
+    )
+    # A neck as wide as is needed is wide enough, and one of a single piece says what
+    # it is of with no count.
+    piece = Piece(1 * mm, (5 * mm, 6.5 * mm), F, "pour")
+    made = Reading(short.stretch, poured=True, current=2 * A, needs=1 * mm, neck=1 * mm,
+                   across=(piece,), filled=KICAD)  # fmt: skip
+    assert str(made) == (
+        "GND, J1 to J2: not joined by track; GND has a pour, whose resistance is not measured; "
+        "a neck of 1 mm, of pour at (5, 6.5) on F.Cu, on KiCad's fill"
+    )
+    assert "a neck of 1 mm where 2 A needs 1.001 mm, of pour" in str(
+        replace(made, needs=Length(1_001_000))
+    )
+    # A pour that no fill was looked at for is said as it was: it is not measured.
+    assert str(Reading(short.stretch, poured=True)) == (
+        "GND, J1 to J2: not joined by track; GND has a pour, which is not measured"
+    )
+
+
+@pytest.mark.parametrize("where", ["the triangles", "the neck"])
+def test_a_neck_that_cannot_be_measured_leaves_every_other_figure_as_it_is(
+    board, tmp_path, monkeypatch, where
+):
+    import shapely
+
+    from pkidl import neck
+
+    j1, j2 = board.parts("J1", "J2")
+    board.pour("GND", layer="B.Cu")
+    board.path(j1, "IN", j2, current=2 * A)
+    board.path(j1, "GND", j2, current=1 * A)
+    board.path(board["Q1"], board["J3"], current=1 * A)
+    whole = measure(board, tmp_path / "whole", STRAIGHT)
+
+    def raises(*_, **__):
+        raise shapely.errors.GEOSException("LocateFailureException: Could not locate vertex.")
+
+    if where == "the triangles":  # as GEOS has raised, of points in a line
+        monkeypatch.setattr(neck.shapely, "delaunay_triangles", raises)
+    else:
+        monkeypatch.setattr(neck.Necks, "between", raises)
+    # ``measure`` fails on a reading that says it could not be measured: none does.
+    broken = measure(board, tmp_path / "broken", STRAIGHT)
+    why = "GEOSException: LocateFailureException: Could not locate vertex."
+    pairs = [(a, b) for one, two in zip(whole, broken, strict=True)
+             for a, b in zip(one.stretches, two.stretches, strict=True)]  # fmt: skip
+    for was, now in pairs:
+        if not now.neck_failed:  # copper with nothing to cut into triangles
+            assert now == was
+            continue
+        bare = replace(was, neck=None, across=(), filled="")
+        assert now == replace(bare, neck_failed=why)
+        assert str(now) == f"{bare}; its neck could not be measured: {why}"
+    track, pour, apart = (now for _, now in pairs)
+    assert track.neck_failed and pour.neck_failed
+    assert (track.ohms, track.length, track.narrowest, track.volts, track.needs) == (
+        pytest.approx(ohms(100, 0.5), rel=1e-9), 100 * mm, 0.5 * mm,
+        pytest.approx(2 * ohms(100, 0.5), rel=1e-9), Length(926_000))  # fmt: skip
+    assert str(track) == (
+        "IN, J1 to J2: 100 mm of track, 0.5 mm at its narrowest where 2 A needs 0.926 mm, "
+        f"98.3 mΩ, 197 mV; its neck could not be measured: {why}"
+    )
+    assert str(pour) == ("GND, J1 to J2: not joined by track; GND has a pour, which is not "
+                         f"measured; its neck could not be measured: {why}")  # fmt: skip
+    assert bool(apart.neck_failed) == (where == "the neck")
+    # The paths' totals, and the board that is written, are the same.
+    assert [(m.ohms, m.volts, m.unmeasured) for m in broken] == [
+        (m.ohms, m.volts, m.unmeasured) for m in whole
+    ]
+    assert _hashes(tmp_path / "broken") == _hashes(tmp_path / "whole")
+    # Ends that are one piece of copper say it after what they said.
+    one = Reading(track.stretch, 0.0, Length(0), None, 0.0, neck_failed="it broke")
+    assert str(one) == ("IN, J1 to J2: joined at one place, with no track between: 0 mΩ, 0 mV; "
+                        "its neck could not be measured: it broke")  # fmt: skip
+
+
+def _refilled(written: File, layer: str, ring: list[tuple[float, float]]) -> File:
+    """The board at *written* with a fill in each of its zones on *layer*, as KiCad
+    leaves one it has refilled and saved: the one piece *ring* is round."""
+    drawn = parse(written.read_text())
+    for zone in find_all(drawn, "zone"):
+        xy = [["xy", f"{x:g}", f"{y:g}"] for x, y in ring]
+        zone.append(["filled_polygon", ["layer", layer], ["pts", *xy]])
+    written.write_text(dumps(drawn))
+    return written
+
+
+def test_a_board_kicad_has_filled_is_measured_on_kicads_fill_and_the_scorecard_has_it(
+    tmp_path, monkeypatch, capsys
+):
+    import importlib.util
+    import runpy
+
+    carrier(tmp_path / "src")  # its inputs, for the board file below
+    board_py = tmp_path / "src" / "board.py"
+    board_py.write_text(
+        "from pkidl import A, Board, Edge, mm\n"
+        f"board = Board.from_inputs({str(tmp_path / 'src')!r})\n"
+        f"for ref, (x, y) in {PLACES!r}.items():\n"
+        "    board.place(board[ref], at=(x * mm, y * mm), facing=Edge.TOP)\n"
+        "board.rules(track=0.5 * mm, clearance=0.2 * mm)\n"
+        'board.pour("GND", layer="B.Cu")\n'
+        'board.path(board["J1"], "GND", board["J2"], current=10 * A)\n'
+        "board.route()\n"
+    )
+    said = runpy.run_path(str(board_py))["board"]
+    out = tmp_path / "build" / "b"
+    built = said.build(out, "built", router=Scripted())
+    ((reading,),) = (m.stretches for m in built.routed.paths)
+    assert (reading.neck, reading.filled) == (2 * mm, MODEL)
+    # KiCad's fill of it, here one no model would make: a strip 3 mm wide from pin to
+    # pin, over both and with no relief, notched to 1 mm at (151, 63.5).
+    _refilled(built.board, B, [(108, 62.5), (212, 62.5), (212, 65.5), (153, 65.5), (151, 63.5),
+                               (149, 65.5), (108, 65.5)])  # fmt: skip
+    spec = importlib.util.spec_from_file_location(
+        "corpus_script", File(__file__).parent.parent / "scripts" / "corpus.py"
+    )
+    assert spec is not None and spec.loader is not None
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    (found,) = script.paths(board_py, parse(built.board.read_text()))
+    line = ("  GND, J1 to J2: not joined by track; GND has a pour, whose resistance is not "
+            "measured; a neck of 1 mm where 10 A needs 15.208 mm, of pour at (151, 63) on "
+            "B.Cu, on KiCad's fill")  # fmt: skip
+    assert found.splitlines()[1] == line
+    # The scorecard's row for the built board has it, and it is printed under the row.
+    (out / "built.json").write_text(json.dumps({"built": True, "placed": [], "routed": []}))
+    for report in ("drc.json", "built-drc.json"):
+        (out / report).write_text(json.dumps({"violations": []}))
+    (out / "reference.kicad_pcb").write_text(built.board.read_text())
+    monkeypatch.setattr(script, "BOARDS", {"b": ("t0", "a licence", "a source")})
+    monkeypatch.setattr(script, "board_dir", lambda board_id: tmp_path / "src")
+    script.score(tmp_path / "build")
+    row = json.loads((tmp_path / "build" / "scorecard.json").read_text())["b"]
+    assert row["built"]["paths"] == [found]
+    assert f"       {line}" in capsys.readouterr().out.splitlines()
+    # A board file that says no path has none.
+    board_py.write_text("".join(line for line in board_py.read_text().splitlines(True)
+                                if "board.path(" not in line))  # fmt: skip
+    assert script.paths(board_py, parse(built.board.read_text())) == []
 
 
 # How wide a current needs its tracks, and the nets that are laid that wide.

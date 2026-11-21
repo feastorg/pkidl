@@ -26,7 +26,10 @@ from pathlib import Path
 from pkidl.build import BuildError
 from pkidl.footprint import footprint_path
 from pkidl.importer import circuit, footprints, mechanical
+from pkidl.intent import Path as Said
+from pkidl.intent import Rules, canonical
 from pkidl.measure import regions
+from pkidl.paths import measured as read_paths
 from pkidl.sexpr import Node, dumps, find, find_all, parse
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -193,7 +196,21 @@ def build(out: Path) -> int:
     return 1 if failed else 0
 
 
-def _built(d: Path, c: dict) -> dict | None:
+def paths(board_py: Path, board: Node) -> list[str]:
+    """Each path the board file *board_py* says, measured on *board*, the board built
+    from it as KiCad refilled it: the neck of each stretch is of KiCad's fill, where
+    what the build says of itself has it of pkidl's model. Nothing where the board
+    file says no path, or no rules."""
+    said = runpy.run_path(str(board_py))["board"]
+    rules = next((s for s in said.statements() if isinstance(s, Rules)), None)
+    ways = [s for s in canonical(said.statements()) if isinstance(s, Said)]
+    if rules is None or not ways:
+        return []
+    items = [node for node in board if isinstance(node, list)]
+    return [str(m) for m in read_paths(items, ways, said.circuit, rules.copper, rules.rise)]
+
+
+def _built(d: Path, c: dict, board_py: Path) -> dict | None:
     """What a board file's board scores, from ``d``: None where there is none."""
     if not (d / f"{BUILT}.json").is_file():
         return None
@@ -208,6 +225,7 @@ def _built(d: Path, c: dict) -> dict | None:
         "netlist_matches": circuit(board) == c,
         "placed": len(said["placed"]),
         "unrouted": [r["unrouted"] for r in said["routed"]],
+        "paths": paths(board_py, board),
     }  # fmt: skip
 
 
@@ -215,7 +233,8 @@ def score(build: Path) -> None:
     """One row per board from ``build/<board_id>/``: ``reference.kicad_pcb`` refilled by
     KiCad and ``drc.json``, its report. Boards not run show as such. A board with a
     board file has a second row, for the board built from it (``built.kicad_pcb``,
-    refilled, and ``built-drc.json``)."""
+    refilled, and ``built-drc.json``), and under it each path its board file says, as
+    that board has it with its pours as KiCad filled them."""
     rows = {}
     for board_id, (tier, _, _) in BOARDS.items():
         d = build / board_id
@@ -230,7 +249,7 @@ def score(build: Path) -> None:
             "reference": {**measures(parse((d / "reference.kicad_pcb").read_text())),
                           **drc_counts(json.loads((d / "drc.json").read_text())),
                           "refilled": not (d / "not-refilled").is_file()},
-            "built": _built(d, c),
+            "built": _built(d, c, board_py),
             "board_py_lines": (len(board_py.read_text().splitlines())
                                if board_py.is_file() else None),
         }  # fmt: skip
@@ -257,6 +276,8 @@ def score(build: Path) -> None:
                   f"{'same' if b['netlist_matches'] else 'DIFF':>4} {b['errors']:4} "
                   f"{b['warnings']:4} {b['unconnected']:5} {b['vias']:5} {b['track_mm']:9} "
                   f"{len(b['split_pours']):11}")  # fmt: skip
+            for line in "\n".join(b["paths"]).splitlines():
+                print(f"       {line}")
     print(f"\nA reference is the bar its board file has to reach; under a built board, "
           f"parts is the parts placed and nets whether its netlist is the circuit's. "
           f"* KiCad's refill ran past 600 s; checked on the pours as saved. "

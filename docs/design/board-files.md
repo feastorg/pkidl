@@ -64,7 +64,7 @@ Under thirty lines, blank ones counted; no coordinates except the outline's (fro
 | `keepout(area, copper=True)` | an area kept clear | yes: placement keeps other parts out of it and says where it is, the build draws it as a rule area on each face it holds on, and the router is told to keep out of it |
 | `keepout(board.fixed(name), copper=True)` | no copper under something fixed on the board | yes: the box round the thing's outline, on its face or on both, drawn as a rule area and told to the router; pads are let be, and a track or via the routed board has in it is in the build's result |
 | `apart(parts, board.fixed(name), 5 * mm)` | parts kept a distance from something fixed | yes: a place that is looked for keeps it, and a place that is given and breaks it is a problem |
-| `path(jack, switch, regulator, current=1 * A)` | the way a current goes through the board, and how much of it | sized by heating, and measured: each stretch between two stops is one net, whose tracks are as wide as the current needs where that is wider than `rules(track=)`, and the build's result has what its tracks come to on the routed board |
+| `path(jack, switch, regulator, current=1 * A)` | the way a current goes through the board, and how much of it | sized by heating, and measured: each stretch between two stops is one net, whose tracks are as wide as the current needs where that is wider than `rules(track=)`, and the build's result has what its tracks come to on the routed board, and the neck of the stretch through all its copper, pours among it |
 | `u1.pin_on(net)`, `r.signal_net` | pins and nets as objects; "the net that isn't a rail" | yes, with `board.rails(...)` declared first |
 | `place(near=, within=)` | proximity placement | yes: the nearest clear place, looked for in 0.1 mm steps |
 | `3 * mm`, `0.1 * inch` | lengths with their unit | yes (`pkidl.units`); the calls that draw copper directly still take millimetres as numbers |
@@ -723,11 +723,12 @@ What is measured, and what is assumed:
 - **Length and narrowest width** are of the way of least resistance between the ends.
 - **The drop** is the resistance times the path's current. For parts side by side the
   whole current is taken through the stretch, their pads being one end.
-- **A pour is not measured, and neither is what it reaches.** Ends that no track
-  joins have no figure and read `not joined by track`, with `GND has a pour, which is
-  not measured` where the net has a pour anywhere on the board: the pour may join
-  them, and that is not looked at. Where tracks join the ends and the net has a pour
-  as well, the figure is given as `at most`, which it is whatever the pour reaches.
+- **The resistance of a pour is not measured.** Ends that no track joins have no
+  figure in ohms and read `not joined by track`, with `GND has a pour, whose
+  resistance is not measured` where the net has a pour. Where tracks join the ends
+  and the net has a pour as well, the figure is given as `at most`, which it is
+  whatever the pour carries. What a pour is measured for is the neck of the stretch
+  ("the neck of a stretch", below).
 - **A figure is printed to three figures**, written out with no exponent: in mΩ and
   mV where that is under a thousand of them, in Ω and V where that is, and in kΩ and kV
   otherwise.
@@ -879,13 +880,96 @@ over width, and the width a current needs for heat does not shorten its path: a 
 that matters wants a shorter way, a wider track than heat asks, or a pour, and
 nothing here chooses one.
 
+**The neck of a stretch** (2026-11-21) is the least total width of copper there is to
+cut to part its two ends, through all the copper of its net on every layer: tracks,
+pads, vias, and its pours as they fill (`pkidl.neck`). It is measured and nothing is
+changed for it. It is a cut, and not the narrowest passage: a pin in a pour on the
+four 0.5 mm spokes of its relief has a neck of 2 mm, the current dividing among them,
+and two tracks side by side between the same two places are the sum of their widths.
+Where one chain of tracks is all that joins the ends it is the narrowest of them,
+which the reading says already, and the reading is as it was.
+
+```
+GND, J1 to J2: not joined by track; GND has a pour, whose resistance is not measured; a neck of 2 mm where 4 A needs 3.091 mm in 4 pieces, the widest 0.5 mm of the relief of J1.2 at (109.17, 64.83) on B.Cu, on pkidl's model of the fill
+LOAD, [R1, R2] to J4: 31 mm of track, 0.5 mm at its narrowest where 2 A needs 0.926 mm, 15.2 mΩ, 30.5 mV; a neck of 1 mm in 2 pieces, the widest 0.5 mm of track at (191.5, 78) on F.Cu
+```
+
+- **A reading has it.** `Reading.neck` is the width, nothing wide where no copper
+  joins the ends and None where the ends are one piece of copper. `Reading.across` is
+  each piece of copper the cut goes across (`pkidl.neck.Piece`), the widest first:
+  how wide it is there, the middle of the cut across it in board millimetres, its
+  layer, and what it is of, `track`, `pour`, `the relief of J1.2`, `the copper round
+  J1.2` or `the copper round a via`. `Reading.filled` is what the pours were measured
+  on. The reading says the neck, where it is narrower than the path's current needs
+  (`where 4 A needs 3.091 mm`), how many pieces it is in, and the widest of them with
+  where it is, so that it can be found on the board. A neck whose measuring raises
+  is `Reading.neck_failed`, what was raised, and reads `; its neck could not be
+  measured: ...` after figures that are what they are without a neck.
+- **A pad and a via are each one piece that no cut goes through**, as each has no
+  resistance in the figure for the tracks. A cut goes round one, across the copper
+  that meets it: for a pad on a relief that is its spokes, as many and as wide as the
+  fill has them, and for a pad joined all round it is all round its edge. An end is
+  the pads its stop has on the net, and the cut may fall round those very pads: a
+  pin in a pour is not taken for one piece with the pour. Pads and vias whose copper
+  touches are one piece, and ends that are one piece have no neck, as they have no
+  track between them (`joined at one place`).
+- **A via joins its layers without limit, and its barrel is not counted** (#104). A
+  via, and a pad with a hole, has its copper on every layer, and the neck counts the
+  copper of each layer round it and nothing of the barrel between: a neck through a
+  via is at most what is said. Tracks 3 mm wide through the one via there is, 0.8 mm
+  across, have a neck of 2.512 mm, `of the copper round a via`.
+- **Which fill.** A zone the board has KiCad's fill of, as a board KiCad refilled and
+  saved has, is measured on that fill. A zone with none, as on the board a build has
+  just written, is measured on pkidl's model of how KiCad fills it (`pkidl.fill`),
+  each piece cut back round each pad that has a relief and the spokes that have their
+  copper put in. The reading says which: `on KiCad's fill` or `on pkidl's model of
+  the fill`. `just corpus` scores a built board on KiCad's refill of it, and the
+  scorecard has each path measured on that.
+- **It is never wider than is said.** The copper of a layer, less its pads and vias,
+  is cut into triangles whose corners are all on its edge, and the least cut along
+  their sides is found as the most that flows from one end to the other. A side is a
+  chord the copper has, so what is found is a cut that can be made. For it to be the
+  least there is, the chords a least cut is of are put in as sides: points straight
+  across from each other on parallel edges, the shortest chord between each two walls
+  no further apart than the neck found so far, and the cut found pulled tight, until
+  nothing shortens (`pkidl.neck`). On shapes whose neck is known, strips at any
+  angle, strips with a hole, an hourglass, pads on spokes, a slotted plane, a plane
+  with holes in rows, chains of track, two layers through a via, and strips with
+  thirty holes scattered in them against the shortest way from wall to wall through
+  the holes, turned and moved off any grid, it is the neck to the micrometre it is
+  given in (`tests/test_pkidl_neck.py`).
+- **It can be said wider than it is where the least cut bends round a pad.** With
+  pads and vias of the net among the holes of such a strip, the least cut may go by
+  the corner of a pad that the cut found does not go by: a cut is pulled tight where
+  it was found, and another is not looked for. Of a hundred such strips, each
+  reckoned exactly, it is the neck to the micrometre on all but two, where it is
+  said 0.3 % and 2.3 % wider than it is, and on none is it said narrower.
+- **What it assumes.** A pad's copper is the box, oval or circle of its size. A
+  track that stops short of a pad with its round end over it is `not joined by
+  track`, its middle line staying off the pad, and has a neck, its copper touching:
+  both are said. Copper for heat is `needed` for a track of an outer layer, and a
+  neck in a pour is held against the same width, which is the only one there is.
+
+On the bench supply (2026-11-21, the build of that board alone, its pours checked by
+pkidl's model) each of the eleven stretches of its five paths is one chain of tracks,
+and its neck is its narrowest track: nine of 0.562 mm and two of 0.5 mm, each one
+piece, of track. The readings are the lines above, as they were. Its paths go through
+no pour: the way back ends at ground, and a net named last is no stretch. The same
+board refilled by KiCad 10.0.8 (`kicad-cli pcb drc --refill-zones --save-board`) has
+its ground pour as KiCad fills it, and the neck from each of its 23 ground pads to
+the rest of them is the same to the micrometre on that fill and on the model; from
+the pads of one half of the board to those of the other it is 6.883 mm on the model
+and 6.869 mm on KiCad's fill across, and 19.391 mm and 19.378 mm down.
+
 Not yet: a track let narrow into a pad it does not fit, a drop checked against one
 that is allowed and copper sized for it, which copper two currents may share, a pour
-measured or sized, where the fit stops holding for a large current, and inner layers.
+sized or its resistance measured, where the fit stops holding for a large current,
+what a current needs of a pour or of an inner layer, and inner layers.
 Nor a via: every class has the one via, 0.8 mm with a 0.4 mm hole, so a via on a net
 sized for its current is not sized for it, and a reading counts a via as no
 resistance and leaves it out of the narrowest width. At some current the barrel of a
-via is the neck of its net, and nothing here measures it. Nor the rules file a build
+via is the neck of its net, and nothing here measures it: the neck has the copper
+round a via's pad and not its barrel. Nor the rules file a build
 leaves when a board stops having a wider net, which stays; nor a rule of one's own
 beside a build's, which the next build writes over.
 
@@ -1600,6 +1684,26 @@ branch).
 yet ("the way a current goes", above). A string among its stops is a net's name, so a
 part is given as a handle. Parts side by side are one end of a stretch, and the whole
 current is taken through it: no branch is counted by itself.
+
+**The bar its reference sets (2026-11-21).** The three paths above, said of its
+circuit by the circuit's names for its nets, are four stretches: a net named first or
+last is where a path comes in or leaves, and is no stretch, so the input rail from
+the diode to the high side, and ground, are in none of them. Measured on the reference as it is saved, on the fill it has,
+which KiCad 10 does not finish refilling (#24), with 10 A needing 15.208 mm at 10 °C
+in 1 oz copper and 8.324 mm at 20 °C:
+
+| stretch | neck | of |
+|---|---|---|
+| `Net-(D101-Pad1)`, J103 to D101 | 2.61 mm | pour, at (101.516, 80.678) on F.Cu |
+| `Net-(C105-Pad1)`, Q101 and Q103 to Q102 and Q104 | 8.518 mm | two pieces of 4.259 mm of pour, at (127.044, 75.774) and (127.044, 82.374) on F.Cu |
+| `Net-(C109-Pad2)`, L101 to R110 and R113 | 5.968 mm | the copper round L101.2, at (129.297, 104.95) on F.Cu |
+| `Net-(C109-Pad1)`, R110 and R113 to J104 | 6.2 mm | pour, at (100.4, 108.9) on F.Cu |
+
+None is as wide as 10 A needs at either rise. Measured by naming the parts at both
+ends, the input rail from D101 to the high side is 14.411 mm, round Q103.5, and
+ground from the low side to either connector is 1.5 mm: the three source pins of each of Q102 and
+Q104 have no pour on the front, and each goes by a 0.25 mm track to vias. The
+reference is compared against and nothing of it is in any board file.
 
 ## T3: `usb2serial-CH340G_USB2TTL-CH340G`
 

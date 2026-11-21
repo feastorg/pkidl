@@ -57,7 +57,10 @@ A reference's row is the bar its board file has to reach. Its DRC counts are und
 KiCad 10's rules, which most of these older boards don't fully meet; findings about
 footprint libraries, which aren't available here, are left out. A built board is
 scored the same way, and its row also says how many parts its board file placed and
-whether its netlist is `circuit.json`'s. A board file that does not build is said in
+whether its netlist is `circuit.json`'s. Under it is each `path` its board file says,
+measured on the built board as KiCad refilled it: the neck of each stretch is of
+KiCad's fill there, where what the build says of itself (`built.json`) has it of
+pkidl's model of the fill. A board file that does not build is said in
 its row, and `just corpus` fails once the scorecard is printed.
 
 KiCad 10's refill of three references (OpenMPPT, bldc-gimbal-1d, a123 BCM) ran past an

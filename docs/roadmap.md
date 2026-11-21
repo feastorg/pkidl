@@ -349,10 +349,32 @@ kept (#101), and KiCad finds every connection made. The way round the limiter is
 273 mΩ where it was 318 mΩ and still drops 410 mV at 1.5 A, over about 312 mm of track:
 the width is for heat, and a drop wants a shorter way or a pour, which nothing here
 gives it. Not yet: a track let narrow into a pad, checking a drop against a budget
-and sizing for one, saying which copper two currents may share, measuring or sizing
-a pour, a via sized for the current of its net or counted in a reading, where the
-fit stops holding for a large current, the rules file a build leaves when a board
-stops having a wider net, a rule of one's own beside a build's, and inner layers.
+and sizing for one, saying which copper two currents may share, sizing a pour or
+measuring its resistance, a via sized for the current of its net or counted in a
+reading, where the fit stops holding for a large current, the rules file a build
+leaves when a board stops having a wider net, a rule of one's own beside a build's,
+and inner layers.
+
+**2026-11-21: the neck of a stretch is measured through all its copper.** Each
+reading has the least total width of copper there is to cut to part the two ends of
+its stretch, through the tracks, pads, vias and pours of its net on every layer
+(`pkidl.neck`, `docs/design/board-files.md`): where it is, what it is of, how many
+pieces of copper the cut goes across, and whether the pours were measured on KiCad's
+fill or on pkidl's model of it; and it says where the neck is narrower than the
+path's current needs. A pin on the four spokes of a relief has the four of them for a
+neck, and two tracks side by side the sum. It measures, and changes no copper and
+fails no build. On the bench supply every stretch is one chain of tracks and its neck
+is its narrowest track, as it read before; KiCad's refill of the built board and the
+model give its ground pour the same neck at each of its 23 pads, to the micrometre.
+The three paths of OpenMPPT's sketch, as written, give four stretches and none on
+its input rail or its ground: a net named first or last is where a path comes in or
+leaves, and is no stretch. On its reference, as saved, the four have necks of 2.61,
+8.518, 5.968 and 6.2 mm, where 10 A needs 15.208 mm at 10 °C in 1 oz copper and
+8.324 mm at 20 °C. The stretches on the input rail and on ground were measured by
+naming the parts at both ends: 14.411 mm, and 1.5 mm, six 0.25 mm tracks from the
+low-side transistors. Not yet: a pour sized for its current, or anything held to a neck; the
+resistance of a pour; the barrel of a via (#104); and what a current needs of a pour,
+which is held against the width a track of an outer layer needs.
 
 ## Later
 
