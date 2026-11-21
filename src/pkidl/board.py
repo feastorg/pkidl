@@ -176,6 +176,9 @@ class Board:
     _edge: list[dict[str, Any]] = field(default_factory=list, repr=False)
     # A list, and called with a name it gives the one that goes by it.
     fixed: _Things = field(default_factory=_Things, repr=False)
+    # The parts of the circuit that are fixed things as well, mounting holes on a net,
+    # by reference: a build puts each where it is fixed, and nothing else places it.
+    held: dict[str, Fixed] = field(default_factory=dict, repr=False)
     # Each pour whose clearance or thermal gap was not said, by its zone's UUID: a build
     # takes them from the board's rules.
     _unsized: dict[str, tuple[str, ...]] = field(default_factory=dict, repr=False)
@@ -194,8 +197,10 @@ class Board:
         a board file passes ``__file__``.
 
         The outline is drawn and the holes are placed where ``mechanical.json`` puts them.
-        The parts are not placed: where they go is the board file's to say. A footprint
-        that pkidl ships an annotation for has its named areas (``pkidl.annotations``).
+        A hole that is a part of the circuit as well (``"part": true``) is that part, held
+        there (``hole``). The other parts are not placed: where they go is the board
+        file's to say. A footprint that pkidl ships an annotation for has its named areas
+        (``pkidl.annotations``).
         """
         d = Path(where)
         if not d.is_dir():
@@ -226,25 +231,37 @@ class Board:
         board.outline(mech["outline"])
         for hole in mech["holes"]:
             board.hole(hole["footprint"], tuple(hole["at"]), rot=hole["rot"], back=hole["back"],
-                       ref=hole["ref"])  # fmt: skip
+                       ref=hole["ref"],
+                       part=board[hole["ref"]] if hole.get("part") else None)  # fmt: skip
         return board
 
     def hole(self, footprint: str, at: Point, *, rot: float = 0.0, back: bool = False,
-             ref: str = "REF**") -> Fixed:  # fmt: skip
-        """Put a mounting hole on the board, or whatever else is fixed there and is no
-        part of the circuit: the library footprint named *footprint*, *at* a place in
-        board millimetres. Parts are kept clear of it, and a row along an edge spreads
-        over what it leaves clear. Gives back what the solver is told of it."""
+             ref: str = "REF**", part: Part | None = None) -> Fixed:  # fmt: skip
+        """Put a mounting hole on the board, or whatever else is fixed there: the library
+        footprint named *footprint*, *at* a place in board millimetres. Parts are kept
+        clear of it, and a row along an edge spreads over what it leaves clear. Gives
+        back what the solver is told of it.
+
+        With *part*, a part of the circuit whose footprint that is, the hole is that
+        part, a grounded standoff say: a build puts it there, with its reference and its
+        nets, so routing joins it, and nothing else places it. Otherwise the hole is no
+        part of the circuit, and is written with *ref*."""
         if footprint not in self.library:
             raise ValueError(f"no footprint {footprint!r} in the board's library")
         x, y = at
         name = footprint.rpartition(":")[2]
-        placed = Placement(footprint, ref, name, x, y, rot, back, board_only=True,
-                           uid=f"hole:{x},{y}")  # fmt: skip
-        self.footprint(place(self.library[footprint], placed))
         fx, fy = Length(round(x * 1_000_000)), Length(round(y * 1_000_000))
         where = ", ".join(str(v).removesuffix(" mm") for v in (fx, fy))
         fixed = Fixed(f"{name} at ({where})", footprint, fx, fy, float(rot), back)
+        if part is not None:
+            if part.footprint != footprint:
+                raise ValueError(f"hole({footprint!r}): {part.ref}'s footprint is "
+                                 f"{part.footprint!r}")  # fmt: skip
+            self.held[part.ref] = fixed
+        else:
+            placed = Placement(footprint, ref, name, x, y, rot, back, board_only=True,
+                               uid=f"hole:{x},{y}")  # fmt: skip
+            self.footprint(place(self.library[footprint], placed))
         self.fixed.append(fixed)
         return fixed
 
@@ -490,7 +507,7 @@ class Board:
         except ValueError as e:  # an outline that is not one board: nothing is placed on it
             return Solution({}, (), (Problem((), str(e)),), ())
         return solve(self.circuit, self.library, self.extent, self._statements,
-                     edge=edge, fixed=self.fixed)  # fmt: skip
+                     edge=edge, fixed=self.fixed, held=self.held)  # fmt: skip
 
     def edge(self) -> Polygon | None:
         """The area inside the board's outline, in board millimetres, or None for a

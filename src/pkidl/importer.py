@@ -6,8 +6,8 @@ that exists only as a ``.kicad_pcb`` (the corpus), both are read from it here:
 - ``circuit``: each part's reference, value, footprint and pad -> net map. No
   position, side or rotation: those are the layout, which is designed, not read.
 - ``mechanical``: what a designer is given: the board outline and the mounting
-  holes. Fixed connectors are added per board, with a reason, when its board file
-  is written.
+  holes, a hole on a net among them as well as in the circuit. Fixed connectors
+  are added per board, with a reason, when its board file is written.
 - ``footprints``: the library footprint each footprint name stands for, which the
   board carries a copy of in every placed part. It is the part's package, as a
   footprint library holds it: no position, rotation or side.
@@ -95,7 +95,7 @@ def _footprint_edge(fp: Node) -> list[dict]:
 def circuit(board: Node) -> dict:
     """``{"parts": [{ref, value, footprint, pads: {number: net}}], "nets": [...]}``,
     parts sorted by reference. Pads on no net are left out of ``pads``; a footprint
-    with no pad on a net (a logo, a mounting hole) is not part of the circuit, and nor
+    with no pad on a net (a logo, a hole on no net) is not part of the circuit, and nor
     is one KiCad never annotated from a schematic (reference empty or with ``*``, as
     ``REF**``): those are board-only, such as vias placed as footprints."""
     read = _Read(board)
@@ -115,10 +115,12 @@ def renamed(board: Node) -> list[str]:
     written under the name with ``_2``, ``_3`` and on, its parts and holes with it.
 
     It also says what is read that a board's author may not expect: a part of the
-    circuit whose footprint draws the board's outline (the outline is read, and the part
-    is still placed as any other, not fixed where the outline needs it), and, by
-    footprint name with their number, footprints whose pads are all drilled and on no
-    net but are not holes (``mechanical``), so that a hole left out can be seen."""
+    circuit that is a mounting hole as well, with the net it is on (``mechanical``); a
+    part of the circuit whose footprint draws the board's outline (the outline is read,
+    and the part is still placed as any other, not fixed where the outline needs it,
+    unless it is a hole); and, by footprint name with their number, footprints whose
+    pads are all drilled and on no net but are not holes, so that a hole left out can be
+    seen."""
     return _Read(board).said
 
 
@@ -142,6 +144,34 @@ def _drilled_on_no_net(fp: Node) -> bool:
 
 def _is_hole(fp: Node) -> bool:
     return _drilled_on_no_net(fp) and all(_ringed(p) for p in find_all(fp, "pad"))
+
+
+_BODY = ("F.SilkS", "B.SilkS", "F.Fab", "B.Fab")  # where a footprint draws a part's body
+_SCREW = 2.0  # mm: the least a mounting hole is across, an M2 screw's clearance and more
+
+
+def _across(pad: Node) -> float:
+    """How far across a pad's drill is: its diameter, or an oval's narrower size."""
+    drill = find(pad, "drill")
+    assert drill is not None
+    return min(float(drill[2]), float(drill[3])) if drill[1] == "oval" else float(drill[1])
+
+
+def _is_held(fp: Node, pads: dict[str, str]) -> bool:
+    """Whether a part of the circuit, with *pads* on nets, is a mounting hole on a net,
+    such as a grounded standoff: its pads all drilled and each a hole with at most a
+    ring, as a hole's are; those on a net all on the one net; its largest hole at least
+    ``_SCREW`` across; and no body drawn on silkscreen or fab. A pin header or a
+    resistor has holes too small; a banana post or a speaker draws its body, and a
+    speaker's two pads are on two nets."""
+    found = find_all(fp, "pad")
+    if not found or any(find(p, "drill") is None or not _ringed(p) for p in found):
+        return False
+    if len(set(pads.values())) != 1 or max(_across(p) for p in found) < _SCREW:
+        return False
+    drawn = [c for c in fp[2:] if isinstance(c, list) and str(c[0]).startswith("fp_")]
+    layers = [find(c, "layer") for c in drawn if c[0] != "fp_text"]
+    return not any(layer is not None and str(layer[1]) in _BODY for layer in layers)
 
 
 def _pad_form(lib: Node) -> list[str]:
@@ -191,7 +221,9 @@ class _Read:
             ref = _property(fp, "Reference")
             if ref and "*" not in ref and (pads := _pads(fp)):
                 self.parts.append((fp, pads))
-        self.holes = [fp for fp in fps if _is_hole(fp)]
+        # The parts that are mounting holes as well: fixed where the board has them.
+        self.held = {id(fp) for fp, pads in self.parts if _is_held(fp, pads)}
+        self.holes = [fp for fp in fps if _is_hole(fp) or id(fp) in self.held]
         self.said: list[str] = []
         self.ref: dict[int, str] = {}
         self._refs(fps)
@@ -199,13 +231,23 @@ class _Read:
         self.libs: dict[str, Node] = {}
         self.differ: dict[str, list[str]] = {}
         self._names(fps)
+        for fp, pads in sorted(self.parts, key=lambda part: natural(self.ref[id(part[0])])):
+            if id(fp) in self.held:
+                self.said.append(f"{self.ref[id(fp)]}: a mounting hole on "
+                                 f"{next(iter(pads.values()))}, {self.name[id(fp)]}: fixed "
+                                 "where the board has it, and a part of the circuit with "
+                                 "its net")  # fmt: skip
         for fp, _ in self.parts:
             if any(_is_edge(c) for c in fp[2:]):
                 ref = self.ref[id(fp)]
+                where = (
+                    "is placed as any part, not fixed where it draws the outline"
+                    if id(fp) not in self.held
+                    else "is fixed where the board has it"
+                )
                 self.said.append(f"{ref}: the board's outline is drawn in its footprint, "
                                  f"{self.name[id(fp)]}; the outline is read, and {ref} "
-                                 "is placed as any part, not fixed where it draws the "
-                                 "outline")  # fmt: skip
+                                 f"{where}")  # fmt: skip
         left = Counter(str(fp[1]) for fp in fps if _drilled_on_no_net(fp) and not _is_hole(fp))
         for name, n in sorted(left.items()):
             self.said.append(f"{name}: {n} footprint{'s' if n > 1 else ''} of drilled pads "
@@ -273,7 +315,13 @@ def mechanical(board: Node) -> dict:
     each a hole with at most a ring of copper round it: unplated, or a round pad on a
     round drill or an oval one on an oval drill, centred on it. A hole with a ring of
     vias round it is one, and so is a heatsink's pair of pins; a prototyping board's
-    square pads are not."""
+    square pads are not.
+
+    A part of the circuit is mounting holes too, with ``"part": true``, its reference as
+    ``circuit`` has it, when its pads are holes with at most a ring as those are, those
+    on a net all on one net, the largest at least 2 mm across, and it draws no body on
+    silkscreen or fab: a grounded standoff. It is fixed where the board has it, and
+    stays in the circuit with its net."""
     outline = []
     for kind in EDGE_ITEMS:
         for g in find_all(board, kind):
@@ -294,11 +342,14 @@ def mechanical(board: Node) -> dict:
     for fp in read.holes:
         at, layer = find(fp, "at"), find(fp, "layer")
         assert at is not None and layer is not None
-        holes.append({"ref": _property(fp, "Reference"), "footprint": read.name[id(fp)],
-                      "at": [float(at[1]), float(at[2])],
-                      "rot": float(at[3]) if len(at) > 3 else 0.0,
-                      "back": str(layer[1]).startswith("B."),
-                      "drills": [_drill(fp, p) for p in find_all(fp, "pad")]})  # fmt: skip
+        hole = {"ref": read.ref.get(id(fp), _property(fp, "Reference")),
+                "footprint": read.name[id(fp)], "at": [float(at[1]), float(at[2])],
+                "rot": float(at[3]) if len(at) > 3 else 0.0,
+                "back": str(layer[1]).startswith("B."),
+                "drills": [_drill(fp, p) for p in find_all(fp, "pad")]}  # fmt: skip
+        if id(fp) in read.held:
+            hole["part"] = True
+        holes.append(hole)
     outline.sort(key=lambda i: (i["type"], str(i)))
     return {"outline": outline, "holes": sorted(holes, key=lambda h: h["ref"]), "fixed": {}}
 

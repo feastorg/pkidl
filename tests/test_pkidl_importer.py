@@ -279,11 +279,54 @@ def test_parts_that_share_a_reference_are_told_apart_by_where_they_are():
     board = _board(hole("50 5"), hole("10 40"), hole("10 5"), hole("0 0", "MountingHole_2"))
     assert [p["ref"] for p in circuit(board)["parts"]] == [
         "MountingHole", "MountingHole_2", "MountingHole_3", "MountingHole_4"]  # fmt: skip
+    # And each is a mounting hole on a net.
+    refs = ("MountingHole", "MountingHole_2", "MountingHole_3", "MountingHole_4")
+    said = [f"{ref}: a mounting hole on GND, H:MH: fixed where the board has it, and a part "
+            "of the circuit with its net" for ref in refs]  # fmt: skip
     assert renamed(board) == [
         "MountingHole is on 3 parts: the one at (10.0, 40.0) is MountingHole_3",
         "MountingHole is on 3 parts: the one at (50.0, 5.0) is MountingHole_4",
+        *said,
     ]
 
 
 def test_the_same_package_saved_in_another_order_does_not_differ():
     assert footprints(_board(_part("R1", "0 0"), _part("R2", "5 0", pad_first=False)))[1] == {}
+
+
+def test_a_part_that_is_a_hole_on_a_net_is_a_hole_and_a_part():
+    # SparkFun's Qwiic Fingerprint FPC2534's standoffs on EGND, and RedBoard_Edge's,
+    # a hole with vias round it; and parts with round pads on round drills that are not.
+    def fp(name: str, ref: str, *children: str) -> str:
+        head = f'(footprint "{name}" (at 5 5) (layer "F.Cu") (property "Reference" "{ref}")'
+        return " ".join([head, *children]) + ")"
+
+    def pad(net: str, drill: float, at: str = "0 0", number: str = "1") -> str:
+        size = drill + 1.4
+        return (f'(pad "{number}" thru_hole circle (at {at}) (size {size} {size}) '
+                f'(drill {drill}) (layers "*.Cu") (net "{net}"))')  # fmt: skip
+
+    vias = [pad("JP1", 0.5, at) for at in ("2.4 0", "0 2.4", "-2.4 0", "0 -2.4")]
+    body = '(fp_circle (center 0 0) (end 5 0) (layer "F.SilkS"))'
+    yard = '(fp_circle (center 0 0) (end 3 0) (layer "F.CrtYd"))'  # no body, a courtyard
+    board = _board(
+        fp("H:Standoff", "ST1", pad("EGND", 3.1), yard),
+        fp("H:Grounding", "U3", pad("JP1", 3.302), *vias),
+        fp("C:1x01", "TP1", pad("EGND", 1.016)),  # a test point: a lead's hole
+        fp("C:Banana", "P1", pad("OUT", 6.096), body),  # a post, which draws its body
+        fp("D:Speaker", "SPK1", pad("A", 18), pad("B", 3.5, "10 0", "2")),  # two nets
+    )  # fmt: skip
+    holes = mechanical(board)["holes"]
+    assert [(h["ref"], h["footprint"], h.get("part")) for h in holes] == [
+        ("ST1", "H:Standoff", True), ("U3", "H:Grounding", True)]  # fmt: skip
+    assert holes[0]["drills"] == [[5.0, 5.0, 3.1]]
+    # Each stays in the circuit with its net, so it is routed to.
+    assert [(p["ref"], p["pads"]) for p in circuit(board)["parts"]] == [
+        ("P1", {"1": "OUT"}), ("SPK1", {"1": "A", "2": "B"}), ("ST1", {"1": "EGND"}),
+        ("TP1", {"1": "EGND"}), ("U3", {"1": "JP1"})]  # fmt: skip
+    assert renamed(board) == [
+        "ST1: a mounting hole on EGND, H:Standoff: fixed where the board has it, and a part "
+        "of the circuit with its net",
+        "U3: a mounting hole on JP1, H:Grounding: fixed where the board has it, and a part of "
+        "the circuit with its net",
+    ]

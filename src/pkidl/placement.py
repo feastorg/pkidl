@@ -114,6 +114,10 @@ its parts. Only what is
 fixed narrows a row, never another part, so a row still does not depend on where
 anything is placed. An edge is a side of the box around the outline.
 
+A part that is itself something fixed on the board, a mounting hole on a net (``held``),
+is where that is: it is not placed, other parts are kept clear of it as of any fixed
+thing, and a statement that places it is a problem.
+
 Everything is in whole nanometres, and parts are placed in an order made from what
 depends on what, then those that look for a place after those given one, then from
 their references, so the same statements give the same placement whatever order they
@@ -425,17 +429,20 @@ def solve(
     *,
     edge: Polygon | None = None,
     fixed: Iterable[Fixed] = (),
+    held: Mapping[str, Fixed] | None = None,
 ) -> Solution:
     """Place *circuit*'s parts, from footprints in *library*, on a board whose outline
     has the box *extent* (millimetres), as *statements* say. *edge* is the area inside
     the outline, where it is not the whole of that box, and *fixed* what is on the board
-    already for parts to keep clear of."""
+    already for parts to keep clear of. *held* is the parts that are among those fixed
+    things, by reference, a grounded standoff say: they are where they are fixed, not
+    placed, and a statement that places one does not hold."""
     statements = canonical(statements)
     if found := conflicts(statements):
         return Solution({}, (), tuple(Problem((c.part,), str(c)) for c in found), ())
     if extent is None:
         raise ValueError("a board is placed on once its outline is drawn")
-    return _Solver(circuit, library, extent, statements, edge, tuple(fixed)).solution()
+    return _Solver(circuit, library, extent, statements, edge, tuple(fixed), held).solution()
 
 
 def _swung(x: int, y: int, rot: float, back: bool) -> tuple[int, int]:
@@ -470,6 +477,7 @@ class _Solver:
         statements: list[Statement],
         edge: Polygon | None = None,
         fixed: tuple[Fixed, ...] = (),
+        held: Mapping[str, Fixed] | None = None,
     ) -> None:
         self.board: Box = (_nm(extent[0]), _nm(extent[1]), _nm(extent[2]), _nm(extent[3]))
         # The area inside the outline, in nanometres, where it is not the whole box.
@@ -599,7 +607,16 @@ class _Solver:
         self.origin: dict[int, Statement] = {}
         self.pad: dict[int, set[str]] = {}
         self._decouple(circuit, [s for s in statements if isinstance(s, Decouple)])
-        self.free = tuple(p.ref for p in circuit.parts() if p.ref not in self.asks)
+        # A part that is a thing fixed on the board is where that is: it is not placed,
+        # and what is said to place it does not hold.
+        self.held = dict(held or {})
+        for ref in sorted(self.held.keys() & self.asks.keys(), key=natural):
+            self.barred.add(ref)
+            self.unordered.append(Problem((ref,), f"{ref} is fixed on the board, as "
+                                          f"{self.held[ref]}: nothing places it",
+                                          tuple(self.said[ref])))  # fmt: skip
+        self.free = tuple(p.ref for p in circuit.parts()
+                          if p.ref not in self.asks and p.ref not in self.held)  # fmt: skip
         self.poses: dict[str, Pose] = {}
         self.problems: dict[Problem, None] = {}
         self.chosen: dict[str, None] = {}

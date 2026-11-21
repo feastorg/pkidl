@@ -6,10 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from pkidl import Board
+from pkidl import Board, mm
+from pkidl.build import BuildError
 from pkidl.footprint import footprint_path
 from pkidl.importer import circuit, footprints, mechanical
-from pkidl.sexpr import Node, dumps, parse
+from pkidl.sexpr import Node, dumps, find, find_all, parse
 
 # A board to take inputs from: a part with one pad on no net, a two-hole bracket turned and
 # on the back, and two holes that share the reference KiCad gives a footprint with no symbol.
@@ -37,17 +38,22 @@ SOURCE = """(kicad_pcb
       (uuid "d2"))))"""
 
 
-@pytest.fixture
-def inputs(tmp_path: Path) -> Path:
-    """A directory of inputs read from SOURCE, as ``scripts/corpus.py extract`` writes one."""
-    source = parse(SOURCE)
-    (tmp_path / "circuit.json").write_text(json.dumps(circuit(source)))
-    (tmp_path / "mechanical.json").write_text(json.dumps(mechanical(source)))
+def _inputs(d: Path, source: Node) -> Path:
+    """*d*, holding the inputs read from *source*, as ``scripts/corpus.py extract`` writes
+    them."""
+    (d / "circuit.json").write_text(json.dumps(circuit(source)))
+    (d / "mechanical.json").write_text(json.dumps(mechanical(source)))
     for name, lib in footprints(source)[0].items():
-        path = tmp_path / "footprints" / footprint_path(name)
+        path = d / "footprints" / footprint_path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(dumps(lib) + "\n")
-    return tmp_path
+    return d
+
+
+@pytest.fixture
+def inputs(tmp_path: Path) -> Path:
+    """A directory of inputs read from SOURCE."""
+    return _inputs(tmp_path, parse(SOURCE))
 
 
 def _written(board: Board) -> Node:
@@ -128,6 +134,38 @@ def test_an_outline_drawn_in_a_footprint_is_drawn_once(tmp_path):
     # KiCad takes an outline drawn twice for one that crosses itself.
     assert mechanical(_written(board))["outline"] == [
         {"type": "gr_rect", "start": [10.0, 10.0], "end": [50.0, 40.0]}]  # fmt: skip
+
+
+def test_a_hole_on_a_net_is_built_where_the_board_has_it_with_its_net(tmp_path):
+    # A grounded standoff, turned, as SparkFun's Qwiic Fingerprint FPC2534 has four.
+    source = parse("""(kicad_pcb
+      (gr_rect (start 0 0) (end 40 30) (layer "Edge.Cuts"))
+      (footprint "Hw:Standoff" (layer "F.Cu") (at 5 6 30)
+        (property "Reference" "ST1") (property "Value" "Standoff")
+        (pad "1" thru_hole circle (at 0 0) (size 4.5 4.5) (drill 3.1) (layers "*.Cu")
+          (net "EGND")))
+      (footprint "Device:R" (layer "F.Cu") (at 20 15)
+        (property "Reference" "R1") (property "Value" "0")
+        (pad "1" smd rect (at -1 0) (size 1 1) (layers "F.Cu") (net "EGND"))
+        (pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net "GND"))))""")
+    board = Board.from_inputs(_inputs(tmp_path, source))
+    standoff = board.fixed("Standoff")
+    assert board.held == {"ST1": standoff} and board["ST1"].pin(1).net == board.net("EGND")
+    board.place(board["R1"], at=(20 * mm, 15 * mm))
+    built = board.build(tmp_path / "out", "t")
+    assert built.solution.free == () and "ST1" not in built.solution.poses
+    written = parse(built.board.read_text())
+    named = ["property", "Reference", "ST1"]
+    (st1,) = [fp for fp in find_all(written, "footprint")
+              if named in [p[:3] for p in find_all(fp, "property")]]  # fmt: skip
+    assert find(st1, "at") == ["at", "5", "6", "30"]
+    assert find(find_all(st1, "pad")[0], "net") == ["net", "EGND"]
+    assert len(find_all(written, "footprint")) == 2  # the hole is not put there twice
+    # It is where the board has it, and nothing else places it.
+    board.place(board["ST1"], at=(30 * mm, 20 * mm))
+    with pytest.raises(BuildError, match=r"ST1 is fixed on the board, as Standoff at \(5, 6\): "
+                                         "nothing places it"):  # fmt: skip
+        board.build(tmp_path / "out", "t")
 
 
 def test_a_part_whose_footprint_is_missing_is_named(inputs):

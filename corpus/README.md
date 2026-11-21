@@ -32,8 +32,9 @@ so far they are pinned and can be fetched, and none has a tier or inputs yet
     reference.kicad_pcb   the original, upgraded to KiCad 10: compared against only
     circuit.json          parts, values, footprints and pad -> net: the circuit
     mechanical.json       outline and mounting holes, each hole footprint with its
-                          position, rotation and side; fixed connectors are added per
-                          board, with a reason, when its board file is written
+                          position, rotation and side, and "part": true for a hole on
+                          a net, which is in circuit.json too; fixed connectors are
+                          added per board, with a reason, when its board file is written
     footprints/           the library footprint behind each footprint name, laid out as
                           KiCad libraries: <library>.pretty/<footprint>.kicad_mod
     board.py              the pkidl board file, where the board has one
@@ -57,8 +58,8 @@ version most of them carry keeps the name and each other is written under the na
 drawings, `footprints/` holds the version most of them carry, and `manifest.json` lists
 the parts that carry another (`other_footprint_versions`). Parts that share a reference
 are told apart the same way, by where they are. `extract` prints each name it gives,
-each part whose footprint draws the board's outline, and each footprint name of drilled
-pads on no net that is not taken for holes.
+each part that is a mounting hole on a net, each part whose footprint draws the board's
+outline, and each footprint name of drilled pads on no net that is not taken for holes.
 
 ## The scorecard
 

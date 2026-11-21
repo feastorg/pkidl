@@ -542,6 +542,30 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.importer.mechanical()` takes a part of the circuit that is a mounting hole on a
+  net, such as a grounded standoff, for a hole as well: its entry has `"part": true` and
+  the reference `circuit()` gives it, and the part stays in the circuit with its net. A
+  part is one when its pads are each a hole with at most a ring, as a hole on no net's
+  are, those on a net are all on one net, its largest hole is at least 2 mm across, and
+  it draws no body on silkscreen or fab. Such a part was read as any other: SparkFun's
+  Qwiic Fingerprint FPC2534 had no holes, and its four `Standoff_Connected` on EGND
+  were free to be placed anywhere. `Board.from_inputs` puts each with the new
+  `Board.hole(footprint, at, part=)`: it is fixed, so other parts are kept clear of it
+  and `board.fixed(...)` finds it; a build writes it where it is, with its reference
+  and nets, so routing joins it (`Board.held`); and a statement that places it is a
+  problem of the solve (`solve(held=)`). A part placed `near=` its pin is not placed
+  by it: that is said as `placed by ST1, which nothing places`.
+  `pkidl.importer.renamed(board)` says each, with its net. Of Olimex's 120 current
+  KiCad boards, SparkFun's 108 and Olimex's 7 EAGLE boards, 53 parts on 19 boards are
+  read so: besides the standoffs, RedBoard_Edge's two `STANDOFF_GROUNDING`, the TERES
+  boards' `MountingHole`s and ESP32-ADF's `MH`s on GND, eduArdu's touch pads `CC1` to
+  `CC7` (4.3 mm mounting holes on signal nets), the Qwiic Power Meter's 6.5 mm current
+  lugs `J8` and `J9`, and two case platforms that draw the board's outline,
+  STMP157-OLinuXino-LIME2's `LIME2_PLATFORM1` and AM3352-OLinuXino's `U$1`, which are
+  now fixed where they draw it. The hole rule alone, with a pad on a net, takes 758
+  parts on 165 of those boards, and 48 of the corpus's: pin headers, resistors, and the
+  bench supply's banana posts, which its board file places in a row. No corpus board's
+  inputs change.
 - `pkidl.measure.regions`, and the scorecard's `poured_nets` and `split_pours` with it,
   takes a teardrop for no pour. KiCad saves each teardrop as a zone, and each was
   counted as a piece of its net's pour: on GateMateA1-EVB, whose 1,330 zones are 1,312

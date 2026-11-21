@@ -166,13 +166,16 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
 
     built = replace(board, items=list(board.items), _uuids=set(board._uuids),
                     _unsized=dict(board._unsized))  # fmt: skip
-    for ref, pose in solution.poses.items():
+    # Each part where the solution puts it, and each that is a hole where it is fixed.
+    poses = [(ref, pose.x.mm, pose.y.mm, pose.rot, pose.back)
+             for ref, pose in solution.poses.items()]  # fmt: skip
+    poses += [(ref, f.x.mm, f.y.mm, f.rot, f.back) for ref, f in board.held.items()]
+    for ref, x, y, rot, back in poses:
         part = board[ref]
         nets = {pin.number: pin.net.name for pin in part.pins() if pin.net is not None}
         built.footprint(
             place(board.library[part.footprint],
-                  Placement(part.footprint, ref, part.value, pose.x.mm, pose.y.mm, pose.rot,
-                            pose.back, nets=nets))
+                  Placement(part.footprint, ref, part.value, x, y, rot, back, nets=nets))
         )  # fmt: skip
 
     if rules is not None:
