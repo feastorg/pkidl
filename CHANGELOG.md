@@ -9,6 +9,55 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- The neck of each stretch of a `path`, measured through all the copper of its net.
+  A build that routes the board now measures, for each stretch, the least total width
+  of copper there is to cut to part its two ends, on every layer: its tracks, its
+  pads, its vias and its pours as they fill (`pkidl.neck`). It is a cut and not the
+  narrowest passage: a pin in a pour on the four 0.5 mm spokes of its relief has a
+  neck of 2 mm, and two tracks side by side are the sum of their widths. Each
+  `Reading` has it in new fields after the ones it had: `neck`, the width, nothing
+  wide where no copper joins the ends and None where they are one piece of copper;
+  `across`, each piece of copper the cut goes across as a `pkidl.neck.Piece`, the
+  widest first, with how wide it is, the middle of the cut across it in board
+  millimetres, its layer and what it is of (`track`, `pour`, `the relief of J1.2`,
+  `the copper round J1.2`, `the copper round a via`); and `filled`, what the pours
+  were measured on; and `neck_failed`, what was raised where measuring the neck
+  raised, which leaves every other figure of the reading as it is without a neck and
+  reads `; its neck could not be measured: ...`. A zone the board has KiCad's fill of is measured on that fill,
+  and one it has none of, as on the board a build has just written, on pkidl's model
+  of the fill, with each relief's spokes as the model has them. A pad and a via are
+  each one piece that no cut goes through, so a cut goes round one, and the cut may
+  fall round the pads of an end itself. A via, and a pad with a hole, joins its layers
+  without limit: the barrel of a via is not counted, only the copper of each layer
+  round its pad. A reading says the neck after the rest, `a neck of 2 mm where 4 A
+  needs 3.091 mm in 4 pieces, the widest 0.5 mm of the relief of J1.2 at (109.17,
+  64.83) on B.Cu, on pkidl's model of the fill`, with `where ... needs ...` only
+  where the neck is narrower than its path's current needs. A stretch that one chain
+  of tracks joins, on a net with no pour, has its narrowest track for a neck and
+  reads as it did. Three things read differently. A net with a pour says `whose
+  resistance is not measured` where it said `which is not measured`, and then its
+  neck, or `which does not join them either` where its fill does not reach the ends:
+  no figure in ohms or volts has a pour in it, as before. A stretch that tracks side
+  by side join, or a via narrower than its tracks, has its neck said after its
+  figures. And ends that read `not joined by track`, the middle line of a track
+  stopping short of a pad, have a neck where the track's copper touches the pad's
+  all the same. `pkidl.paths.measured` takes what `pkidl.fill.fills` takes after the
+  items as a new last argument, for the model; without it a zone with no fill is no
+  copper. `scripts/corpus.py`'s build has the necks in what it prints and in
+  `built.json`, of the model; its scorecard measures each path of a board file again
+  on the built board as KiCad refilled it, has that in the row (`paths`) and prints
+  it under the row. `pkidl.measure.filled` gives KiCad's fill of a zone. Nothing is
+  changed for a neck and nothing fails for one; a board with no `path` is built byte
+  for byte as before. What is found is a cut the copper has, so a neck is never wider
+  than is said; on shapes whose neck is known it is the neck to the micrometre it is
+  given in, and with pads and vias of the net scattered among holes, where the least
+  cut can bend round a pad that the cut found does not go by, it is that on all but
+  two strips of a hundred and is said 0.3 % and 2.3 % wider than it is on those
+  (`tests/test_pkidl_neck.py`). On the bench supply (built 2026-11-21) each
+  of the eleven stretches is one chain of tracks, its neck its narrowest track, and
+  its readings are as they were; KiCad 10.0.8's refill of that board and the model
+  give its ground pour the same neck at each of its 23 pads, to the micrometre.
+  (#10)
 - A path's current sets how wide the tracks of its nets are. Every net that is the net
   of a stretch of a `path` is laid, the whole of it, as wide as the current needs to
   warm its tracks by no more than the new `rules(rise=)` allows: `10 * degC` where

@@ -318,7 +318,7 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
             routed = replace(routed, judge=judged[-1] if judged else "",
                              kept_out=kept_out(built.items, areas),
                              paths=measured(built.items, paths, board.circuit,
-                                            rules.copper, rules.rise))  # fmt: skip
+                                            rules.copper, rules.rise, fill_as))  # fmt: skip
         project = projected(outdir / f"{name}.kicad_pro")
         if members:
             # A class's width is what KiCad draws a track at, and no minimum: this is.

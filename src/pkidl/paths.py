@@ -57,10 +57,19 @@ ends, and the drop is the resistance times the path's whole current, parts side 
 being one end. Ends that are one piece of copper, with no track between them, are
 joined, at nothing.
 
-A pour is not measured, and neither is what it reaches. Ends that no track joins have
-no figure, and where their net has a pour that is said, since the pour may join them.
-Where tracks join them and the net has a pour as well, the figure is at most what the
-stretch is. What a part is between its own pads is not counted.
+The resistance of a pour is not measured. Ends that no track joins have no figure in
+ohms, and where their net has a pour that is said. Where tracks join them and the net
+has a pour as well, the figure is at most what the stretch is. What a part is between
+its own pads is not counted.
+
+The neck of a stretch is measured through all the copper of its net, its pours as
+they fill among it (``pkidl.neck``): the least total width of copper there is to cut
+to part its two ends, on every layer, which for one chain of tracks is the narrowest
+of them. A reading has it, the pieces of copper the cut goes across with where each
+is and what it is of, and what the pours were measured on, and says where the neck
+is narrower than the path's current needs. The barrel of a via is not counted in it.
+A neck whose measuring raises is said to be not measured, with what was raised
+(``Reading.neck_failed``), and the rest of the reading is as it is without one.
 """
 
 from __future__ import annotations
@@ -70,6 +79,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
+from typing import Any
 
 import numpy as np
 import shapely
@@ -80,6 +90,7 @@ from pkidl.circuit import Circuit
 from pkidl.fill import _layers, _net, _num, _on, _pours, _xy
 from pkidl.footprint import pad_at
 from pkidl.intent import Path, Rules, Stretch
+from pkidl.neck import Necks, Piece
 from pkidl.sexpr import Node
 from pkidl.units import Current, Length, Rise, mil
 
@@ -97,11 +108,23 @@ class Reading:
     in ohms, the length and the narrowest width of the way of least resistance through
     them, and the drop in volts at the path's current. None of each where no track
     joins its ends, and no width where its ends are one piece of copper with no track
-    between. *poured* is whether its net has a pour on the board: a pour is not
-    measured, and where it reaches is not looked at. *failed* is why it could not be
-    measured, where measuring it raised. *current* is the path's, and *needs* how wide
-    a track is to carry it (``needed``): where the narrowest is narrower, that is said,
-    and nothing is changed for it."""
+    between. *poured* is whether its net has a pour on the board: a pour's resistance
+    is not measured, so no figure in ohms or volts has one in it. *failed* is why it
+    could not be measured, where measuring it raised. *current* is the path's, and
+    *needs* how wide a track is to carry it (``needed``): where the narrowest is
+    narrower, that is said, and nothing is changed for it.
+
+    *neck* is the least total width of copper there is to cut to part its two ends,
+    through all the copper of its net on every layer, tracks, pads, vias and pours as
+    they fill (``pkidl.neck``): nothing wide where no copper joins the ends, and None
+    where the ends are one piece of copper or it was not measured. The barrel of a
+    via is not counted in it. *across* is each piece of copper its cut goes across,
+    the widest first, with where it is and what it is of, and *filled* what the pours
+    among it were measured on: KiCad's fill, pkidl's model of it, or nothing where the
+    net has no pour or the board no fill of it. Where the neck is narrower than
+    *needs*, that is said. *neck_failed* is why the neck could not be measured, where
+    measuring it raised: the neck is then None, and every other figure is what it is
+    without a neck."""
 
     stretch: Stretch
     ohms: float | None = None
@@ -112,25 +135,54 @@ class Reading:
     failed: str = ""
     current: Current | None = None
     needs: Length | None = None
+    neck: Length | None = None
+    across: tuple[Piece, ...] = ()
+    filled: str = ""
+    neck_failed: str = ""
 
     def __str__(self) -> str:
         net = self.stretch.net
         if self.failed:
             return f"{self.stretch}: could not be measured: {self.failed}"
+        # A pour whose fill was looked at has a neck; its resistance has no figure.
+        unmeasured = "whose resistance is not measured" if self.filled else "which is not measured"
         if self.ohms is None or self.volts is None or self.length is None:
-            pour = f"; {net} has a pour, which is not measured" if self.poured else ""
-            return f"{self.stretch}: not joined by track{pour}"
+            pour = f"; {net} has a pour, {unmeasured}" if self.poured else ""
+            if self.neck is not None and not self.neck.nm and self.filled:
+                pour = f"; {net} has a pour, which does not join them either, on {self.filled}"
+            return f"{self.stretch}: not joined by track{pour}{self._necked()}"
         figures = f"{_figure(self.ohms, 'Ω')}, {_figure(self.volts, 'V')}"
         if self.narrowest is None:
-            return f"{self.stretch}: joined at one place, with no track between: {figures}"
+            return (f"{self.stretch}: joined at one place, with no track between: {figures}"
+                    f"{self._necked()}")  # fmt: skip
         most, pour = "", ""
         if self.poured:
-            most, pour = "at most ", f": {net} has a pour as well, which is not measured"
+            most, pour = "at most ", f": {net} has a pour as well, {unmeasured}"
         short = ""
         if self.needs is not None and self.narrowest < self.needs:
             short = f" where {self.current} needs {self.needs}"
+        # One chain of tracks has its narrowest for a neck, which is said already.
+        said = self.neck == self.narrowest and len(self.across) == 1 and not self.filled
         return (f"{self.stretch}: {round(self.length.mm, 1):g} mm of track, {self.narrowest} "
-                f"at its narrowest{short}, {most}{figures}{pour}")  # fmt: skip
+                f"at its narrowest{short}, {most}{figures}{pour}"
+                f"{'' if said else self._necked()}")  # fmt: skip
+
+    def _necked(self) -> str:
+        """What is said of its neck, after the rest: nothing where it has none."""
+        if self.neck_failed:
+            return f"; its neck could not be measured: {self.neck_failed}"
+        if not self.neck or not self.across:
+            return ""
+        short = ""
+        if self.needs is not None and self.neck < self.needs:
+            short = f" where {self.current} needs {self.needs}"
+        widest = self.across[0]
+        x, y = (round(v.mm, 3) for v in widest.at)
+        where = f"{widest.of} at ({x:g}, {y:g}) on {widest.layer}"
+        pieces = f" in {len(self.across)} pieces, the widest {widest.width}"
+        on = f", on {self.filled}" if self.filled else ""
+        return (f"; a neck of {self.neck}{short}{pieces if len(self.across) > 1 else ','} "
+                f"of {where}{on}")  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -491,15 +543,20 @@ def _between(
 
 
 def measured(
-    items: list[Node], paths: Sequence[Path], circuit: Circuit, copper: Length, rise: Rise
-) -> tuple[Measured, ...]:
+    items: list[Node], paths: Sequence[Path], circuit: Circuit, copper: Length, rise: Rise,
+    fill: tuple | None = None,
+) -> tuple[Measured, ...]:  # fmt: skip
     """Each of *paths* as a routed board's *items* have it (see the module), their
     stretches found in *circuit* and the board's copper *copper* thick. Each reading
-    has how wide a track its path's current needs to warm by no more than *rise*. It
-    does not raise for what the board is: a stretch whose measuring raises has a
-    reading that says what was raised."""
+    has how wide a track its path's current needs to warm by no more than *rise*, and
+    the neck of its stretch through all the copper of its net (``pkidl.neck``): a
+    zone the board has KiCad's fill of is measured on that, and one it has none of on
+    pkidl's model of its fill where *fill* is given, which is what
+    ``pkidl.fill.fills`` takes after the items. It does not raise for what the board
+    is: a stretch whose measuring raises has a reading that says what was raised."""
     poured = {_net(zone) for zone in _pours(items)}
     nets: dict[str, _Tracks] = {}
+    necks = Necks(items, fill)
 
     def read(stretch: Stretch, amps: float) -> Reading:
         net = stretch.net.name
@@ -508,14 +565,23 @@ def measured(
         one, two = ([i for pin in end for i in nets[net].pads.get(str(pin), ())]
                     for end in stretch.ends)  # fmt: skip
         between = _between(nets[net], one, two, copper.mm)
+        # The neck is measured by itself: where measuring it raises, whatever it is,
+        # the figures for the tracks are what they are without it.
+        cut: dict[str, Any] = {}
+        try:
+            neck = necks.between(net, *([str(pin) for pin in end] for end in stretch.ends))
+            if neck is not None:
+                cut = {"neck": neck.width, "across": neck.across, "filled": neck.filled}
+        except Exception as e:
+            cut = {"neck_failed": f"{type(e).__name__}: {e}"}
         if between is None:
-            return Reading(stretch, poured=net in poured)
+            return Reading(stretch, poured=net in poured, **cut)
         ohms, long, narrow = between
         if not all(math.isfinite(v) for v in between):
             raise ArithmeticError(f"its resistance comes out as {ohms:g}")
         return Reading(stretch, ohms, Length(round(long * 1_000_000)),
                        Length(round(narrow * 1_000_000)) if long else None,
-                       ohms * amps, net in poured)  # fmt: skip
+                       ohms * amps, net in poured, **cut)  # fmt: skip
 
     found = []
     for path in paths:

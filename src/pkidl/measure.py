@@ -27,6 +27,19 @@ class Regions:
     count: int
 
 
+def filled(zone: Node) -> list[tuple[str, Polygon]]:
+    """KiCad's fill of *zone* as the board has it: each piece with its layer, as the
+    one outline it is written as, which reaches each of its holes by a slit. Nothing
+    for a zone the board has no fill of."""
+    found = []
+    for f in find_all(zone, "filled_polygon"):
+        layer, pts = find(f, "layer"), find(f, "pts")
+        assert layer is not None and pts is not None
+        ring = [(float(p[1]), float(p[2])) for p in find_all(pts, "xy")]
+        found.append((str(layer[1]), Polygon(ring)))
+    return found
+
+
 def regions(board: Node, nets: set[str] | None = None) -> dict[str, Regions]:
     """Each net's pour regions on *board* (filled), or only *nets*'."""
     pieces: dict[str, list[tuple[str, Polygon]]] = {}
@@ -37,11 +50,7 @@ def regions(board: Node, nets: set[str] | None = None) -> dict[str, Regions]:
         net = str(n[-1])
         if nets is not None and net not in nets:
             continue
-        for f in find_all(z, "filled_polygon"):
-            layer, pts = find(f, "layer"), find(f, "pts")
-            assert layer is not None and pts is not None
-            ring = [(float(p[1]), float(p[2])) for p in find_all(pts, "xy")]
-            pieces.setdefault(net, []).append((str(layer[1]), Polygon(ring)))
+        pieces.setdefault(net, []).extend(filled(z))
     joints: dict[str, list[tuple[float, float]]] = {}
     for v in find_all(board, "via"):
         n, at = find(v, "net"), find(v, "at")
