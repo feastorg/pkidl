@@ -103,8 +103,8 @@ prior-art survey (`docs/survey/`):
 
 ## How success is measured
 
-Never by one board, and never by byte-identity with an original. By a **corpus**: public,
-permissively licensed boards, in tiers.
+Never by one board, and never by byte-identity with an original. By a **corpus**: public
+boards, in tiers.
 
 | Tier | Boards | What they force pkidl to have |
 |---|---|---|
@@ -164,5 +164,6 @@ A change to pkidl is judged by the whole scorecard, not by the board it was made
   made both ways on two or three corpus boards.
 
 Settled since: a corpus board's circuit enters as `circuit.json`, which `pkidl.importer`
-reads from the board; and the corpus commits only boards whose source repository carries
-a permissive licence, each with its `LICENSE` (`corpus/README.md`).
+reads from the board. Since 2026-11-21: which boards are in the corpus is the owner's
+to say, and none is left out for its licence; each keeps its `LICENSE`, and where it
+comes from and what it is evidence of is in `corpus/PROVENANCE.md`.
