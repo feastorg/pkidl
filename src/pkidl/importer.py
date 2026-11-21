@@ -48,6 +48,16 @@ def _drill(fp: Node, pad: Node) -> list[float]:
     return [*xy, float(drill[1])]
 
 
+def _ringed(pad: Node) -> bool:
+    """Whether a drilled pad is a hole with at most a ring of copper round it."""
+    drill = find(pad, "drill")
+    assert drill is not None
+    if pad[2] == "np_thru_hole":
+        return True
+    shape = "oval" if drill[1] == "oval" else "circle"
+    return str(pad[3]) == shape and find(drill, "offset") is None
+
+
 def _is_edge(item: object) -> bool:
     """Whether a footprint's child is drawn on Edge.Cuts."""
     if not isinstance(item, list) or not str(item[0]).startswith("fp_"):
@@ -109,9 +119,14 @@ def circuit(board: Node) -> dict:
 
 def mechanical(board: Node) -> dict:
     """``{"outline": [...], "holes": [...], "fixed": {}}``: the Edge.Cuts items as drawn
-    (type and points), on the board or in a footprint, and each footprint whose pads
-    are all on no net and drilled (a mounting hole), at its position, rotation and
-    side, with each hole's drill."""
+    (type and points), on the board or in a footprint, and each footprint that is
+    mounting holes, at its position, rotation and side, with each hole's drill.
+
+    A footprint is mounting holes when its pads are all on no net, all drilled, and
+    each a hole with at most a ring of copper round it: unplated, or a round pad on a
+    round drill or an oval one on an oval drill, centred on it. A hole with a ring of
+    vias round it is one, and so is a heatsink's pair of pins; a prototyping board's
+    square pads are not."""
     outline = []
     for kind in EDGE_ITEMS:
         for g in find_all(board, kind):
@@ -134,6 +149,8 @@ def mechanical(board: Node) -> dict:
         if not pads or len(drilled) != len(pads):
             continue
         if any((n := find(p, "net")) is not None and str(n[-1]) for p in pads):
+            continue
+        if not all(_ringed(p) for p in pads):
             continue
         at, layer = find(fp, "at"), find(fp, "layer")
         assert at is not None and layer is not None

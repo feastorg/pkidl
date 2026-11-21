@@ -73,6 +73,39 @@ def test_unnumbered_drills_are_each_where_they_are():
     assert (hole["rot"], hole["back"]) == (90.0, True)
 
 
+def _holes(*footprints: str) -> list[str]:
+    board = parse("(kicad_pcb " + " ".join(footprints) + ")")
+    return [h["footprint"] for h in mechanical(board)["holes"]]
+
+
+def _on_no_net(name: str, *pads: str) -> str:
+    head = f'(footprint "{name}" (at 5 5) (layer "F.Cu") (property "Reference" "REF**")'
+    return head + " ".join(pads) + ")"
+
+
+def test_a_hole_is_a_hole_with_at_most_a_ring_and_vias_round_it():
+    plated = '(pad "1" thru_hole circle (at 0 0) (size 6 6) (drill 3.3) (layers "*.Cu"))'
+    vias = [f'(pad "1" thru_hole circle (at {x} {y}) (size 1.2 1.2) (drill 0.6) (layers "*.Cu"))'
+            for x, y in ((2.4, 0), (0, 2.4), (-2.4, 0), (0, -2.4))]  # fmt: skip
+    slot = '(pad "" thru_hole oval (at 0 0) (size 4 3) (drill oval 2.5 0.7) (layers "*.Cu"))'
+    # The bench supply's heatsink: two pins, numbered, which its board file holds fixed.
+    sink = ['(pad "1" thru_hole circle (at 0 0) (size 4 4) (drill 2.667))',
+            '(pad "2" thru_hole circle (at 25.4 0) (size 4 4) (drill 2.667))']  # fmt: skip
+    assert _holes(_on_no_net("H:Plated", plated), _on_no_net("H:Shield", plated, *vias),
+                  _on_no_net("H:Slot", slot), _on_no_net("H:Sink", *sink)) == [
+        "H:Plated", "H:Shield", "H:Slot", "H:Sink"]  # fmt: skip
+
+
+def test_a_prototyping_boards_pads_are_not_holes():
+    # AgonLight2-PROTO's 554 square pads; SMT-PROTOBOARD's headers, square and oval.
+    square = '(pad "1" thru_hole rect (at 0 0) (size 1.778 1.778) (drill 1) (layers "*.Cu"))'
+    pins = ['(pad "1" thru_hole circle (at 0 0) (size 1.7 1.7) (drill 1))',
+            '(pad "2" thru_hole oval (at 2.54 0) (size 1.7 1.9) (drill 1))']  # fmt: skip
+    off = '(pad "" thru_hole circle (at 0 0) (size 2 2) (drill 1 (offset 0.3 0)) (layers "*.Cu"))'
+    assert _holes(_on_no_net("P:Pad", square), _on_no_net("P:Header", *pins),
+                  _on_no_net("P:Off", off)) == []  # fmt: skip
+
+
 def test_an_oval_drill_is_its_two_sizes_and_the_pads_angle_on_the_board():
     slot = """(kicad_pcb (footprint "Mech:Slot" (layer "F.Cu") (at 20 15 90)
       (property "Reference" "H1")

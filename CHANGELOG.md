@@ -542,6 +542,13 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.importer.mechanical()` takes for mounting holes only a footprint whose pads,
+  all drilled and on no net, are each a hole with at most a ring of copper round it:
+  unplated, or a round pad on a round drill or an oval one on an oval drill, centred
+  on it. Any footprint of drilled pads on no net was a hole, so AgonLight2-PROTO's 554
+  square prototyping pads read as 554 mounting holes, and SMT-PROTOBOARD's 32 grids
+  and headers as 32. A hole with a ring of vias round it is still one, and so is a
+  heatsink's pair of pins. (#108)
 - `pkidl.importer.mechanical()` reads an outline drawn in a footprint, as KiCad takes
   Edge.Cuts items in a footprint for part of the board's outline: each where it is on
   the board, by the footprint's position, turn and side, and a rectangle turned off
