@@ -51,9 +51,12 @@ which KiCad 10 doesn't ship, so each footprint is read back out of the reference
 every placed part carries a copy. It is the part's package, as a library would hold it:
 pads, courtyard and drawings at the origin, unrotated, on the front, with no nets, no
 link to a schematic and no label positions (`pkidl.footprint.library_form`). Where a
-reference's parts carry different versions of one footprint name, `footprints/` holds
-the version most of them carry, and `manifest.json` lists the parts that carry another
-(`other_footprint_versions`).
+reference's parts carry versions of one footprint name that differ in their pads, the
+version most of them carry keeps the name and each other is written under the name with
+`_2`, `_3` and on, its parts pointing at it; where versions differ in no more than their
+drawings, `footprints/` holds the version most of them carry, and `manifest.json` lists
+the parts that carry another (`other_footprint_versions`). Parts that share a reference
+are told apart the same way, by where they are. `extract` prints each name it gives.
 
 ## The scorecard
 

@@ -98,23 +98,150 @@ def circuit(board: Node) -> dict:
     with no pad on a net (a logo, a mounting hole) is not part of the circuit, and nor
     is one KiCad never annotated from a schematic (reference empty or with ``*``, as
     ``REF**``): those are board-only, such as vias placed as footprints."""
-    parts = []
-    nets: set[str] = set()
-    for fp in find_all(board, "footprint"):
-        ref = _property(fp, "Reference")
-        if not ref or "*" in ref:
-            continue
-        pads: dict[str, str] = {}
-        for pad in find_all(fp, "pad"):
-            net = find(pad, "net")
-            if net is not None and str(net[-1]):
-                pads[str(pad[1])] = str(net[-1])
-                nets.add(str(net[-1]))
-        if not pads:
-            continue
-        parts.append({"ref": ref, "value": _property(fp, "Value"),
-                      "footprint": str(fp[1]), "pads": dict(sorted(pads.items()))})  # fmt: skip
+    read = _Read(board)
+    parts = [{"ref": read.ref[id(fp)], "value": _property(fp, "Value"),
+              "footprint": read.name[id(fp)], "pads": pads}
+             for fp, pads in read.parts]  # fmt: skip
+    nets = {net for _, pads in read.parts for net in pads.values()}
     return {"parts": sorted(parts, key=lambda p: p["ref"]), "nets": sorted(nets)}
+
+
+def renamed(board: Node) -> list[str]:
+    """What ``circuit``, ``mechanical`` and ``footprints`` name otherwise than the board
+    does, each said in a line. Where parts share a reference, the first by position on
+    the board (x, then y) keeps it and the others are given it with ``_2``, ``_3`` and
+    on, past any reference the board has. Where versions of one footprint name differ
+    in their pads, the version most footprints carry keeps the name and each other is
+    written under the name with ``_2``, ``_3`` and on, its parts and holes with it."""
+    return _Read(board).said
+
+
+def _pads(fp: Node) -> dict[str, str]:
+    """A placed footprint's pads on a net: ``{number: net}``."""
+    pads: dict[str, str] = {}
+    for pad in find_all(fp, "pad"):
+        net = find(pad, "net")
+        if net is not None and str(net[-1]):
+            pads[str(pad[1])] = str(net[-1])
+    return dict(sorted(pads.items()))
+
+
+def _is_hole(fp: Node) -> bool:
+    pads = find_all(fp, "pad")
+    if not pads or any(find(p, "drill") is None for p in pads):
+        return False
+    if any((n := find(p, "net")) is not None and str(n[-1]) for p in pads):
+        return False
+    return all(_ringed(p) for p in pads)
+
+
+def _pad_form(lib: Node) -> list[str]:
+    """A library footprint's pads: number, type, shape, place, size and drill, each to
+    the micrometre."""
+
+    def kept(n: Node | None) -> list[str]:
+        if n is None:
+            return []
+        out = []
+        for t in n[1:]:
+            try:
+                out.append(f"{float(t):.3f}")
+            except (TypeError, ValueError):
+                out.append(dumps(t) if isinstance(t, list) else str(t))
+        return out
+
+    return sorted(" ".join([str(p[1]), str(p[2]), str(p[3]), *kept(find(p, "at")),
+                            *kept(find(p, "size")), *kept(find(p, "drill"))])
+                  for p in find_all(lib, "pad"))  # fmt: skip
+
+
+def _where(fp: Node) -> tuple[float, float]:
+    at = find(fp, "at")
+    assert at is not None
+    return float(at[1]), float(at[2])
+
+
+def _free(name: str, taken: set[str]) -> str:
+    """*name* with the first of ``_2``, ``_3``, ... that is not *taken*, in any case."""
+    k = 2
+    while f"{name}_{k}".lower() in taken:
+        k += 1
+    taken.add(f"{name}_{k}".lower())
+    return f"{name}_{k}"
+
+
+class _Read:
+    """What the importer reads of a board's footprints: the parts of its circuit with
+    their pads on nets, its holes, the reference and footprint name each goes by, the
+    library footprint each name stands for, and what was named otherwise than the board
+    names it."""
+
+    def __init__(self, board: Node) -> None:
+        fps = find_all(board, "footprint")
+        self.parts: list[tuple[Node, dict[str, str]]] = []
+        for fp in fps:
+            ref = _property(fp, "Reference")
+            if ref and "*" not in ref and (pads := _pads(fp)):
+                self.parts.append((fp, pads))
+        self.holes = [fp for fp in fps if _is_hole(fp)]
+        self.said: list[str] = []
+        self.ref: dict[int, str] = {}
+        self._refs(fps)
+        self.name: dict[int, str] = {}
+        self.libs: dict[str, Node] = {}
+        self.differ: dict[str, list[str]] = {}
+        self._names(fps)
+
+    def _refs(self, fps: list[Node]) -> None:
+        taken = {_property(fp, "Reference").lower() for fp in fps}
+        by_ref: dict[str, list[Node]] = {}
+        for fp, _ in self.parts:
+            by_ref.setdefault(_property(fp, "Reference"), []).append(fp)
+        for ref, same in sorted(by_ref.items()):
+            same.sort(key=_where)
+            self.ref[id(same[0])] = ref
+            for fp in same[1:]:
+                self.ref[id(fp)] = new = _free(ref, taken)
+                self.said.append(f"{ref} is on {len(same)} parts: the one at {_where(fp)} "
+                                 f"is {new}")  # fmt: skip
+
+    def _names(self, fps: list[Node]) -> None:
+        used = {id(fp) for fp, _ in self.parts} | {id(fp) for fp in self.holes}
+        wanted = {str(fp[1]) for fp in fps if id(fp) in used}
+        taken = {str(fp[1]).lower() for fp in fps}
+        # By name, not reference: board-only footprints share references such as REF**.
+        by_name: dict[str, list[tuple[tuple, str, Node, Node]]] = {}
+        for fp in fps:
+            if str(fp[1]) in wanted:
+                ref = self.ref.get(id(fp), _property(fp, "Reference"))
+                by_name.setdefault(str(fp[1]), []).append((natural(ref), ref, fp, _package(fp)))
+        for name, found in sorted(by_name.items()):
+            found.sort(key=lambda f: f[0])
+            versions: dict[str, list[tuple[tuple, str, Node, Node]]] = {}
+            for f in found:
+                versions.setdefault("\n".join(_pad_form(f[3])), []).append(f)
+            # The most footprints first; ties: the one with the lowest reference.
+            ranked = sorted(versions.values(), key=lambda v: -len(v))
+            ranked = [v for v in ranked if any(id(f[2]) in used for f in v)]
+            for i, version in enumerate(ranked):
+                called = name if i == 0 else _free(name, taken)
+                if i:
+                    refs = ", ".join(r for _, r, fp, _ in version if id(fp) in used)
+                    self.said.append(f"{name}: the version on {refs} has other pads, "
+                                     f"and is written as {called}")  # fmt: skip
+                for _, _, fp, _ in version:
+                    self.name[id(fp)] = called
+                self._lib(called, version)
+
+    def _lib(self, name: str, found: list[tuple[tuple, str, Node, Node]]) -> None:
+        """The version most of *found* carry stands for *name*; the others are listed."""
+        shapes = [_shape(lib) for _, _, _, lib in found]
+        most = Counter(shapes).most_common(1)[0][0]  # ties: the first seen, the lowest ref
+        lib = found[shapes.index(most)][3]
+        self.libs[name] = [lib[0], name.rpartition(":")[2], *lib[2:]]
+        others = [ref for (_, ref, _, _), shape in zip(found, shapes, strict=True) if shape != most]
+        if others:
+            self.differ[name] = others
 
 
 def mechanical(board: Node) -> dict:
@@ -143,22 +270,15 @@ def mechanical(board: Node) -> dict:
     for fp in find_all(board, "footprint"):
         outline += _footprint_edge(fp)
     holes = []
-    for fp in find_all(board, "footprint"):
-        pads = find_all(fp, "pad")
-        drilled = [p for p in pads if find(p, "drill") is not None]
-        if not pads or len(drilled) != len(pads):
-            continue
-        if any((n := find(p, "net")) is not None and str(n[-1]) for p in pads):
-            continue
-        if not all(_ringed(p) for p in pads):
-            continue
+    read = _Read(board)
+    for fp in read.holes:
         at, layer = find(fp, "at"), find(fp, "layer")
         assert at is not None and layer is not None
-        holes.append({"ref": _property(fp, "Reference"), "footprint": str(fp[1]),
+        holes.append({"ref": _property(fp, "Reference"), "footprint": read.name[id(fp)],
                       "at": [float(at[1]), float(at[2])],
                       "rot": float(at[3]) if len(at) > 3 else 0.0,
                       "back": str(layer[1]).startswith("B."),
-                      "drills": [_drill(fp, p) for p in drilled]})  # fmt: skip
+                      "drills": [_drill(fp, p) for p in find_all(fp, "pad")]})  # fmt: skip
     outline.sort(key=lambda i: (i["type"], str(i)))
     return {"outline": outline, "holes": sorted(holes, key=lambda h: h["ref"]), "fixed": {}}
 
@@ -186,26 +306,10 @@ def footprints(board: Node) -> tuple[dict[str, Node], dict[str, list[str]]]:
 
     Each placed footprint is put back in library form (``pkidl.footprint.library_form``),
     without what it draws on Edge.Cuts, which is in ``mechanical``'s outline.
-    Where a board's parts carry different versions under one name, the name stands for
-    the version most of them carry (the lowest reference deciding a tie), and the parts
-    carrying another are listed.
+    Versions of one name that differ in their pads are written under names of their
+    own (``renamed``). Where a board's parts carry versions that differ in no more than
+    their graphics, the name stands for the version most of them carry (the lowest
+    reference deciding a tie), and the parts carrying another are listed.
     """
-    # By name, not reference: board-only footprints share references such as REF**.
-    wanted = {p["footprint"] for p in circuit(board)["parts"]}
-    wanted |= {h["footprint"] for h in mechanical(board)["holes"]}
-    by_name: dict[str, list[tuple[tuple, str, Node]]] = {}
-    for fp in find_all(board, "footprint"):
-        if str(fp[1]) in wanted:
-            ref = _property(fp, "Reference")
-            by_name.setdefault(str(fp[1]), []).append((natural(ref), ref, _package(fp)))
-    libs: dict[str, Node] = {}
-    differ: dict[str, list[str]] = {}
-    for name, found in sorted(by_name.items()):
-        found.sort(key=lambda f: f[0])
-        shapes = [_shape(lib) for _, _, lib in found]
-        most = Counter(shapes).most_common(1)[0][0]  # ties: the first seen, the lowest ref
-        libs[name] = found[shapes.index(most)][2]
-        others = [ref for (_, ref, _), shape in zip(found, shapes, strict=True) if shape != most]
-        if others:
-            differ[name] = others
-    return libs, differ
+    read = _Read(board)
+    return dict(sorted(read.libs.items())), read.differ

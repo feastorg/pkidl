@@ -542,6 +542,20 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.importer` names apart what a board names alike, and says so in
+  `pkidl.importer.renamed(board)`, which `scripts/corpus.py extract` prints. Parts that
+  share a reference (the TERES boards' mounting holes with a pad on ground, all
+  `MountingHole`; ESP32-ADF's two `MH3`) made `Board.from_inputs` raise `MountingHole
+  is in the circuit twice`: the first by position on the board, x then y, keeps the
+  reference and the others are given it with `_2`, `_3` and on, past any reference the
+  board has. Versions of one footprint name that differ in their pads (number, type,
+  shape, place, size or drill) were written as the one most parts carry, so a part
+  with another had pads that were not its own, and LCD-OLinuXino-15.6FHD raised `its
+  footprint ... has no pad 0`: each other version is now written under the name with
+  `_2`, `_3` and on, and its parts and holes point at it. Versions that differ only in
+  their drawings keep the rule of the most parts. Of the corpus, the SWR meter's R8,
+  drilled 1.001 mm where the other resistors of its footprint are drilled 0.8 mm, is
+  now `Resistor_Horizontal_RM10mm_2`. (#108)
 - `pkidl.importer.mechanical()` takes for mounting holes only a footprint whose pads,
   all drilled and on no net, are each a hole with at most a ring of copper round it:
   unplated, or a round pad on a round drill or an oval one on an oval drill, centred

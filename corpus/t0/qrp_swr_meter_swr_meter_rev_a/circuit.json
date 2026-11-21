@@ -171,7 +171,7 @@
    "value": "100"
   },
   {
-   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm",
+   "footprint": "Resistors_ThroughHole:Resistor_Horizontal_RM10mm_2",
    "pads": {
     "1": "Net-(C3-Pad2)",
     "2": "Net-(C4-Pad2)"
