@@ -7,19 +7,29 @@ usage:
                                        DIR/<board_id>/ as built.kicad_pcb
   python scripts/corpus.py score DIR   score the boards whose filled copies (and DRC
                                        reports) are in DIR; see the justfile's corpus recipe
+  python scripts/corpus.py fetch ...   download vendor boards at their pinned commits into
+                                       build/vendors/; `fetch --help` says how to choose them
 
 Each board lives in corpus/<tier>/<board_id>/ with reference.kicad_pcb (the original,
 upgraded to KiCad 10: compared against, never copied from) and its LICENSE. One that
 pkidl builds has a board.py there too: it makes a ``board`` from the inputs beside it.
+
+The boards Olimex, SparkFun and Adafruit publish are not kept here. corpus/vendors/ has
+one manifest per vendor that pins each board file to a commit and a git blob hash, and
+``fetch`` downloads the ones asked for.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
+import http.client
 import json
 import math
 import runpy
 import sys
+import urllib.parse
+import urllib.request
 from collections import Counter
 from pathlib import Path
 
@@ -263,7 +273,133 @@ def score(build: Path) -> None:
           f"Full rows in {build / 'scorecard.json'}.")  # fmt: skip
 
 
+VENDORS = CORPUS / "vendors"
+CACHE = ROOT / "build" / "vendors"  # build/ is not tracked
+RAW = "https://raw.githubusercontent.com"  # serves a file at a commit, with no API limit
+
+
+def vendor_boards() -> list[dict]:
+    """Every board file the vendor manifests pin, each with its ``vendor`` and the
+    ``commit`` its repository is pinned at."""
+    boards = []
+    for path in sorted(VENDORS.glob("*.json")):
+        manifest = json.loads(path.read_text())
+        for board in manifest["boards"]:
+            commit = manifest["repositories"][board["repository"]]["commit"]
+            boards.append({**board, "vendor": manifest["vendor"], "commit": commit})
+    return boards
+
+
+def chosen(
+    boards: list[dict],
+    *,
+    vendors: list[str] | None = None,
+    product: str | None = None,
+    current: bool = False,
+    kicad: bool = False,
+    every: bool = False,
+) -> list[dict]:
+    """The boards of *boards* that were asked for. Only product boards are, unless
+    *every*: a panel, a backup, a drawing, a template, a duplicate and the like are left
+    out. *product* is a product's name or a repository's, in any case."""
+    name = product.lower() if product is not None else None
+    return [
+        b for b in boards
+        if (every or b["kind"] == "board")
+        and (not vendors or b["vendor"] in vendors)
+        and (name is None or name in (b["product"].lower(), b["repository"].split("/")[1].lower()))
+        and (not current or b["current"])
+        and (not kicad or b["format"] == "kicad_pcb")
+    ]  # fmt: skip
+
+
+def blob_sha(data: bytes) -> str:
+    """The hash git gives a file of these bytes: what a manifest's ``blob`` is."""
+    return hashlib.sha1(b"blob %d\0" % len(data) + data, usedforsecurity=False).hexdigest()
+
+
+def raw_url(board: dict, base: str = RAW) -> str:
+    """Where *board* is served at its pinned commit. Paths have spaces, quotes, brackets
+    and letters outside ASCII, so every part of one is quoted."""
+    return "/".join([base, board["repository"], board["commit"], urllib.parse.quote(board["path"])])
+
+
+def cached(board: dict, cache: Path = CACHE) -> Path:
+    """Where *board* is kept once fetched: ``<cache>/<owner>/<repository>/<its path>``."""
+    return cache / board["repository"] / board["path"]
+
+
+def fetch(boards: list[dict], cache: Path = CACHE, base: str = RAW) -> int:
+    """Download each of *boards* that is not already in *cache* as the bytes its manifest
+    pins. One whose bytes are not those is not kept, and is said; so is one that cannot
+    be downloaded, and the rest are still fetched."""
+    fetched = there = 0
+    failed = []
+    for board in boards:
+        path = cached(board, cache)
+        what = f"{board['repository']} {board['path']}"
+        if path.is_file() and blob_sha(path.read_bytes()) == board["blob"]:
+            there += 1
+            continue
+        try:
+            with urllib.request.urlopen(raw_url(board, base), timeout=120) as response:
+                data = response.read()
+        except (OSError, http.client.HTTPException) as e:  # a refusal, or a download cut short
+            failed.append(f"{what}: not downloaded: {e!r}")
+            continue
+        if blob_sha(data) != board["blob"]:
+            failed.append(f"{what}: not kept: {len(data)} bytes with the git hash "
+                          f"{blob_sha(data)}, where the manifest pins {board['size']} bytes "
+                          f"with {board['blob']}")  # fmt: skip
+            continue
+        path.parent.mkdir(parents=True, exist_ok=True)
+        part = path.with_name(path.name + ".part")
+        part.write_bytes(data)
+        part.replace(path)
+        fetched += 1
+        print(f"fetched {what} ({len(data)} bytes)")
+    for line in failed:
+        print(line, file=sys.stderr)
+    print(f"{fetched} fetched, {there} already there, {len(failed)} failed; in {cache}")
+    return 1 if failed else 0
+
+
+def fetch_command(args: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="corpus.py fetch",
+        description="Download vendor boards at their pinned commits, check each against "
+        "its git blob hash, and skip the ones already there. Without --all, only product "
+        "boards are fetched: no panels, backups, drawings, templates or duplicates.",
+    )
+    vendors = sorted(p.stem for p in VENDORS.glob("*.json"))
+    parser.add_argument("--vendor", action="append", choices=vendors,
+                        help="only this vendor's boards; may be given more than once")  # fmt: skip
+    parser.add_argument("--product", help="only this product's boards, or this repository's")
+    parser.add_argument("--current", action="store_true", help="only current revisions")
+    parser.add_argument("--kicad", action="store_true", help="only .kicad_pcb files")
+    parser.add_argument("--all", action="store_true", dest="every",
+                        help="also the files that are not product boards")  # fmt: skip
+    parser.add_argument("--list", action="store_true", dest="only_list",
+                        help="say what would be fetched, and fetch nothing")  # fmt: skip
+    parser.add_argument("--cache", type=Path, default=CACHE,
+                        help="where the boards are kept (default: build/vendors)")  # fmt: skip
+    said = parser.parse_args(args)
+    boards = chosen(vendor_boards(), vendors=said.vendor, product=said.product,
+                    current=said.current, kicad=said.kicad, every=said.every)  # fmt: skip
+    if not boards:
+        print("no board in the manifests is what was asked for", file=sys.stderr)
+        return 1
+    if said.only_list:
+        for b in boards:
+            print(f"{b['size']:9} {b['kind']:10} {b['repository']} {b['path']}")
+        print(f"{len(boards)} files, {sum(b['size'] for b in boards) / 1e6:.1f} MB")
+        return 0
+    return fetch(boards, said.cache)
+
+
 def main(argv: list[str]) -> int:
+    if argv[1:2] == ["fetch"]:
+        return fetch_command(argv[2:])
     if argv[1:2] == ["extract"]:
         extract()
         return 0

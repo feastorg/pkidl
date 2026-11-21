@@ -229,3 +229,62 @@ Each `LICENSE` here is the same bytes as its source's licence file.
 - The copper weight and stackup of every board.
 - For the SWR meter, whether copper other than its text changed after the boards made.
 - No photograph was looked at: a file named as one is taken as one.
+
+## The vendor boards
+
+`vendors/olimex.json`, `vendors/sparkfun.json` and `vendors/adafruit.json` pin the board
+files in the three vendors' GitHub organisations (`OLIMEX`, `sparkfun`, `adafruit`).
+There is no chain here: each file is the vendor's own, at a commit of the vendor's own
+repository. None of them is kept in this repository.
+
+### How they were read
+
+On 2026-11-21, through GitHub's API: the tree of each repository's default branch, and
+the commit at its head. A row's `blob` and `size` are what that tree lists, and its
+repository's `commit` is that head. No board was downloaded to make the manifests.
+
+- **Olimex**: all 158 repositories.
+- **SparkFun and Adafruit**: every repository that is not a fork and whose name does not
+  look like a software library's, and every repository a code search for board files
+  returned: 1,097 and 1,002. Left unread: 336 and 900 with software-like names, 63 and
+  151 forks. A board in one of those is not in the manifest unless the search found it,
+  and the search is not complete.
+
+Every `.kicad_pcb` and `.brd` found is a row, whatever it is: `README.md` lists the
+kinds.
+
+### What is the vendor's, and what is not
+
+- **The vendor's**: the file, its path, its commit, and the README sentences in
+  `ratings`.
+- **Read from the path by rule**: `product`, `revision`, `current` and `kind`. No vendor
+  states them in a form that was read. A product's current revision is the highest
+  revision named in its paths, among the files not in a folder of older or previous
+  revisions, and within a folder named the latest where there is one. Olimex name
+  revisions in nearly every path; SparkFun and Adafruit mostly keep one file per board
+  and name none.
+- **`ratings`** are sentences of the repository's root README that have a number with a
+  V, A or W: copied, not checked and not interpreted, and of the repository, not of one
+  board in it. `readme_read` says whether the README was read at all: it was for 113 of
+  Olimex's 114 repositories with boards, and for 130 of SparkFun's 859 and 72 of
+  Adafruit's 682, so an empty `ratings` there mostly means nobody looked. As for the
+  fifteen, a figure the vendor does not state is not the board's.
+- **`licence_file`** is the name of the licence file at the repository's root, and
+  `licence_spdx` what GitHub takes it to be; `NOASSERTION` is a file GitHub could not
+  name. No licence text was read. 25 of Olimex's repositories, 296 of SparkFun's and 18
+  of Adafruit's have no licence file at their root. A board is not left out for any of
+  this: a question of licence is the owner's.
+
+These are boards their vendors sell, which the fifteen mostly are not. That says the
+product was made; it does not say that the file at this commit is the layout that
+shipped, and nothing read here settles it.
+
+### Not known
+
+- Which revision a vendor now sells. `current` is the highest the paths name.
+- Whether a `.brd` marked `brd` is EAGLE XML, EAGLE binary or an old KiCad board: 66 of
+  Olimex's and all of SparkFun's and Adafruit's.
+- Anything on a branch other than the default, or in a tag or a release.
+- Ratings in a README below the root, which Olimex keep per product.
+- For SparkFun's `Production` folders, which files are panels of many boards and which
+  are single boards saved for production: all are `panel`.

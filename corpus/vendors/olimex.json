@@ -1,0 +1,1396 @@
+{
+ "vendor": "olimex",
+ "organisation": "https://github.com/OLIMEX",
+ "read": "2026-11-21",
+ "repositories": {
+  "OLIMEX/A20-CAN": {
+   "commit": "814c949ccf66dcef14b31112e0f52c8be825a527",
+   "commit_date": "2019-10-16T12:03:59Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/A20-CAN-ISO": {
+   "commit": "ca00943e6385a4c8b9c4c8e3a69489aa078ce446",
+   "commit_date": "2020-03-11T08:19:27Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/AgonLight2": {
+   "commit": "b7f2a21c282813efd8cdf26573eb5126876432a8",
+   "commit_date": "2025-04-14T05:17:07Z",
+   "licence_file": null,
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "The linear voltage regulator is replaced with DCDC which delivers up to 2A current;"
+   ]
+  },
+  "OLIMEX/AgonLight2-HvIO": {
+   "commit": "42d4c541f873b38df1ba1f53b2cf5026bc1f1484",
+   "commit_date": "2024-01-23T11:36:44Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "Four optoisolated inputs 120-240VAC",
+    "Power supply 3.3V and 5V LED indicators"
+   ]
+  },
+  "OLIMEX/AgonLight2-Proto": {
+   "commit": "031fbbf17cc460e2ba59c15dbed6f616ed48a838",
+   "commit_date": "2023-06-13T11:15:59Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "3mm RED LED for 5V power indication",
+    "3mm GREEN LED for 3.3V power indication"
+   ]
+  },
+  "OLIMEX/BB-ADS1220": {
+   "commit": "20fedb011be4a11f65b5f146d6bc3166edc40d56",
+   "commit_date": "2020-04-29T13:37:59Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/BB-ADS1262": {
+   "commit": "9f6355028bd39f561dc8089305e6606508a35c3a",
+   "commit_date": "2021-03-17T12:07:48Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/BB-CH340T": {
+   "commit": "5a938742d46b68978651677682e20d56c27dc8c4",
+   "commit_date": "2022-01-20T11:26:00Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/BB-LVL-SHIFT": {
+   "commit": "2db5b2f6532466fbcc8b10729c9cdbffba34e2a1",
+   "commit_date": "2026-10-19T05:41:22Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": [
+    "Breadboard friendly level shift module allow two boards with different voltages to talk with voltage levels from 1.65V to 5.5V"
+   ]
+  },
+  "OLIMEX/BB-PWR-3608": {
+   "commit": "fbd5d7a62807edf2343c445dd1cd43e81bbbb84e",
+   "commit_date": "2015-12-18T05:59:53Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "KiCAD DCDC OpenSource Hardware Power board for breadboarding Input 5V output 12/1A or 24V/0.5A"
+   ]
+  },
+  "OLIMEX/BB-PWR-8009": {
+   "commit": "7212aa316ec45b24c6625b199ef836c351ad1c37",
+   "commit_date": "2015-12-18T05:08:24Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "KiCAD DCDC OpenSource Hardware Power board for breadboarding Input 3-5.5V output 3.3V / 1.5A"
+   ]
+  },
+  "OLIMEX/BB-PWR-8113": {
+   "commit": "60a06fa5f1a5af99f0ab4949a8bc9a0536634ed6",
+   "commit_date": "2015-12-18T09:38:01Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "KiCAD DCDC OpenSource Hardware Power board for breadboarding Input 4.5-16V output 3.3V / 3A"
+   ]
+  },
+  "OLIMEX/BB-TB6612": {
+   "commit": "018a51afa028ac9c84e7d508d57182d041238c0e",
+   "commit_date": "2020-05-18T12:40:10Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "Dual DC motor driver board for motors up to 12V 1.2A"
+   ]
+  },
+  "OLIMEX/Bike-TSL-Kit": {
+   "commit": "ded0eb0c5d88d2f24523251f84b0597884b0db3c",
+   "commit_date": "2020-04-15T05:40:32Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/Binary-Watch": {
+   "commit": "b16471e38ab5b9f28d2864891e568240ab35cc23",
+   "commit_date": "2020-02-19T07:55:11Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/DCDC-50-5-12": {
+   "commit": "3c03dc40c82eb6aee148d6d877d2a573ea6b5e1b",
+   "commit_date": "2024-02-16T11:34:59Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "Suitrable also for 12 and 24V car battery systems.",
+    "Input voltage 8-50VDC",
+    "Output voltage 5V/1.5A or 12V/1.5A"
+   ]
+  },
+  "OLIMEX/DIY-LAPTOP": {
+   "commit": "36193de48e5ff86c6fa309eb75bd450a9f88c4c7",
+   "commit_date": "2026-01-16T06:08:20Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "Power** | 1x 9500mAh [battery](doc/datasheets/LiPo-Battery/JA426992P2P-Spec-Data-Sheet-3.7V-7000mAh--161201.pdf);",
+    "5V/3A input"
+   ]
+  },
+  "OLIMEX/DuinoMite": {
+   "commit": "e06ca806e31253cb89f21cc075ef793b72ed3d65",
+   "commit_date": "2019-07-02T06:21:49Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP-PROG": {
+   "commit": "8dfb3bb217bd9967871e181cad9a7f7fb1343ac5",
+   "commit_date": "2020-05-27T13:04:04Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-ADF": {
+   "commit": "0c8be17c9b54dd790953d77f1a5ded12204756dc",
+   "commit_date": "2021-10-04T07:21:31Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": [
+    "power supply Jack for +5V 1A"
+   ]
+  },
+  "OLIMEX/ESP32-C3-DevKit-Lipo": {
+   "commit": "5d93e79d46cf3b05782d9fe0f95a8a2e1ca6abbe",
+   "commit_date": "2026-08-26T06:45:40Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-C5-DevKit-Lipo": {
+   "commit": "9fd815855823020bce469280bbbdc2b070bc808a",
+   "commit_date": "2026-04-24T10:47:33Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-C5-EVB": {
+   "commit": "60432de9b1d850da9bc7362a1e400b46761e897d",
+   "commit_date": "2026-04-30T07:11:48Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-C6-DevKit-Lipo": {
+   "commit": "6196dba95c329c72719ee58773ead0115524a0ff",
+   "commit_date": "2026-11-05T06:37:59Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-C6-EVB": {
+   "commit": "eb74f686abc2fa80d1870c040ad0f40f07593b36",
+   "commit_date": "2026-10-23T10:14:20Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-DevKit-LiPo": {
+   "commit": "1ebbbb5ceaa84b1d67631d8d542d7f6128c19fc1",
+   "commit_date": "2025-06-17T05:38:42Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-EVB": {
+   "commit": "a3ec2f448109cb8f35ce7cb21a027bb7c837ab61",
+   "commit_date": "2026-01-19T14:01:53Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-GATEWAY": {
+   "commit": "d45c9bc8120534b130a4f8bb8fa6cd3dc78e4ea0",
+   "commit_date": "2026-01-19T14:02:10Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-H2-DevKit-Lipo": {
+   "commit": "ae20af9e8300acc85063bb902e91a34b20a95e2a",
+   "commit_date": "2026-03-10T08:30:13Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-P4-DevKit": {
+   "commit": "26705d36407a07324348927dfd30fbf4ffc1d94c",
+   "commit_date": "2026-09-09T12:57:35Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-P4-PC": {
+   "commit": "e0c1712a019c1602f460b56898e03e8ca1e86459",
+   "commit_date": "2026-10-09T13:42:49Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-POE": {
+   "commit": "deb38a377d50eadb04ddc7118a17a5ae58b1ee53",
+   "commit_date": "2026-09-16T13:49:38Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "Low-power design consuming less then 100uA in deep sleep mode!"
+   ]
+  },
+  "OLIMEX/ESP32-POE-ISO": {
+   "commit": "c19307ecd8a9d8c5703de7a1571cd89945e39c01",
+   "commit_date": "2026-10-07T07:21:40Z",
+   "licence_file": "Licensee.pdf",
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-POE2": {
+   "commit": "2298e609769a2bdc516b0e3894ee2901db9fcbaa",
+   "commit_date": "2026-07-16T08:04:17Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "Power Over Ethernet Internet of Things POE IoT board with Espressif ESP32 WiFi, Bluetooth and wired 100Mbit Ethehernet with 25W power delivery"
+   ]
+  },
+  "OLIMEX/ESP32-PRO": {
+   "commit": "4f0251d76ce7a32c4f80ddc5e80c84cca8a69094",
+   "commit_date": "2024-05-31T07:50:44Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-S2-DevKit-LiPo": {
+   "commit": "1960bb6baf3b7a43ebe4991b0d31c9528bb48e55",
+   "commit_date": "2026-04-09T12:35:26Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "AGPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-S2-DevKit-LiPo-USB": {
+   "commit": "b7b162075fead3cf18f8e76d8844c11e31175428",
+   "commit_date": "2026-04-08T08:42:24Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-S3-DevKit-LiPo": {
+   "commit": "98e62ae2b9b1e52448ec585089730defb45ba869",
+   "commit_date": "2026-06-15T13:53:53Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP32-SBC-FabGL": {
+   "commit": "41d29f087e3ca05e07179c1a1e783370f264df31",
+   "commit_date": "2026-01-21T08:44:07Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/ESP8266": {
+   "commit": "02d9c1ef525b9dc7b952d500dbc367b56137ce0e",
+   "commit_date": "2026-01-20T08:55:14Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/FOSDEM-MUSIC-BOX": {
+   "commit": "30fa2ca4a8f8615953d0e725c8ce6045326044e0",
+   "commit_date": "2020-06-24T12:16:06Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/Flash-e": {
+   "commit": "8860898137fbf675ea6e05b39ac212195e4b9993",
+   "commit_date": "2024-04-18T11:55:19Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/GateMateA1-EVB": {
+   "commit": "a2b3e4132a7db64adb5faff1b7263e4c48e14bc7",
+   "commit_date": "2026-03-24T09:39:33Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/LIME2-SHIELD": {
+   "commit": "cc5fa939232c5851eed8f06755660ba56cc45bde",
+   "commit_date": "2020-07-09T12:17:04Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/LoRa-868-915": {
+   "commit": "89eb5353c0066917f431950db608e270279c4c06",
+   "commit_date": "2026-09-08T11:15:07Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/LoRa-STM32WL-DevKIT": {
+   "commit": "620a8b3229f36c17360214a750e61ae14e4a4315",
+   "commit_date": "2026-10-12T12:26:29Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MIPI-HDMI": {
+   "commit": "cb1ceb0e5e27e2891e31b2f6afd2a93225a65a84",
+   "commit_date": "2025-10-29T12:21:55Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MOD-BME280": {
+   "commit": "0980411ee673c1f20e52b47e3f987c05577e3fcd",
+   "commit_date": "2021-08-20T03:33:48Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MOD-ENV": {
+   "commit": "3a1b9c217bece751c113822da1f5d558b3df1e70",
+   "commit_date": "2019-06-24T04:59:19Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MOD-ESP32-C5": {
+   "commit": "4faf40d3d84c8e0fd1fb6df88d7dcc142f270445",
+   "commit_date": "2026-05-14T12:38:34Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MOD-IR-TEMP": {
+   "commit": "0791313dc5c60e40c4222d1b6760af72cdaf2e49",
+   "commit_date": "2018-03-23T09:12:48Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MOD-LCD2.8RTP": {
+   "commit": "fc0f4fef674d5dedef82f0480e5199f7c1e549d4",
+   "commit_date": "2025-05-09T08:24:54Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "1 - 3.3V |2 - GND|Power pins"
+   ]
+  },
+  "OLIMEX/MOD-MPU9150": {
+   "commit": "6eb430673ff885007765ddbee873303c38c08ebc",
+   "commit_date": "2015-07-03T12:39:51Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MOD-OLED-128x64": {
+   "commit": "56f31fed6ac9ecaf077a48bf09ad2d8f7bc07fa8",
+   "commit_date": "2015-07-01T11:49:56Z",
+   "licence_file": "LICENSE.md",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/MOD-RTC2": {
+   "commit": "747d9a6876f4509753c41697189dabfbc9e5e502",
+   "commit_date": "2018-05-17T11:48:12Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/Minibot": {
+   "commit": "ebf0419795b32a59a2dfd3a6aff0802dccd31dc5",
+   "commit_date": "2025-01-31T07:15:06Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/NB-IoT": {
+   "commit": "d688627cec85b16877ce09534e5c9120f8200524",
+   "commit_date": "2026-09-23T08:33:03Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/Neo6502": {
+   "commit": "94dbd1c4bbf4ad6cc79a259927c8a539d39c3cde",
+   "commit_date": "2025-07-22T07:46:16Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/Neo6502kbd": {
+   "commit": "9beb9861eab3543a1962f41e82d8c35c8571509f",
+   "commit_date": "2026-09-11T12:26:36Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/Neo6502pc": {
+   "commit": "dff6447ad9366c2dadde288a5e55fc80a9e74fc5",
+   "commit_date": "2026-01-20T07:43:56Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/OLIMEXINO-2560": {
+   "commit": "ba430b3442d76cd77c71061acac8f35c5f0fa773",
+   "commit_date": "2026-10-06T13:18:01Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": [
+    "Arduino Mega 2560 like board with ATMEGA2560 processor, 88 GPIOs, uSD card, 6-15VDC power"
+   ]
+  },
+  "OLIMEX/OLIMEXINO-85": {
+   "commit": "2084d909d726dab2a898943bce7477428c1d5725",
+   "commit_date": "2025-12-05T07:26:52Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/OLIMEXINO-STM32F3": {
+   "commit": "0284b217ba395e54405febc39ebc37b7aefb7881",
+   "commit_date": "2025-09-12T13:40:06Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/OLINUXINO": {
+   "commit": "85eee9c17ee13af65617d73bdd94de7ec49cfb42",
+   "commit_date": "2026-10-27T12:00:40Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/OSHW-GHOST": {
+   "commit": "6fdce65a7a70b3c95ecc882d88573d0752c6ca86",
+   "commit_date": "2022-10-17T12:02:17Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/PIC32-HMZ144": {
+   "commit": "0636c0fad8d2c5ee7a94ba5a77c452fb0927b025",
+   "commit_date": "2021-07-29T13:51:38Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": [
+    "R36=10k pull-up to 3.3V was added to the OSCO pin, i.e.",
+    "L3 changed from CL470nH/0805/1.76R/250mA to FB0805/600R/2A."
+   ]
+  },
+  "OLIMEX/PIC32-RETROBSD": {
+   "commit": "488b454a55e1bcf91ade51ecc399eb2a140ce1f7",
+   "commit_date": "2024-07-04T08:44:20Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/PICO-EVB": {
+   "commit": "5a4360986a678dc177df4ea6674fc5769e91e64d",
+   "commit_date": "2026-07-27T13:41:25Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": [
+    "Raspberry PICO/PICO-W evaluation board with optoisolated inputs 3.3-30VDC or 110-220VAC and Four Relays 15A/240VAC"
+   ]
+  },
+  "OLIMEX/POEv3": {
+   "commit": "54c9b1e8d783bf90ac4a07f71099d583c9c92fcc",
+   "commit_date": "2025-03-31T11:11:06Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RK3328-SOM-EBV": {
+   "commit": "0b6bb8aefd9b1f46acbfe0997752294316314ef4",
+   "commit_date": "2021-05-31T13:19:20Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RP2040-PICO-PC": {
+   "commit": "ed0402adcdf9395f33c8d50def897c33ce96b5c3",
+   "commit_date": "2025-03-31T06:06:05Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RP2040-PICO30": {
+   "commit": "a6937dcaca37d4b517f87f02973337e7d8501641",
+   "commit_date": "2023-06-27T11:26:46Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "SY8089A 3.3V 2A (3A peak) DCDC power supply"
+   ]
+  },
+  "OLIMEX/RP2040pc": {
+   "commit": "3d81895af984d1bc2bd8709f7901a7cf84ba2084",
+   "commit_date": "2024-12-11T14:23:33Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RP2350-PICO2-BB48": {
+   "commit": "74b030363ca03eea5bfa6dac59cbcd9e4277e910",
+   "commit_date": "2025-09-22T12:37:15Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RP2350-PICO2-XXL": {
+   "commit": "a73c9253e8142eadf8e10bc8a2f13d502ec3fa4a",
+   "commit_date": "2026-07-07T12:04:49Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RP2350pc": {
+   "commit": "e75edb990a83d44e7cfefe9a28c43cabc8d1441c",
+   "commit_date": "2026-10-30T09:31:24Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RT1010Py": {
+   "commit": "b483bf17acaa566533e00ca6452ea883edfc709e",
+   "commit_date": "2025-10-25T13:32:17Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RT1010Py-DevKit": {
+   "commit": "8f1a2e51af194f04d1b3a6d645ce81747a937b6f",
+   "commit_date": "2025-10-26T07:41:58Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/RVPC": {
+   "commit": "2b9675ba39c29370eafcc6df597609a9d5ea3297",
+   "commit_date": "2026-01-29T10:25:39Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/S3-OLinuXino": {
+   "commit": "afcbe6ac55ffb6754862e604880e2e16d388d081",
+   "commit_date": "2020-04-24T11:40:47Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/SIMON-85": {
+   "commit": "0909c608e7796d27df4666bc641972a307e57626",
+   "commit_date": "2019-06-25T11:09:17Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "HIGH|0xDD|Brown-out detection at VCC=2.7 V;"
+   ]
+  },
+  "OLIMEX/SLD-KIT-DICE": {
+   "commit": "9385c2a4c0f202e3a852ec2db774fa7565192614",
+   "commit_date": "2026-11-05T10:06:27Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/SMT-PROTOBOARD": {
+   "commit": "4044633dda72d86dade1cda55d402dd9b2e675ae",
+   "commit_date": "2015-05-25T13:28:27Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/SOM": {
+   "commit": "6a2798c6f8c015fb360993eb86d6c965d028b0c1",
+   "commit_date": "2023-09-07T08:13:23Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/SOM204": {
+   "commit": "dd67e923b6ed0a680d045570ba4a1db0908b1093",
+   "commit_date": "2022-02-14T07:18:32Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": false,
+   "ratings": []
+  },
+  "OLIMEX/STM32F4": {
+   "commit": "47e87bc826042b833a0f38d230af9ac55e701d73",
+   "commit_date": "2018-03-27T13:55:08Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/STMP1-A13-EVB": {
+   "commit": "6ac5a07e93d5c622dd11209f3b61c7b24476cd5d",
+   "commit_date": "2021-05-21T12:04:26Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/STMP1-OLinuXino": {
+   "commit": "4c7f17ae7daa674c77548feeda7acbcd9177b73f",
+   "commit_date": "2023-05-25T13:52:07Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/STMP157-BASE-SOM-EVB": {
+   "commit": "75648b2100a4b125dc0a1575a7d5913c11e080d4",
+   "commit_date": "2023-11-24T11:57:54Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/STMP15X-SHIELD": {
+   "commit": "584b609e158f36955ddab94a411c4e137d2825c1",
+   "commit_date": "2022-10-10T10:58:39Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/TuxCon-Kitty": {
+   "commit": "64cba773ca8a0d9f5a3612d73fa627ddeef0312d",
+   "commit_date": "2023-04-30T05:20:13Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/UEXT-3TO5V": {
+   "commit": "a10fee1703466b9883cc3a483760177ee6be21aa",
+   "commit_date": "2025-06-04T11:36:29Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/UEXT-ADAPTERS": {
+   "commit": "2748e8f04c2a319c2144d2d9d5f25df5b8915ee7",
+   "commit_date": "2023-10-27T13:56:53Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/UEXT-CH390": {
+   "commit": "3482be5431e20c475a6c3001b68c04df6a78bc60",
+   "commit_date": "2026-11-04T13:06:09Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/UEXT-LVL-SHIFT": {
+   "commit": "69cc845f6da0ccc6d6922744a6f71fcdc471d255",
+   "commit_date": "2026-10-19T01:58:59Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "MIT",
+   "readme_read": true,
+   "ratings": [
+    "UEXT level shift module allow boards with UEXT connector to interface modules with voltage levels from 1.65V to 5.5V"
+   ]
+  },
+  "OLIMEX/UEXT-MODULES": {
+   "commit": "8730ede82a3820b29b65e40f6b49b7691d973bde",
+   "commit_date": "2018-12-03T11:07:17Z",
+   "licence_file": null,
+   "licence_spdx": null,
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/URC": {
+   "commit": "7defdbb04c0b2b97d60dd8be3b12e7994079ecec",
+   "commit_date": "2019-06-25T11:06:54Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/USB-4SERIAL": {
+   "commit": "04ed57a4c22f9efb6ff218c1cdee4e0dcd181801",
+   "commit_date": "2023-05-26T08:26:04Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "USB-4SERIAL is Open Source Harrdware USB 2.0 High Speed to four RS232 levels or 3.3V TTL levels serial UARTs and one shared RS485 current loop serial port"
+   ]
+  },
+  "OLIMEX/USB-GIGABIT": {
+   "commit": "e30a671f84527391f9f351bd8a0563ab36cceb6f",
+   "commit_date": "2026-01-20T07:18:26Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/USB-NeoHub": {
+   "commit": "0ba0795c7a7a3d12dfdc820f447b3b1ae47fad55",
+   "commit_date": "2024-02-16T11:46:13Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/USB-SATA": {
+   "commit": "339c53bafaf2b73999d9e69a664fcbeb5996dbfc",
+   "commit_date": "2019-07-18T06:41:52Z",
+   "licence_file": null,
+   "licence_spdx": "NOASSERTION",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/USB-SERIAL-L": {
+   "commit": "482e2238fc9b07ddbcb5eb87b36a876e59df53db",
+   "commit_date": "2024-11-28T11:25:40Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": [
+    "USB-SERIA-L is the ultimate Open Source Hardware USB to Serial converter with ful modem signals, supporting serial speeds from 100bps up to 3Mbps and with adjustable voltage levels from 0.65V up to 5V"
+   ]
+  },
+  "OLIMEX/USB-gLINK": {
+   "commit": "fea5397ca506f007c1af7848cc082733c2438ece",
+   "commit_date": "2024-11-07T11:20:41Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/Ultra-Sound-Levitation": {
+   "commit": "9fadf61ee19cae477c380376a1164d0e9addc29b",
+   "commit_date": "2022-10-17T12:02:04Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/VGA2HDMI": {
+   "commit": "ec9b53a3b0db642798f2ba8afde9397bdaf3da73",
+   "commit_date": "2024-03-19T10:19:24Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/eduArdu": {
+   "commit": "84b12a3d890595e957b45f00c2eda1bcfea5964b",
+   "commit_date": "2020-04-12T10:51:04Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/iCE40-ADC": {
+   "commit": "29b29e62b31e05a2605d2c6f48c5753a11c376de",
+   "commit_date": "2017-10-24T11:14:21Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/iCE40-DAC": {
+   "commit": "b6d07810472baf2f97e0c40a7aba44fa3798ae9b",
+   "commit_date": "2021-04-07T09:50:26Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/iCE40-DIO": {
+   "commit": "6c8b27b36c55a7c2b59877957e7eb389e367c208",
+   "commit_date": "2017-07-11T13:25:25Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": [
+    "The boards has a programmable DAC which can set the input voltage logic from 1.65 to 5.5V."
+   ]
+  },
+  "OLIMEX/iCE40-IO": {
+   "commit": "3a3b2f184c1ed9bb821931a1c8fdc41a736a2329",
+   "commit_date": "2017-07-11T13:14:28Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/iCE40HX1K-EVB": {
+   "commit": "91f3b5aff50258ddb40c021a21d4fd871633fc80",
+   "commit_date": "2026-01-15T09:10:53Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/iCE40HX8K-EVB": {
+   "commit": "dba688dedb3ae08d05e81a0f56a847f155622d21",
+   "commit_date": "2026-05-25T05:32:31Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "Apache-2.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/iMX8MP-SOM": {
+   "commit": "3cc892d6d7fd9b07d4f73590599c2081f3012c45",
+   "commit_date": "2025-02-28T14:48:14Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  },
+  "OLIMEX/iMX8MP-SOM-EVB": {
+   "commit": "54724b6c9ba75aaab09046f3e3a27aca5d20024d",
+   "commit_date": "2025-02-28T12:01:38Z",
+   "licence_file": "LICENSE",
+   "licence_spdx": "GPL-3.0",
+   "readme_read": true,
+   "ratings": []
+  }
+ },
+ "boards": [
+  {"repository": "OLIMEX/A20-CAN", "path": "A20-CAN_Rev_A.kicad_pcb", "blob": "bba2525a0bbc0216a21b40cf0b2ee20ba06d2050", "size": 303117, "product": "A20-CAN", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/wiki/A20-CAN"},
+  {"repository": "OLIMEX/A20-CAN-ISO", "path": "HARDWARE/A20-CAN-ISO-Rev_B/A20-CAN-ISO_Rev_B.kicad_pcb", "blob": "3a8483e8a95102e85a50c0a99dcb2ec7e5fcf66e", "size": 477930, "product": "A20-CAN-ISO", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/OLinuXino/A20/A20-CAN-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/AgonLight2", "path": "HARDWARE/AgonLight2_Rev_A/AgonLight2_Rev_A.kicad_pcb", "blob": "c56e959cdc1feb67eeac4285ce096ff64bc43b48", "size": 2139737, "product": "AgonLight2", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/UEXT/"},
+  {"repository": "OLIMEX/AgonLight2", "path": "HARDWARE/AgonLight2_Rev_B/AgonLight2_Rev_B.kicad_pcb", "blob": "ca03c9b85cd4f6b33fb05a911449a3d385547ac1", "size": 2125113, "product": "AgonLight2", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/UEXT/"},
+  {"repository": "OLIMEX/AgonLight2-HvIO", "path": "HARDWARE/AgonLight2-HvIO_Rev_A/AgonLight2-HvIO_Rev_A.kicad_pcb", "blob": "f56b9b4d6203b958088f3c59e02963996347cce6", "size": 900249, "product": "AgonLight2-HvIO", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Retro-Computers/AgonLight2-HvIO/open-source-hardware"},
+  {"repository": "OLIMEX/AgonLight2-HvIO", "path": "HARDWARE/AgonLight2-HvIO_Rev_A1/AgonLight2-HvIO_Rev_A1.kicad_pcb", "blob": "37ebd66125479d3a0fdae2088a406a89ba73fce9", "size": 893592, "product": "AgonLight2-HvIO", "revision": "A1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Retro-Computers/AgonLight2-HvIO/open-source-hardware"},
+  {"repository": "OLIMEX/AgonLight2-Proto", "path": "HARDWARE/AgonLight2-PROTO_Rev_A/AgonLight2-PROTO_Rev_A.kicad_pcb", "blob": "b70a7e72cbf7308df0a0577e12e27ad7b808654b", "size": 1021528, "product": "AgonLight2-PROTO", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/BB-ADS1220", "path": "HARDWARE/BB-ADS1220_Rev.A/bb-ads1220.kicad_pcb", "blob": "ef6347287ea7c3c160db844ac896e3cea6308e10", "size": 56934, "product": "BB-ADS1220", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/BB-ADS1220", "path": "HARDWARE/BB-ADS1220_Rev.A/bb-ads1220_old.kicad_pcb", "blob": "eb44d46e44f09f2cfe929b3620a332643a9d6a0f", "size": 68664, "product": "BB-ADS1220", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": null},
+  {"repository": "OLIMEX/BB-ADS1262", "path": "HARDWARE/BB-ADS1262_Rev.A/BB-ADS1262-Rev.A.kicad_pcb", "blob": "d80e0c84f96d1229abac58fb98f84e662d098aec", "size": 196403, "product": "BB-ADS1262", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/BB-ADS1262:HARDWARE/BB-ADS1262_Rev.A1/BB-ADS1262-Rev.A.kicad_pcb"},
+  {"repository": "OLIMEX/BB-ADS1262", "path": "HARDWARE/BB-ADS1262_Rev.A1/BB-ADS1262-Rev.A.kicad_pcb", "blob": "d80e0c84f96d1229abac58fb98f84e662d098aec", "size": 196403, "product": "BB-ADS1262", "revision": "A1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/BB-CH340T", "path": "HARDWARE/BB-CH340T-Rev.A/bb-ch340t.kicad_pcb", "blob": "b28e2fe6904ab3283c320a47407a2f6cdb85ab9b", "size": 140446, "product": "BB-CH340T", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Breadboarding/BB-CH340T/open-source-hardware"},
+  {"repository": "OLIMEX/BB-CH340T", "path": "HARDWARE/BB-CH340T-Rev.B/bb-ch340t.kicad_pcb", "blob": "2b1420ed3eaeeeb0809d0052bc36a5844468cdb6", "size": 198477, "product": "BB-CH340T", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Breadboarding/BB-CH340T/open-source-hardware"},
+  {"repository": "OLIMEX/BB-LVL-SHIFT", "path": "HARDWARE/BB-LVL-SHIFT_Rev.A/BB-LVL-SHIFT_Rev_A.kicad_pcb", "blob": "d072631ceee474ae2806a85ff134ee1a08c8dfbe", "size": 145010, "product": "BB-LVL-SHIFT", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Breadboarding/Components/BB-LVL-SHIFT/open-source-hardware"},
+  {"repository": "OLIMEX/BB-PWR-3608", "path": "BB-PWR-3608_revA.kicad_pcb", "blob": "5a85f2584a9832232a8a3cf639cb83fc5145bf27", "size": 64054, "product": "BB-PWR-3608", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/BB-PWR-8009", "path": "BB-PWR-8009_revA.kicad_pcb", "blob": "e82155edd8cebbd7dc52afce230251d10f42d64c", "size": 69698, "product": "BB-PWR-8009", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/BB-PWR-8113", "path": "BB-PWR-8113_revA.kicad_pcb", "blob": "8e114e4bad7e03c6e03d6d0d8194557fb44e2ab1", "size": 83233, "product": "BB-PWR-8113", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/BB-TB6612", "path": "HARDWARE/BB-TB6612-Rev.A/BB-TB6612FNG-Rev_A.kicad_pcb", "blob": "31faef404cb9820cfb1c65825d02c21ee3cc67f4", "size": 99419, "product": "BB-TB6612", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Robot-CNC-Parts/MotorDrivers/BB-TB6612/"},
+  {"repository": "OLIMEX/Bike-TSL-Kit", "path": "HARDWARE/Bike-TSL-Kit.Rev-A/Bike-TSL-Kit_RevA.kicad_pcb", "blob": "5670237d02c3767f205912de8be07f7cc49d7008", "size": 235622, "product": "Bike-TSL-Kit", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Soldering-Kits/Bike-TSL-Kit/open-source-hardware"},
+  {"repository": "OLIMEX/Binary-Watch", "path": "HARDWARE/Binary-Watch.Rev-A/Binary-Watch_Rev_A.brd", "blob": "242abb9bbce0dd3eb18c4080fc76aaea462f0da4", "size": 85452, "product": "Binary-Watch", "revision": "A", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/Soldering-Kits/Binary-Watch/open-source-hardware"},
+  {"repository": "OLIMEX/DCDC-50-5-12", "path": "HARDWARE/DCDC50-5-12-Rev.A1/DCDC-50-5-12_Rev_A1.kicad_pcb", "blob": "fcc23f75f6d1a2b83c9fd30f9b917f15c13b09bd", "size": 350329, "product": "DCDC50-5-12", "revision": "A1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DIY-LAPTOP", "path": "HARDWARE/A64-TERES/TERES-PCB1-A64-MAIN/Rev.B/TERES_PCB1-A64-MAIN_Rev.B.kicad_pcb", "blob": "96f92fc1294086fe6d0e70aec4511638f20e3e6d", "size": 4383091, "product": "TERES-PCB1-A64-MAIN", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DIY-LAPTOP", "path": "HARDWARE/A64-TERES/TERES-PCB1-A64-MAIN/Rev.C/TERES_PCB1-A64-MAIN_Rev.C.kicad_pcb", "blob": "daeb00ebb7cf0c1c3951437da99f249e792ae6c1", "size": 2808382, "product": "TERES-PCB1-A64-MAIN", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DIY-LAPTOP", "path": "HARDWARE/A64-TERES/TERES-PCB2-IO/Rev.B/TERES-PCB2-IO_Rev.B.kicad_pcb", "blob": "5eec7580a57f8454df0aef6afd78f4f8a2bed0e9", "size": 145484, "product": "TERES-PCB2-IO", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DIY-LAPTOP", "path": "HARDWARE/A64-TERES/TERES-PCB3-TOUCH-BTN/Rev.A/TERES-PCB3-TOUCH-BTN_Rev.A.kicad_pcb", "blob": "a3379ec8c8600534b030ae76279602cee5984461", "size": 74004, "product": "TERES-PCB3-TOUCH-BTN", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DIY-LAPTOP", "path": "HARDWARE/A64-TERES/TERES-PCB4-PWR-BTN/Rev.A/PCB4-PWR-BTN_Rev.A.kicad_pcb", "blob": "2e47b4677b4e40bf3c1674c1755ba1e52d9e153d", "size": 27489, "product": "TERES-PCB4-PWR-BTN", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DIY-LAPTOP", "path": "HARDWARE/A64-TERES/TERES-PCB5-KEYBOARD/Rev.A.old/TERES-PCB5-KEYBOARD_Rev.A.kicad_pcb", "blob": "403a08345afddb29130cfbffc4159210fa22d769", "size": 289413, "product": "TERES-PCB5-KEYBOARD", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": null},
+  {"repository": "OLIMEX/DIY-LAPTOP", "path": "HARDWARE/A64-TERES/TERES-PCB5-KEYBOARD/Rev.A/TERES-PCB5-KEYBOARD_Rev.A.kicad_pcb", "blob": "777e94979196a52cc7e8d2de791c151312b8bbcf", "size": 292715, "product": "TERES-PCB5-KEYBOARD", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DuinoMite", "path": "HARDWARE/DuinoMite-Mega/DUINOMITE-MEGA_Rev_C.brd", "blob": "7ab54e730949df770c14919ea29140a3923568cc", "size": 241213, "product": "DuinoMite-Mega", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DuinoMite", "path": "HARDWARE/DuinoMite-Mini/DuinoMite-Mini_Rev_C.brd", "blob": "54e8c7b9cfabd293f0835a967051e9256ac45ccb", "size": 176775, "product": "DuinoMite-Mini", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DuinoMite", "path": "HARDWARE/DuinoMite-eMega/DUINOMITE-eMEGA_Rev_B1.brd", "blob": "60068e43f67e45e817ca9e338d5e07eea59434c2", "size": 308065, "product": "DuinoMite-eMega", "revision": "B1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/DuinoMite", "path": "HARDWARE/DuinoMite/DuinoMite_Rev_C.brd", "blob": "ace3dae185b4b25d03df6511b754ea15a1d3e141", "size": 146039, "product": "DuinoMite", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP-PROG", "path": "HARDWARE/ESP-PROG-Rev.C/ESP-PROG_Rev.C.kicad_pcb", "blob": "d0027dcf236de5aaf5c7ac0dd2ba59a07a6de578", "size": 127722, "product": "ESP-PROG", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/Programmer/ESP-PROG/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-ADF", "path": "HARDWARE/ESP32-ADF Rev.B/ESP32-ADF_Rev_B.kicad_pcb", "blob": "b059fbc6eeca62d5bcbbd531c44b3a1dcce73dca", "size": 918788, "product": "ESP32-ADF", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-ADF/"},
+  {"repository": "OLIMEX/ESP32-ADF", "path": "HARDWARE/ESP32-ADF Rev.C/ESP32-ADF_Rev_C.kicad_pcb", "blob": "93e2a8c9916d4dfa6f8fffc7f3b0e97d00750c56", "size": 883125, "product": "ESP32-ADF", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-ADF/"},
+  {"repository": "OLIMEX/ESP32-C3-DevKit-Lipo", "path": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_A/ESP32-C3-DevKit-Lipo_Rev_A.kicad_pcb", "blob": "f12e5a59764acdf2b406e213f62dd604772876de", "size": 619565, "product": "ESP32-C3-DevKit-Lipo", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C3/ESP32-C3-DevKit-Lipo/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-C3-DevKit-Lipo", "path": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_B/ESP32-C3-DevKit-Lipo_Rev_B.kicad_pcb", "blob": "1cc3523d6b11eac288eeba349cbbb8581cde425f", "size": 668018, "product": "ESP32-C3-DevKit-Lipo", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C3/ESP32-C3-DevKit-Lipo/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-C3-DevKit-Lipo", "path": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_C/ESP32-C3-DevKit-Lipo_Rev_C.kicad_pcb", "blob": "e02168737713ee37aaca8e8871f480d48566a172", "size": 867504, "product": "ESP32-C3-DevKit-Lipo", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C3/ESP32-C3-DevKit-Lipo/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-C3-DevKit-Lipo", "path": "HARDWARE/ESP32-C3-DevKit-Lipo_Rev_D/ESP32-C3-DevKit-Lipo_Rev_D.kicad_pcb", "blob": "bbb6518ae52f1a910ac2897b4d7407a24cd44b82", "size": 862423, "product": "ESP32-C3-DevKit-Lipo", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C3/ESP32-C3-DevKit-Lipo/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-C5-DevKit-Lipo", "path": "HARDWARE/ESP32-C5-DevKit-Lipo-Rev.A/ESP32-C5-DevKit-Lipo_Rev_A.kicad_pcb", "blob": "7bf31ebfad4913936a78479e6f998c9776988909", "size": 1572003, "product": "ESP32-C5-DevKit-Lipo", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C5/ESP32-C5-DevKit-Lipo/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-C5-EVB", "path": "HARDWARE/ESP32-C5-EVB-Rev.A/ESP32-C5-EVB_Rev_A.kicad_pcb", "blob": "2004a7f6ee6798bc4db60ce4536c6f5a6c217a8b", "size": 1681669, "product": "ESP32-C5-EVB", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C5/ESP32-C5-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-C6-DevKit-Lipo", "path": "HARDWARE/ESP32-C6-DevKit-Lipo.Rev.A/ESP32-C6-DevKit-Lipo_Rev_A.kicad_pcb", "blob": "bd09465129264fce735f4d5c220405f4b2ebf3fd", "size": 1240643, "product": "ESP32-C6-DevKit-Lipo", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C6/ESP32-C6-DevKit-Lipo/"},
+  {"repository": "OLIMEX/ESP32-C6-DevKit-Lipo", "path": "HARDWARE/ESP32-C6-DevKit-Lipo.Rev.B/ESP32-C6-DevKit-Lipo_Rev_B.kicad_pcb", "blob": "e71bb9d8930a9380b8694aa44d6aeb3a226f8268", "size": 1241750, "product": "ESP32-C6-DevKit-Lipo", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C6/ESP32-C6-DevKit-Lipo/"},
+  {"repository": "OLIMEX/ESP32-C6-EVB", "path": "HARDWARE/Dimensions/ESP32-C6-EVB_DIMM_Rev_A.kicad_pcb", "blob": "a2817e4ab350efaeb8124030a7a22b0fde69eb20", "size": 1115980, "product": "ESP32-C6-EVB", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "drawing", "product_page": null},
+  {"repository": "OLIMEX/ESP32-C6-EVB", "path": "HARDWARE/Hardware-revision-A/ESP32-C6-EVB_Rev_A.kicad_pcb", "blob": "9f98c2b4ca5c97843898fd75e4d83dba63c3204e", "size": 651418, "product": "ESP32-C6-EVB", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C6/ESP32-C6-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-DevKit-LiPo", "path": "HARDWARE/ESP32-DevKit-LiPo-Rev.A1/ESP32-DevKit-Lipo_Rev_A1.kicad_pcb", "blob": "606bd406af6c400a0ce233d5665ef772dd1c3c88", "size": 397897, "product": "ESP32-DevKit-LiPo", "revision": "A1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP32-DevKit-LiPo", "path": "HARDWARE/ESP32-DevKit-LiPo-Rev.B/ESP32-DevKit-Lipo_Rev_B.kicad_pcb", "blob": "04fa25497becdb31b4d19ed9af87199be94b8095", "size": 489077, "product": "ESP32-DevKit-LiPo", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP32-DevKit-LiPo", "path": "HARDWARE/ESP32-DevKit-LiPo-Rev.C/ESP32-DevKit-Lipo_Rev_C.kicad_pcb", "blob": "1df3b45bb9b4e77d1a297e4a103448e6cfb7de96", "size": 496302, "product": "ESP32-DevKit-LiPo", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP32-DevKit-LiPo", "path": "HARDWARE/ESP32-DevKit-LiPo-Rev.D/ESP32-DevKit-Lipo_Rev_D.kicad_pcb", "blob": "cff1fae49e917f4c9ddd338449de02cadb1684a0", "size": 462394, "product": "ESP32-DevKit-LiPo", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-A/ESP32-EVB_Rev_A.kicad_pcb", "blob": "6bf3d44890b013cfe825a89ceb2759d62b2d436e", "size": 559108, "product": "ESP32-EVB", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-B/ESP32-EVB_Rev_B.kicad_pcb", "blob": "0ceffb2f394329857e219a583bb6113a29c86600", "size": 920857, "product": "ESP32-EVB", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-C/ESP32-EVB_Rev_C.kicad_pcb", "blob": "7df3cebada30bf3caef357eae9301b2ccf827f04", "size": 926465, "product": "ESP32-EVB", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-D/ESP32-EVB_Rev_D.kicad_pcb", "blob": "eb5b37fb831799ff36a3061b989573a5f0943ede", "size": 930407, "product": "ESP32-EVB", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-F/ESP32-EVB_Rev_F.kicad_pcb", "blob": "5af8b2f27263f33d3dcfcf103e70492e3b29acfc", "size": 969862, "product": "ESP32-EVB", "revision": "F", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-H/ESP32-EVB_Rev_H.kicad_pcb", "blob": "26218c1e978194bba258cbe8cc5acb4614e5afa2", "size": 1026698, "product": "ESP32-EVB", "revision": "H", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-I/ESP32-EVB_Rev_I.kicad_pcb", "blob": "0c60bca593b1e01f64b9c1b7cf948ae731391322", "size": 1030485, "product": "ESP32-EVB", "revision": "I", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-J/ESP32-EVB_Rev_J.kicad_pcb", "blob": "791ca6488c89af413e9583279a88eb1d42347e5d", "size": 1843342, "product": "ESP32-EVB", "revision": "J", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-K/ESP32-EVB_Rev_K.kicad_pcb", "blob": "106d60a3ab35df4dbf3af4383df0dc2758e6343a", "size": 1836881, "product": "ESP32-EVB", "revision": "K", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-K1/ESP32-EVB_Rev_K1.kicad_pcb", "blob": "51d1ac74f40a9904e30e687794fc8202b45874b5", "size": 1849208, "product": "ESP32-EVB", "revision": "K1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-K2/ESP32-EVB_Rev_K2.kicad_pcb", "blob": "4d176f6969e8fbfaf619ceae41c10a77ca7e4991", "size": 1849107, "product": "ESP32-EVB", "revision": "K2", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-EVB", "path": "HARDWARE/REV-L/ESP32-EVB_Rev_L.kicad_pcb", "blob": "138483b159309eb637db9539e84012894df7ebe0", "size": 3263128, "product": "ESP32-EVB", "revision": "L", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision A/ESP32-GATEWAY_Rev_A.kicad_pcb", "blob": "68f7a05382c411cf674896e3b3c2a79e74ef61ea", "size": 618645, "product": "ESP32-GATEWAY", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision B/ESP32-GATEWAY_Rev_B.kicad_pcb", "blob": "c2f0d47f954ab3adc038d25665471670b5456afb", "size": 614402, "product": "ESP32-GATEWAY", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision C/ESP32-GATEWAY_Rev_C.kicad_pcb", "blob": "37a3f3089cfb3c328044f2aace7d5746ff9f7028", "size": 626540, "product": "ESP32-GATEWAY", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision D/ESP32-GATEWAY_Rev_D.kicad_pcb", "blob": "d6f0af8d726dc152dedad9a1321d70b191002148", "size": 611251, "product": "ESP32-GATEWAY", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision E/ESP32-GATEWAY_Rev_E.kicad_pcb", "blob": "0430fb95e18e674c98373f2b1d25c75a38b6ff2b", "size": 611484, "product": "ESP32-GATEWAY", "revision": "E", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision F/ESP32-GATEWAY_Rev_F.kicad_pcb", "blob": "d643643ba22775b90a41bc21e641d75f47b44aef", "size": 742626, "product": "ESP32-GATEWAY", "revision": "F", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision G/ESP32-GATEWAY_Rev_G.kicad_pcb", "blob": "fd5910601045b3ee69e127d3652db1b49a1d454e", "size": 733879, "product": "ESP32-GATEWAY", "revision": "G", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision H/ESP32-GATEWAY_Rev_H.kicad_pcb", "blob": "47ad15dda26f2b37091e15ce211c42ac2fc0242b", "size": 754329, "product": "ESP32-GATEWAY", "revision": "H", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-GATEWAY", "path": "HARDWARE/Hardware revision I/ESP32-GATEWAY_Rev_I.kicad_pcb", "blob": "ebff1065b48d2741684f7a87bbd1ce4f5e283f3d", "size": 760858, "product": "ESP32-GATEWAY", "revision": "I", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-GATEWAY/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-H2-DevKit-Lipo", "path": "HARDWARE/ESP32-H2-DevKit-Lipo-Rev.A/ESP32-H2-DevKit-LiPo_Rev_A.kicad_pcb", "blob": "40ef8e05cd18e4ae4d1d5656359b1c54d8223415", "size": 1358310, "product": "ESP32-H2-DevKit-Lipo", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-H2/ESP32-H2-DevKit-LiPo/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-P4-DevKit", "path": "HARDWARE/ESP32-P4-DevKit-Rev.B/ESP32-P4-DevKit_Rev_B.kicad_pcb", "blob": "dfdb4426b57dcf116d1e2f84dcd5c56fdfaa3115", "size": 3068674, "product": "ESP32-P4-DevKit", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-DevKit/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-P4-DevKit", "path": "HARDWARE/ESP32-P4-DevKit-Rev.C/ESP32-P4-DevKit_Rev_C.kicad_pcb", "blob": "647b73ce4800cdc0f0ff3a3d2f3f1ac24994a6ac", "size": 3110580, "product": "ESP32-P4-DevKit", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-DevKit/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-P4-DevKit", "path": "HARDWARE/ESP32-P4-DevKit-Rev.D/ESP32-P4-DevKit_Rev_D.kicad_pcb", "blob": "72b2449a558bac1eee9064d85e2dd3658d6ccf3e", "size": 3164879, "product": "ESP32-P4-DevKit", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-DevKit/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-P4-DevKit", "path": "HARDWARE/ESP32-P4-DevKit-Rev.D1/ESP32-P4-DevKit_Rev_D1.kicad_pcb", "blob": "4b3fa226f442867f94dc497aab15c0b0bc51b278", "size": 3165330, "product": "ESP32-P4-DevKit", "revision": "D1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-DevKit/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-P4-PC", "path": "HARDWARE/ESP32-P4-PC-Rev.B/ESP32-P4-PC_Rev_B.kicad_pcb", "blob": "524fb57911878a90a84504bd0d3a2d2e2307cc21", "size": 5986843, "product": "ESP32-P4-PC", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-PC/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-P4-PC", "path": "HARDWARE/ESP32-P4-PC-Rev.C/ESP32-P4-PC_Rev_C.kicad_pcb", "blob": "bbe92d19ddf0bf047a436c8194fb94da69047bb9", "size": 6044999, "product": "ESP32-P4-PC", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-PC/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-B1/ESP32-PoE_Rev_B1.kicad_pcb", "blob": "943faf085f3b16eef4afc14ccbc1350e22915ffd", "size": 703103, "product": "ESP32-PoE", "revision": "B1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-B2/ESP32-PoE_Rev_B2.kicad_pcb", "blob": "ada2f559cfe126761941214d121cec068088fb7e", "size": 705055, "product": "ESP32-PoE", "revision": "B2", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-C/ESP32-PoE_Rev_C.kicad_pcb", "blob": "bfe84b80041fd2426f786d2033377a6640c8196a", "size": 706821, "product": "ESP32-PoE", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-C1/ESP32-PoE_Rev_C.kicad_pcb", "blob": "d20be4d24d4724c589d71db5cb128d64a6c31702", "size": 719261, "product": "ESP32-PoE", "revision": "C1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-D/ESP32-PoE_Rev_D.kicad_pcb", "blob": "86823cec3dea5ae43a042105389937b439b34dd4", "size": 800353, "product": "ESP32-PoE", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-E/BackupFiles/ESP32-PoE_Rev_E.kicad_pcb", "blob": "94acbd6a0814560af1eca16cc30c23ca5cf6f753", "size": 806340, "product": "ESP32-PoE", "revision": "E", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-E/ESP32-PoE_Rev_E.kicad_pcb", "blob": "c2a3cae15ae8c889ab41081abf186b9100779c48", "size": 806408, "product": "ESP32-PoE", "revision": "E", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-G1/ESP32-PoE_Rev_G1.kicad_pcb", "blob": "a9bc803bb09e23f609d016c9ba8986b59a8d7ffd", "size": 803255, "product": "ESP32-PoE", "revision": "G1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-I/ESP32-PoE_Rev_I.kicad_pcb", "blob": "f5a56fd912cb260131cd3556e1dcd1b42ccc5e90", "size": 1080791, "product": "ESP32-PoE", "revision": "I", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-J/ESP32-PoE_Rev_J.kicad_pcb", "blob": "9db83268d0c105252390106369f6d782b528082d", "size": 1619012, "product": "ESP32-PoE", "revision": "J", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-K/ESP32-PoE_Rev_K.kicad_pcb", "blob": "e050fce24efb6d998a643a606df76bf597192bc1", "size": 1626187, "product": "ESP32-PoE", "revision": "K", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-L/ESP32-PoE_Rev_L.kicad_pcb", "blob": "8606793ae69b113b7aa296b772026c139a5fac46", "size": 1628791, "product": "ESP32-PoE", "revision": "L", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-L1/ESP32-PoE_Rev_L1.kicad_pcb", "blob": "f338638a25a5f29e780b2149af8e57aa4a278dc1", "size": 1631435, "product": "ESP32-PoE", "revision": "L1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-M/ESP32-PoE_Rev_M.kicad_pcb", "blob": "7a1fed1a87881df3e72972ec1c3c276f06fb49cc", "size": 2804191, "product": "ESP32-PoE", "revision": "M", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-M1/ESP32-PoE_Rev_M1.kicad_pcb", "blob": "c089aac19b6f574b3ca0f53aa912619df06dee65", "size": 2806000, "product": "ESP32-PoE", "revision": "M1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE", "path": "HARDWARE/ESP32-PoE-hardware-revision-M2/ESP32-PoE_Rev_M2.kicad_pcb", "blob": "fb07cdf81dbbc22faa295138dfa5ff8bac96119d", "size": 2809205, "product": "ESP32-PoE", "revision": "M2", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.B/ESP32-PoE-ISO_Rev_B.kicad_pcb", "blob": "78243bde8ef37de6c4db046a197e51b15770e222", "size": 1220956, "product": "ESP32-PoE-ISO", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.C/ESP32-PoE-ISO_Rev_C.kicad_pcb", "blob": "dbda836899125cc9f4e0f23ed685e75a3e60bf60", "size": 1240838, "product": "ESP32-PoE-ISO", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.D/BackupFiles/ESP32-PoE-ISO_Rev_D.kicad_pcb", "blob": "5a002b3d7863c9952a9945297ca5ca8e20488470", "size": 1134098, "product": "ESP32-PoE-ISO", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.D/ESP32-PoE-ISO_Rev_D.kicad_pcb", "blob": "2cbdb964769d14b052a63e3190f1bc812c4eb47e", "size": 1133799, "product": "ESP32-PoE-ISO", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.G1/ESP32-PoE-ISO_Rev_G1.kicad_pcb", "blob": "f2207aef2e3caa3cf541555a94154aefdd5d23dc", "size": 1265270, "product": "ESP32-PoE-ISO", "revision": "G1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.H/ESP32-PoE-ISO_Rev_H.kicad_pcb", "blob": "1ed9b31bc8fe39d63ac0b5b111b5e555ea474f38", "size": 1271380, "product": "ESP32-PoE-ISO", "revision": "H", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.I/ESP32-PoE-ISO_Rev_I.kicad_pcb", "blob": "558145a0daf986af6e95ab20ed44e9bd1411da12", "size": 1273306, "product": "ESP32-PoE-ISO", "revision": "I", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.J/ESP32-PoE-ISO_Rev_J.kicad_pcb", "blob": "552efedc9a0650a4f04ea460025ef8cc497161eb", "size": 1955792, "product": "ESP32-PoE-ISO", "revision": "J", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.K/ESP32-PoE-ISO_Rev_K.kicad_pcb", "blob": "88c3c167c16c07aaf442c5f3f44e76a4c3ef2d7a", "size": 1966114, "product": "ESP32-PoE-ISO", "revision": "K", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.L/ESP32-PoE-ISO_Rev_L.kicad_pcb", "blob": "3bc753def8ddc4ff25130655ea9fcd15e4094a90", "size": 1996501, "product": "ESP32-PoE-ISO", "revision": "L", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.M/ESP32-PoE-ISO_Rev_M.kicad_pcb", "blob": "244118164662635463a6e3ccd0b34da7ae783437", "size": 3771619, "product": "ESP32-PoE-ISO", "revision": "M", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.M1/ESP32-PoE-ISO_Rev_M1.kicad_pcb", "blob": "8cab48bbf2dbbfebbc1f06524949787a519ee0e1", "size": 3777923, "product": "ESP32-PoE-ISO", "revision": "M1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.N/ESP32-PoE-ISO_Rev_N.kicad_pcb", "blob": "b95053afba8fc42b7c6b747de5a53469f307bebd", "size": 3650719, "product": "ESP32-PoE-ISO", "revision": "N", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.N1/ESP32-PoE-ISO_Rev_N1.kicad_pcb", "blob": "6a561e4537664f4b6d69265a3d40d3e1a13174fb", "size": 3654836, "product": "ESP32-PoE-ISO", "revision": "N1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE-ISO", "path": "HARDWARE/ESP32-PoE-ISO-Rev.O/ESP32-PoE-ISO_Rev_O.kicad_pcb", "blob": "b02e0d2e2cc6998df8e0838023e480e025f42d4a", "size": 3592886, "product": "ESP32-PoE-ISO", "revision": "O", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE-ISO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-POE2", "path": "HARDWARE/ESP32-PoE2_Rev_B/ESP32-PoE2_Rev_B.kicad_pcb", "blob": "43a2d46dd5aba5d5b6504ff6dbfab311c4212faa", "size": 3308675, "product": "ESP32-PoE2", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-POE2/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-PRO", "path": "HARDWARE/REV-B/ESP32-PRO_Rev_B.kicad_pcb", "blob": "93e76d2bbc9d1eb9979544d914160f36385b49cd", "size": 814702, "product": "ESP32-PRO", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-PRO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-PRO", "path": "HARDWARE/REV-B1/BackupFiles/ESP32-PRO_Rev_B1.kicad_pcb", "blob": "d6bbb063355fd3e432767d36fdd6be9535de217a", "size": 861210, "product": "ESP32-PRO", "revision": "B1", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-PRO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-PRO", "path": "HARDWARE/REV-B1/ESP32-PRO_Rev_B1.kicad_pcb", "blob": "9ee57f29192743e3acb0fe530ede21cb6f064de9", "size": 861210, "product": "ESP32-PRO", "revision": "B1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-PRO/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-S2-DevKit-LiPo", "path": "HARDWARE/ESP32-S2-DevKit-Lipo-Rev.B1/ESP32-S2-DevKit-Lipo_Rev_B1.kicad_pcb", "blob": "fc49fba671c1965efa5e82df4464477fd1105166", "size": 592211, "product": "ESP32-S2-DevKit-Lipo", "revision": "B1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32/ESP32-DevKit-LiPo/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-S2-DevKit-LiPo-USB", "path": "HARDWARE/ESP32-S2-DevKit-USB-Rev-B/ESP32-S2-DevKit-USB_Rev_B.kicad_pcb", "blob": "ae4c3a7bb4a253ee31b2a72f01ad6e46c3ff31dc", "size": 564336, "product": "ESP32-S2-DevKit-USB", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-S2/ESP32-S2-DevKit-Lipo-USB/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-S3-DevKit-LiPo", "path": "HARDWARE/Dimensions/ESP32-S3-DevKit-LiPo_Rev_B_DIMM.kicad_pcb", "blob": "d55e7adf1217bc5a6eb0da2c47372453b8b9a1de", "size": 1169899, "product": "ESP32-S3-DevKit-LiPo", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "drawing", "product_page": null},
+  {"repository": "OLIMEX/ESP32-S3-DevKit-LiPo", "path": "HARDWARE/ESP32-S3-DevKit-LiPo_Rev_B/ESP32-S3-DevKit-LiPo_Rev_B.kicad_pcb", "blob": "d570de38cc257e65e1e69930127b3e09c40c989b", "size": 712831, "product": "ESP32-S3-DevKit-LiPo", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP32-SBC-FabGL", "path": "HARDWARE/Hardware-revision-A/ESP32-SBC-FabGL_Rev_A.kicad_pcb", "blob": "d683da1f4370b0204ca992e6e9f06ed2615bb159", "size": 858671, "product": "ESP32-SBC-FabGL", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Retro-Computers/ESP32-SBC-FabGL/open-source-hardware"},
+  {"repository": "OLIMEX/ESP32-SBC-FabGL", "path": "HARDWARE/Hardware-revision-B/ESP32-SBC-FabGL_Rev_B.kicad_pcb", "blob": "7876f72be7293116da5e8c7f1b6853bb1105cd13", "size": 864187, "product": "ESP32-SBC-FabGL", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Retro-Computers/ESP32-SBC-FabGL/open-source-hardware"},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/ESP8266-EVB-BAT/ESP8266-EVB-BAT revision A/ESP8266-EVB-BAT_Rev_A.brd", "blob": "6a5ed051df6f8453757b626632c07d88770c2cf7", "size": 174777, "product": "ESP8266-EVB-BAT", "revision": "A", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/ESP8266-EVB-BAT/ESP8266-EVB-BAT revision B/ESP8266-EVB-BAT_Rev_B-GERBER-files/ESP8266-EVB-BAT_Rev_B.brd", "blob": "0de379bcd8e924ae874b101a6337a6a786c13b1c", "size": 176436, "product": "ESP8266-EVB-BAT", "revision": "B", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/ESP8266-EVB-BAT/ESP8266-EVB-BAT revision B/ESP8266-EVB-BAT_Rev_B.brd", "blob": "0de379bcd8e924ae874b101a6337a6a786c13b1c", "size": 176436, "product": "ESP8266-EVB-BAT", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/ESP8266:HARDWARE/ESP8266-EVB-BAT/ESP8266-EVB-BAT revision B/ESP8266-EVB-BAT_Rev_B-GERBER-files/ESP8266-EVB-BAT_Rev_B.brd"},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/ESP8266-EVB/ESP8266-EVB revision A/ESP8266-EVB_Rev_A.brd", "blob": "ba8f6870728476e4f468dcfa31fa493922ba230e", "size": 154217, "product": "ESP8266-EVB", "revision": "A", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/ESP8266-EVB/ESP8266-EVB revision A1/ESP8266-EVB_Rev_A1-GERBER-files/ESP8266-EVB_Rev_A1.brd", "blob": "815fbf08ecf2d6343f31206f319f022eb7c3380c", "size": 154217, "product": "ESP8266-EVB", "revision": "A1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/ESP8266-EVB/ESP8266-EVB revision A1/ESP8266-EVB_Rev_A1.brd", "blob": "815fbf08ecf2d6343f31206f319f022eb7c3380c", "size": 154217, "product": "ESP8266-EVB", "revision": "A1", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/ESP8266:HARDWARE/ESP8266-EVB/ESP8266-EVB revision A1/ESP8266-EVB_Rev_A1-GERBER-files/ESP8266-EVB_Rev_A1.brd"},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266-DEV/MOD-WiFi-ESP8266-DEV revision A/MOD-WiFi-ESP8266-DEV_Rev_A.brd", "blob": "653dccd306a263f242871f7668a3aae4ab4447c4", "size": 484726, "product": "MOD-WiFi-ESP8266-DEV", "revision": "A", "current": false, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266-DEV/MOD-WiFi-ESP8266-DEV revision B/MOD-WiFi-ESP8266-DEV_Rev_B.brd", "blob": "d8c1f6db383836fb2feffdd376877df47b47094c", "size": 158456, "product": "MOD-WiFi-ESP8266-DEV", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266-DEV/MOD-WiFi-ESP8266-DEV revision B1/MOD-WiFi-ESP8266-DEV_Rev_B1-GERBER-files/MOD-WiFi-ESP8266-DEV_Rev_B1.brd", "blob": "10aaed7b0cda43b903bb02649626d04bab1431a8", "size": 158456, "product": "MOD-WiFi-ESP8266-DEV", "revision": "B1", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/ESP8266:HARDWARE/MOD-WIFI-ESP8266-DEV/MOD-WiFi-ESP8266-DEV revision B2/MOD-WiFi-ESP8266-DEV_Rev_B2.brd"},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266-DEV/MOD-WiFi-ESP8266-DEV revision B1/MOD-WiFi-ESP8266-DEV_Rev_B1.brd", "blob": "10aaed7b0cda43b903bb02649626d04bab1431a8", "size": 158456, "product": "MOD-WiFi-ESP8266-DEV", "revision": "B1", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/ESP8266:HARDWARE/MOD-WIFI-ESP8266-DEV/MOD-WiFi-ESP8266-DEV revision B2/MOD-WiFi-ESP8266-DEV_Rev_B2.brd"},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266-DEV/MOD-WiFi-ESP8266-DEV revision B2/MOD-WiFi-ESP8266-DEV_Rev_B2.brd", "blob": "10aaed7b0cda43b903bb02649626d04bab1431a8", "size": 158456, "product": "MOD-WiFi-ESP8266-DEV", "revision": "B2", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266/MOD-WIFI-ESP8266 revision A/MOD-WiFi-ESP8266_Rev_A.brd", "blob": "22883f2f0ad24ac17806dd87e7c4b525501e1416", "size": 432504, "product": "MOD-WIFI-ESP8266", "revision": "A", "current": false, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266/MOD-WIFI-ESP8266 revision B/ESP8266-EVB-BAT_Rev_B.brd", "blob": "0de379bcd8e924ae874b101a6337a6a786c13b1c", "size": 176436, "product": "MOD-WIFI-ESP8266", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/ESP8266:HARDWARE/ESP8266-EVB-BAT/ESP8266-EVB-BAT revision B/ESP8266-EVB-BAT_Rev_B-GERBER-files/ESP8266-EVB-BAT_Rev_B.brd"},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266/MOD-WIFI-ESP8266 revision B/MOD-WiFi-ESP8266_Rev_B-GERBER-files/MOD-WiFi-ESP8266_Rev_B.brd", "blob": "acaa38be77653e72e2c6e09dc973f6bd9abcc3c8", "size": 140159, "product": "MOD-WIFI-ESP8266", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/ESP8266:HARDWARE/MOD-WIFI-ESP8266/MOD-WIFI-ESP8266 revision B1/MOD-WiFi-ESP8266_Rev_B1.brd"},
+  {"repository": "OLIMEX/ESP8266", "path": "HARDWARE/MOD-WIFI-ESP8266/MOD-WIFI-ESP8266 revision B1/MOD-WiFi-ESP8266_Rev_B1.brd", "blob": "acaa38be77653e72e2c6e09dc973f6bd9abcc3c8", "size": 140159, "product": "MOD-WIFI-ESP8266", "revision": "B1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/FOSDEM-MUSIC-BOX", "path": "HARDWARE/FOSDEM-MUSIC-BOX_RevA/FOSDEM-MUSIC-BOX_RevA.kicad_pcb", "blob": "a03b3208fcf4a0de498c0d7c4a255513ecfdf7df", "size": 401346, "product": "FOSDEM-MUSIC-BOX", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Soldering-Kits/FOSDEM-MUSIC-BOX/open-source-hardware"},
+  {"repository": "OLIMEX/Flash-e", "path": "HARDWARE/Flash-e-Rev.C/Flash-e_Rev_C.kicad_pcb", "blob": "86e7a8ef028d90fefcacf01416dd92a10f0897b6", "size": 543788, "product": "Flash-e", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/OLinuXino/Accessories/Flash-e32Gs16M/"},
+  {"repository": "OLIMEX/GateMateA1-EVB", "path": "HARDWARE/GateMateA1-EVB-Rev.A/GateMateA1-EVB_Rev_A.kicad_pcb", "blob": "74e6ddb2ec451b3c3ac5de3286bb2ee3fbc7ca9e", "size": 8415517, "product": "GateMateA1-EVB", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/FPGA/GateMate/GateMateA1-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/GateMateA1-EVB", "path": "HARDWARE/GateMateA1-EVB-Rev.B/GateMateA1-EVB_Rev_B.kicad_pcb", "blob": "cf0ec7ddf42111766bfed37231bf6284b39f7668", "size": 8588811, "product": "GateMateA1-EVB", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/FPGA/GateMate/GateMateA1-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/GateMateA1-EVB", "path": "HARDWARE/GateMateA1-EVB-Rev.C/GateMateA1-EVB_Rev_C.kicad_pcb", "blob": "5e1e9996a5e5af350f0bc4d70f49a01b127eee4c", "size": 8580417, "product": "GateMateA1-EVB", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/FPGA/GateMate/GateMateA1-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/LIME2-SHIELD", "path": "HARDWARE/Lime2-SHIELD-Rev.C/Lime2-SHIELD_RevC.kicad_pcb", "blob": "b1a0a8845f46c4921b0ca39e7a127650f258d85a", "size": 656964, "product": "Lime2-SHIELD", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/OLinuXino/A20/LIME2-SHIELD/open-source-hardware"},
+  {"repository": "OLIMEX/LoRa-868-915", "path": "HARDWARE/LoRa-Rev-A/LoRa_RevA.kicad_pcb", "blob": "4f32b128098326d50aed99c41c5ea99c1aca29bd", "size": 166202, "product": "LoRa", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/LoRa/LoRa868/open-source-hardware"},
+  {"repository": "OLIMEX/LoRa-868-915", "path": "HARDWARE/LoRa-Rev-B/LoRa_RevB.kicad_pcb", "blob": "f225f6934ed5674070702fd43123e061c9db2144", "size": 165163, "product": "LoRa", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/LoRa/LoRa868/open-source-hardware"},
+  {"repository": "OLIMEX/LoRa-868-915", "path": "HARDWARE/MOD-LoRa-Rev-B/MOD-LoRa_RevB.kicad_pcb", "blob": "510f6d435598ea93c031e4db6a847349a12b9412", "size": 148654, "product": "MOD-LoRa", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/LoRa/MOD-LoRa868/open-source-hardware"},
+  {"repository": "OLIMEX/LoRa-STM32WL-DevKIT", "path": "HARDWARE/LoRa-STM32WL-DevKIT/LoRa-STM32WL-DevKit-RevB/BackupFiles/STM32WL-DevKit_RevB.kicad_pcb", "blob": "43adefe544936f1b6e7cfd6045e24a0b1154b476", "size": 831719, "product": "LoRa-STM32WL-DevKit", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": "https://www.olimex.com/Products/IoT/LoRa/LoRa-STM32WL-DevKit/"},
+  {"repository": "OLIMEX/LoRa-STM32WL-DevKIT", "path": "HARDWARE/LoRa-STM32WL-DevKIT/LoRa-STM32WL-DevKit-RevB/STM32WL-DevKit_RevB.kicad_pcb", "blob": "e93e268a20304559e52c706999190b64f79cca0f", "size": 831685, "product": "LoRa-STM32WL-DevKit", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/LoRa/LoRa-STM32WL-DevKit/"},
+  {"repository": "OLIMEX/LoRa-STM32WL-DevKIT", "path": "HARDWARE/LoRa-STM32WL-DevKIT/LoRa-STM32WL-DevKit-RevD1/LoRa-STM32WL-DevKit_RevD1.kicad_pcb", "blob": "47376b4a3ac2a9656e3273f76a3cd1805304de6d", "size": 476012, "product": "LoRa-STM32WL-DevKit", "revision": "D1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/LoRa/LoRa-STM32WL-DevKit/"},
+  {"repository": "OLIMEX/MIPI-HDMI", "path": "HARDWARE/MIPI-HDMI-Rev.B/MIPI-HDMI_Rev_B.kicad_pcb", "blob": "b580435868ea5228087e5c9b8888d97b979af3ba", "size": 1464022, "product": "MIPI-HDMI", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-P4/MIPI-HDMI/open-source-hardware"},
+  {"repository": "OLIMEX/MOD-BME280", "path": "HARDWARE/MOD-BME280-Rev.A1/MOD-BME280_RevA.kicad_pcb", "blob": "4fec372edb8c222c7324d27ae3edff81c59442fa", "size": 41698, "product": "MOD-BME280", "revision": "A1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/MOD-BME280", "path": "HARDWARE/MOD-BME280-Rev.B/MOD-BME280_RevB.kicad_pcb", "blob": "d864f9e055375baa61a635409a4ac33e1584f428", "size": 46802, "product": "MOD-BME280", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/MOD-ENV", "path": "HARDWARE/REV-B/MOD-ENV_revB.kicad_pcb", "blob": "8c0e1765aff33ee0372ee31dbd9f175c493c5937", "size": 105322, "product": "MOD-ENV", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/MOD-ESP32-C5", "path": "HARDWARE/MOD-ESP32-C5.Rev.A/MOD-ESP32-C5_Rev_A.kicad_pcb", "blob": "0b21fb0c65fb80bb4ff189c537631e84a56b7137", "size": 616293, "product": "MOD-ESP32-C5", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/ESP32-C5/MOD-ESP32-C5/open-source-hardware"},
+  {"repository": "OLIMEX/MOD-IR-TEMP", "path": "HARDWARE/REV.A/MOD-IR-TEMP_RevA.kicad_pcb", "blob": "372bb4c3cdffa6dad60f699a13d117e825521a52", "size": 31651, "product": "MOD-IR-TEMP", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/MOD-LCD2.8RTP", "path": "HARDWARE/SCHEMATICS/Hardware-revision-B/MOD-LCD2.8RTP_RevB.kicad_pcb", "blob": "cf6590e646adbdad243c757e9cd2e127d66a9528", "size": 215910, "product": "MOD-LCD2.8RTP", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/"},
+  {"repository": "OLIMEX/MOD-LCD2.8RTP", "path": "HARDWARE/SCHEMATICS/Hardware-revision-C/MOD-LCD2.8RTP_Rev_C.kicad_pcb", "blob": "f081dbee8b57afa346b9ad774e30e4bb0b43a5c0", "size": 602697, "product": "MOD-LCD2.8RTP", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/"},
+  {"repository": "OLIMEX/MOD-LCD2.8RTP", "path": "HARDWARE/SCHEMATICS/Hardware-revision-D/MOD-LCD2.8RTP_Rev_D.kicad_pcb", "blob": "ec365bd00452a2afacef011394b7c39277461281", "size": 653617, "product": "MOD-LCD2.8RTP", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/"},
+  {"repository": "OLIMEX/MOD-MPU9150", "path": "HARDWARE/MOD-MPU9150-Rev.A/mod-gyro_old.kicad_pcb", "blob": "77f5c3186cd32a4a6112a4c89ba7fea575cb7673", "size": 38779, "product": "MOD-MPU9150", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": null},
+  {"repository": "OLIMEX/MOD-MPU9150", "path": "HARDWARE/MOD-MPU9150-Rev.A/mod-mpu9150.kicad_pcb", "blob": "1b05b1f85fea1872fbf396f6b32fcea8d3bf9988", "size": 124511, "product": "MOD-MPU9150", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/MOD-OLED-128x64", "path": "HARDWARE/MOD-OLED-128x64_Rev.A/mod-oled-128x64.kicad_pcb", "blob": "420720bbe6e30ebfc9247ca27fb4c2c67cfcfde0", "size": 78814, "product": "MOD-OLED-128x64", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/MOD-RTC2", "path": "Hardware/MOD-RTC2-A/MOD-RTC2_Rev_A.kicad_pcb", "blob": "84bcc0760661bb9a77601b01a2c0693327f5fe41", "size": 54250, "product": "MOD-RTC2", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/Minibot", "path": "HARDWARE/MiniBot_RevA.kicad_pcb", "blob": "4f03d1630373438fdc1e35567dfd61297a5dd389", "size": 150980, "product": "Minibot", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/Minibot", "path": "HARDWARE/charger/MiniBot_charger_RevA.kicad_pcb", "blob": "600d99cdc26c0191570c07287e73022984b0fc5c", "size": 80677, "product": "Minibot charger", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/NB-IoT", "path": "HARDWARE/NB-IoT-DevKit_Rev_B/NB-IoT-DevKit_Rev_B.kicad_pcb", "blob": "52bfd435d7d0367da8e7535f9d9db46dd3d42b08", "size": 847127, "product": "NB-IoT-DevKit", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/NB-IoT", "path": "HARDWARE/NB-IoT-DevKit_Rev_C/Extensions/Extension_Rev_B/Extension_Rev_B.kicad_pcb", "blob": "02c8ecb0e385e9163fb1811ba3b2fcd6b9cd45f4", "size": 51, "product": "NB-IoT extension", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "stub", "product_page": null},
+  {"repository": "OLIMEX/NB-IoT", "path": "HARDWARE/NB-IoT-DevKit_Rev_C/NB-IoT-DevKit_Rev_C.kicad_pcb", "blob": "a3b66e797372a6b77ec468c241f7ab2818037712", "size": 832363, "product": "NB-IoT-DevKit", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/NB-IoT", "path": "HARDWARE/NB-IoT-DevKit_Rev_D/NB-IoT-DevKit_Rev_D.kicad_pcb", "blob": "5e142549edd467633e1667743eda5f87d4525109", "size": 1277612, "product": "NB-IoT-DevKit", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/Neo6502", "path": "HARDWARE/Neo6502-rev-B/Neo6502_Rev_B.kicad_pcb", "blob": "5b907a6cdd9c31a022a06fda4c7393930a5f0b42", "size": 1646492, "product": "Neo6502", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/Neo6502", "path": "HARDWARE/Neo6502-rev-B1/Neo6502_Rev_B1.kicad_pcb", "blob": "33132f416e031e954c57d9cf645caa9360788c98", "size": 1646494, "product": "Neo6502", "revision": "B1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/Neo6502", "path": "HARDWARE/New6502-Rev-A/Neo6502_Rev_A.kicad_pcb", "blob": "0cf020aeae5fcc4777f5be441602e0920fb4ebdd", "size": 397047, "product": "Neo6502", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/Neo6502kbd", "path": "HARDWARE/Neo6502kbd-Rev.A/Neo6502kbd_Rev_A.kicad_pcb", "blob": "bd54d06f5619172c863db23b6efa87468e3bf43e", "size": 4082145, "product": "Neo6502kbd", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Retro-Computers/Neo6502kbd/open-source-hardware"},
+  {"repository": "OLIMEX/Neo6502pc", "path": "HARDWARE/Neo6502pc-CPU-rev.B/Neo6502PC-CPU_Rev_B.kicad_pcb", "blob": "b4baa2934652a200a53b75d75881d6b24d770046", "size": 4545972, "product": "Neo6502pc-CPU", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/Neo6502pc", "path": "HARDWARE/Neo6502pc-PWR-rev.B/Neo6502PC-PWR_Rev_B.kicad_pcb", "blob": "18b73a235bfb4a02f244dd1014055ce197344b84", "size": 1585409, "product": "Neo6502pc-PWR", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLIMEXINO-2560", "path": "HARDWARE/OLIMEXINO-2560_Rev_B.kicad_pcb", "blob": "206f4cc5c28f26e653ca3edc2cfa46dad7b3b870", "size": 724788, "product": "OLIMEXINO-2560", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLIMEXINO-85", "path": "HARDWARE/FOSDEM-85/FOSDEM-85_Rev_A.brd", "blob": "c437d856934fef80f5ef8b0b34e268021c27b5a4", "size": 379231, "product": "FOSDEM-85", "revision": "A", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/Soldering-Kits/FOSDEM-85/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-85", "path": "HARDWARE/OLIMEXINO-85-ASM/Hardware revision C/Olimexino-85_Rev_C.brd", "blob": "5ca1dd99cb297a488a05071219f04b41ba7745d1", "size": 22051, "product": "OLIMEXINO-85-ASM", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/OLIMEXINO-85-ASM/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-85", "path": "HARDWARE/OLIMEXINO-85-ASM/OLIMEXINO-85_Rev_A.brd", "blob": "2390f9ea08b0abcb106725eb17e76d4eb342a854", "size": 20416, "product": "OLIMEXINO-85-ASM", "revision": "A", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/OLIMEXINO-85-ASM/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-85", "path": "HARDWARE/OLIMEXINO-85-ASM/OLIMEXINO-85_Rev_B.brd", "blob": "4bbf05ccb61fd0849a1022a23b7f04eba7259ea0", "size": 21595, "product": "OLIMEXINO-85-ASM", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/OLIMEXINO-85-ASM/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-85", "path": "HARDWARE/OLIMEXINO-85BC/OLIMEXINO-85BC_Rev_A.brd", "blob": "6ebedd5129a4377a43b8ed9a4de1c8bb8825c800", "size": 95817, "product": "OLIMEXINO-85BC", "revision": "A", "current": true, "format": "eagle_brd_xml", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/OLIMEXINO-85BC/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-85", "path": "HARDWARE/OLIMEXINO-85S/OLIMEXINO-85S_Rev_A.brd", "blob": "c8bfbdea3f06c55d5998e1e9f8b011b58f9375ea", "size": 20167, "product": "OLIMEXINO-85S", "revision": "A", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/OLIMEXINO-85S/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-STM32F3", "path": "HARDWARE/OLIMEXINO-STM32F3-revision-B/BackupFiles/OLIMEXINO-STM32F3_RevB.kicad_pcb", "blob": "3c4d8ae5377db3f2140e6c43defe1998f31b716c", "size": 1561795, "product": "OLIMEXINO-STM32F3", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": "https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32F3/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-STM32F3", "path": "HARDWARE/OLIMEXINO-STM32F3-revision-B/OLIMEXINO-STM32F3_RevB.kicad_pcb", "blob": "e71ddc85a835596af97c6973798c4561be53f21f", "size": 1561702, "product": "OLIMEXINO-STM32F3", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32F3/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-STM32F3", "path": "HARDWARE/OLIMEXINO-STM32F3-revision-C/OLIMEXINO-STM32F3_RevC.kicad_pcb", "blob": "4b853d33c855facb068ebeb543b8a13eba88471e", "size": 2029798, "product": "OLIMEXINO-STM32F3", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32F3/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-STM32F3", "path": "HARDWARE/OLIMEXINO-STM32F3-revision-C1/OLIMEXINO-STM32F3_Rev_C1.kicad_pcb", "blob": "7aab41503d02cba62a3fe8d1ffe8cf464e567ef3", "size": 2537423, "product": "OLIMEXINO-STM32F3", "revision": "C1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32F3/open-source-hardware"},
+  {"repository": "OLIMEX/OLIMEXINO-STM32F3", "path": "HARDWARE/OLIMEXINO-STM32F3-revision-D/OLIMEXINO-STM32F3_Rev_D.kicad_pcb", "blob": "375e10a3a7a1422a2cca3a8827a31ea3f9b53dc5", "size": 2400333, "product": "OLIMEXINO-STM32F3", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32F3/open-source-hardware"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/1. Latest hardware revision/A20-OLinuXino-Lime_Rev_I1.brd", "blob": "855cb00066c92b4ebcff6a5c304716ea9f9ae53e", "size": 556134, "product": "A10-OLinuXino-LIME", "revision": "I1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/2. Older hardware revisions/A10-OLinuXino-LIME hardware revision A/A10-OLinuXino-Lime_Rev_A.brd", "blob": "bb3c8fdb3404359209e81c1a27c0beebf65ddaf8", "size": 1263709, "product": "A10-OLinuXino-LIME", "revision": "A", "current": false, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/2. Older hardware revisions/A10-OLinuXino-LIME hardware revision B/A10-OLinuXino-Lime_Rev_B.brd", "blob": "8e0cef0af64a09aa98e89a533e725eba4ea18c8b", "size": 426967, "product": "A10-OLinuXino-LIME", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/2. Older hardware revisions/A10-OLinuXino-LIME hardware revision C/A10-OLinuXino-Lime_Rev_C.brd", "blob": "a155b30051da9159df13b767d7411cacf8d40cdd", "size": 432245, "product": "A10-OLinuXino-LIME", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/2. Older hardware revisions/A10-OLinuXino-LIME hardware revision E/A10-OLinuXino-Lime-4GB_Rev_E.brd", "blob": "e42b9cc0b77d9e1fd44ebba4a9248a4b195d79b5", "size": 436673, "product": "A10-OLinuXino-LIME", "revision": "E", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/2. Older hardware revisions/A10-OLinuXino-LIME hardware revision I1/A20-OLinuXino-Lime_Rev_I1.brd", "blob": "855cb00066c92b4ebcff6a5c304716ea9f9ae53e", "size": 556134, "product": "A10-OLinuXino-LIME", "revision": "I1", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A10-OLinuXino-LIME/1. Latest hardware revision/A20-OLinuXino-Lime_Rev_I1.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/2. Older hardware revisions/A10-OLinuXino-LIME hardware revision preliminary/A10-OLinuXino/A10-OLinuXino_Rev_A.brd", "blob": "f843ae18405f07c51b5160ab3728117cf4b7cc25", "size": 583225, "product": "A10-OLinuXino", "revision": "A", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/3. Templates and more/A10-OLinuXino-LIME revision B SHIELD TEMPLATE EAGLE/A10-OLinuXino-Lime_Rev-B_SHIELD_TEMPLATE.brd", "blob": "73e06f0f9c8052fb17f47b255197a81e1d43db9b", "size": 43056, "product": "A10-OLinuXino-LIME", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "template", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-LIME/3. Templates and more/A10-OLinuXino-LIME revision B SHIELD TEMPLATE KiCAD/A10_OLinuXino_Lime_Rev-B_SHIELD_TEMPLATE.kicad_pcb", "blob": "ebd8ca88c418c7906f559c5f6e356f10d62e5608", "size": 122564, "product": "A10-OLinuXino-LIME", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "template", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-MICRO/A10-OLinuXino-MICRO hardware revision B/A10-OLINUXINO-MICRO_Rev_B.brd", "blob": "055943f37d7a5c084e146bc8665026227c8902dd", "size": 532872, "product": "A10-OLinuXino-MICRO", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-MICRO/A10-OLinuXino-MICRO hardware revision C/A10-A20-OLINUXINO-MICRO-4GB_Rev_C.brd", "blob": "3a500865afd80c8b5384a2217a28232525d8243c", "size": 1624623, "product": "A10-OLinuXino-MICRO", "revision": "C", "current": false, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-MICRO/A10-OLinuXino-MICRO hardware revision D/A10-A20-OLINUXINO-MICRO-4GB_Rev_D.brd", "blob": "62a54b9da46cbf4250143b74e7aaa569ddc32677", "size": 1623160, "product": "A10-OLinuXino-MICRO", "revision": "D", "current": false, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-MICRO/A10-OLinuXino-MICRO hardware revision E/A20-OLINUXINO-MICRO_4GB_REV_E2.brd", "blob": "d44999c3f97b00168f827045aa341f72cfa7080f", "size": 1627472, "product": "A10-OLinuXino-MICRO", "revision": "E", "current": false, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-MICRO/A10-OLinuXino-MICRO hardware revision F/A20-OLINUXINO-MICRO_4GB_Rev_F1.brd", "blob": "b6f88d9040f860d9e55e9b18a4a7514daac66d06", "size": 544806, "product": "A10-OLinuXino-MICRO", "revision": "F", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10-OLinuXino-MICRO/A10-OLinuXino-MICRO hardware revision G/A20-OLINUXINO-MICRO_4GB_Rev_G1.brd", "blob": "f99aabf895891504f37a162173693f8c3f55b21c", "size": 545698, "product": "A10-OLinuXino-MICRO", "revision": "G", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10S-OLinuXino-MICRO/A10S-OLinuXino-MICRO_Rev_A.brd", "blob": "cd3c1755efef0e09ea82ca4122919022a5e4ed03", "size": 330528, "product": "A10S-OLinuXino-MICRO", "revision": "A", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10S-OLinuXino-MICRO/A10S-OLinuXino-MICRO_Rev_B.brd", "blob": "8820b0869389e60285529a602c14ef8721b454e8", "size": 323937, "product": "A10S-OLinuXino-MICRO", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10S-OLinuXino-MICRO/A10S-OLinuXino-MICRO_Rev_C.brd", "blob": "de05b0365e24c5173e8a094009943a50ef3b76e3", "size": 373745, "product": "A10S-OLinuXino-MICRO", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A10S-OLinuXino-MICRO/A10S-OLinuXino-MICRO_Rev_D.brd", "blob": "bd29eea228e125a2062bce347afd65979e550d32", "size": 374358, "product": "A10S-OLinuXino-MICRO", "revision": "D", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino-MICRO/1. Latest hardware revision/A13-OLinuXino-MICRO hardware revision C1/A13-OLinuXino-MICRO_Rev_C1.brd", "blob": "6a51aec95d08868b4c2f31286782e745cf958148", "size": 262507, "product": "A13-OLinuXino-MICRO", "revision": "C1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino-MICRO/2. Older hardware revisions/A13-OLinuXino-MICRO hardware revision A/A13-OLinuXino-MICRO_Rev_A.brd", "blob": "28ca9b360c16857f8429c7ad0423f8ecf2059f46", "size": 257097, "product": "A13-OLinuXino-MICRO", "revision": "A", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino-MICRO/2. Older hardware revisions/A13-OLinuXino-MICRO hardware revision B/A13-OLinuXino-MICRO_Rev_B.brd", "blob": "e17c0a89f72af875616000f9b18a997f684866f3", "size": 253867, "product": "A13-OLinuXino-MICRO", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino-MICRO/2. Older hardware revisions/A13-OLinuXino-MICRO hardware revision B1/A13-OLinuXino-MICRO_Rev_B1.brd", "blob": "613d0a68ebd2ac646a30164635188c54e0b1f4b8", "size": 253938, "product": "A13-OLinuXino-MICRO", "revision": "B1", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino-MICRO/2. Older hardware revisions/A13-OLinuXino-MICRO hardware revision C/A13-OLinuXino-MICRO_Rev_C.brd", "blob": "0ab5313ee51252bfedb822e9a78961d75a5460e0", "size": 262507, "product": "A13-OLinuXino-MICRO", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino-MICRO/2. Older hardware revisions/A13-OLinuXino-MICRO hardware revision C1/A13-OLinuXino-MICRO_Rev_C1.brd", "blob": "6a51aec95d08868b4c2f31286782e745cf958148", "size": 262507, "product": "A13-OLinuXino-MICRO", "revision": "C1", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A13-OLinuXino-MICRO/1. Latest hardware revision/A13-OLinuXino-MICRO hardware revision C1/A13-OLinuXino-MICRO_Rev_C1.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/1. Latest hardware revision/A13-OLinuXino-WIFI hardware revision G2/A13-OLinuXino_WIFI_Rev_G2.brd", "blob": "dabc13725532359f0135b2b1a2b5e7c313fa8fb1", "size": 313703, "product": "A13-OLinuXino-WIFI", "revision": "G2", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/1. Latest hardware revision/A13-OLinuXino-WIFI hardware revision H/A13-OLinuXino_WIFI_Rev_H.brd", "blob": "6a8463f1957722bd8b862df9aad54c9fddba921c", "size": 324000, "product": "A13-OLinuXino-WIFI", "revision": "H", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision A/A13-OLinuXino_Rev_A.brd", "blob": "c2426fe508503dfd911ce8dc05348c687af97f7c", "size": 1082647, "product": "A13-OLinuXino-WIFI", "revision": "A", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision B/A13-OLinuXino_Rev_B.brd", "blob": "4956183d632d7345b6afb3b9fbf5e51a8ac648d4", "size": 1082754, "product": "A13-OLinuXino-WIFI", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision C/A13-OLinuXino_Rev_C.brd", "blob": "98819ab21a2c2df874b2131a8ac6ea2380fd63a6", "size": 1090975, "product": "A13-OLinuXino-WIFI", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision E/A13-OLinuXino_WIFI_Rev_E.brd", "blob": "fc1e2eb6ea2f5207ab7b5db949f4b28f02697868", "size": 311819, "product": "A13-OLinuXino-WIFI", "revision": "E", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision F/A13-OLinuXino_WIFI_Rev_F.brd", "blob": "c01634da4ed0a7bbc9a636b0a80a6248e667ebaa", "size": 311641, "product": "A13-OLinuXino-WIFI", "revision": "F", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision G/A13-OLinuXino_WIFI_Rev_G.brd", "blob": "844bdbcdcd25d2855bcdcf9e5b102ec9c28989b8", "size": 313439, "product": "A13-OLinuXino-WIFI", "revision": "G", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision G1/A13-OLinuXino_WIFI_Rev_G1.brd", "blob": "536be29f148921ecca9e68ee173c3a1489fac2fb", "size": 313703, "product": "A13-OLinuXino-WIFI", "revision": "G1", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision G2/A13-OLinuXino_WIFI_Rev_G2.brd", "blob": "dabc13725532359f0135b2b1a2b5e7c313fa8fb1", "size": 313703, "product": "A13-OLinuXino-WIFI", "revision": "G2", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A13-OLinuXino/1. Latest hardware revision/A13-OLinuXino-WIFI hardware revision G2/A13-OLinuXino_WIFI_Rev_G2.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A13-OLinuXino/2. Older hardware revisions/A13-OLinuXino-WIFI hardware revision H/A13-OLinuXino_WIFI_Rev_H.brd", "blob": "6a8463f1957722bd8b862df9aad54c9fddba921c", "size": 324000, "product": "A13-OLinuXino-WIFI", "revision": "H", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A13-OLinuXino/1. Latest hardware revision/A13-OLinuXino-WIFI hardware revision H/A13-OLinuXino_WIFI_Rev_H.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/1. Latest hardware revision/A20-OLinuXino-Lime_Rev_J.brd", "blob": "d0acc06427632f4948fee7c6e9c257b0b63cfbb2", "size": 790736, "product": "A20-OLinuXino-LIME", "revision": "J", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision C/A20-OLinuXino-Lime_Rev_C.brd", "blob": "716498d73e28bc825d35520ce911f51021411165", "size": 432245, "product": "A20-OLinuXino-LIME", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision D/A20-OLinuXino-Lime-4GB_Rev_D.brd", "blob": "f264276cab36606bea5d6c100225b875a3f40b1b", "size": 436652, "product": "A20-OLinuXino-LIME", "revision": "D", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision E/A10-OLinuXino-Lime-4GB_Rev_E.brd", "blob": "2145f48d663dd928c034425cba35392f0d2f912f", "size": 436671, "product": "A20-OLinuXino-LIME", "revision": "E", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision F/A10-OLinuXino-Lime-4GB_Rev_F.brd", "blob": "762703b649fc726efea584e9686881f5b891eec6", "size": 440211, "product": "A20-OLinuXino-LIME", "revision": "F", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision G/A20-OLinuXino-Lime_Rev_G.brd", "blob": "edba6207dfdf8f49423dd8b00492bf8556886e0b", "size": 545014, "product": "A20-OLinuXino-LIME", "revision": "G", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision H/A20-OLinuXino-Lime_Rev_H.brd", "blob": "d25dea480179a80b4fea28024ab9c581ba3cad91", "size": 544662, "product": "A20-OLinuXino-LIME", "revision": "H", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision I1/A20-OLinuXino-Lime_Rev_I1.brd", "blob": "855cb00066c92b4ebcff6a5c304716ea9f9ae53e", "size": 556134, "product": "A20-OLinuXino-LIME", "revision": "I1", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A10-OLinuXino-LIME/1. Latest hardware revision/A20-OLinuXino-Lime_Rev_I1.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision I2/A20-OLinuXino-Lime_Rev_I2.brd", "blob": "0f3a31a06b1d8716027ef3cda25bbbbc5402a04e", "size": 556133, "product": "A20-OLinuXino-LIME", "revision": "I2", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME/2. Older hardware revisions/A20-OLinuXino-LIME hardware revision I3/A20-OLinuXino-Lime_Rev_I3.brd", "blob": "b800b246fafa7237a5fbbd2c0f370a478609d049", "size": 556133, "product": "A20-OLinuXino-LIME", "revision": "I3", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/1. Latest hardware revision/A20-OLinuXino-Lime2_Rev_M.brd", "blob": "92b85ff087d7474ab8c0dbf7d68148f6cd7c5842", "size": 859218, "product": "A20-OLinuXino-LIME2", "revision": "M", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/1. Latest hardware revision/A20-OLinuXino-Lime2_Rev_N.brd", "blob": "0171b18988a01a144653f57b3b66dff48283f092", "size": 607473, "product": "A20-OLinuXino-LIME2", "revision": "N", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision B/A20-OLinuXino-Lime2_Rev_B.brd", "blob": "4753ccc7878f6aae8bb2802cc44a079e447c2872", "size": 494150, "product": "A20-OLinuXino-LIME2", "revision": "B", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision C/A20-OLinuXino-Lime2_Rev_C.brd", "blob": "feb4b7d251acb5cc761d9a69fbf93f855b4ff019", "size": 494040, "product": "A20-OLinuXino-LIME2", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision D/A20-OLinuXino-Lime2_Rev_D.brd", "blob": "27930670fd8e940b967366a74c77a896cbcd5890", "size": 566969, "product": "A20-OLinuXino-LIME2", "revision": "D", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision E/A20-OLinuXino-Lime2_Rev_E.brd", "blob": "2b6827b4a8806182e5428c068a5a7d83c8d8be4f", "size": 569541, "product": "A20-OLinuXino-LIME2", "revision": "E", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision F/A20-OLinuXino-Lime2_Rev_F.brd", "blob": "ce4beec26a1a1ee92a466dda0851396337945a5f", "size": 583821, "product": "A20-OLinuXino-LIME2", "revision": "F", "current": false, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision G/A20-OLinuXino-Lime2_Rev_G.brd", "blob": "a9b1d7aad88509f80abbcc626ffdb6e6a58f88fc", "size": 586302, "product": "A20-OLinuXino-LIME2", "revision": "G", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision G2/A20-OLinuXino-Lime2_Rev_G2.brd", "blob": "5c597739776146c71666504414835ec1c9610d8a", "size": 590014, "product": "A20-OLinuXino-LIME2", "revision": "G2", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision H/A20-OLinuXino-Lime2_Rev_H.brd", "blob": "57fcd7c2727c09c590ab5aeb4ac797d7767116d0", "size": 587014, "product": "A20-OLinuXino-LIME2", "revision": "H", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision I/A20-OLinuXino-Lime2_Rev_I.brd", "blob": "e8251503edcab358c5b40dbc9debc5142593a361", "size": 594588, "product": "A20-OLinuXino-LIME2", "revision": "I", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision J/A20-OLinuXino-Lime2_Rev_J.brd", "blob": "0d0f69619f3c91493ad269c8e01e4a44e38d9f31", "size": 603738, "product": "A20-OLinuXino-LIME2", "revision": "J", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision K/A20-OLinuXino-Lime2_Rev_K.brd", "blob": "29a12b89ae8aeee809c27ac81fa50bba8c93a125", "size": 606474, "product": "A20-OLinuXino-LIME2", "revision": "K", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision K2/A20-OLinuXino-Lime2_Rev_K2.brd", "blob": "e78a8e9304e0cd4cf61bcbd78fd17199125ae70b", "size": 614777, "product": "A20-OLinuXino-LIME2", "revision": "K2", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision L/A20-OLinuXino-Lime2_Rev_L.brd", "blob": "5fb6f5073e971a51cfe2a35e295cc118ed4b1bb2", "size": 606189, "product": "A20-OLinuXino-LIME2", "revision": "L", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/2. Older hardware revisions/A20-OLinuXino-LIME2 hardware revision M/A20-OLinuXino-Lime2_Rev_M.brd", "blob": "92b85ff087d7474ab8c0dbf7d68148f6cd7c5842", "size": 859218, "product": "A20-OLinuXino-LIME2", "revision": "M", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A20-OLinuXino-LIME2/1. Latest hardware revision/A20-OLinuXino-Lime2_Rev_M.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/3. Templates and more/A20-OLinuXino-LIME2-rev-A SHIELD TEMPLATE EAGLE/A20-OLinuXino-Lime2_SHIELD_TEMPLATE_Rev-AA.brd", "blob": "cf6e7887f036443c241fa72751e46c9df935670e", "size": 43379, "product": "A20-OLinuXino-LIME2", "revision": "A", "current": false, "format": "brd", "kind": "template", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-LIME2/3. Templates and more/A20-OLinuXino-LIME2-rev-A SHIELD TEMPLATE KiCAD/A20_OLinuXino_Lime2_SHIELD_TEMPLATE_Rev-AA.kicad_pcb", "blob": "b4f25c67ab1bdaeac18f17e278e59ee478eed7fd", "size": 104449, "product": "A20-OLinuXino-LIME2", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "template", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/1. Latest hardware revision/A20-OLINUXINO-MICRO_Rev_N.brd", "blob": "305479414d72f281762512137db38655fc4ee97e", "size": 918596, "product": "A20-OLinuXino-MICRO", "revision": "N", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision G1/A20-OLINUXINO-MICRO_4GB_Rev_G1.brd", "blob": "f99aabf895891504f37a162173693f8c3f55b21c", "size": 545698, "product": "A20-OLinuXino-MICRO", "revision": "G1", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A10-OLinuXino-MICRO/A10-OLinuXino-MICRO hardware revision G/A20-OLINUXINO-MICRO_4GB_Rev_G1.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision G1/A20-OLINUXINO-MICRO_Rev_G1.brd", "blob": "42d1dd0c39791e0ad08dce4626f3b11ec34b5a62", "size": 545715, "product": "A20-OLinuXino-MICRO", "revision": "G1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision J/A20-OLINUXINO-MICRO-EMMC-IND_Rev_J.brd", "blob": "0389ded8d40d4a1dfa82dcb71a43eb602a9d5cf4", "size": 640939, "product": "A20-OLinuXino-MICRO", "revision": "J", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision J/A20-OLINUXINO-MICRO-EMMC_Rev_J.brd", "blob": "970ac89847a56dd4487ba03e9ad56a6bcbe9100d", "size": 640934, "product": "A20-OLinuXino-MICRO", "revision": "J", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision J/A20-OLINUXINO-MICRO-IND_Rev_J.brd", "blob": "a1c637a339b9d9a3cdbeec3dba26568d69c009b3", "size": 640978, "product": "A20-OLinuXino-MICRO", "revision": "J", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision J/A20-OLINUXINO-MICRO_Rev_J.brd", "blob": "3a02e0f42d970d11a3963b0820cf976bfabbd975", "size": 640973, "product": "A20-OLinuXino-MICRO", "revision": "J", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision J1/A20-OLINUXINO-MICRO_Rev_J1.brd", "blob": "bf66fd7e9548b8e872087bc349f4b20d892adcea", "size": 640950, "product": "A20-OLinuXino-MICRO", "revision": "J1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision K/A20-OLINUXINO-MICRO_Rev_K.brd", "blob": "71f2218b36e16d97baaeacb5721537ac7932d3e5", "size": 677393, "product": "A20-OLinuXino-MICRO", "revision": "K", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision L/A20-OLINUXINO-MICRO_Rev_L.brd", "blob": "864da57cd60e77d63f4745a94effe4e1532f4134", "size": 680861, "product": "A20-OLinuXino-MICRO", "revision": "L", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision L1/A20-OLINUXINO-MICRO_Rev_L1.brd", "blob": "3aff21d9b7620fef93a9961f1c4cdcabeaabbf21", "size": 680882, "product": "A20-OLinuXino-MICRO", "revision": "L1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision L1/T2-OLINUXINO-MICRO_Rev_L1.brd", "blob": "04ed353c07e2157726aed5503c88fd0b899f564d", "size": 680887, "product": "A20-OLinuXino-MICRO", "revision": "L1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision L2/A20-OLINUXINO-MICRO_Rev_L2.brd", "blob": "fae9e2c6c9799813e3b61336503f495120a2202c", "size": 683355, "product": "A20-OLinuXino-MICRO", "revision": "L2", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A20-OLinuXino-MICRO/2. Older hardware revisions/Hardware revision M/A20-OLINUXINO-MICRO_Rev_M.brd", "blob": "42969f339402ef10e782bdd58600f01c7bef564b", "size": 684377, "product": "A20-OLinuXino-MICRO", "revision": "M", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A33-OLinuXino/1. Latest hardware revision/A33-OLinuXino_Rev_C.brd", "blob": "c80cd152ea735730463f50d73b21045910b82df5", "size": 395340, "product": "A33-OLinuXino", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A33-OLinuXino/2. Older hardware revisions/A33-OLinuXino hardware revision A/A33-OLinuXino_Rev_A.brd", "blob": "3050f208200dd0ceffa5a0290c8bad88986b2611", "size": 371916, "product": "A33-OLinuXino", "revision": "A", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A33-OLinuXino/2. Older hardware revisions/A33-OLinuXino hardware revision B1/A33-OLinuXino_Rev_B1.brd", "blob": "2118ea317412d1d8d9e905542dc714f98425e645", "size": 387227, "product": "A33-OLinuXino", "revision": "B1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A33-OLinuXino/2. Older hardware revisions/A33-OLinuXino hardware revision C/A33-OLinuXino_Rev_C.brd", "blob": "c80cd152ea735730463f50d73b21045910b82df5", "size": 395340, "product": "A33-OLinuXino", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/A33-OLinuXino/1. Latest hardware revision/A33-OLinuXino_Rev_C.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/1. Latest hardware revision/A64-OLinuXino hardware revision H/A64-OlinuXino_Rev_H.kicad_pcb", "blob": "4c495624a87231afe7fd43cfc585c9c6633dcd14", "size": 5621693, "product": "A64-OLinuXino", "revision": "H", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision A/A64-OlinuXino_Rev_A.kicad_pcb", "blob": "075b5acf776bbd2466d752dceb613a5134336172", "size": 3936675, "product": "A64-OLinuXino", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision A/_autosave-A64-OlinuXino_Rev_A.kicad_pcb", "blob": "489edbd52fefac2ef2b8d7b493c02b5ee3d2c4dd", "size": 1112685, "product": "A64-OLinuXino", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision B/A64-OlinuXino_Rev_B.kicad_pcb", "blob": "7bcf16f37b4c628f5f4dc04026374aad7de00cc8", "size": 2563896, "product": "A64-OLinuXino", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision C/A64-OlinuXino_Rev_C.kicad_pcb", "blob": "618b370c1d6067fb807646b0356780c749e7038c", "size": 4425178, "product": "A64-OLinuXino", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision D/A64-OlinuXino_Rev_D.kicad_pcb", "blob": "4551e62f69c8b54e6f9a2484bfe86502fd607bc0", "size": 4426842, "product": "A64-OLinuXino", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision E/A64-OlinuXino_Rev_E.kicad_pcb", "blob": "e43d487390887c4a19c9f8837658ec972e8ea96b", "size": 4427533, "product": "A64-OLinuXino", "revision": "E", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision G/A64-OlinuXino_Rev_G.kicad_pcb", "blob": "e5b7086a9ce5bdcb2fecb265367956f993d6fe4b", "size": 5575922, "product": "A64-OLinuXino", "revision": "G", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/A64-OLinuXino/2. Older hardware revisions/A64-OLinuXino hardware revision G1/A64-OlinuXino_Rev_G1.kicad_pcb", "blob": "b160b2921e9939aebcccca2b09577e9b6125ef55", "size": 5586879, "product": "A64-OLinuXino", "revision": "G1", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/AM3352-OLinuXino/AM3352-OLINUXINO_Rev_A-14122012.brd", "blob": "20f0e3041f92daecf3993dd3e5299b58891c057c", "size": 1058379, "product": "AM3352-OLinuXino", "revision": "A", "current": true, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/H3-OLinuXino/H3-OLinuXino_Rev_A.brd", "blob": "b450ff27578ef845a925ad1c2b676159bc7ddd53", "size": 370963, "product": "H3-OLinuXino", "revision": "A", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/A13-LCD10TS/A13-LCD10TS_Rev_A.brd", "blob": "44349e11295a9eb807659cfa47c228b842924a8d", "size": 219672, "product": "A13-LCD10TS", "revision": "A", "current": true, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/A13-LCD43TS/A13-LCD4.3''_Rev_B.brd", "blob": "067e7ec1dafe0d1eafe58fd520982f4d3fe51879", "size": 40808, "product": "A13-LCD43TS", "revision": "B", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/A13-LCD7TS/A13-LCD7''_Rev_B.brd", "blob": "c0a6b1fc78646de83140e51910a4c107d5f7bd83", "size": 64682, "product": "A13-LCD7TS", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/A13-LCD7TS/A13-LCD7''_Rev_C.brd", "blob": "cc383048ae135e0903330948c3047d9d70034e85", "size": 64625, "product": "A13-LCD7TS", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-DRIVER/Hardware revision B/LCD-DRIVER_Rev_B.kicad_pcb", "blob": "fcbafea3d3dd396d162111e4fee2ce55e6cc165d", "size": 1357555, "product": "LCD-DRIVER", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-DRIVER/Hardware revision C/LCD-DRIVER_Rev_C.kicad_pcb", "blob": "bac5782e47a73d9cf1a3cf39308781af100595ff", "size": 1371352, "product": "LCD-DRIVER", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-DRIVER/Hardware revision D/LCD-DRIVER_Rev_D.kicad_pcb", "blob": "969a14649feebfd43af3fa75a0015fafd5016505", "size": 1513542, "product": "LCD-DRIVER", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-10TS/Hardware revision A/LCD-OLINUXINO-10''TS_Rev_A.brd", "blob": "7e4f73de139ae1b8954a17a1fb99eee78111d824", "size": 103296, "product": "LCD-OLinuXino-10TS", "revision": "A", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-10TS/Hardware revision C1/LCD-OLINUXINO-10''TS_Rev_C.brd", "blob": "be9840b1fd2d65cb3f8df68a93d6cd7d3446e82c", "size": 124505, "product": "LCD-OLinuXino-10TS", "revision": "C1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-15.6/Hardware revision D/LCD-OLinuXino-15_6_revision_D.brd", "blob": "0beb908c341ceb2447ccba82fda8ef62ea807467", "size": 86431, "product": "LCD-OLinuXino-15.6", "revision": "D", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-15.6/Hardware revision E/LCD-OLinuXino-15.6FHD_Rev_E.brd", "blob": "49f2a5dc69c18d33f6d1bb45784dfe1e4abf125d", "size": 262620, "product": "LCD-OLinuXino-15.6", "revision": "E", "current": true, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-15.6FHD/Hardware revision E/LCD-OLinuXino-15.6FHD_Rev_E.brd", "blob": "49f2a5dc69c18d33f6d1bb45784dfe1e4abf125d", "size": 262620, "product": "LCD-OLinuXino-15.6FHD", "revision": "E", "current": false, "format": "eagle_brd_xml", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/LCDs/LCD-OLinuXino-15.6/Hardware revision E/LCD-OLinuXino-15.6FHD_Rev_E.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-15.6FHD/Hardware revision H/LCD-OLinuXino-15.6FHD_Rev_H.kicad_pcb", "blob": "acb663d8164c457f78eb3f2625b24e2d988862c7", "size": 676785, "product": "LCD-OLinuXino-15.6FHD", "revision": "H", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-4.3TS/Hardware revision A/LCD-OLINUXINO-4.3TS_Rev_A.brd", "blob": "0d104216582437067f6e407cf4d0dedbda9f46ed", "size": 209439, "product": "LCD-OLinuXino-4.3TS", "revision": "A", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-4.3TS/Hardware revision C/LCD-OLINUXINO-4.3''TS_Rev_C.brd", "blob": "6d78c36d44cf20da754125cdfe29f1d5ad4a26a3", "size": 72424, "product": "LCD-OLinuXino-4.3TS", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-4.3TS/Hardware revision D/LCD-OLINUXINO-4.3''TS_Rev_D.brd", "blob": "7c697d821e7031c60df296ca964f4f02aeaae992", "size": 76321, "product": "LCD-OLinuXino-4.3TS", "revision": "D", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-4.3TS/Hardware revision D1/LCD-OLINUXINO-4.3''TS_Rev_D1.brd", "blob": "81bc6c5dede7ea8edda841052b46a471ecdaedf2", "size": 76321, "product": "LCD-OLinuXino-4.3TS", "revision": "D1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-5CTS/Hardware revision A/LCD-OLinuXino-5TS.kicad_pcb", "blob": "8c8e60b1c32bcb9b65786bcd4739fddedfeb0f23", "size": 363220, "product": "LCD-OLinuXino-5CTS", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-5CTS/Hardware revision B/LCD-OLinuXino-5TS_Rev.B.kicad_pcb", "blob": "e359235df3b0866cc80df3edfcc39411decefa4e", "size": 334536, "product": "LCD-OLinuXino-5CTS", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-7TS/Hardware revision A/LCD-OLINUXINO-7TS_Rev_A.brd", "blob": "6c4354f3426f111cf76905f2f2649d62e4cf8150", "size": 286078, "product": "LCD-OLinuXino-7TS", "revision": "A", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-7TS/Hardware revision C/LCD-OLINUXINO-7''TS_Rev_C.brd", "blob": "71361995357972b6fa9e3576741f1ca06e4c4e90", "size": 116428, "product": "LCD-OLinuXino-7TS", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-7TS/Hardware revision D/LCD-OLINUXINO-7TS_Rev_D.brd", "blob": "e4a150aa840cb18f4f345bb50c34d0eef83915ba", "size": 119974, "product": "LCD-OLinuXino-7TS", "revision": "D", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-7TS/Hardware revision E/LCD-OLINUXINO-7TS_Rev_E.brd", "blob": "b3340acec83bff02a05085b482eebed212ae1c4f", "size": 119974, "product": "LCD-OLinuXino-7TS", "revision": "E", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/LCDs/LCD-OLinuXino-7TS/Hardware revision F/LCD-OLINUXINO-7TS_Rev_F.brd", "blob": "329192f4cb6280b6a225c22941f34ca6253d9ba8", "size": 384874, "product": "LCD-OLinuXino-7TS", "revision": "F", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/Lime2-SATA/Lime2-SATA_RevA/Lime2-SATA_RevA.kicad_pcb", "blob": "60b45c91bd07d50d91fb13117caa999f31bec20f", "size": 77146, "product": "Lime2-SATA", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino-EVB/1. Latest hardware revision/RT5350F-OLinuXino-EVB hardware reivison C/RT5350F_OLinuXino_EVB_Rev_C.brd", "blob": "586ee650f447fde2d652e1c98ce57f0a7b27bf3a", "size": 131220, "product": "RT5350F-OLinuXino-EVB", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino-EVB/2. Older hardware revisions/RT5350F-OLinuXino-EVB hardware reivison A/RT5350F_OLinuXino_EVB_Rev_A.brd", "blob": "154eb84f07b788f1a46bc2b0e15fcefffa7b558d", "size": 80562, "product": "RT5350F-OLinuXino-EVB", "revision": "A", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino-EVB/2. Older hardware revisions/RT5350F-OLinuXino-EVB hardware reivison B/RT5350F_OLinuXino_EVB_Rev_B.brd", "blob": "80861c61bee53f34e63bb8e01aafaefdd302baad", "size": 83469, "product": "RT5350F-OLinuXino-EVB", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino-EVB/2. Older hardware revisions/RT5350F-OLinuXino-EVB hardware reivison C/RT5350F_OLinuXino_EVB_Rev_C.brd", "blob": "586ee650f447fde2d652e1c98ce57f0a7b27bf3a", "size": 131220, "product": "RT5350F-OLinuXino-EVB", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino-EVB/1. Latest hardware revision/RT5350F-OLinuXino-EVB hardware reivison C/RT5350F_OLinuXino_EVB_Rev_C.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/1. Latest hardware revision/RT5350F-OLinuXino hardware revision F/RT5350F_OLinuXino_Rev_F.brd", "blob": "d4770dfb8cb608ac87eb5deb6be7449e190ee08c", "size": 155469, "product": "RT5350F-OLinuXino", "revision": "F", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/2. Older hardware revisions/RT5350F-OLinuXino hardware revision A1/RT5350F_OLinuXino_Rev-A.brd", "blob": "b5705fd79622d1d41f618ed2b145d45dd78499b7", "size": 130657, "product": "RT5350F-OLinuXino", "revision": "A1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/2. Older hardware revisions/RT5350F-OLinuXino hardware revision A2/RT5350F_OLinuXino_Balun_Rev-A.brd", "blob": "ccea6b213dee5b5794916142b3e48aa9a5d08ed0", "size": 126918, "product": "RT5350F-OLinuXino", "revision": "A2", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/2. Older hardware revisions/RT5350F-OLinuXino hardware revision B/RT5350F_OLinuXino_Rev_B.brd", "blob": "15a805578033c96e5c1c47c8874c1952ad63b726", "size": 145795, "product": "RT5350F-OLinuXino", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/2. Older hardware revisions/RT5350F-OLinuXino hardware revision C1/RT5350F_OLinuXino_Rev_C1.brd", "blob": "33ced20da845c26bde6ca3afaf67428b2fbc1fa6", "size": 148236, "product": "RT5350F-OLinuXino", "revision": "C1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/2. Older hardware revisions/RT5350F-OLinuXino hardware revision D/RT5350F_OLinuXino_Rev_D.brd", "blob": "5f173cbbe886e2342bcbbd79b98912149c495b84", "size": 149596, "product": "RT5350F-OLinuXino", "revision": "D", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/2. Older hardware revisions/RT5350F-OLinuXino hardware revision E/RT5350F_OLinuXino_Rev_E.brd", "blob": "263918a25f6dd729b8d866f3e0eff88fe1f20ffa", "size": 150748, "product": "RT5350F-OLinuXino", "revision": "E", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/2. Older hardware revisions/RT5350F-OLinuXino hardware revision F/RT5350F_OLinuXino_Rev_F.brd", "blob": "d4770dfb8cb608ac87eb5deb6be7449e190ee08c", "size": 155469, "product": "RT5350F-OLinuXino", "revision": "F", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/RT5350F-OLinuXino/RT5350F-OLinuXino/1. Latest hardware revision/RT5350F-OLinuXino hardware revision F/RT5350F_OLinuXino_Rev_F.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/STMP157-OLinuXino-LIME2/1. Latest hardware revision/STMP157-OLinuXino-LIME2_Rev_B1/STMP157-OLinuXino-LIME2_Rev_B1.kicad_pcb", "blob": "53e44a335fccd6f1dded0447b1d3f1dc2e13ccbb", "size": 7528812, "product": "STMP157-OLinuXino-LIME2", "revision": "B1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Maxi/1. Latest hardware revision/iMX233-OLinuXino-MAXI hardware revision D/iMX233-OLINUXINO-MAXI_Rev_D.brd", "blob": "6e12ac3d4e3863f458c959967a1e2f2e3c682fc2", "size": 862435, "product": "iMX233-OLinuXino-MAXI", "revision": "D", "current": true, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Maxi/2. Older hardware revisions/iMX233-OLinuXino-MAXI hardware revision B1/iMX233-OLINUXINO-MAXI_Rev_B1.brd", "blob": "8cda23f4acb279896ee3cfee894e560e7040e400", "size": 269323, "product": "iMX233-OLinuXino-MAXI", "revision": "B1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Maxi/2. Older hardware revisions/iMX233-OLinuXino-MAXI hardware revision C2/iMX233-OLINUXINO-MAXI_Rev_C2.brd", "blob": "eed7dff42c6385a0de7d00e742d725c0fbab6426", "size": 269154, "product": "iMX233-OLinuXino-MAXI", "revision": "C2", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Maxi/2. Older hardware revisions/iMX233-OLinuXino-MAXI hardware revision D/iMX233-OLINUXINO-MAXI_Rev_D.brd", "blob": "6e12ac3d4e3863f458c959967a1e2f2e3c682fc2", "size": 862435, "product": "iMX233-OLinuXino-MAXI", "revision": "D", "current": false, "format": "eagle_brd_xml", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/iMX233-OLinuXino-Maxi/1. Latest hardware revision/iMX233-OLinuXino-MAXI hardware revision D/iMX233-OLINUXINO-MAXI_Rev_D.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Micro/1. Latest hardware revision/iMX233-OLinuXino-MICRO hardware revision E/iMX233-OLinuXino-Micro_Rev_E.brd", "blob": "8057ea3418dd6ee5a8c114573b6df70927b99d68", "size": 153614, "product": "iMX233-OLinuXino-MICRO", "revision": "E", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Micro/2. Older hardware revisions/iMX233-OLinuXino-MICRO hardware revision B/iMX233-OLinuXino-Micro_Rev_B.brd", "blob": "ff9c09c2b364acc2103d18d85296c2082f3de73a", "size": 151470, "product": "iMX233-OLinuXino-MICRO", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Micro/2. Older hardware revisions/iMX233-OLinuXino-MICRO hardware revision C/iMX233-OLinuXino-Micro_Rev_C.brd", "blob": "09c7c747866fa1160e75a4a91f412e8ea9f5e23c", "size": 432842, "product": "iMX233-OLinuXino-MICRO", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Micro/2. Older hardware revisions/iMX233-OLinuXino-MICRO hardware revision D/iMX233-OLinuXino-Micro_Rev_D.brd", "blob": "f6717d2167ea2dbfeb8647e8fdc366856bb595a1", "size": 433998, "product": "iMX233-OLinuXino-MICRO", "revision": "D", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Micro/2. Older hardware revisions/iMX233-OLinuXino-MICRO hardware revision E/iMX233-OLinuXino-Micro_Rev_E.brd", "blob": "8057ea3418dd6ee5a8c114573b6df70927b99d68", "size": 153614, "product": "iMX233-OLinuXino-MICRO", "revision": "E", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/iMX233-OLinuXino-Micro/1. Latest hardware revision/iMX233-OLinuXino-MICRO hardware revision E/iMX233-OLinuXino-Micro_Rev_E.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Mini/1. Latest hardware revision/iMX233-OLINUXINO-MINI hardware revision E/iMX233-OLINUXINO-MINI_Rev_E.brd", "blob": "692a9d981d5fbbe331021d93ce1e0c0a6885aef2", "size": 244869, "product": "iMX233-OLINUXINO-MINI", "revision": "E", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Mini/2. Older hardware revisions/iMX233-OLINUXINO-MINI hardware revision C/iMX233-OLINUXINO-MINI_Rev_C.brd", "blob": "535399c0d2390f0c1da1885c21df9123811cb523", "size": 243684, "product": "iMX233-OLINUXINO-MINI", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-Mini/2. Older hardware revisions/iMX233-OLINUXINO-MINI hardware revision E/iMX233-OLINUXINO-MINI_Rev_E.brd", "blob": "692a9d981d5fbbe331021d93ce1e0c0a6885aef2", "size": 244869, "product": "iMX233-OLINUXINO-MINI", "revision": "E", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/iMX233-OLinuXino-Mini/1. Latest hardware revision/iMX233-OLINUXINO-MINI hardware revision E/iMX233-OLINUXINO-MINI_Rev_E.brd"},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-NANO/1. Latest hardware revision/iMX233-OLinuXino-NANO hardware revision C/iMX233-OLinuXino-NANO_Rev_C.brd", "blob": "8e556b4757ed6aa372f7704d88b83bbe4d5df2f3", "size": 150817, "product": "iMX233-OLinuXino-NANO", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-NANO/2. Older hardware revisions/iMX233-OLinuXino-NANO hardware revision B/iMX233-OLinuXino-NANO_Rev_B.brd", "blob": "3734e9f469946c9a040c663cf14191a03688ac86", "size": 150339, "product": "iMX233-OLinuXino-NANO", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/OLINUXINO", "path": "HARDWARE/iMX233-OLinuXino-NANO/2. Older hardware revisions/iMX233-OLinuXino-NANO hardware revision C/iMX233-OLinuXino-NANO_Rev_C.brd", "blob": "8e556b4757ed6aa372f7704d88b83bbe4d5df2f3", "size": 150817, "product": "iMX233-OLinuXino-NANO", "revision": "C", "current": false, "format": "eagle_brd_binary", "kind": "duplicate", "product_page": null, "same_as": "OLIMEX/OLINUXINO:HARDWARE/iMX233-OLinuXino-NANO/1. Latest hardware revision/iMX233-OLinuXino-NANO hardware revision C/iMX233-OLinuXino-NANO_Rev_C.brd"},
+  {"repository": "OLIMEX/OSHW-GHOST", "path": "HARDWARE/OSHW-GHOST_Rev_A/OSHW-GHOST_Rev_A.kicad_pcb", "blob": "cfa0eba4f600afb5c4a81702fc8348fad925a8e0", "size": 171889, "product": "OSHW-GHOST", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/PIC32-HMZ144", "path": "Latest hardware revision/PIC32-HMZ144_Rev_D.brd", "blob": "764bb1687161847ab6abe4c64c9cf723a3bb01ca", "size": 177339, "product": "PIC32-HMZ144", "revision": "D", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/PIC/Development/PIC32-HMZ144/open-source-hardware"},
+  {"repository": "OLIMEX/PIC32-HMZ144", "path": "Previous hardware revisions/PIC32-HMZ144_Rev_B.brd", "blob": "a33fbc717c5c8723e01316e52b8276a84359c455", "size": 156023, "product": "PIC32-HMZ144", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": "https://www.olimex.com/Products/PIC/Development/PIC32-HMZ144/open-source-hardware"},
+  {"repository": "OLIMEX/PIC32-HMZ144", "path": "Previous hardware revisions/PIC32-HMZ144_Rev_C.brd", "blob": "cadca06a5a1c648bf880691c89acff4f9af7dd84", "size": 156383, "product": "PIC32-HMZ144", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": "https://www.olimex.com/Products/PIC/Development/PIC32-HMZ144/open-source-hardware"},
+  {"repository": "OLIMEX/PIC32-HMZ144", "path": "Previous hardware revisions/PIC32-HMZ144_Rev_C1.brd", "blob": "0e0ce19914773ef131088d85e39e396b07413ad7", "size": 157372, "product": "PIC32-HMZ144", "revision": "C1", "current": false, "format": "brd", "kind": "board", "product_page": "https://www.olimex.com/Products/PIC/Development/PIC32-HMZ144/open-source-hardware"},
+  {"repository": "OLIMEX/PIC32-HMZ144", "path": "Previous hardware revisions/PIC32-HMZ144_Rev_C2.brd", "blob": "5d07f5a24125b877079dbb0c93f5cd04f5632c07", "size": 157372, "product": "PIC32-HMZ144", "revision": "C2", "current": false, "format": "brd", "kind": "board", "product_page": "https://www.olimex.com/Products/PIC/Development/PIC32-HMZ144/open-source-hardware"},
+  {"repository": "OLIMEX/PIC32-RETROBSD", "path": "PIC32-RETROBSD_Rev.A.brd", "blob": "902c972380a833a31286114bac754f9e06699b93", "size": 90127, "product": "PIC32-RETROBSD", "revision": "A", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/PIC32-RETROBSD", "path": "PIC32-RETROBSD_Rev_C.brd", "blob": "295a09ba3d9b6a2c0884a56e7b8aae214ee386ea", "size": 110150, "product": "PIC32-RETROBSD", "revision": "C", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/PICO-EVB", "path": "HARDWARE/PICO-EVB_Rev_A/PICO-EVB_Rev_A.kicad_pcb", "blob": "80a351bc01eda5f6c1e641ab80b70db83e9b48a5", "size": 1545964, "product": "PICO-EVB", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/RaspberryPi/PICO/PICO-EVB/"},
+  {"repository": "OLIMEX/POEv3", "path": "Hardware/POEv3 hardware revision A/POEv3_Rev_A.kicad_pcb", "blob": "763cfa56f9deb7f311aa6fc9e7a57a2005033d57", "size": 818900, "product": "POEv3", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/RK3328-SOM-EBV", "path": "HARDWARE/RK3328-SOM-EVB_Rev-A/RK3328-SOM-EVB_Rev_A.kicad_pcb", "blob": "5223605212f289221ca83c755fed388d5d28ac65", "size": 2705749, "product": "RK3328-SOM-EVB", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/SOM/RK3328/RK3328-EVB/"},
+  {"repository": "OLIMEX/RP2040-PICO-PC", "path": "HARDWARE/RP2040-PICO-PC hardware revision B/RP2040-PICO-PC_rev_B.kicad_pcb", "blob": "4768738d61a99d09f5a2c5ed80eab48b9693996a", "size": 911785, "product": "RP2040-PICO-PC", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/RP2040-PICO-PC", "path": "HARDWARE/RP2040-PICO-PC hardware revision C/RP2040-PICO-PC_rev_C.kicad_pcb", "blob": "4ceb621e0ac29f5c10495aa67833a773468a4926", "size": 535392, "product": "RP2040-PICO-PC", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/RP2040-PICO-PC", "path": "HARDWARE/RP2040-PICO-PC hardware revision D/RP2040-PICO-PC_rev_D.kicad_pcb", "blob": "4f8cec44b08e85a75c112885c654c962931b02fa", "size": 539683, "product": "RP2040-PICO-PC", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/RP2040-PICO30", "path": "HARDWARE/RP2040-PICO30_Rev_A/RP2040-PICO30_Rev_A.kicad_pcb", "blob": "c161dc37acf8d89c23d76d81e74aa0b837ecfe81", "size": 1067973, "product": "RP2040-PICO30", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/MicroPython/RP2040-PICO30/open-source-hardware"},
+  {"repository": "OLIMEX/RP2040pc", "path": "HARDWARE/RP2040pc-REV.B/RP2040pc_Rev_B.kicad_pcb", "blob": "8150076f43a0d33ad1ab6337d1f790470be67c48", "size": 3396369, "product": "RP2040pc", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/RaspberryPi/RP2040pc/"},
+  {"repository": "OLIMEX/RP2350-PICO2-BB48", "path": "HARDWARE/RP2350-PICO2-BB48.REV.A/PICO2-BB48_Rev_A.kicad_pcb", "blob": "7ffd1c1eb2d561c6265223b8f313591d6264b572", "size": 2187883, "product": "RP2350-PICO2-BB48", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/RP2350-PICO2-XXL", "path": "HARDWARE/RP2350-PICO2-XXL-Rev.A/RP2350-PICO2-XXL_Rev_A.kicad_pcb", "blob": "35ec891a77cce36a87428c38eba09c121bd3b790", "size": 2647732, "product": "RP2350-PICO2-XXL", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/RaspberryPi/PICO/PICO2-XXL/"},
+  {"repository": "OLIMEX/RP2350-PICO2-XXL", "path": "HARDWARE/RP2350-PICO2-XXL-Rev.B/RP2350-PICO2-XXL_Rev_B.kicad_pcb", "blob": "01a6b6b3e317f1868031cece920521014893955b", "size": 2653072, "product": "RP2350-PICO2-XXL", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/RaspberryPi/PICO/PICO2-XXL/"},
+  {"repository": "OLIMEX/RP2350-PICO2-XXL", "path": "HARDWARE/RP2350-PICO2-XXL-Rev.C/RP2350-PICO2-XXL_Rev_C.kicad_pcb", "blob": "e8a9fadf6a6af8e4d1132fe12558bccbb68798de", "size": 2795996, "product": "RP2350-PICO2-XXL", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/RaspberryPi/PICO/PICO2-XXL/"},
+  {"repository": "OLIMEX/RP2350pc", "path": "HARDWARE/RP2350pc-Rev.A/RP2350pc_Rev_A.kicad_pcb", "blob": "81728542f6084dc0d59bde89b68682a0a536dffb", "size": 5786386, "product": "RP2350pc", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/RaspberryPi/PICO/RP2350pc/"},
+  {"repository": "OLIMEX/RP2350pc", "path": "HARDWARE/RP2350pc-Rev.A1/RP2350pc_Rev_A1.kicad_pcb", "blob": "23c9743b003f663e911088c57ebcab36191d9a3e", "size": 5786683, "product": "RP2350pc", "revision": "A1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/RaspberryPi/PICO/RP2350pc/"},
+  {"repository": "OLIMEX/RT1010Py", "path": "HARDWARE/RT1010-Py-Rev-C/RT1010Py_Rev.C.kicad_pcb", "blob": "a9f7d42d387ca54a9d5e2c056b0eccee11615cae", "size": 735298, "product": "RT1010-Py", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/MicroPython/RT1010-Py/open-source-hardware"},
+  {"repository": "OLIMEX/RT1010Py-DevKit", "path": "HARDWARE/RT1010Py-DevKit-B/RT1010Py-DevKit_RevB.kicad_pcb", "blob": "0951a311e268a7466b07b82fc5f540bee20cabae", "size": 511797, "product": "RT1010Py-DevKit", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/MicroPython/RT1010Py-DevKit/open-source-hardware"},
+  {"repository": "OLIMEX/RVPC", "path": "HARDWARE/RVPC-Rev.A/RVPC_Rev_A.kicad_pcb", "blob": "2e645cc5a7c45dcc767fac8580cf6d887f423306", "size": 149018, "product": "RVPC", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Retro-Computers/RVPC/open-source-hardware"},
+  {"repository": "OLIMEX/RVPC", "path": "HARDWARE/RVPC_Rev.B/RVPC_Rev_B.kicad_pcb", "blob": "564e054c56664466e650407a049adbf41535a96d", "size": 511861, "product": "RVPC", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Retro-Computers/RVPC/open-source-hardware"},
+  {"repository": "OLIMEX/RVPC", "path": "SOFTWARE/rvpc/tools/esp32s2-cookbook/hardware/exposed_power_rails/exposed_power_rails.kicad_pcb", "blob": "e8a0af96cc71fa5d802a9fe2fdcde42a57f32c38", "size": 693884, "product": "exposed_power_rails", "revision": null, "current": false, "format": "kicad_pcb", "kind": "vendored", "product_page": null},
+  {"repository": "OLIMEX/S3-OLinuXino", "path": "HARDWARE/S3-OLinuXino-Rev_A-preliminary/S3-OLinuXino_Rev_A.kicad_pcb", "blob": "949e8f744bfd150dbfac26f8929d16d0a62ec303", "size": 676415, "product": "S3-OLinuXino", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/S3-OLinuXino", "path": "HARDWARE/S3-OLinuXino_Rev_A-release/BackupFiles/S3-OLinuXino_Rev_A.kicad_pcb", "blob": "8448c2f7c4d936e1320b7fc07451972facc8ddff", "size": 2007726, "product": "S3-OLinuXino", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": null},
+  {"repository": "OLIMEX/S3-OLinuXino", "path": "HARDWARE/S3-OLinuXino_Rev_A-release/S3-OLinuXino_Rev_A.kicad_pcb", "blob": "aac15035ca96fc94dac6c344b9fbb404c5c64d3a", "size": 2343805, "product": "S3-OLinuXino", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SIMON-85", "path": "SCHEMATICS/Simon-85_Rev_B.brd", "blob": "b2aafea92883473802f55e18ec1903e726e4663f", "size": 32328, "product": "SIMON-85", "revision": "B", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/SIMON-85/open-source-hardware"},
+  {"repository": "OLIMEX/SLD-KIT-DICE", "path": "HARDWARE/SLD-KIT-DICE_Rev_A/SLD-KIT-DICE_Rev_A.kicad_pcb", "blob": "a8015be8fe7d0afa5a7debc96f2dd10c45884755", "size": 414525, "product": "SLD-KIT-DICE", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SMT-PROTOBOARD", "path": "smd-protoboard.kicad_pcb", "blob": "d47c2494be51ef750fbc2555a5abcc1c9c77f0c0", "size": 524664, "product": "SMT-PROTOBOARD", "revision": null, "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A13/A13-SOM-LTE/A13-SOM-LTE_Rev_B.brd", "blob": "46c053bb40fe60113e493b5356d22e6139babb4e", "size": 150181, "product": "A13-SOM-LTE", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A13/A13-SOM-LTE/A13-SOM-LTE_Rev_B1.brd", "blob": "40dc9e440e0cdd60c0cb840433f3c853c2247f7c", "size": 148346, "product": "A13-SOM-LTE", "revision": "B1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A13/A13-SOM-WIFI/A13-SOM-WIFI_Rev_B.brd", "blob": "db1d7eae3494aaa17f8f1bbfca9d0eedf20f06da", "size": 102353, "product": "A13-SOM-WIFI", "revision": "B", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A20/A20-SOM-EVB/A20-SOM-EVB_Rev_B.brd", "blob": "4b93306f7372c5b83113cb818dea559b627c94dd", "size": 287441, "product": "A20-SOM-EVB", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A20/A20-SOM-EVB/A20-SOM-EVB_Rev_C.brd", "blob": "1541cf9407a486f0d637f8f296d7774d213f948e", "size": 891447, "product": "A20-SOM-EVB", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A20/A20-SOM-EVB/A20-SOM-EVB_Rev_C1.brd", "blob": "0e24c3ec9559381ac799870fcdc3a89844523ef0", "size": 298712, "product": "A20-SOM-EVB", "revision": "C1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A20/A20-SOM-EVB/A20-SOM-EVB_Rev_E.brd", "blob": "052ac43977ac2f591eee3216a1af8e09f62779a5", "size": 318925, "product": "A20-SOM-EVB", "revision": "E", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "A20/A20-SOM-EVB/A20-SOM-EVB_Rev_F.brd", "blob": "96ef879f7330562fe89ff72c410f48b27d2f7a05", "size": 332450, "product": "A20-SOM-EVB", "revision": "F", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "AM3352/AM3352-SOM-EVB/AM3352-SOM-EVB_Rev_E.brd", "blob": "7198da80fb951c7925b2834f953b01a79a634013", "size": 301444, "product": "AM3352-SOM-EVB", "revision": "E", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "AM3352/AM3352-SOM-EVB/Older/AM3352-SOM-EVB_Rev_D.brd", "blob": "2e5e9c522d4594022152aa82e55275d2c0e16860", "size": 298010, "product": "AM3352-SOM-EVB", "revision": "D", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "RK3188/RK3188-EVB/RK3188-EVB_Rev_C.brd", "blob": "3a22909ad3c6bc473aa730976c5bd5b6c04be813", "size": 255844, "product": "RK3188-EVB", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM", "path": "RK3188/RK3188-EVB/RK3188-EVB_Rev_C1.brd", "blob": "5dffca3860a777e0cf468bf6580f49d34099041f", "size": 255892, "product": "RK3188-EVB", "revision": "C1", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM204", "path": "SOM204-EVB/SOM204-EVB_Rev_B.brd", "blob": "94fa7107d78cac0cbfa73a5b0f5ff20dcac4d94b", "size": 366269, "product": "SOM204-EVB", "revision": "B", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM204", "path": "SOM204-EVB/SOM204-EVB_Rev_B1.brd", "blob": "949f64821d783f39b7c12783d3e502f573a7a5b1", "size": 366531, "product": "SOM204-EVB", "revision": "B1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM204", "path": "SOM204-EVB/SOM204-EVB_Rev_C.brd", "blob": "a129450f214f3a3aa48e0606411f39414cc61f9f", "size": 372484, "product": "SOM204-EVB", "revision": "C", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/SOM204", "path": "SOM204-EVB/SOM204-EVB_Rev_C2.brd", "blob": "819ec0fe982ae9d2fed28799e7bf2ef5594590da", "size": 372814, "product": "SOM204-EVB", "revision": "C2", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/STM32F4", "path": "HARDWARE/STM32-E407/STM32-E407_Rev_B1.brd", "blob": "cb07ccc50cd3798e8a2c2ae800e239b2294e9db8", "size": 230161, "product": "STM32-E407", "revision": "B1", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/STM32F4", "path": "HARDWARE/STM32-E407/STM32-E407_Rev_E.brd", "blob": "92401747ede6ca77c6def80cea85817d0aaf3d3f", "size": 230535, "product": "STM32-E407", "revision": "E", "current": false, "format": "brd", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/STM32F4", "path": "HARDWARE/STM32-E407/STM32-E407_Rev_F.brd", "blob": "bb574e2e35ada74d9ed7ade94736ad1b246008bb", "size": 247903, "product": "STM32-E407", "revision": "F", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/STM32F4", "path": "HARDWARE/STM32-H407/STM32-H407_Rev_B.brd", "blob": "08530ec74a29350bae696f9762954083d77a8c51", "size": 192822, "product": "STM32-H407", "revision": "B", "current": true, "format": "eagle_brd_binary", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/STMP1-A13-EVB", "path": "HARDWARE/STMP1(A13)-SOM-EVB-Rev-B/STMP1(A13)-SOM-EVB_Rev_B.kicad_pcb", "blob": "4c8d24aa9c88e84437881f3937889d2fdaffd6f6", "size": 2448351, "product": "STMP1(A13)-SOM-EVB", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/SOM/STMP1/STMP1-A13--EVB/open-source-hardware"},
+  {"repository": "OLIMEX/STMP1-OLinuXino", "path": "HARDWARE/STMP1-OLinuXino-REV.A/STMP1-OLinuXino_Rev_A.kicad_pcb", "blob": "2656254b34bceb91313dd0510796e1f64e1b50c7", "size": 1303019, "product": "STMP1-OLinuXino", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/STMP157-BASE-SOM-EVB", "path": "HARDWARE/STMP157-BASE-SOM-EVB-Rev.B/STMP15x-BASE-SOM-EVB_Rev_B.kicad_pcb", "blob": "8447963ae2e128c2dd708283632ea6ac9cf5c46c", "size": 6393997, "product": "STMP157-BASE-SOM-EVB", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/SOM/STMP1/STMP157-BASE-SOM-EVB/open-source-hardware"},
+  {"repository": "OLIMEX/STMP15X-SHIELD", "path": "HARDWARE/STMP15x-SHIELD_Rev_A/Extensions/A10-A20-OLINUXINO-MICRO_Extension_Rev_A_STMP15x-SHIELD_GPIO1_EXTENSION.brd", "blob": "ae10b6e9fb594736c35ea58c645c1aaa6815828e", "size": 79935, "product": "STMP15X-SHIELD extension", "revision": "A", "current": true, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/STMP15X-SHIELD", "path": "HARDWARE/STMP15x-SHIELD_Rev_A/STMP15x-SHIELD_Rev_A.kicad_pcb", "blob": "f4025b59e3074046dac557f8e902c4f1e78f73e4", "size": 485076, "product": "STMP15x-SHIELD", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/OLinuXino/STMP1/STMP15X-SHIELD/open-source-hardware"},
+  {"repository": "OLIMEX/TuxCon-Kitty", "path": "HARDWARE/REV-A/TuxCon_Kitty_Rev_A.kicad_pcb", "blob": "99d56ec0fa76e628aa1a72ed28a8ee4dc684c4e8", "size": 185270, "product": "TuxCon-Kitty", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/UEXT-3TO5V", "path": "HARDWARE/UEXT-3TO5V-Rev.A/UEXT-3TO5V_Rev_A.kicad_pcb", "blob": "a4140025398a4e014ce68597d440e91f78bdf8dd", "size": 603976, "product": "UEXT-3TO5V", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/Adapters/UEXT-3TO5V/open-source-hardware"},
+  {"repository": "OLIMEX/UEXT-ADAPTERS", "path": "RPI-UEXT-MPQ/Hardware/RPI-UEXT-MPQ_Rev_A.kicad_pcb", "blob": "a66ad585f184b8b67bc7995bee7082a6ff79eb38", "size": 223910, "product": "RPI-UEXT-MPQ", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/Adapters/RPI-UEXT-MPQ/open-source-hardware"},
+  {"repository": "OLIMEX/UEXT-ADAPTERS", "path": "UEXT-MPQ/Hardware/UEXT-MPQ_Rev_A.kicad_pcb", "blob": "6ded739e033d1e278ae858d1ad79993f00e75bac", "size": 130502, "product": "UEXT-MPQ", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/Adapters/UEXT-MPQ/open-source-hardware"},
+  {"repository": "OLIMEX/UEXT-ADAPTERS", "path": "UEXT-P4Q/Hardware/UEXT-P4Q_Rev_A.kicad_pcb", "blob": "fa7e4ea09bc2c9137911b4ec6c6d7295c27dd8e9", "size": 139800, "product": "UEXT-P4Q", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/Adapters/UEXT-P4Q/open-source-hardware"},
+  {"repository": "OLIMEX/UEXT-ADAPTERS", "path": "UEXT-PQ/Hardware/UEXT-PQ_Rev_A.kicad_pcb", "blob": "029bcb0d87f59b6d78ac0cab55b931b46a328f41", "size": 110241, "product": "UEXT-PQ", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/Adapters/UEXT-PQ/open-source-hardware"},
+  {"repository": "OLIMEX/UEXT-CH390", "path": "HARDWARE/UEXT-CH390_Rev.A/UEXT-CH390_Rev_A.kicad_pcb", "blob": "de76931906a302eaab08f0e5de310a6fa3eadff6", "size": 449201, "product": "UEXT-CH390", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/Ethernet/UEXT-CH390/open-source-hardware"},
+  {"repository": "OLIMEX/UEXT-LVL-SHIFT", "path": "HARDWARE/UEXT-LVL-SHIFT_Rev_A/UEXT-LVL-SHIFT_Rev_A.kicad_pcb", "blob": "583e57f7711e6d477526f53c25164fe581e0b266", "size": 821660, "product": "UEXT-LVL-SHIFT", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Modules/Adapters/UEXT-LVL-SHIFT/open-source-hardware"},
+  {"repository": "OLIMEX/UEXT-MODULES", "path": "MOD-LCD3310/Hardware/MOD-LCD3310.brd", "blob": "f24436a424a71ec4e82555f3215d14655aa05ee9", "size": 72743, "product": "MOD-LCD3310", "revision": null, "current": true, "format": "eagle_brd_xml", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/UEXT-MODULES", "path": "MOD-MPU9150/mod-gyro.kicad_pcb", "blob": "1ec47941437611ce17242c1e680fedbf10b6b16e", "size": 189590, "product": "MOD-MPU9150", "revision": null, "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/UEXT-MODULES", "path": "MOD-OLED-128x64/mod-oled-128x64.kicad_pcb", "blob": "167971f90328192539f8a3c7d77e9eb7cecf4038", "size": 86544, "product": "MOD-OLED-128x64", "revision": null, "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/URC", "path": "HARDWARE/URC_revB.kicad_pcb", "blob": "6158e2ac5108392d8ee23868c491182df680f47e", "size": 181778, "product": "URC", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/USB-4SERIAL", "path": "HARDWARE/USB-4SERIAL_Rev_B/USB-4SERIAL_Rev_B.kicad_pcb", "blob": "ad830bc54330af992b51535aac643a89491bcf1c", "size": 1439231, "product": "USB-4SERIAL", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/USB-Modules/USB-4SERIAL/open-source-hardware"},
+  {"repository": "OLIMEX/USB-GIGABIT", "path": "HARDWARE/USB-GIGABIT-Rev.C/USB-GIGABIT_Rev_C.kicad_pcb", "blob": "a94586d3dada3b2e9f8359e956b31f7450a5e2fd", "size": 318614, "product": "USB-GIGABIT", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/USB-GIGABIT", "path": "HARDWARE/USB-GIGABIT-Rev.D/USB-GIGABIT_Rev_D.kicad_pcb", "blob": "24c1ced678ad767346fef7b52426d355300c2697", "size": 901404, "product": "USB-GIGABIT", "revision": "D", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/USB-GIGABIT", "path": "HARDWARE/USB-GIGABIT-Rev.E/USB-GIGABIT_Rev_E.kicad_pcb", "blob": "414011eb41f17193f2e0a224b3a3e43e0101eed0", "size": 898711, "product": "USB-GIGABIT", "revision": "E", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/USB-NeoHub", "path": "HARDWARE/USB-NeoHub-Rev.A/USB-NeoHUB_Rev_A.kicad_pcb", "blob": "2825b4805da4919cb4ce77e903c4803d72c22850", "size": 543340, "product": "USB-NeoHub", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/USB-SATA", "path": "HARDWARE/USB-SATA-REV.A/usb-sata_Rev.A.kicad_pcb", "blob": "2aa5694300762349943f40b153a99ac62175a19c", "size": 271414, "product": "USB-SATA", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/USB-SERIAL-L", "path": "HARDWARE/USB-SERIAL-L_Rev_B/USB-SERIAL-L_Rev_B.kicad_pcb", "blob": "08fe79f9566e98ff175ffa7a6233e1da0c6eefa7", "size": 568715, "product": "USB-SERIAL-L", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/USB-Modules/USB-SERIAL-L/"},
+  {"repository": "OLIMEX/USB-gLINK", "path": "HARDWARE/USB-gLINK_Rev.C/USB-gLINK_Rev_C.kicad_pcb", "blob": "926ae8b26a9043f4ec243f6f5a4e3d36b4143829", "size": 1294328, "product": "USB-gLINK", "revision": "C", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/LTE/USB-gLINK/open-source-hardware"},
+  {"repository": "OLIMEX/USB-gLINK", "path": "HARDWARE/USB-gLINK_Rev.D/USB-gLINK_Rev_D.kicad_pcb", "blob": "f5e6543a13b478766ac1cc355a02aa66415e38db", "size": 1318910, "product": "USB-gLINK", "revision": "D", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/IoT/LTE/USB-gLINK/open-source-hardware"},
+  {"repository": "OLIMEX/Ultra-Sound-Levitation", "path": "HARDWARE/Ultra_Sound_Levitation_Rev_B/Ultra_Sound_Levitation_Rev_B.kicad_pcb", "blob": "5e85039ee43f0de20a86fcc0c2fbc6d4a62c968b", "size": 275702, "product": "Ultra_Sound_Levitation", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Soldering-Kits/Ultra-Sound-Levitation/open-source-hardware"},
+  {"repository": "OLIMEX/VGA2HDMI", "path": "HARDWARE/VGA2HDMI-REV.C/VGA2HDMI_Rev_C.kicad_pcb", "blob": "10beff92c423c402ca7df07f58caf65ae5f0f120", "size": 1332132, "product": "VGA2HDMI", "revision": "C", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/eduArdu", "path": "HARDWARE/eduArdu_Rev_A/eduArdu_Rev_A.kicad_pcb", "blob": "c0f8f7624a77110c6187e9e29bc43c3baf896bd1", "size": 614672, "product": "eduArdu", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/eduArdu/open-source-hardware"},
+  {"repository": "OLIMEX/eduArdu", "path": "HARDWARE/eduArdu_Rev_B/eduArdu_Rev_B.kicad_pcb", "blob": "6f1d6c452819ee6c201db6452658b49f1e9c3ccc", "size": 621952, "product": "eduArdu", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/Duino/AVR/eduArdu/open-source-hardware"},
+  {"repository": "OLIMEX/iCE40-ADC", "path": "ICE40-ADC_Rev_A.kicad_pcb", "blob": "5da772402bd05564871c021e64ce382829eb4c98", "size": 404501, "product": "iCE40-ADC", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/iCE40-DAC", "path": "Hardware revision A1/ICE40-DAC_Rev_A1.kicad_pcb", "blob": "74dc891954fb72c9847b29074a5a800eff9872bc", "size": 420174, "product": "iCE40-DAC", "revision": "A1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/FPGA/iCE40/iCE40-DAC/open-source-hardware"},
+  {"repository": "OLIMEX/iCE40-DAC", "path": "ICE40-DAC_Rev_A.kicad_pcb", "blob": "94971a69e142cffc54b8d0f6586a23291eb07063", "size": 364157, "product": "iCE40-DAC", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/FPGA/iCE40/iCE40-DAC/open-source-hardware"},
+  {"repository": "OLIMEX/iCE40-DIO", "path": "ICE40-DIO_Rev_A.kicad_pcb", "blob": "de141ec576bc2c2c5d3d8f8d07a0bf772efae4dd", "size": 526833, "product": "iCE40-DIO", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/FPGA/iCE40/iCE40-DIO/open-source-hardware"},
+  {"repository": "OLIMEX/iCE40-IO", "path": "ICE40-IO_Rev_A.kicad_pcb", "blob": "78f5f7e55e36fe2bfe6c3d6b54f7090090a95c8f", "size": 375257, "product": "iCE40-IO", "revision": "A", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/FPGA/iCE40/iCE40-IO/open-source-hardware"},
+  {"repository": "OLIMEX/iCE40HX1K-EVB", "path": "ICE40-1KEVB_Rev_A.kicad_pcb", "blob": "01e860b6b790a77172194e5908262e51bc27a893", "size": 185044, "product": "iCE40HX1K-EVB", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/iCE40HX1K-EVB", "path": "_autosave-ICE40-1KEVB_Rev_A.kicad_pcb", "blob": "1e6ca8fd9702ba5801d6e93deb69b5ea3e9a393b", "size": 185039, "product": "iCE40HX1K-EVB", "revision": "A", "current": false, "format": "kicad_pcb", "kind": "backup", "product_page": null},
+  {"repository": "OLIMEX/iCE40HX1K-EVB", "path": "iCE40HX1K-EVB_Rev_B.kicad_pcb", "blob": "2ff176d188bd95c55dc588c76825860845a0a6d2", "size": 859725, "product": "iCE40HX1K-EVB", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/iCE40HX8K-EVB", "path": "HARDWARE/REV-B/iCE40HX8K-EVB_Rev_B.kicad_pcb", "blob": "8354c287d35d9420a7c421a3c7d1fe72beda7ae6", "size": 1773218, "product": "iCE40HX8K-EVB", "revision": "B", "current": false, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/iCE40HX8K-EVB", "path": "HARDWARE/REV-B1/iCE40HX8K-EVB_Rev_B1.kicad_pcb", "blob": "4cf899faaf855f07bd6b0c49835d674e2565e11a", "size": 2173747, "product": "iCE40HX8K-EVB", "revision": "B1", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/iMX8MP-SOM", "path": "HARDWARE/iMX8MP-SOM-xGB-IND/iMX8MPLUS-SOM_Rev_B.kicad_pcb", "blob": "709f192261b8ecfca84f1756753014457f952c02", "size": 4495095, "product": "iMX8MP-SOM-xGB-IND", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": null},
+  {"repository": "OLIMEX/iMX8MP-SOM-EVB", "path": "HARDWARE/iMX8MP-SOM-EVB-rev.b/iMX8MPLUS-SOM-EVB_Rev_B.kicad_pcb", "blob": "46dc6f99752806c7549ab31c8f30fe6faf9c1bef", "size": 5771679, "product": "iMX8MP-SOM-EVB", "revision": "B", "current": true, "format": "kicad_pcb", "kind": "board", "product_page": "https://www.olimex.com/Products/SOM/NXP-iMX8/iMX8MP-SOM-EVB-IND/"}
+ ]
+}

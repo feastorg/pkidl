@@ -9,6 +9,16 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Added
 
+- `corpus/vendors/`: a manifest per vendor that pins every board file in Olimex's,
+  SparkFun's and Adafruit's GitHub organisations to a commit and a git blob hash, with
+  its product, revision, whether it is the current one, its format and what kind of
+  file it is. The boards are not kept in the repository:
+  `python scripts/corpus.py fetch` downloads the ones asked for (`--vendor`,
+  `--product`, `--current`, `--kicad`) into `build/vendors/`, keeps one only if its
+  bytes are the pinned ones, and skips what is already there. Files that are not
+  product boards (production panels, backups, drawings, templates, duplicates) are
+  marked and left out unless `--all` is given. `corpus/PROVENANCE.md` says how the
+  manifests were read and what is not known of them.
 - A path's current sets how wide the tracks of its nets are. Every net that is the net
   of a stretch of a `path` is laid, the whole of it, as wide as the current needs to
   warm its tracks by no more than the new `rules(rise=)` allows: `10 * degC` where
