@@ -91,9 +91,12 @@ def test_a_hole_is_a_hole_with_at_most_a_ring_and_vias_round_it():
     # The bench supply's heatsink: two pins, numbered, which its board file holds fixed.
     sink = ['(pad "1" thru_hole circle (at 0 0) (size 4 4) (drill 2.667))',
             '(pad "2" thru_hole circle (at 25.4 0) (size 4 4) (drill 2.667))']  # fmt: skip
+    # Unplated, it is a hole whatever its pad's shape: it has no copper.
+    unplated = '(pad "" np_thru_hole rect (at 0 0) (size 3 3) (drill 3) (layers "*.Cu"))'
     assert _holes(_on_no_net("H:Plated", plated), _on_no_net("H:Shield", plated, *vias),
-                  _on_no_net("H:Slot", slot), _on_no_net("H:Sink", *sink)) == [
-        "H:Plated", "H:Shield", "H:Slot", "H:Sink"]  # fmt: skip
+                  _on_no_net("H:Slot", slot), _on_no_net("H:Sink", *sink),
+                  _on_no_net("H:NPTH", unplated)) == [
+        "H:Plated", "H:Shield", "H:Slot", "H:Sink", "H:NPTH"]  # fmt: skip
 
 
 def test_a_prototyping_boards_pads_are_not_holes():
