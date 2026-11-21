@@ -330,3 +330,18 @@ def test_a_part_that_is_a_hole_on_a_net_is_a_hole_and_a_part():
         "U3: a mounting hole on JP1, H:Grounding: fixed where the board has it, and a part of "
         "the circuit with its net",
     ]
+
+
+def test_items_on_kicads_undefined_layer_are_left_out_of_a_footprint_and_counted():
+    # KiCad's EAGLE import puts EAGLE's tTest layer there, as on Olimex's C0603_DWS.
+    undefined = ['(fp_line (start 0 0) (end 1 0) (layer "UNDEFINED"))',
+                 '(fp_arc (start 0 0) (mid 1 1) (end 2 0) (layer "UNDEFINED"))']  # fmt: skip
+    pad = '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net "VCC"))'
+    silk = '(fp_line (start 0 0) (end 0 1) (layer "F.SilkS"))'
+    board = _board(f'(footprint "E:C0603_DWS" (at 5 5) (layer "F.Cu") (property "Reference" "C1") '
+                   f"{pad} {silk} {' '.join(undefined)})")  # fmt: skip
+    (lib,) = footprints(board)[0].values()
+    drawn = [find(c, "layer") for c in lib if isinstance(c, list) and str(c[0]).startswith("fp_")]
+    assert drawn == [["layer", "F.SilkS"]]
+    assert renamed(board) == [
+        "E:C0603_DWS: 2 items on KiCad's UNDEFINED layer left out of the footprint"]  # fmt: skip

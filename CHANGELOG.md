@@ -566,6 +566,15 @@ Unreleased. History before this file was reconstructed from the git log.
   parts on 165 of those boards, and 48 of the corpus's: pin headers, resistors, and the
   bench supply's banana posts, which its board file places in a row. No corpus board's
   inputs change.
+- `pkidl.importer.footprints()` leaves out of a footprint what is on KiCad's UNDEFINED
+  layer, and `pkidl.importer.renamed(board)` says how many items, by footprint name.
+  KiCad's EAGLE import puts EAGLE's tTest layer and others there, and KiCad 10.0.8 will
+  not load a board with such an item (`pcb drc` exits 3: `One or more items were found
+  on undefined layers (UNDEFINED)`). Four of Olimex's seven EAGLE boards had 15 such
+  footprints, 128 items in all, `C0603_DWS` and `R0603_5MIL_DWS` among them; a board
+  written from their inputs now loads. On iMX233-OLinuXino-MAXI, `C82` and `C83`
+  carried a version of `C0603_DWS` that differed only in those items, and no longer
+  differ.
 - `pkidl.measure.regions`, and the scorecard's `poured_nets` and `split_pours` with it,
   takes a teardrop for no pour. KiCad saves each teardrop as a zone, and each was
   counted as a piece of its net's pour: on GateMateA1-EVB, whose 1,330 zones are 1,312

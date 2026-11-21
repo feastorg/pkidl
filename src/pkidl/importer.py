@@ -66,6 +66,15 @@ def _is_edge(item: object) -> bool:
     return layer is not None and str(layer[1]) == "Edge.Cuts"
 
 
+def _undefined(item: object) -> bool:
+    """Whether a footprint's child is on KiCad's UNDEFINED layer, where its EAGLE import
+    puts layers it has no place for. KiCad will not load a board with such an item."""
+    if not isinstance(item, list):
+        return False
+    layer = find(item, "layer")
+    return layer is not None and str(layer[1]) == "UNDEFINED"
+
+
 def _footprint_edge(fp: Node) -> list[dict]:
     """The Edge.Cuts items drawn in a placed footprint, as board items where KiCad has
     them: part of the board's outline. A rectangle turned other than square to the board
@@ -118,9 +127,10 @@ def renamed(board: Node) -> list[str]:
     circuit that is a mounting hole as well, with the net it is on (``mechanical``); a
     part of the circuit whose footprint draws the board's outline (the outline is read,
     and the part is still placed as any other, not fixed where the outline needs it,
-    unless it is a hole); and, by footprint name with their number, footprints whose
-    pads are all drilled and on no net but are not holes, so that a hole left out can be
-    seen."""
+    unless it is a hole); by footprint name with their number, footprints whose pads are
+    all drilled and on no net but are not holes, so that a hole left out can be seen;
+    and, by footprint name, how many of its items are on KiCad's UNDEFINED layer and
+    left out of it (``footprints``)."""
     return _Read(board).said
 
 
@@ -230,6 +240,7 @@ class _Read:
         self.name: dict[int, str] = {}
         self.libs: dict[str, Node] = {}
         self.differ: dict[str, list[str]] = {}
+        self.undefined: dict[str, int] = {}
         self._names(fps)
         for fp, pads in sorted(self.parts, key=lambda part: natural(self.ref[id(part[0])])):
             if id(fp) in self.held:
@@ -253,6 +264,9 @@ class _Read:
             self.said.append(f"{name}: {n} footprint{'s' if n > 1 else ''} of drilled pads "
                              "on no net, not holes: not every pad is a hole with at most "
                              "a ring")  # fmt: skip
+        for name, n in sorted(self.undefined.items()):
+            self.said.append(f"{name}: {n} item{'s' if n > 1 else ''} on KiCad's UNDEFINED "
+                             "layer left out of the footprint")  # fmt: skip
 
     def _refs(self, fps: list[Node]) -> None:
         taken = {_property(fp, "Reference").lower() for fp in fps}
@@ -299,8 +313,10 @@ class _Read:
         """The version most of *found* carry stands for *name*; the others are listed."""
         shapes = [_shape(lib) for _, _, _, lib in found]
         most = Counter(shapes).most_common(1)[0][0]  # ties: the first seen, the lowest ref
-        lib = found[shapes.index(most)][3]
+        _, _, fp, lib = found[shapes.index(most)]
         self.libs[name] = [lib[0], name.rpartition(":")[2], *lib[2:]]
+        if n := sum(_undefined(c) for c in fp[2:]):
+            self.undefined[name] = n
         others = [ref for (_, ref, _, _), shape in zip(found, shapes, strict=True) if shape != most]
         if others:
             self.differ[name] = others
@@ -367,8 +383,9 @@ def _shape(lib: Node) -> str:
 
 def _package(fp: Node) -> Node:
     """A placed footprint in library form, less what it draws on Edge.Cuts: that is the
-    board's outline, which ``mechanical`` reads, and would be drawn twice."""
-    return [c for c in library_form(fp) if not _is_edge(c)]
+    board's outline, which ``mechanical`` reads, and would be drawn twice. Less, too,
+    what is on KiCad's UNDEFINED layer, which KiCad will not load a board with."""
+    return [c for c in library_form(fp) if not _is_edge(c) and not _undefined(c)]
 
 
 def footprints(board: Node) -> tuple[dict[str, Node], dict[str, list[str]]]:
@@ -376,7 +393,8 @@ def footprints(board: Node) -> tuple[dict[str, Node], dict[str, list[str]]]:
     each footprint name a part of ``circuit`` or a hole of ``mechanical`` uses.
 
     Each placed footprint is put back in library form (``pkidl.footprint.library_form``),
-    without what it draws on Edge.Cuts, which is in ``mechanical``'s outline.
+    without what it draws on Edge.Cuts, which is in ``mechanical``'s outline, or on
+    KiCad's UNDEFINED layer, which KiCad will not load a board with (``renamed``).
     Versions of one name that differ in their pads are written under names of their
     own (``renamed``). Where a board's parts carry versions that differ in no more than
     their graphics, the name stands for the version most of them carry (the lowest
