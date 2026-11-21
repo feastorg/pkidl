@@ -1,5 +1,10 @@
 """pkidl.importer: a board's circuit and mechanical inputs, and nothing of its layout."""
 
+import math
+
+import pytest
+from shapely.geometry import Polygon
+
 from pkidl.importer import circuit, footprints, mechanical
 from pkidl.sexpr import find, find_all, parse
 
@@ -77,6 +82,42 @@ def test_an_oval_drill_is_its_two_sizes_and_the_pads_angle_on_the_board():
     (hole,) = mechanical(parse(slot))["holes"]
     # A round hole keeps its form, and is where its pad is: the offset moves the copper.
     assert hole["drills"] == [[20.0, 15.0, 2.0, 4.0, 135.0], [22.0, 9.0, 2.0]]
+
+
+def test_an_outline_drawn_in_a_footprint_is_read_where_kicad_has_it_on_the_board():
+    # On the back and turned 30 degrees. Where each point is was read from KiCad
+    # 10.0.8's Gerber of this board's Edge.Cuts (kicad-cli pcb export gerbers).
+    board = """(kicad_pcb (footprint "T:Edge" (layer "B.Cu") (at 50 40 30)
+      (property "Reference" "X1")
+      (fp_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))
+      (fp_arc (start 10 0) (mid 12 -3) (end 10 -6) (layer "Edge.Cuts"))
+      (fp_rect (start 2 -1) (end 4 -2) (layer "Edge.Cuts"))
+      (fp_poly (pts (xy 5 -1) (xy 7 -1) (xy 6 -3)) (layer "Edge.Cuts"))
+      (fp_circle (center 3 -4) (end 3.5 -4) (layer "Edge.Cuts"))
+      (fp_line (start 0 0) (end 0 -6) (layer "B.SilkS"))))"""
+    read = mechanical(parse(board))["outline"]
+    assert len(read) == 5  # not the silkscreen line
+    outline = {i["type"]: i for i in read if i["type"] != "gr_poly"}
+    polys = [i["pts"] for i in read if i["type"] == "gr_poly"]
+    assert outline["gr_line"] == {
+        "type": "gr_line",
+        "start": [50.0, 40.0],
+        "end": [58.660254, 35.0],
+    }
+    arc = outline["gr_arc"]
+    assert (arc["start"], arc["end"]) == ([58.660254, 35.0], [55.660254, 29.803848])
+    # The arc's centre, from KiCad's: its start plus (I, J).
+    assert math.dist(arc["mid"], (56.077722, 33.026924)) == pytest.approx(3.25, abs=1e-5)
+    assert math.dist(arc["mid"], arc["end"]) < math.dist(arc["start"], arc["end"])
+    circle = outline["gr_circle"]
+    assert circle["center"] == [50.598076, 35.035898]
+    assert math.dist(circle["center"], circle["end"]) == pytest.approx(0.5)
+    # The rectangle is turned, so it is the polygon of its corners, in order round it.
+    rect = {(50.732051, 37.267949), (52.464102, 36.267949), (52.964102, 37.133975),
+            (51.232051, 38.133975)}  # fmt: skip
+    triangle = {(53.830127, 36.633975), (55.562178, 35.633975), (53.696152, 34.401924)}
+    assert [{tuple(p) for p in pts} for pts in polys] == [rect, triangle]
+    assert Polygon(polys[0]).area == pytest.approx(2)
 
 
 def _part(ref: str, at: str, size: str = "1 1", pad_first: bool = True) -> str:

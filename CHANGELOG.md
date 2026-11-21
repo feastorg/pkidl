@@ -542,6 +542,16 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.importer.mechanical()` reads an outline drawn in a footprint, as KiCad takes
+  Edge.Cuts items in a footprint for part of the board's outline: each where it is on
+  the board, by the footprint's position, turn and side, and a rectangle turned off
+  square as the polygon of its corners. It read none, and said nothing; six of
+  Olimex's boards (FOSDEM-MUSIC-BOX, Lime2-SHIELD, OLIMEXINO-2560, STMP1-OLinuXino,
+  OLIMEXINO-STM32F3, STMP157-OLinuXino-LIME2) have their outline only in a case's
+  platform or a logo footprint, and `Board.from_inputs` then raised
+  `min() iterable argument is empty`. `footprints()` leaves those items out of the
+  footprint it writes: placed with them, the outline was drawn twice, and KiCad's DRC
+  reported it as `malformed outline (self-intersecting)`. (#108)
 - `Board.edge()` joins two ends of an outline no more than 10 micrometres apart, as
   KiCad does: KiCad 10.0.8's DRC closes a square with a 9.9 um gap in it and not one
   with 10.1 um (`pkidl.edge.JOIN`). Minibot's outline, with gaps of up to 6.6 um, was

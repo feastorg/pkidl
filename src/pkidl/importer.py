@@ -48,6 +48,40 @@ def _drill(fp: Node, pad: Node) -> list[float]:
     return [*xy, float(drill[1])]
 
 
+def _is_edge(item: object) -> bool:
+    """Whether a footprint's child is drawn on Edge.Cuts."""
+    if not isinstance(item, list) or not str(item[0]).startswith("fp_"):
+        return False
+    layer = find(item, "layer")
+    return layer is not None and str(layer[1]) == "Edge.Cuts"
+
+
+def _footprint_edge(fp: Node) -> list[dict]:
+    """The Edge.Cuts items drawn in a placed footprint, as board items where KiCad has
+    them: part of the board's outline. A rectangle turned other than square to the board
+    is a polygon."""
+    items = []
+    for g in fp[2:]:
+        if not _is_edge(g) or (kind := "gr_" + str(g[0])[3:]) not in EDGE_ITEMS:
+            continue
+        local = {k: (float(n[1]), float(n[2])) for k in ("start", "mid", "end", "center")
+                 if (n := find(g, k)) is not None}  # fmt: skip
+        item: dict = {"type": kind, **{k: list(board_xy(fp, *p)) for k, p in local.items()}}
+        if kind == "gr_rect":
+            (x0, y0), (x1, y1) = local["start"], local["end"]
+            corners = [
+                list(board_xy(fp, x, y)) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))
+            ]
+            if corners[0][0] != corners[1][0] and corners[0][1] != corners[1][1]:
+                item = {"type": "gr_poly", "pts": corners}
+        if (pts := find(g, "pts")) is not None:
+            item["pts"] = [
+                list(board_xy(fp, float(p[1]), float(p[2]))) for p in find_all(pts, "xy")
+            ]
+        items.append(item)
+    return items
+
+
 def circuit(board: Node) -> dict:
     """``{"parts": [{ref, value, footprint, pads: {number: net}}], "nets": [...]}``,
     parts sorted by reference. Pads on no net are left out of ``pads``; a footprint
@@ -75,8 +109,9 @@ def circuit(board: Node) -> dict:
 
 def mechanical(board: Node) -> dict:
     """``{"outline": [...], "holes": [...], "fixed": {}}``: the Edge.Cuts items as drawn
-    (type and points), and each footprint whose pads are all on no net and drilled (a
-    mounting hole), at its position, rotation and side, with each hole's drill."""
+    (type and points), on the board or in a footprint, and each footprint whose pads
+    are all on no net and drilled (a mounting hole), at its position, rotation and
+    side, with each hole's drill."""
     outline = []
     for kind in EDGE_ITEMS:
         for g in find_all(board, kind):
@@ -90,6 +125,8 @@ def mechanical(board: Node) -> dict:
             if (pts := find(g, "pts")) is not None:
                 item["pts"] = [_xy(p) for p in find_all(pts, "xy")]
             outline.append(item)
+    for fp in find_all(board, "footprint"):
+        outline += _footprint_edge(fp)
     holes = []
     for fp in find_all(board, "footprint"):
         pads = find_all(fp, "pad")
@@ -120,11 +157,18 @@ def _shape(lib: Node) -> str:
     return "\n".join(sorted(dumps(bare(c)) for c in items))
 
 
+def _package(fp: Node) -> Node:
+    """A placed footprint in library form, less what it draws on Edge.Cuts: that is the
+    board's outline, which ``mechanical`` reads, and would be drawn twice."""
+    return [c for c in library_form(fp) if not _is_edge(c)]
+
+
 def footprints(board: Node) -> tuple[dict[str, Node], dict[str, list[str]]]:
     """``({footprint name: library footprint}, {footprint name: [refs that differ]})`` for
     each footprint name a part of ``circuit`` or a hole of ``mechanical`` uses.
 
-    Each placed footprint is put back in library form (``pkidl.footprint.library_form``).
+    Each placed footprint is put back in library form (``pkidl.footprint.library_form``),
+    without what it draws on Edge.Cuts, which is in ``mechanical``'s outline.
     Where a board's parts carry different versions under one name, the name stands for
     the version most of them carry (the lowest reference deciding a tie), and the parts
     carrying another are listed.
@@ -136,7 +180,7 @@ def footprints(board: Node) -> tuple[dict[str, Node], dict[str, list[str]]]:
     for fp in find_all(board, "footprint"):
         if str(fp[1]) in wanted:
             ref = _property(fp, "Reference")
-            by_name.setdefault(str(fp[1]), []).append((natural(ref), ref, library_form(fp)))
+            by_name.setdefault(str(fp[1]), []).append((natural(ref), ref, _package(fp)))
     libs: dict[str, Node] = {}
     differ: dict[str, list[str]] = {}
     for name, found in sorted(by_name.items()):
