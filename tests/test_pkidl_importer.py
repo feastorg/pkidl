@@ -99,14 +99,24 @@ def test_a_hole_is_a_hole_with_at_most_a_ring_and_vias_round_it():
         "H:Plated", "H:Shield", "H:Slot", "H:Sink", "H:NPTH"]  # fmt: skip
 
 
-def test_a_prototyping_boards_pads_are_not_holes():
+def test_a_prototyping_boards_pads_are_not_holes_and_are_said_to_be_left_out():
     # AgonLight2-PROTO's 554 square pads; SMT-PROTOBOARD's headers, square and oval.
     square = '(pad "1" thru_hole rect (at 0 0) (size 1.778 1.778) (drill 1) (layers "*.Cu"))'
     pins = ['(pad "1" thru_hole circle (at 0 0) (size 1.7 1.7) (drill 1))',
             '(pad "2" thru_hole oval (at 2.54 0) (size 1.7 1.9) (drill 1))']  # fmt: skip
     off = '(pad "" thru_hole circle (at 0 0) (size 2 2) (drill 1 (offset 0.3 0)) (layers "*.Cu"))'
-    assert _holes(_on_no_net("P:Pad", square), _on_no_net("P:Header", *pins),
-                  _on_no_net("P:Off", off)) == []  # fmt: skip
+    found = [_on_no_net("P:Pad", square), _on_no_net("P:Pad", square),
+             _on_no_net("P:Header", *pins), _on_no_net("P:Off", off)]  # fmt: skip
+    assert _holes(*found) == []
+    # One line a name, with how many: a hole lost to the rule can be seen.
+    assert renamed(parse("(kicad_pcb " + " ".join(found) + ")")) == [
+        "P:Header: 1 footprint of drilled pads on no net, not holes: not every pad is a "
+        "hole with at most a ring",
+        "P:Off: 1 footprint of drilled pads on no net, not holes: not every pad is a hole "
+        "with at most a ring",
+        "P:Pad: 2 footprints of drilled pads on no net, not holes: not every pad is a hole "
+        "with at most a ring",
+    ]
 
 
 def test_an_oval_drill_is_its_two_sizes_and_the_pads_angle_on_the_board():

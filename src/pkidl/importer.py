@@ -116,7 +116,9 @@ def renamed(board: Node) -> list[str]:
 
     It also says what is read that a board's author may not expect: a part of the
     circuit whose footprint draws the board's outline (the outline is read, and the part
-    is still placed as any other, not fixed where the outline needs it)."""
+    is still placed as any other, not fixed where the outline needs it), and, by
+    footprint name with their number, footprints whose pads are all drilled and on no
+    net but are not holes (``mechanical``), so that a hole left out can be seen."""
     return _Read(board).said
 
 
@@ -130,13 +132,16 @@ def _pads(fp: Node) -> dict[str, str]:
     return dict(sorted(pads.items()))
 
 
-def _is_hole(fp: Node) -> bool:
+def _drilled_on_no_net(fp: Node) -> bool:
+    """Whether a footprint has pads, all drilled and all on no net."""
     pads = find_all(fp, "pad")
     if not pads or any(find(p, "drill") is None for p in pads):
         return False
-    if any((n := find(p, "net")) is not None and str(n[-1]) for p in pads):
-        return False
-    return all(_ringed(p) for p in pads)
+    return not any((n := find(p, "net")) is not None and str(n[-1]) for p in pads)
+
+
+def _is_hole(fp: Node) -> bool:
+    return _drilled_on_no_net(fp) and all(_ringed(p) for p in find_all(fp, "pad"))
 
 
 def _pad_form(lib: Node) -> list[str]:
@@ -201,6 +206,11 @@ class _Read:
                                  f"{self.name[id(fp)]}; the outline is read, and {ref} "
                                  "is placed as any part, not fixed where it draws the "
                                  "outline")  # fmt: skip
+        left = Counter(str(fp[1]) for fp in fps if _drilled_on_no_net(fp) and not _is_hole(fp))
+        for name, n in sorted(left.items()):
+            self.said.append(f"{name}: {n} footprint{'s' if n > 1 else ''} of drilled pads "
+                             "on no net, not holes: not every pad is a hole with at most "
+                             "a ring")  # fmt: skip
 
     def _refs(self, fps: list[Node]) -> None:
         taken = {_property(fp, "Reference").lower() for fp in fps}
