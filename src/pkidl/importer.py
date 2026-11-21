@@ -60,7 +60,7 @@ def _ringed(pad: Node) -> bool:
 
 def _is_edge(item: object) -> bool:
     """Whether a footprint's child is drawn on Edge.Cuts."""
-    if not isinstance(item, list) or not str(item[0]).startswith("fp_"):
+    if not isinstance(item, list) or not str(item[0]).startswith("fp_") or item[0] == "fp_text":
         return False
     layer = find(item, "layer")
     return layer is not None and str(layer[1]) == "Edge.Cuts"

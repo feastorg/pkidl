@@ -177,8 +177,11 @@ def test_a_part_whose_footprint_draws_the_outline_is_said_to_float():
         head = f'(footprint "{name}" (at 0 0) (layer "F.Cu") (property "Reference" "{ref}")'
         return " ".join([head, *children, edge]) + ")"
 
+    # Text on Edge.Cuts is no outline: KiCad draws no edge from it.
+    text = ('(footprint "C:Marked" (at 20 0) (layer "F.Cu") (property "Reference" "J1") '
+            f'{pin} (fp_text user "CUT" (at 0 0) (layer "Edge.Cuts")))')  # fmt: skip
     board = _board(fp("C:Platform", "PLATFORM1", pin), fp("H:M3", "H1", hole),
-                   fp("L:Logo", "G***"))  # fmt: skip
+                   fp("L:Logo", "G***"), text)  # fmt: skip
     assert len(mechanical(board)["outline"]) == 3
     assert renamed(board) == [
         "PLATFORM1: the board's outline is drawn in its footprint, C:Platform; the outline "

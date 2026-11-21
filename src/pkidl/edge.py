@@ -35,30 +35,31 @@ def _point(value: Any) -> Point:
 
 def _joined(lines: list[list[Point]]) -> list[LineString]:
     """*lines* (each its points in order) with the ends KiCad takes to meet moved onto
-    one point. Each end is joined to the end nearest it, if that is within ``JOIN``; the
-    ends joined, one to another or by way of others, meet at the lowest of them (x, then
-    y). So the order the lines are drawn in does not matter. Ends are measured apart in
+    one point. Ends are joined in pairs, never in chains, as KiCad walks an outline from
+    one end to the next: the two ends of different lines closest together, if within
+    ``JOIN``, are joined first, then the closest two of those left, and so on. A joined
+    pair meets at the lower of its ends (x, then y). So the order the lines are drawn in
+    does not matter, and no end moves further than ``JOIN``. Ends are measured apart in
     whole nanometres, as KiCad measures them: a gap of ``JOIN`` joins wherever the board
     sits, which in millimetres it would not (``100.01 - 100 > 0.01``)."""
     ends = [pts[i] for pts in lines for i in (0, -1)]
     nm = [(round(x * _NM), round(y * _NM)) for x, y in ends]
     reach = round(JOIN * _NM) ** 2
-    up = list(range(len(ends)))
-
-    def top(i: int) -> int:
-        while up[i] != i:
-            i = up[i]
-        return i
-
-    for i, (x, y) in enumerate(nm):
-        apart = [((x - a) ** 2 + (y - b) ** 2, (a, b), j)
-                 for j, (a, b) in enumerate(nm) if j != i]  # fmt: skip
-        if apart and (near := min(apart))[0] <= reach:
-            up[top(i)] = top(near[2])
-    meet: dict[int, Point] = {}
-    for i, p in enumerate(ends):
-        meet[top(i)] = min(meet.get(top(i), p), p)
-    return [LineString([meet[top(2 * k)], *pts[1:-1], meet[top(2 * k + 1)]])
+    pairs = []
+    for i, p in enumerate(nm):
+        for j in range(i - i % 2 + 2, len(nm)):  # an end of a later line
+            q = nm[j]
+            apart = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2
+            if apart <= reach:  # closest first; ties by where the ends are, not the order
+                pairs.append((apart, min(p, q), max(p, q), i, j))
+    pairs.sort()
+    meet = list(ends)
+    taken: set[int] = set()
+    for _, _, _, i, j in pairs:
+        if i not in taken and j not in taken:
+            taken |= {i, j}
+            meet[i] = meet[j] = min(ends[i], ends[j])
+    return [LineString([meet[2 * k], *pts[1:-1], meet[2 * k + 1]])
             for k, pts in enumerate(lines)]  # fmt: skip
 
 

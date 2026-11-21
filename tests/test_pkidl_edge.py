@@ -113,12 +113,29 @@ def test_an_end_joins_the_end_nearest_it_whatever_order_the_items_are_in():
     spur = _line((1, 1), (0, 0))
     sides = [_line((0.015, 0), (10, 0)), *SQUARE[1:3], _line((0, 10), (0.008, 0))]
     first, last = shape([spur, *sides]), shape([*sides, spur])
-    assert first.equals(last) and first.area == pytest.approx(100, abs=1e-3)
+    # The corner meets at its lower end, (0.008, 0): its left side leans by 8 um.
+    assert first.equals(last) and first.area == pytest.approx(100 - 10 * 0.008 / 2, abs=1e-9)
     # A step of 9 um, each end of it meeting another end exactly: those are the ends
     # nearest, and the step is kept, not folded into one point with the ends 9 um off.
     corners = [(0, 0), (5, 0), (5, 0.009), (10, 0.009), (10, 10), (0, 10)]
     step = [_line(a, b) for a, b in zip(corners, corners[1:] + corners[:1], strict=True)]
     assert shape(step).area == pytest.approx(100 - 5 * 0.009, abs=1e-6)
+
+
+def test_ends_join_in_pairs_not_in_chains_as_kicad_walks_them():
+    # An 8 um line in a corner's gap: one corner end 9 um from its first end, the other
+    # 9.5 um from its first end and 14.2 um from its second. KiCad 10.0.8's DRC reports
+    # invalid_outline: an end joins one other end, so the line takes the first corner
+    # end and leaves the second open. Gathered into one point, all four closed.
+    tiny = _line((0.009, 0), (0.009, 0.008))
+    sides = [_line((0.018, -0.003), (10, 0)), *SQUARE[1:3], _line((0, 10), (0, 0))]
+    for items in ([*sides, tiny], [tiny, *sides]):
+        with pytest.raises(ValueError, match="does not close"):
+            shape(items)
+    # The other corner end 9.8 um from the line's second end: each end has its own, and
+    # KiCad finds no fault.
+    sides[0] = _line((0.018, 0.012), (10, 0))
+    assert shape([*sides, tiny]).area == pytest.approx(100 - 10 * 0.008 / 2, abs=1e-9)
 
 
 @pytest.mark.parametrize(

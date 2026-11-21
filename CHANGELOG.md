@@ -586,9 +586,10 @@ Unreleased. History before this file was reconstructed from the git log.
 - `Board.edge()` joins two ends of an outline no more than 10 micrometres apart, as
   KiCad does: KiCad 10.0.8's DRC closes a square with a 10.0 um gap in it and not one
   with 10.1 um (`pkidl.edge.JOIN`). Ends are measured apart in whole nanometres, as
-  KiCad measures them, so a 10.0 um gap joins wherever the board sits; and each end
-  joins the end nearest it, so the order the items are drawn in does not change the
-  outline. Minibot's outline, with gaps of up to 6.6 um, was refused as not closing;
+  KiCad measures them, so a 10.0 um gap joins wherever the board sits. Ends join in
+  pairs, the closest first, and never in chains: an 8 um line in a corner's gap takes
+  one of the corner's ends, not both, as KiCad's DRC has it. So the order the items
+  are drawn in does not change the outline, and no end moves more than 10 um. Minibot's outline, with gaps of up to 6.6 um, was refused as not closing;
   and ESP32-PoE-ISO's slot, whose ends miss each other by 2 and 8.5 nm, was taken for
   lines that close nothing and left out of its board. eduArdu's outline
   (gaps of 12 and 25 um) and OSHW-GHOST's (25 um) are still refused, as KiCad's DRC
