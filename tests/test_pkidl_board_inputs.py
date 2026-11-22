@@ -468,6 +468,20 @@ def test_a_held_platform_is_measured_by_its_pieces(tmp_path):
     assert 7 + 2 < solution.poses["U1"].y.mm < 15
 
 
+def test_a_part_after_another_is_kept_apart_from_a_platform_by_its_pieces(tmp_path):
+    # It stops 1 mm past the courtyard of the platform's first hole, 1.5 mm from its
+    # middle to its end: 8.03 + 2.5 + 1 + 1.5.
+    for net in ("GND", ""):
+        board = _platform(tmp_path, 8.03, 3, net)
+        board.place(board["C1"], against=Edge.TOP, along=0.05)
+        board.place(board["U1"], against=Edge.TOP, after=board["C1"])
+        board.apart(board["U1"], board.fixed("Platform"), 1 * mm)
+        board.place(board["R1"], at=(42 * mm, 32 * mm))
+        solution = board.solve()
+        assert solution.problems == ()
+        assert solution.poses["U1"].x.mm == pytest.approx(13.03)
+
+
 def test_a_part_whose_footprint_is_missing_is_named(inputs):
     (inputs / "footprints" / footprint_path("Device:R")).unlink()
     with pytest.raises(ValueError, match="R1: no footprint 'Device:R' at .*R.kicad_mod"):
