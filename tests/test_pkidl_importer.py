@@ -394,3 +394,16 @@ def test_a_holes_ring_drawn_as_a_pad_on_each_face_is_its_ring():
         assert mechanical(_board(moved))["holes"] == []
     # On no net, it is a hole as any is.
     assert len(mechanical(_board(hole.replace(' (net "Net-(MH1-Pad1)")', "")))["holes"]) == 1
+
+
+def test_a_pad_number_on_two_nets_is_said_and_its_part_not_held():
+    # A standoff's hole on EGND and the vias round it, numbered as the hole is, on GND:
+    # the circuit has a pad number on one net, so the part is not held as one on a net.
+    pad = '(pad "1" thru_hole circle (at {}) (size {}) (drill {}) (layers "*.Cu") (net "{}"))'
+    pads = [pad.format("0 0", "4.5 4.5", 3.1, "EGND")] + [
+        pad.format(at, "1 1", 0.5, "GND") for at in ("2.6 0", "-2.6 0")]  # fmt: skip
+    head = '(footprint "H:Standoff" (at 5 5) (layer "F.Cu") (property "Reference" "ST1")'
+    board = _board(f"{head} {' '.join(pads)})")
+    assert mechanical(board)["holes"] == []
+    assert [p["pads"] for p in circuit(board)["parts"]] == [{"1": "GND"}]
+    assert renamed(board) == ["ST1: pad 1 is on EGND, GND; the circuit has it on GND only"]

@@ -172,6 +172,17 @@ def _pads(fp: Node) -> dict[str, str]:
     return dict(sorted(pads.items()))
 
 
+def _split(fp: Node) -> dict[str, list[str]]:
+    """Each pad number of a placed footprint that is on more than one net, with its nets:
+    the circuit can have it on one of them only, the last."""
+    nets: dict[str, list[str]] = {}
+    for pad in find_all(fp, "pad"):
+        net = find(pad, "net")
+        if net is not None and str(net[-1]) and str(net[-1]) not in nets.get(str(pad[1]), []):
+            nets.setdefault(str(pad[1]), []).append(str(net[-1]))
+    return {n: on for n, on in sorted(nets.items()) if len(on) > 1}
+
+
 def _drilled(fp: Node) -> list[Node]:
     """A footprint's drilled pads, where every other pad it has is the ring of one of
     them: a round pad on a surface, numbered as that pad is and centred on its hole, as
@@ -278,8 +289,10 @@ class _Read:
             ref = _property(fp, "Reference")
             if ref and "*" not in ref and (pads := _pads(fp)):
                 self.parts.append((fp, pads))
-        # The parts that are mounting holes as well: fixed where the board has them.
-        self.held = {id(fp) for fp, pads in self.parts if _is_held(fp, pads)}
+        # The parts that are mounting holes as well: fixed where the board has them. Not
+        # one with a pad number on two nets, which the circuit has on one.
+        self.held = {id(fp) for fp, pads in self.parts
+                     if _is_held(fp, pads) and not _split(fp)}  # fmt: skip
         self.holes = [fp for fp in fps if _is_hole(fp) or id(fp) in self.held]
         self.said: list[str] = []
         self.ref: dict[int, str] = {}
@@ -311,6 +324,10 @@ class _Read:
                 )
                 self.said.append(f"{ref}: {what[0]} drawn in its footprint, {name}; "
                                  f"{what[1]} is read, and {ref} {where}")  # fmt: skip
+        for fp, pads in sorted(self.parts, key=lambda part: natural(self.ref[id(part[0])])):
+            for number, nets in _split(fp).items():
+                self.said.append(f"{self.ref[id(fp)]}: pad {number} is on {', '.join(nets)}; "
+                                 f"the circuit has it on {pads[number]} only")  # fmt: skip
         left = Counter(str(fp[1]) for fp in fps if _drilled_on_no_net(fp) and not _is_hole(fp))
         for name, n in sorted(left.items()):
             self.said.append(f"{name}: {n} footprint{'s' if n > 1 else ''} of drilled pads "

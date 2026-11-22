@@ -61,8 +61,8 @@ are told apart the same way, by where they are. Items on KiCad's UNDEFINED layer
 left out of a footprint: KiCad will not load a board that has one. `extract` prints each
 name it gives, each part that is a mounting hole on a net, each part whose footprint
 draws the board's outline or a cut-out in it, each footprint name of drilled pads on no
-net that is not taken for holes, and how many items each footprint had on the UNDEFINED
-layer.
+net that is not taken for holes, each pad number of a part that is on two nets, and how
+many items each footprint had on the UNDEFINED layer.
 
 ## The scorecard
 
