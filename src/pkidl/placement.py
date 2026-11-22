@@ -106,7 +106,8 @@ a thing as near that thing as it is put: their pads are held as any are.
 
 A part lies inside the board's outline as it is drawn (``pkidl.edge``), rounded corners
 and cut-outs included, and clear of what is fixed on the board: its mounting holes, each
-taken as the box around its own footprint, as a part is. Neither moves a part: one that
+taken as what it takes from the board, the copper of each pad and the box around each
+piece of its body (``_pieces``), not the box around it all. Neither moves a part: one that
 is put outside the outline or over a hole is reported. A part that looks for a place
 (``near=``) looks only where it is clear of both, and a row spreads over the longest
 stretch of its edge that is clear, across the strip from the edge to the far side of
@@ -275,28 +276,62 @@ def _shape(footprint: Node) -> _Shape:
     # A footprint with no courtyard and no fabrication drawing has its body on the silk.
     body = _BODY if any(layer in _BODY for _, layer in drawn) else _SILK
     for item, layer in drawn:
-        if layer not in body:
-            continue
-        points = [p for k in ("start", "end") if (p := find(item, k)) is not None]
-        points += find_all(find(item, "pts") or [], "xy")
-        if (mid := find(item, "mid")) is not None and len(points) == 2:
-            # An arc is all of itself: it bulges past its ends and the point between.
-            start, end = ((float(p[1]), float(p[2])) for p in points)
-            between = (float(mid[1]), float(mid[2]))
-            bounds = [between, *arc_bounds(start, between, end)]
-            xs += [_nm(x) for x, _ in bounds]
-            ys += [_nm(y) for _, y in bounds]
-        centre = find(item, "center")
-        if centre is not None and (end := find(item, "end")) is not None:
-            r = round(math.dist((_nm(centre[1]), _nm(centre[2])), (_nm(end[1]), _nm(end[2]))))
-            xs += [_nm(centre[1]) - r, _nm(centre[1]) + r]
-            ys += [_nm(centre[2]) - r, _nm(centre[2]) + r]
-        xs += [_nm(p[1]) for p in points]
-        ys += [_nm(p[2]) for p in points]
+        if layer in body and (box := _item_box(item)) is not None:
+            xs += [box[0], box[2]]
+            ys += [box[1], box[3]]
     if not xs:  # nothing drawn: a point
         return _Shape((), (0, 0, 0, 0), False)
     return _Shape(tuple(pads), (min(xs), min(ys), max(xs), max(ys)), through, tuple(copper),
                   frozenset(holed))  # fmt: skip
+
+
+def _item_box(item: Node) -> Box | None:
+    """The box around a drawn item of a footprint, or None for one with no points."""
+    xs: list[int] = []
+    ys: list[int] = []
+    points = [p for k in ("start", "end") if (p := find(item, k)) is not None]
+    points += find_all(find(item, "pts") or [], "xy")
+    if (mid := find(item, "mid")) is not None and len(points) == 2:
+        # An arc is all of itself: it bulges past its ends and the point between.
+        start, end = ((float(p[1]), float(p[2])) for p in points)
+        between = (float(mid[1]), float(mid[2]))
+        bounds = [between, *arc_bounds(start, between, end)]
+        xs += [_nm(x) for x, _ in bounds]
+        ys += [_nm(y) for _, y in bounds]
+    centre = find(item, "center")
+    if centre is not None and (end := find(item, "end")) is not None:
+        r = round(math.dist((_nm(centre[1]), _nm(centre[2])), (_nm(end[1]), _nm(end[2]))))
+        xs += [_nm(centre[1]) - r, _nm(centre[1]) + r]
+        ys += [_nm(centre[2]) - r, _nm(centre[2]) + r]
+    xs += [_nm(p[1]) for p in points]
+    ys += [_nm(p[2]) for p in points]
+    return (min(xs), min(ys), max(xs), max(ys)) if xs else None
+
+
+_CLOSED = ("fp_circle", "fp_rect", "fp_poly")  # drawn items that enclose an area alone
+
+
+def _pieces(footprint: Node) -> tuple[Box, ...]:
+    """What a footprint fixed on the board takes from it, about its origin: the copper of
+    each pad, which is its hole where it has one, and its body as ``_shape`` reads it,
+    each drawing that is closed on its own (a circle, a rectangle, a polygon) by itself
+    and the lines and arcs together. A case's platform, holes at its corners and pegs
+    drawn as circles, takes those and not the board between them; a heatsink drawn in
+    lines takes the box around its body."""
+    shape = _shape(footprint)
+    drawn = [(item, layer[1]) for item in footprint[2:]
+             if isinstance(item, list) and str(item[0]).startswith("fp_") and item[0] != "fp_text"
+             and (layer := find(item, "layer")) is not None]  # fmt: skip
+    body = _BODY if any(layer in _BODY for _, layer in drawn) else _SILK
+    pieces = [box for _, box in shape.copper]
+    lines: list[Box] = []
+    for item, layer in drawn:
+        if layer in body and (box := _item_box(item)) is not None:
+            (pieces if item[0] in _CLOSED else lines).append(box)
+    if lines:
+        pieces.append((min(b[0] for b in lines), min(b[1] for b in lines),
+                       max(b[2] for b in lines), max(b[3] for b in lines)))  # fmt: skip
+    return tuple(dict.fromkeys(pieces)) or (shape.box,)
 
 
 def _turn(x: int, y: int, rot: int, back: bool) -> tuple[int, int]:
@@ -511,18 +546,21 @@ class _Solver:
             for piece in getattr(off, "geoms", [off]):
                 x0, y0, x1, y1 = piece.bounds
                 self.cuts.append((math.floor(x0), math.floor(y0), math.ceil(x1), math.ceil(y1)))
-        # What is fixed on the board: each with its outline there, and whether it has
-        # holes and so takes both faces.
+        # What is fixed on the board: each piece of what it takes from the board there
+        # (``_pieces``), and whether it has holes and so takes both faces; and the box
+        # around its outline, which a keepout of it keeps copper from.
         self.fixed: list[tuple[Fixed, Box, bool]] = []
+        self.things: dict[Fixed, Box] = {}
         # In an order of their own, so that which of two a problem names is not the
         # order they were put on the board in.
         for f in sorted(fixed, key=lambda f: (f.x.nm, f.y.nm, f.label, f.rot, f.back)):
             if f.footprint not in library:
                 raise ValueError(f"{f.label}: no footprint {f.footprint!r} to keep clear of")
             shape = _shape(library[f.footprint])
-            self.fixed.append((f, _moved(_spun(shape.box, f.rot, f.back), f.x.nm, f.y.nm),
-                               shape.through))  # fmt: skip
-        self.things = {f: box for f, box, _ in self.fixed}
+            self.things[f] = _moved(_spun(shape.box, f.rot, f.back), f.x.nm, f.y.nm)
+            for piece in _pieces(library[f.footprint]):
+                self.fixed.append((f, _moved(_spun(piece, f.rot, f.back), f.x.nm, f.y.nm),
+                                   shape.through))  # fmt: skip
         self.runs: dict[Row, tuple[int, int]] = {}  # the clear stretch of each row's edge
         # How far apart the board's rules keep copper on different nets, if it has rules.
         self.rules = [s for s in statements if isinstance(s, Rules)]
@@ -1608,9 +1646,9 @@ class _Solver:
         nearer than it is kept: by the rules, which keep parts apart that share a face,
         or by an ``apart`` that speaks of *ref* and the thing, whichever face either
         is on. Each with how near, how far it is kept, the larger of the two, and the
-        ``apart`` statements that keep it so, none where it is the rules. What *ref* is
-        said to be on is left out, and without *rules* only what an ``apart`` says
-        counts."""
+        ``apart`` statements that keep it so, none where it is the rules; the nearest
+        piece of each thing. What *ref* is said to be on is left out, and without
+        *rules* only what an ``apart`` says counts."""
         aparts = self.aparts.get(ref, {})
         apart = self.bodies_apart if rules else 0
         if not apart and not aparts:

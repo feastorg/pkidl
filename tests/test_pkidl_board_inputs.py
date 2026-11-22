@@ -263,6 +263,60 @@ def test_a_hole_is_its_part_s_footprint(tmp_path):
         board.hole("Device:R", (30, 20), part=board["ST1"])
 
 
+def test_a_footprint_of_holes_takes_its_holes_and_its_body_from_the_board(tmp_path):
+    # A case's platform: two holes 50 mm apart and a peg drawn as a circle, as
+    # STMP157-OLinuXino-LIME2's; and a heatsink's pins with its body drawn in lines.
+    text = """(kicad_pcb
+      (gr_rect (start 0 0) (end 80 60) (layer "Edge.Cuts"))
+      (footprint "Case:Platform" (layer "F.Cu") (at 10 10)
+        (property "Reference" "REF**")
+        (fp_circle (center 25 40) (end 27 40) (layer "B.CrtYd"))
+        (pad "" np_thru_hole circle (at 0 0) (size 3.3 3.3) (drill 3.3) (layers "*.Cu"))
+        (pad "" np_thru_hole circle (at 50 0) (size 3.3 3.3) (drill 3.3) (layers "*.Cu")))
+      (footprint "Mech:Sink" (layer "F.Cu") (at 10 50)
+        (property "Reference" "REF**")
+        (fp_line (start -2 -4) (end 22 -4) (layer "F.Fab"))
+        (fp_line (start 22 -4) (end 22 4) (layer "F.Fab"))
+        (fp_line (start 22 4) (end -2 4) (layer "F.Fab"))
+        (pad "" np_thru_hole circle (at 0 0) (size 2 2) (drill 2) (layers "*.Cu"))
+        (pad "" np_thru_hole circle (at 20 0) (size 2 2) (drill 2) (layers "*.Cu")))
+      (footprint "Device:R" (layer "F.Cu") (at 70 30)
+        (property "Reference" "R1") (property "Value" "0")
+        (pad "1" smd rect (at -1 0) (size 1 1) (layers "F.Cu") (net "A"))
+        (pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net "B"))))"""
+    source = parse(text)
+
+    def at(x: float, y: float) -> list[str]:
+        board = Board.from_inputs(_inputs(tmp_path, source))
+        board.place(board["R1"], at=(x * mm, y * mm))
+        return _problems(board)
+
+    assert at(35, 10) == []  # between the platform's holes
+    assert at(35, 30) == []  # over the platform's middle
+    assert at(10, 10) == ["R1 is over Platform at (10, 10)"]  # on a hole
+    assert at(35, 50) == ["R1 is over Platform at (10, 10)"]  # on the peg
+    assert at(20, 50) == ["R1 is over Sink at (10, 50)"]  # between the pins, under the body
+    # The same platform held, its holes on ground: a part looks for its place between them.
+    ring = '(pad "1" thru_hole circle (at {}) (size 6 6) (drill 3.3) (layers "*.Cu") (net "GND"))'
+    # In the board's top left corner, so a part by it is over its middle.
+    corner = text.replace(
+        '(footprint "Case:Platform" (layer "F.Cu") (at 10 10)',
+        '(footprint "Case:Platform" (layer "F.Cu") (at 3 3)',
+    )
+    held = parse(corner.replace('"Reference" "REF**"', '"Reference" "PL1"', 1)
+                 .replace('(pad "" np_thru_hole circle (at 0 0) (size 3.3 3.3) (drill 3.3) '
+                          '(layers "*.Cu"))', ring.format("0 0"))
+                 .replace('(pad "" np_thru_hole circle (at 50 0) (size 3.3 3.3) (drill 3.3) '
+                          '(layers "*.Cu"))', ring.format("50 0")))  # fmt: skip
+    board = Board.from_inputs(_inputs(tmp_path, held))
+    assert set(board.held) == {"PL1"}
+    board.place(board["R1"], near=board["PL1"], within=4 * mm)
+    solution = board.solve()
+    assert solution.problems == ()
+    r1 = solution.poses["R1"]
+    assert r1.x.mm < 10 and r1.y.mm < 10  # by the hole in the corner, over the platform
+
+
 def test_a_part_whose_footprint_is_missing_is_named(inputs):
     (inputs / "footprints" / footprint_path("Device:R")).unlink()
     with pytest.raises(ValueError, match="R1: no footprint 'Device:R' at .*R.kicad_mod"):

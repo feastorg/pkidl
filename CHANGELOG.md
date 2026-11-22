@@ -570,6 +570,13 @@ Unreleased. History before this file was reconstructed from the git log.
   parts on 165 of the 250 boards (710 on 157 of those 235, and 48 on 8 of the
   corpus's 15): pin headers, resistors, and the bench supply's banana posts, which its
   board file places in a row. No corpus board's inputs change.
+- What is fixed on the board keeps parts off what it takes from the board, not off the
+  box around it all: the copper of each of its pads, each drawing of its body that is
+  closed on its own, and the box around the lines and arcs of its body. A case's
+  platform, holes at its corners, kept every part off the middle of the board: on
+  STMP1-OLinuXino, a part put at the middle was `over LIME2_PLATFORM`. A heatsink
+  drawn in lines still keeps parts off the box around its body: the four corpus boards
+  with a board file are placed as before.
 - `pkidl.importer.footprints()` leaves out of a footprint what is on KiCad's UNDEFINED
   layer, and `pkidl.importer.renamed(board)` says how many items, by footprint name.
   KiCad's EAGLE import puts EAGLE's tTest layer and others there, and KiCad 10.0.8 will
