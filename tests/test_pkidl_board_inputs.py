@@ -320,6 +320,35 @@ def test_held_parts_whose_copper_on_two_nets_meets_are_said_to(tmp_path):
         "the rules keep copper 4 mm apart"]  # fmt: skip
 
 
+def test_held_parts_copper_is_where_kicad_has_it(tmp_path):
+    # ST1 on the front, a round pad at its origin; ST2 on the back, turned 37 degrees, an
+    # oval pad off its origin, turned 30 degrees in the footprint, its drill offset.
+    # KiCad 10.0.8's DRC of this pair (kicad-cli pcb drc, clearance 5 mm, 2026-11-21):
+    # "Clearance violation (netclass 'Default' clearance 5.0000 mm; actual 1.5241 mm)".
+    pads = {"T:Round": '(pad "1" thru_hole circle (at 0 0) (size 2 2) (drill 1) (layers "*.Cu"))',
+            "T:Odd": '(pad "1" thru_hole oval (at 2 1 30) (size 3 1.5) '
+                     '(drill oval 1 0.6 (offset 0.4 0.1)) (layers "*.Cu"))'}  # fmt: skip
+    for name, pad in pads.items():
+        path = tmp_path / "footprints" / footprint_path(name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f'(footprint "{name}" (layer "F.Cu") {pad})')
+    (tmp_path / "circuit.json").write_text(json.dumps({"parts": [
+        {"ref": "ST1", "value": "Round", "footprint": "T:Round", "pads": {"1": "A"}},
+        {"ref": "ST2", "value": "Odd", "footprint": "T:Odd", "pads": {"1": "B"}}],
+        "nets": ["A", "B"]}))  # fmt: skip
+    holes = [{"ref": "ST1", "footprint": "T:Round", "at": [10.0, 10.0], "rot": 0.0,
+              "back": False, "drills": [], "part": True},
+             {"ref": "ST2", "footprint": "T:Odd", "at": [12.5, 13.0], "rot": 37.0,
+              "back": True, "drills": [], "part": True}]  # fmt: skip
+    (tmp_path / "mechanical.json").write_text(json.dumps({"holes": holes, "fixed": {}, "outline": [
+        {"type": "gr_rect", "start": [0.0, 0.0], "end": [25.0, 25.0]}]}))  # fmt: skip
+    board = Board.from_inputs(tmp_path)
+    board.rules(track=0.25 * mm, clearance=5 * mm)
+    (said,) = _problems(board)
+    far = float(said.split(" is ")[1].split(" mm")[0])
+    assert far == pytest.approx(1.5241, abs=0.0001)
+
+
 def test_a_part_is_placed_by_a_held_part_as_by_any(tmp_path):
     near = _standoff(tmp_path)
     near.rules(track=0.25 * mm, clearance=0.2 * mm, pads_apart=1 * mm)  # a place found keeps
