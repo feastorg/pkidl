@@ -340,13 +340,54 @@ _TOUCH = 2  # nm: copper this near is touching, for the circles drawn as polygon
 _ROUND = 1024  # segments a quarter of a pad's circle is drawn with
 
 
+def _holds(pad: Node, w: int, h: int) -> Box:
+    """A box about a pad's own origin, unturned, that holds all of its copper where the
+    rectangle of its size may not: a trapezoid's, widened on each side by the larger of
+    its two deltas, and a custom pad's, its anchor and each of its primitives, each
+    point of a drawing as far out as its width and a circle as far as its radius."""
+    if str(pad[3]) == "trapezoid":
+        delta = find(pad, "rect_delta")
+        grow = max(abs(_nm(delta[1])), abs(_nm(delta[2]))) / 2 if delta is not None else 0
+        return (round(-w / 2 - grow), round(-h / 2 - grow), round(w / 2 + grow),
+                round(h / 2 + grow))  # fmt: skip
+    xs, ys = [-w / 2, w / 2], [-h / 2, h / 2]
+    for item in (find(pad, "primitives") or [])[1:]:
+        if not isinstance(item, list):
+            continue
+        width = find(item, "width")
+        reach = _nm(width[1]) / 2 if width is not None else 0
+        points = [(_nm(q[1]), _nm(q[2])) for k in ("start", "mid", "end")
+                  if (q := find(item, k)) is not None]  # fmt: skip
+        points += [(_nm(q[1]), _nm(q[2])) for q in find_all(find(item, "pts") or [], "xy")]
+        if (centre := find(item, "center")) is not None and (end := find(item, "end")) is not None:
+            cx, cy = _nm(centre[1]), _nm(centre[2])
+            r = math.dist((cx, cy), (_nm(end[1]), _nm(end[2])))
+            points += [(cx - r, cy - r), (cx + r, cy + r)]
+        if str(item[0]) == "gr_arc" and len(points) == 3:
+            # An arc bulges past its ends: the box of its circle holds it.
+            (ax, ay), (mx, my), (bx, by) = points
+            d = 2 * (ax * (my - by) + mx * (by - ay) + bx * (ay - my))
+            if d:
+                ux = ((ax * ax + ay * ay) * (my - by) + (mx * mx + my * my) * (by - ay)
+                      + (bx * bx + by * by) * (ay - my)) / d  # fmt: skip
+                uy = ((ax * ax + ay * ay) * (bx - mx) + (mx * mx + my * my) * (ax - bx)
+                      + (bx * bx + by * by) * (mx - ax)) / d  # fmt: skip
+                r = math.dist((ux, uy), (ax, ay))
+                points += [(ux - r, uy - r), (ux + r, uy + r)]
+        for px, py in points:
+            xs += [px - reach, px + reach]
+            ys += [py - reach, py + reach]
+    return (math.floor(min(xs)), math.floor(min(ys)), math.ceil(max(xs)), math.ceil(max(ys)))
+
+
 def _pad_copper(
     footprint: Node, x: int, y: int, rot: float, back: bool
 ) -> list[tuple[str, Polygon]]:
     """Each pad's copper as its shape, in nanometres, of *footprint* placed at *x*, *y*,
     turned *rot* and on the back or not: a circle as a circle, an oval as two half
-    circles and the strip between, and any other shape as the rectangle of its size,
-    each turned as its pad is."""
+    circles and the strip between, a trapezoid or a custom pad as a box that holds all of
+    it (``_holds``), and any other shape as the rectangle of its size (a rounded or
+    chamfered one is no larger), each turned as its pad is."""
     out = []
     for pad in find_all(footprint, "pad"):
         at, size = find(pad, "at"), find(pad, "size")
@@ -361,6 +402,8 @@ def _pad_copper(
             copper = LineString(ends).buffer(r, quad_segs=_ROUND)
         elif kind == "oval":
             copper = _Point(0, 0).buffer(w / 2, quad_segs=_ROUND)
+        elif kind in ("trapezoid", "custom"):
+            copper = _area(*_holds(pad, w, h))
         else:
             copper = _area(-w / 2, -h / 2, w / 2, h / 2)
         drill = find(pad, "drill")

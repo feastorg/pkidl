@@ -349,6 +349,33 @@ def test_held_parts_copper_is_where_kicad_has_it(tmp_path):
     assert far == pytest.approx(1.5241, abs=0.0001)
 
 
+def test_a_trapezoid_or_custom_pad_of_a_held_part_is_held_by_all_its_copper(tmp_path):
+    # Pads 0.3 mm apart by the rectangles of their sizes, which KiCad 10.0.8's DRC says
+    # short (kicad-cli pcb drc, 2026-11-21: "Items shorting two nets"): a trapezoid 1 mm
+    # wider at one end, and a round anchor with a strip 1.5 mm to its right.
+    kinds = {
+        "T:Trap": '(pad "1" thru_hole trapezoid (at 0 0) (size 2 2) (rect_delta 0 1) '
+                  '(drill 0.6) (layers "*.Cu") (net "{n}"))',
+        "T:Cust": '(pad "1" thru_hole custom (at 0 0) (size 1 1) (drill 0.5) (layers "*.Cu") '
+                  "(options (clearance outline) (anchor circle)) (primitives (gr_poly (pts "
+                  "(xy 0 -0.3) (xy 1.5 -0.3) (xy 1.5 0.3) (xy 0 0.3)) (width 0) (fill yes))) "
+                  '(net "{n}"))',
+    }  # fmt: skip
+    for name, x, y in (("T:Trap", 7.3, 5), ("T:Cust", 6.3, 12)):
+        fps = [f'(footprint "{name}" (layer "F.Cu") (at {at} {y}) (property "Reference" '
+               f'"{ref}") {kinds[name].format(n=net)})'
+               for ref, at, net in (("H1", 5, "A"), ("H2", x, "B"))]  # fmt: skip
+        source = parse('(kicad_pcb (gr_rect (start 0 0) (end 20 25) (layer "Edge.Cuts")) '
+                       + " ".join(fps) + ")")  # fmt: skip
+        board = Board.from_inputs(_inputs(tmp_path, source))
+        assert board.held == {}  # no hole by the importer's rule: held here by hand
+        board.hole(name, (5, y), part=board["H1"])
+        board.hole(name, (x, y), part=board["H2"])
+        board.rules(track=0.25 * mm, clearance=0.2 * mm)
+        assert _problems(board) == [
+            "H1.1 on A overlaps H2.1 on B, both held where the board has them"]  # fmt: skip
+
+
 def test_a_part_is_placed_by_a_held_part_as_by_any(tmp_path):
     near = _standoff(tmp_path)
     near.rules(track=0.25 * mm, clearance=0.2 * mm, pads_apart=1 * mm)  # a place found keeps
