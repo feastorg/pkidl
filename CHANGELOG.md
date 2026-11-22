@@ -555,13 +555,19 @@ Unreleased. History before this file was reconstructed from the git log.
   where the board has it, turned and on the side the board has it, and never moves it
   (`solve(held=)`). `Solution.poses` has it, and `Pose.rot` is a float, as the board
   may turn it by any angle, not a right angle only. So a build writes it there with
-  its reference and nets, and routing joins it; `near=` its pin, `between=` it and a
-  part, and a `row` beside it place parts by it; what is said of it is checked there
-  (`inside`, `apart`, even from a hole it is over, `align`, a `keepout` of copper that
-  leaves its pad no track), and its pads are held from other parts' as any pads are;
-  two held parts whose copper on different nets overlaps, or is nearer than the rules'
-  clearance, are said to, and neither moves; and a statement that places it is a
-  problem. `pkidl.importer.renamed(board)` says each, with its net, and
+  its reference and nets, and routing joins it; `near=` its pin (`toward=` an edge
+  beyond that pin's copper), `between=` it and a part, and a `row` beside it place
+  parts by it; what is said of it is checked there
+  (`inside` by its outline, as any part's; `apart` by what it takes from the board, its
+  pieces, and said too where a piece is over the thing it is kept from; `align`; a
+  `keepout` of copper that leaves its pad no track), and its pads are held from other
+  parts' as any pads are; two held parts whose copper on different nets overlaps,
+  touches, or is nearer than the rules' clearance, by the shapes of their pads (a
+  circle as a circle, an oval as one, any other pad as its turned rectangle), are said
+  to, and neither moves; and a statement that places it is a problem. A part with a
+  pad number on two nets, which the circuit has on one, is not held, and
+  `pkidl.importer.renamed(board)` says it; no board of the 250 has one.
+  `pkidl.importer.renamed(board)` says each held part, with its net, and
   `scripts/corpus.py build` says how many of the parts placed are held. Of Olimex's
   120 current KiCad boards, SparkFun's 108 and Olimex's 7 EAGLE boards, 53 parts on 19
   boards are read so, among them RedBoard_Edge's two `STANDOFF_GROUNDING`, the TERES
