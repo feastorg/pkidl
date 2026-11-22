@@ -1534,6 +1534,30 @@ class _Solver:
                 out.append((area, said, max(past), side))
         return out
 
+    def _short(self, a: str, b: str) -> None:
+        """Two parts held where the board has them are not moved, but copper of theirs
+        on different nets that overlaps, or is nearer than the rules keep copper on
+        different nets, is a problem: the nearest such pair."""
+        worst: tuple[int, str, str] | None = None
+        pa, pb = self.poses[a], self.poses[b]
+        for n, ca in _turned(self.shapes[a], pa.rot, pa.back).copper:
+            for m, cb in _turned(self.shapes[b], pb.rot, pb.back).copper:
+                one, two = self.nets[a].get(n), self.nets[b].get(m)
+                if one is None or two is None or one == two:
+                    continue
+                ca2, cb2 = _moved(ca, pa.x.nm, pa.y.nm), _moved(cb, pb.x.nm, pb.y.nm)
+                d = -1 if _overlap(ca2, cb2) else _off(ca2, cb2)
+                if (d < 0 or d < self.gap) and (worst is None or (d, n, m) < worst):
+                    worst = (d, n, m)
+        if worst is not None:
+            d, n, m = worst
+            how = ("overlaps" if d < 0 else
+                   f"is {Length(d)} from")  # fmt: skip
+            rule = "" if d < 0 else f", and the rules keep copper {Length(self.gap)} apart"
+            self._problem((a, b), f"{a}.{n} on {self.nets[a][n]} {how} {b}.{m} on "
+                          f"{self.nets[b][m]}, both held where the board has them{rule}",
+                          *self.rules)  # fmt: skip
+
     def _taken(self, ref: str) -> list[Box]:
         """What a placed part takes from the board: the box around its outline, or for a
         part held where the board has it, the pieces of the thing it is (``_pieces``)."""
@@ -2026,7 +2050,11 @@ class _Solver:
                 # A held part takes the board as the thing it is (``_over``), but for its
                 # pads; two held parts are where the board has them both.
                 held = a in self.held or b in self.held
-                if held and (a in self.held and b in self.held or not shares):
+                if a in self.held and b in self.held:
+                    if shares:
+                        self._short(a, b)
+                    continue
+                if held and not shares:
                     continue
                 if not held and shares and _overlap(self._box(a), self._box(b)):
                     self._problem((a, b), f"{a} and {b} overlap", *self.said[a], *self.said[b])

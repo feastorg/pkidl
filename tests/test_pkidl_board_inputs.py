@@ -236,6 +236,30 @@ def test_what_is_said_of_a_held_part_is_checked_where_the_board_has_it(tmp_path)
     assert _problems(over) == ["R1 is over Standoff at (5, 6)"]
 
 
+def test_held_parts_whose_copper_on_two_nets_meets_are_said_to(tmp_path):
+    def held(x: float, net: str, ref: str) -> str:
+        return (f'(footprint "Hw:Standoff" (layer "F.Cu") (at {x} 6) (property "Reference" '
+                f'"{ref}") (pad "1" thru_hole circle (at 0 0) (size 4.5 4.5) (drill 3.1) '
+                f'(layers "*.Cu") (net "{net}")))')  # fmt: skip
+
+    def problems(x: float, net: str, rules: bool) -> list[str]:
+        source = parse('(kicad_pcb (gr_rect (start 0 0) (end 40 30) (layer "Edge.Cuts")) '
+                       f'{held(5, "EGND", "ST1")} {held(x, net, "ST2")})')  # fmt: skip
+        board = Board.from_inputs(_inputs(tmp_path, source))
+        if rules:
+            board.rules(track=0.25 * mm, clearance=0.2 * mm)
+        return _problems(board)
+
+    # Neither is moved: what is wrong is said.
+    assert problems(8, "GND", False) == [
+        "ST1.1 on EGND overlaps ST2.1 on GND, both held where the board has them"]  # fmt: skip
+    assert problems(9.6, "GND", True) == [
+        "ST1.1 on EGND is 0.1 mm from ST2.1 on GND, both held where the board has them, and "
+        "the rules keep copper 0.2 mm apart"]  # fmt: skip
+    assert problems(9.6, "GND", False) == []  # no rule says how far
+    assert problems(8, "EGND", True) == []  # one net
+
+
 def test_a_part_is_placed_by_a_held_part_as_by_any(tmp_path):
     near = _standoff(tmp_path)
     near.place(near["R1"], near=near["ST1"].pin(1), within=6 * mm)
