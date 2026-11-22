@@ -562,12 +562,15 @@ Unreleased. History before this file was reconstructed from the git log.
   pieces, and said too where a piece is over the thing it is kept from; `align`; a
   `keepout` of copper that leaves its pad no track), and its pads are held from other
   parts' as any pads are; two held parts whose copper on different nets overlaps,
-  touches, or is nearer than the rules' clearance, by the shapes of their pads (a
-  circle as a circle, an oval as one, any other pad as its turned rectangle), are said
-  to, and neither moves; and a statement that places it is a problem. A part with a
-  pad number on two nets, which the circuit has on one, is not held, and
-  `pkidl.importer.renamed(board)` says it; no board of the 250 has one.
-  `pkidl.importer.renamed(board)` says each held part, with its net, and
+  touches, or is nearer than the rules' clearance, by the shapes of their pads, are
+  said to, and neither moves: a circle as a circle, an oval as one, a trapezoid or a
+  custom pad as a box that holds all of its copper, and any other pad as the turned
+  rectangle of its size, which a rounded or chamfered pad is inside. For a held pair
+  on the back at 37 degrees with an oval pad turned and its drill offset, KiCad
+  10.0.8's DRC gives 1.5241 mm, and pkidl 1.524059 mm. A statement that places a held
+  part is a problem. A part with a pad number on two nets, which the circuit has on
+  one, is not held; no board of the 250 has one. `pkidl.importer.renamed(board)` says
+  each such pad number, and each held part with its net, and
   `scripts/corpus.py build` says how many of the parts placed are held. Of Olimex's
   120 current KiCad boards, SparkFun's 108 and Olimex's 7 EAGLE boards, 53 parts on 19
   boards are read so, among them RedBoard_Edge's two `STANDOFF_GROUNDING`, the TERES
