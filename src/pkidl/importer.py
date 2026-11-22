@@ -105,12 +105,13 @@ def _footprint_edge(fp: Node) -> list[dict]:
     return items
 
 
-def _drawn(items: list[dict], edge: Polygon | None) -> tuple[str, str]:
+def _drawn(items: list[dict], edge: Polygon | None) -> tuple[str, str] | None:
     """What a footprint's Edge.Cuts *items* are of the board whose edge is *edge*, as a
     sentence says it, with its verb, and then again as its object: the board's outline,
     where each point they are drawn through is on the outside of *edge*, or the cut-outs
     they are on the inside of. Where they are some of each, or the board has no one
-    edge, they are its edge."""
+    edge, they are its edge. None where none of them is on the edge: lines that close
+    nothing, which ``pkidl.edge.shape`` leaves out."""
     points = [Point(item[k]) for item in items for k in ("start", "mid", "end") if k in item]
     points += [Point(p) for item in items for p in item.get("pts", [])]
     if edge is not None and points:
@@ -118,6 +119,8 @@ def _drawn(items: list[dict], edge: Polygon | None) -> tuple[str, str]:
             return "the board's outline is", "the outline"
         cut = {i for p in points for i, ring in enumerate(edge.interiors)
                if ring.distance(p) <= JOIN}  # fmt: skip
+        if not cut and all(edge.exterior.distance(p) > JOIN for p in points):
+            return None
         if all(any(ring.distance(p) <= JOIN for ring in edge.interiors) for p in points):
             if len(cut) == 1:
                 return "a cut-out of the board is", "the cut-out"
@@ -299,7 +302,8 @@ class _Read:
         for fp, _ in self.parts:
             if any(_is_edge(c) for c in fp[2:]):
                 ref, name = self.ref[id(fp)], self.name[id(fp)]
-                what = _drawn(_footprint_edge(fp), edge)
+                if (what := _drawn(_footprint_edge(fp), edge)) is None:
+                    continue
                 where = (
                     f"is placed as any part, not fixed where it draws {what[1]}"
                     if id(fp) not in self.held

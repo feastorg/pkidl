@@ -598,8 +598,8 @@ Unreleased. History before this file was reconstructed from the git log.
   slot under itself, was said to draw the outline. Items all on the outside of the
   board's edge are "the board's outline", items all on cut-outs "a cut-out of the
   board", and where they are some of each, or the outline is not one board, "part of
-  the board's edge". A part that is a hole on a net is said to be fixed where the board
-  has it.
+  the board's edge". Lines that close nothing, which the outline leaves out, go
+  unsaid. A part that is a hole on a net is said to be fixed where the board has it.
 - `pkidl.measure.regions`, and the scorecard's `poured_nets` and `split_pours` with it,
   takes a teardrop for no pour. KiCad saves each teardrop as a zone, and each was
   counted as a piece of its net's pour: on GateMateA1-EVB, whose 1,330 zones are 1,312

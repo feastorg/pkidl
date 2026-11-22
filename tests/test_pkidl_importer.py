@@ -366,6 +366,11 @@ def test_a_cut_out_drawn_in_a_part_is_said_to_be_one():
     assert renamed(_board(part))[0].startswith("U1: the board's outline is drawn")
     assert renamed(_board(part.replace("fp_rect", "fp_line")))[0].startswith(
         "U1: part of the board's edge is drawn")  # fmt: skip
+    two = part.replace(slot, slot + slot.replace("-0.635", "3.365").replace("0.635", "4.635"))
+    assert renamed(_board(outline, two))[0].startswith("U1: 2 cut-outs of the board are drawn")
+    # A line that closes nothing is no edge of the board, and goes unsaid.
+    stray = part.replace("fp_rect", "fp_line")
+    assert renamed(_board(outline, stray)) == []
 
 
 def test_a_holes_ring_drawn_as_a_pad_on_each_face_is_its_ring():
