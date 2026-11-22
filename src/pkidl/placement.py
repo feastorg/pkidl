@@ -1086,7 +1086,8 @@ class _Solver:
         lo = min(o + t.box[a] for o, t in zip(along, shapes, strict=True))
         hi = max(o + t.box[a + 2] for o, t in zip(along, shapes, strict=True))
         deep = max(t.box[3 - a] - t.box[1 - a] for t in shapes)
-        by = self._box(row.beside.ref)
+        # A row stands beside a part's outline, a held part's too.
+        by = self._outer_box(row.beside.ref)
         line = by[3 - a] if out else by[1 - a]
         level = (by[a] + by[a + 2]) // 2 - (lo + hi) // 2
         stood = {ref: (t, o + level, f + line) if a == 0 else (t, f + line, o + level)
@@ -1477,7 +1478,7 @@ class _Solver:
         b0, b1 = (b[0], b[2]) if level else (b[1], b[3])
         first, last = lo - b0, hi - b1  # the origin with the outline at each end of the edge
         for word, p in beside:
-            o = self._box(p.ref)
+            o = self._outer_box(p.ref)  # after= or before= a part goes by its outline
             if word == "after":
                 first = max(first, (o[2] if level else o[3]) - b0)
             else:
@@ -1566,10 +1567,21 @@ class _Solver:
         return [self._box(ref)]
 
     def _centre(self, ref: str) -> tuple[int, int]:
-        x0, y0, x1, y1 = self._box(ref)
+        x0, y0, x1, y1 = self._outer_box(ref)  # between= is the middle of their outlines
         return (x0 + x1) // 2, (y0 + y1) // 2
 
     def _box(self, ref: str) -> Box:
+        """The box around a placed part's outline, which is what it takes from the
+        board. Not a held part's: that takes the pieces of the thing it is
+        (``_taken``), and a place that means the box around its outline on purpose
+        asks ``_outer_box``, and says why."""
+        if ref in self.held:
+            raise ValueError(f"{ref} is held: what it takes is _taken({ref!r}); the box "
+                             "around its outline is _outer_box")  # fmt: skip
+        return self._outer_box(ref)
+
+    def _outer_box(self, ref: str) -> Box:
+        """The box around a placed part's outline, a held part's too."""
         pose = self.poses[ref]
         # Asked of every placed part for every place a part might go: kept for as long
         # as the part is where it was.
@@ -1721,7 +1733,8 @@ class _Solver:
         closer than the rules keep them, as copper on different nets or as the pads of
         different parts: how far apart, which two, the nearest pair, and how far the
         rules keep what."""
-        box, theirs = _moved(turned.box, x, y), self._box(other)
+        # Only to pass over a part far off: its outline holds all of its copper.
+        box, theirs = _moved(turned.box, x, y), self._outer_box(other)
         reach = max(self.gap, self.pads_apart)
         if not reach or not _overlap(
             (box[0] - reach, box[1] - reach, box[2] + reach, box[3] + reach), theirs
@@ -1782,7 +1795,7 @@ class _Solver:
         targets = [(x, y) for n, x, y in self._pads(target)
                    if not isinstance(s.near, Pin) or n == s.near.number]  # fmt: skip
         shape, limit, step = self.shapes[ref], s.within.nm, STEP.nm
-        of = self._box(target)
+        of = self._outer_box(target)  # toward= is beyond the outline of what it is near
         only = self.pad.get(id(s))  # the pads of this part that are to be near, if not any
         least = 0 if s.at_least is None else s.at_least.nm
         rooms = [box for _, box, _ in self.areas.get(ref, [])]
@@ -1968,46 +1981,46 @@ class _Solver:
                            f"{pose.rot} degrees")  # fmt: skip
         return pose
 
+    def _check_held(self, ref: str) -> None:
+        """What is said of a part held where the board has it, checked there: the areas
+        it is said to be inside, by its outline as any part's, and the things it is kept
+        apart from, by what it takes from the board, its pieces."""
+        thing, pose, through = self.held[ref], self.poses[ref], self.shapes[ref].through
+        start = f"{ref} is held where the board has it, as {thing},"
+        for area, said, past, side in self._outside(ref, self._outer_box(ref)):
+            self._problem((ref,), f"{start} and is not inside {area}: it reaches "
+                          f"{Length(past)} past its {side} side", *said)  # fmt: skip
+        taken = self._taken(ref)
+        over: set[Fixed] = set()
+        for f, (far, said) in self.aparts.get(ref, {}).items():
+            if f is thing:
+                self._problem((ref,), f"{start} and {said[0]} keeps it {Length(far)} from "
+                              "itself", *said)  # fmt: skip
+                continue
+            if any(g is f and (through or holed or f.back == pose.back) and _overlap(t, piece)
+                   for t in taken for g, piece, holed in self.fixed):  # fmt: skip
+                over.add(f)
+                self._problem((ref,), f"{start} over {f.label}, and {said[0]} keeps it "
+                              f"{Length(far)} from it", *said)  # fmt: skip
+        near: dict[Fixed, tuple[int, int, tuple[Apart, ...]]] = {}
+        for t in taken:
+            for f, d, far, said in self._close(t, pose.back, through, ref, rules=False):
+                if f not in over and (f not in near or d < near[f][0]):
+                    near[f] = (d, far, said)
+        for f, (d, far, said) in near.items():
+            self._problem((ref,), f"{start} {Length(d)} from {f.label}, and {said[0]} keeps "
+                          f"it {Length(far)} from it", *said)  # fmt: skip
+
     def _check(self) -> None:
         """What only shows once everything is placed."""
         for problem in self.unordered:
             self.problems.setdefault(problem)
         placed = sorted(self.poses, key=natural)
         for ref in placed:
-            box = self._box(ref)
             if ref in self.held:
-                # Where the board has it: only what is said of it is checked, the areas
-                # it is said to be inside and what it is kept apart from.
-                for area, said, past, side in self._outside(ref, box):
-                    self._problem((ref,), f"{ref} is held where the board has it, as "
-                                  f"{self.held[ref]}, and is not inside {area}: it reaches "
-                                  f"{Length(past)} past its {side} side", *said)  # fmt: skip
-                for f, d, far, said in self._close(
-                    box, self.poses[ref].back, self.shapes[ref].through, ref, rules=False
-                ):
-                    self._problem((ref,), f"{ref} is held where the board has it, as "
-                                  f"{self.held[ref]}, {Length(d)} from {f.label}, and "
-                                  f"{said[0]} keeps it {Length(far)} from it", *said)  # fmt: skip
-                pose = self.poses[ref]
-                for f, (far, said) in self.aparts.get(ref, {}).items():
-                    shares = (
-                        self.shapes[ref].through
-                        or f.back == pose.back
-                        or any(holed for g, _, holed in self.fixed if g is f)
-                    )
-                    if (
-                        f is not self.held[ref]
-                        and shares
-                        and any(g is f and _overlap(box, taken) for g, taken, _ in self.fixed)
-                    ):
-                        self._problem((ref,), f"{ref} is held where the board has it, as "
-                                      f"{self.held[ref]}, over {f.label}, and {said[0]} keeps "
-                                      f"it {Length(far)} from it", *said)  # fmt: skip
-                if (kept := self.aparts.get(ref, {}).get(self.held[ref])) is not None:
-                    self._problem((ref,), f"{ref} is held where the board has it, as "
-                                  f"{self.held[ref]}, and {kept[1][0]} keeps it "
-                                  f"{Length(kept[0])} from itself", *kept[1])  # fmt: skip
+                self._check_held(ref)
                 continue
+            box = self._box(ref)
             if self.circuit.part(ref).way_up_matters and not self._turned(ref):
                 self._problem((ref,), f"{ref}'s way round matters and nothing says it: give "
                               "facing= an edge, or outward= a side of it",

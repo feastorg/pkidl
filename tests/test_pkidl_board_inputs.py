@@ -397,6 +397,50 @@ def test_a_footprint_of_holes_takes_its_holes_and_its_body_from_the_board(tmp_pa
         "keeps it 60 mm from it"]  # fmt: skip
 
 
+def _platform(tmp_path: Path, x: float = 8, y: float = 7, net: str = "GND") -> Board:
+    """A case's platform held where the board has it: four holes 24 mm by 16 mm apart, on
+    *net*, each with its courtyard; three parts to place; and a hole in a corner, which
+    gives the board's library a hole to put elsewhere."""
+    on = f' (net "{net}")' if net else ""
+    holes = "".join(
+        f'(pad "1" thru_hole circle (at {px} {py}) (size 4 4) (drill 3.2) (layers "*.Cu"){on})'
+        f'(fp_circle (center {px} {py}) (end {px + 2.5} {py}) (layer "F.CrtYd"))'
+        for px, py in ((0, 0), (24, 0), (0, 16), (24, 16)))  # fmt: skip
+    parts = "".join(
+        f'(footprint "Device:R" (layer "F.Cu") (at {px} 30) (property "Reference" "{ref}") '
+        '(pad "1" smd rect (at -1 0) (size 1 1) (layers "F.Cu") (net "VCC")) '
+        '(pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net "GND")))'
+        for ref, px in (("R1", 40), ("U1", 30), ("C1", 20)))  # fmt: skip
+    hole = (
+        '(footprint "Hw:Hole" (layer "F.Cu") (at 45 33) (property "Reference" "REF**") '
+        '(pad "" np_thru_hole circle (at 0 0) (size 3 3) (drill 3) (layers "*.Cu")))'
+    )
+    source = parse('(kicad_pcb (gr_rect (start 0 0) (end 48 36) (layer "Edge.Cuts")) '
+                   f'(footprint "Hw:Platform" (layer "F.Cu") (at {x} {y}) (property "Reference" '
+                   f'"P1") {holes}) {parts} {hole})')  # fmt: skip
+    return Board.from_inputs(_inputs(tmp_path, source))
+
+
+def test_a_held_platform_is_measured_by_its_pieces(tmp_path):
+    def board() -> Board:
+        b = _platform(tmp_path)
+        for ref, x in (("R1", 40), ("U1", 30), ("C1", 20)):
+            b.place(b[ref], at=(x * mm, 32 * mm))
+        return b
+
+    # Kept from a hole amid its holes, more than 10 mm from each, it is not over it.
+    middle = board()
+    middle.apart(middle["P1"], middle.hole("Hw:Hole", (20, 15)), 1 * mm)
+    assert _problems(middle) == []
+    # Kept 13 mm from a hole below its middle, it is as far as its nearest piece: the
+    # courtyard of its bottom left hole, 8 mm across and 1 mm down.
+    below = board()
+    below.apart(below["P1"], below.hole("Hw:Hole", (20, 28)), 13 * mm)
+    assert _problems(below) == [
+        "P1 is held where the board has it, as Platform at (8, 7), 8.062257 mm from Hole at "
+        "(20, 28), and apart(P1, Hole at (20, 28), 13 mm) keeps it 13 mm from it"]  # fmt: skip
+
+
 def test_a_part_whose_footprint_is_missing_is_named(inputs):
     (inputs / "footprints" / footprint_path("Device:R")).unlink()
     with pytest.raises(ValueError, match="R1: no footprint 'Device:R' at .*R.kicad_mod"):
