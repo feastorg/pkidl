@@ -243,12 +243,37 @@ def test_a_held_part_is_kept_from_what_is_said_and_its_pads_from_other_copper(tm
         b.place(b["C1"], at=(25 * mm, 15 * mm))
         return b
 
-    # Kept from a hole it is over: that is said.
+    # Kept from a hole it is over, or from the thing it is: either is said.
     over = board()
     over.apart(over["ST1"], over.hole("Hw:Standoff", (7, 6)), 3 * mm)
     assert _problems(over) == [
         "ST1 is held where the board has it, as Standoff at (5, 6), over Standoff at (7, 6), "
         "and apart(ST1, Standoff at (7, 6), 3 mm) keeps it 3 mm from it"]  # fmt: skip
+    itself = board()
+    itself.apart(itself["ST1"], itself.fixed("Standoff"), 3 * mm)
+    assert _problems(itself) == [
+        "ST1 is held where the board has it, as Standoff at (5, 6), and apart(ST1, Standoff "
+        "at (5, 6), 3 mm) keeps it 3 mm from itself"]  # fmt: skip
+    # The rules keep parts apart, not a held part from a hole beside it.
+    near = board()
+    near.rules(track=0.25 * mm, clearance=0.2 * mm, bodies_apart=1 * mm)
+    near.hole("Hw:Standoff", (12.8, 6))  # about 0.5 mm off its box
+    assert _problems(near) == []
+    # Its pad is held from another part's pad on another net as any pad is.
+    pads = _standoff(tmp_path)
+    pads.rules(track=0.25 * mm, clearance=0.2 * mm)
+    pads.place(pads["R1"], at=(10.8 * mm, 6 * mm), facing=Edge.BOTTOM)  # its GND pad left
+    pads.place(pads["C1"], at=(25 * mm, 15 * mm))
+    assert _problems(pads) == [
+        "R1.2 is 0.101443 mm from ST1.1, and the rules keep copper 0.2 mm apart"
+    ]
+    # An area of it kept clear goes where it goes, turned 30 degrees as it is.
+    quiet = _standoff(tmp_path)
+    (area,) = quiet.annotate(quiet["ST1"], quiet=((8 * mm, -1 * mm), (10 * mm, 1 * mm)))
+    quiet.keepout(area, copper=True)
+    quiet.place(quiet["R1"], at=(12.8 * mm, 1.5 * mm))
+    quiet.place(quiet["C1"], at=(25 * mm, 15 * mm))
+    assert _problems(quiet) == ["R1 is in ST1's quiet area, which is kept clear of copper"]
 
 
 def test_held_parts_whose_copper_on_two_nets_meets_are_said_to(tmp_path):
@@ -277,6 +302,7 @@ def test_held_parts_whose_copper_on_two_nets_meets_are_said_to(tmp_path):
 
 def test_a_part_is_placed_by_a_held_part_as_by_any(tmp_path):
     near = _standoff(tmp_path)
+    near.rules(track=0.25 * mm, clearance=0.2 * mm, pads_apart=1 * mm)  # a place found keeps
     near.place(near["R1"], near=near["ST1"].pin(1), within=6 * mm)
     near.place(near["C1"], at=(25 * mm, 15 * mm))
     solution = near.solve()
@@ -310,6 +336,7 @@ def test_a_footprint_of_holes_takes_its_holes_and_its_body_from_the_board(tmp_pa
       (footprint "Case:Platform" (layer "F.Cu") (at 10 10)
         (property "Reference" "REF**")
         (fp_circle (center 25 40) (end 27 40) (layer "B.CrtYd"))
+        (fp_line (start 45 40) (end 47 40) (layer "B.CrtYd"))
         (pad "" np_thru_hole circle (at 0 0) (size 3.3 3.3) (drill 3.3) (layers "*.Cu"))
         (pad "" np_thru_hole circle (at 50 0) (size 3.3 3.3) (drill 3.3) (layers "*.Cu")))
       (footprint "Mech:Sink" (layer "F.Cu") (at 10 50)
@@ -334,6 +361,7 @@ def test_a_footprint_of_holes_takes_its_holes_and_its_body_from_the_board(tmp_pa
     assert at(35, 30) == []  # over the platform's middle
     assert at(10, 10) == ["R1 is over Platform at (10, 10)"]  # on a hole
     assert at(35, 50) == ["R1 is over Platform at (10, 10)"]  # on the peg
+    assert at(45, 50) == []  # between the peg and a line, each drawn apart
     assert at(20, 50) == ["R1 is over Sink at (10, 50)"]  # between the pins, under the body
     # The same platform held, its holes on ground: a part looks for its place between them.
     ring = '(pad "1" thru_hole circle (at {}) (size 6 6) (drill 3.3) (layers "*.Cu") (net "GND"))'
@@ -360,6 +388,13 @@ def test_a_footprint_of_holes_takes_its_holes_and_its_body_from_the_board(tmp_pa
     quiet.keepout(area, copper=True)
     quiet.place(quiet["R1"], at=(30 * mm, 20 * mm))
     assert _problems(quiet) == []
+    # Kept from the platform, a part is as far from it as from the nearest of its pieces.
+    apart = Board.from_inputs(_inputs(tmp_path, source))
+    apart.place(apart["R1"], at=(16 * mm, 10 * mm))
+    apart.apart(apart["R1"], apart.fixed("Platform"), 60 * mm)
+    assert _problems(apart) == [
+        "R1 is 2.85 mm from Platform at (10, 10), and apart(R1, Platform at (10, 10), 60 mm) "
+        "keeps it 60 mm from it"]  # fmt: skip
 
 
 def test_a_part_whose_footprint_is_missing_is_named(inputs):

@@ -385,10 +385,11 @@ def test_a_holes_ring_drawn_as_a_pad_on_each_face_is_its_ring():
     hole = f"{head} {' '.join(pads)} {yard})"
     (found,) = mechanical(_board(hole))["holes"]
     assert (found["ref"], found["drills"], found.get("part")) == ("MH1", [[7.0, 9.0, 3.2]], True)
-    # Off its hole, or numbered otherwise, a pad on a face is no ring.
+    # Off its hole, numbered otherwise, or square, a pad on a face is no ring.
     for moved in (
         hole.replace("smd circle (at 0 0)", "smd circle (at 1 0)"),
         hole.replace('(pad "1" smd', '(pad "2" smd'),
+        hole.replace("smd circle", "smd rect"),
     ):
         assert mechanical(_board(moved))["holes"] == []
     # On no net, it is a hole as any is.
