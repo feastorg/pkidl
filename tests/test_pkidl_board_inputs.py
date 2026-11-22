@@ -439,6 +439,13 @@ def test_a_held_platform_is_measured_by_its_pieces(tmp_path):
     assert _problems(below) == [
         "P1 is held where the board has it, as Platform at (8, 7), 8.062257 mm from Hole at "
         "(20, 28), and apart(P1, Hole at (20, 28), 13 mm) keeps it 13 mm from it"]  # fmt: skip
+    # toward= of a held part's pin is beyond that pin's copper, not the whole platform.
+    toward = _platform(tmp_path)
+    toward.place(toward["U1"], near=toward["P1"].pin(1), within=6 * mm, toward=Edge.BOTTOM)
+    solution = toward.solve()
+    assert solution.problems == ()
+    # Below the copper of a hole of the pin, among the holes; not below them all.
+    assert 7 + 2 < solution.poses["U1"].y.mm < 15
 
 
 def test_a_part_whose_footprint_is_missing_is_named(inputs):

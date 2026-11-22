@@ -1559,6 +1559,12 @@ class _Solver:
                           f"{self.nets[b][m]}, both held where the board has them{rule}",
                           *self.rules)  # fmt: skip
 
+    def _copper_at(self, ref: str) -> list[tuple[str, Box]]:
+        """Each pad of a placed part, with the box around its copper, where it is."""
+        pose = self.poses[ref]
+        return [(n, _moved(c, pose.x.nm, pose.y.nm))
+                for n, c in _turned(self.shapes[ref], pose.rot, pose.back).copper]  # fmt: skip
+
     def _taken(self, ref: str) -> list[Box]:
         """What a placed part takes from the board: the box around its outline, or for a
         part held where the board has it, the pieces of the thing it is (``_pieces``)."""
@@ -1792,10 +1798,16 @@ class _Solver:
         if target not in self.poses:
             self._problem((ref,), f"{ref} is placed by {target}, which is not placed", s)
             return None
-        targets = [(x, y) for n, x, y in self._pads(target)
-                   if not isinstance(s.near, Pin) or n == s.near.number]  # fmt: skip
+        # Each pad it may be near, and what toward= puts it beyond there: the outline of
+        # what it is near, but of a held part's pin, the copper of the pad it is by, as
+        # what a held part takes from the board is its pieces, not the box round them.
+        by_pin = target in self.held and isinstance(s.near, Pin)
+        whole = None if by_pin else self._outer_box(target)
+        near = [(x, y, whole or c) for (n, x, y), (_, c)
+                in zip(self._pads(target), self._copper_at(target), strict=True)
+                if not isinstance(s.near, Pin) or n == s.near.number]  # fmt: skip
+        targets = [(x, y) for x, y, _ in near]
         shape, limit, step = self.shapes[ref], s.within.nm, STEP.nm
-        of = self._outer_box(target)  # toward= is beyond the outline of what it is near
         only = self.pad.get(id(s))  # the pads of this part that are to be near, if not any
         least = 0 if s.at_least is None else s.at_least.nm
         rooms = [box for _, box, _ in self.areas.get(ref, [])]
@@ -1806,8 +1818,8 @@ class _Solver:
                        for number, px, py in turned.pads if only is None or number in only
                        for tx, ty in targets)  # fmt: skip
 
-        def beyond(box: Box) -> bool:
-            """On the side of what it is near that the statement says, where it says."""
+        def beyond(box: Box, of: Box) -> bool:
+            """On the side of what it is near, *of*, that the statement says."""
             if s.toward is None:
                 return True
             return {Edge.TOP: box[3] <= of[1], Edge.BOTTOM: box[1] >= of[3],
@@ -1816,10 +1828,10 @@ class _Solver:
         within = _offsets(limit, step)
 
         # Each way the part may be turned, with each of its pads by each pad it is near.
-        ways = [(rot, turned, px, py, tx, ty)
+        ways = [(rot, turned, px, py, tx, ty, of)
                 for rot in rots for turned in [_turned(shape, rot, back)]
                 for number, px, py in turned.pads if only is None or number in only
-                for tx, ty in targets]  # fmt: skip
+                for tx, ty, of in near]  # fmt: skip
         through = shape.through
         # What a box may not overlap wherever it is tried: what is fixed on the board,
         # and the parts placed that share a face with this one.
@@ -1834,8 +1846,10 @@ class _Solver:
         b0, b1, b2, b3 = self.board
 
         # Where each way puts the part's box, before the offset is added.
-        wx = np.array([tx - px for _, _, px, _, tx, _ in ways], dtype=np.int64)[:, None]
-        wy = np.array([ty - py for _, _, _, py, _, ty in ways], dtype=np.int64)[:, None]
+        wx = np.array([tx - px for _, _, px, _, tx, _, _ in ways], dtype=np.int64)[:, None]
+        wy = np.array([ty - py for _, _, _, py, _, ty, _ in ways], dtype=np.int64)[:, None]
+        sides = np.array([of for *_, of in ways], dtype=np.int64).reshape(-1, 4)
+        of0, of1, of2, of3 = (sides[:, k : k + 1] for k in range(4))
         boxes = np.array([turned.box for _, turned, *_ in ways], dtype=np.int64).reshape(-1, 4)
         wx0, wy0 = wx + boxes[:, 0:1], wy + boxes[:, 1:2]
         wx1, wy1 = wx + boxes[:, 2:3], wy + boxes[:, 3:4]
@@ -1859,8 +1873,8 @@ class _Solver:
             """On the side of what it is near that the statement says, as ``beyond``."""
             if s.toward is None:
                 return np.ones(x0.shape, dtype=bool)
-            return {Edge.TOP: y1 <= of[1], Edge.BOTTOM: y0 >= of[3],
-                    Edge.LEFT: x1 <= of[0], Edge.RIGHT: x0 >= of[2]}[s.toward]  # fmt: skip
+            return {Edge.TOP: y1 <= of1, Edge.BOTTOM: y0 >= of3,
+                    Edge.LEFT: x1 <= of0, Edge.RIGHT: x0 >= of2}[s.toward]  # fmt: skip
 
         def roughly(keeps: bool, grid: _Grid, a: int, b: int) -> np.ndarray:
             """For each way and each of *grid*'s offsets from *a* to *b*, whether the
@@ -1908,14 +1922,14 @@ class _Solver:
                     if best is not None and d2 > found:
                         break
                     for w in np.flatnonzero(rough[:, i]).tolist():
-                        rot, turned, px, py, tx, ty = ways[w]
+                        rot, turned, px, py, tx, ty, of = ways[w]
                         x, y = tx + dx - px, ty + dy - py
                         at = (turned, x, y)
                         if least and (d2 < least * least or not apart(*at)):
                             continue
                         if rooms and self._outside(ref, _moved(turned.box, x, y)):
                             continue
-                        if not (beyond(_moved(turned.box, x, y))
+                        if not (beyond(_moved(turned.box, x, y), of)
                                 and self._clear(ref, _moved(turned.box, x, y), back, through,
                                                 done, keeps, at)):  # fmt: skip
                             continue
