@@ -1988,6 +1988,21 @@ class _Solver:
                     self._problem((ref,), f"{ref} is held where the board has it, as "
                                   f"{self.held[ref]}, {Length(d)} from {f.label}, and "
                                   f"{said[0]} keeps it {Length(far)} from it", *said)  # fmt: skip
+                pose = self.poses[ref]
+                for f, (far, said) in self.aparts.get(ref, {}).items():
+                    shares = (
+                        self.shapes[ref].through
+                        or f.back == pose.back
+                        or any(holed for g, _, holed in self.fixed if g is f)
+                    )
+                    if (
+                        f is not self.held[ref]
+                        and shares
+                        and any(g is f and _overlap(box, taken) for g, taken, _ in self.fixed)
+                    ):
+                        self._problem((ref,), f"{ref} is held where the board has it, as "
+                                      f"{self.held[ref]}, over {f.label}, and {said[0]} keeps "
+                                      f"it {Length(far)} from it", *said)  # fmt: skip
                 if (kept := self.aparts.get(ref, {}).get(self.held[ref])) is not None:
                     self._problem((ref,), f"{ref} is held where the board has it, as "
                                   f"{self.held[ref]}, and {kept[1][0]} keeps it "

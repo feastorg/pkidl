@@ -236,6 +236,21 @@ def test_what_is_said_of_a_held_part_is_checked_where_the_board_has_it(tmp_path)
     assert _problems(over) == ["R1 is over Standoff at (5, 6)"]
 
 
+def test_a_held_part_is_kept_from_what_is_said_and_its_pads_from_other_copper(tmp_path):
+    def board() -> Board:
+        b = _standoff(tmp_path)
+        b.place(b["R1"], at=(20.13 * mm, 15 * mm))
+        b.place(b["C1"], at=(25 * mm, 15 * mm))
+        return b
+
+    # Kept from a hole it is over: that is said.
+    over = board()
+    over.apart(over["ST1"], over.hole("Hw:Standoff", (7, 6)), 3 * mm)
+    assert _problems(over) == [
+        "ST1 is held where the board has it, as Standoff at (5, 6), over Standoff at (7, 6), "
+        "and apart(ST1, Standoff at (7, 6), 3 mm) keeps it 3 mm from it"]  # fmt: skip
+
+
 def test_held_parts_whose_copper_on_two_nets_meets_are_said_to(tmp_path):
     def held(x: float, net: str, ref: str) -> str:
         return (f'(footprint "Hw:Standoff" (layer "F.Cu") (at {x} 6) (property "Reference" '
