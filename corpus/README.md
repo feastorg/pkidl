@@ -135,6 +135,7 @@ by their `kind`:
 | `vendored` | a board of somebody else's tool, kept among the software |
 | `copy` | a copy of a product's board kept in a repository of 3D models |
 | `guide` | a board of a project in a repository of guides, not a product |
+| `unfinished` | a product's current file whose layout was left unfinished: unrouted, or parts off the board |
 
 `PROVENANCE.md` says how the manifests were made and what is not known of them.
 `tests/test_corpus_vendors.py` checks the manifests and the fetching, from a directory

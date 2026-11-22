@@ -18,7 +18,7 @@ MANIFESTS = {p.stem: json.loads(p.read_text()) for p in sorted(VENDORS.glob("*.j
 ROWS = [(vendor, b) for vendor, m in MANIFESTS.items() for b in m["boards"]]
 # What a row is. Only a "board" is fetched unless everything is asked for.
 KINDS = {"board", "panel", "backup", "duplicate", "stub", "drawing", "template", "example",
-         "jig", "mechanical", "vendored", "copy", "guide"}  # fmt: skip
+         "jig", "mechanical", "vendored", "copy", "guide", "unfinished"}  # fmt: skip
 FORMATS = {"kicad_pcb", "eagle_brd_xml", "eagle_brd_binary", "brd"}
 
 each_vendor = pytest.mark.parametrize("vendor", sorted(MANIFESTS))
@@ -80,7 +80,8 @@ def test_every_row_says_what_is_needed_to_fetch_and_check_it(vendor):
 @each_vendor
 def test_only_a_product_board_is_a_current_revision(vendor):
     boards = MANIFESTS[vendor]["boards"]
-    assert all(b["kind"] == "board" for b in boards if b["current"])
+    # An unfinished layout is still its product's current file, and is not fetched.
+    assert all(b["kind"] in ("board", "unfinished") for b in boards if b["current"])
     # Of one product in one repository and one format, the current files are one revision.
     revisions: dict[tuple, set] = {}
     for b in boards:
@@ -166,6 +167,13 @@ def test_a_stub_is_a_file_too_small_to_be_a_board(vendor):
      "board", True),
     ("adafruit", "adafruit/Adafruit_Learning_System_Guides",
      "PCB_Art_Jewelry/525floppy.kicad_pcb", "guide", False),
+    # Layouts left unfinished: 303 of 339 signals and 12 of 59 have airwires (layer 19).
+    ("olimex", "OLIMEX/OLINUXINO",
+     "HARDWARE/AM3352-OLinuXino/AM3352-OLINUXINO_Rev_A-14122012.brd", "unfinished", True),
+    ("olimex", "OLIMEX/STMP15X-SHIELD",
+     "HARDWARE/STMP15x-SHIELD_Rev_A/Extensions/"
+     "A10-A20-OLINUXINO-MICRO_Extension_Rev_A_STMP15x-SHIELD_GPIO1_EXTENSION.brd",
+     "unfinished", True),
 ])  # fmt: skip
 def test_the_rows_an_inventory_by_rule_had_wrong_are_as_their_paths_say(
     vendor, repository, path, kind, current
