@@ -542,6 +542,78 @@ Unreleased. History before this file was reconstructed from the git log.
 
 ### Fixed
 
+- `pkidl.importer.mechanical()` takes a part of the circuit that is a mounting hole on a
+  net, such as a grounded standoff, for a hole as well: its entry has `"part": true` and
+  the reference `circuit()` gives it, and the part stays in the circuit with its net. A
+  part is one when its pads are each a hole with at most a ring, as a hole on no net's
+  are, those on a net are all on one net, its largest hole is at least 2 mm across, and
+  it draws no body on silkscreen or fab. Such a part was read as any other: SparkFun's
+  Qwiic Fingerprint FPC2534 had no holes, and its four `Standoff_Connected` on EGND
+  were free to be placed anywhere. `Board.from_inputs` puts each with the new
+  `Board.hole(footprint, at, part=)` (`Board.held`): it is fixed, so other parts are
+  kept off it and `board.fixed(...)` finds it, and the solve takes it for placed
+  where the board has it, turned and on the side the board has it, and never moves it
+  (`solve(held=)`). `Solution.poses` has it, and `Pose.rot` is a float, as the board
+  may turn it by any angle, not a right angle only. So a build writes it there with
+  its reference and nets, and routing joins it; `near=` its pin (`toward=` an edge
+  beyond that pin's copper), `between=` it and a part, and a `row` beside it place
+  parts by it; what is said of it is checked there
+  (`inside` by its outline, as any part's; `apart` by what it takes from the board, its
+  pieces, and said too where a piece is over the thing it is kept from; `align`; a
+  `keepout` of copper that leaves its pad no track), and its pads are held from other
+  parts' as any pads are; two held parts whose copper on different nets overlaps,
+  touches, or is nearer than the rules' clearance, by the shapes of their pads, are
+  said to, and neither moves: a circle as a circle, an oval as one, a trapezoid or a
+  custom pad as a box that holds all of its copper, and any other pad as the turned
+  rectangle of its size, which a rounded or chamfered pad is inside. For a held pair
+  on the back at 37 degrees with an oval pad turned and its drill offset, KiCad
+  10.0.8's DRC gives 1.5241 mm, and pkidl 1.524059 mm. A statement that places a held
+  part is a problem. A part with a pad number on two nets, which the circuit has on
+  one, is not held; no board of the 250 has one. `pkidl.importer.renamed(board)` says
+  each such pad number, and each held part with its net, and
+  `scripts/corpus.py build` says how many of the parts placed are held. Of Olimex's
+  120 current KiCad boards, SparkFun's 108 and Olimex's 7 EAGLE boards, 53 parts on 19
+  boards are read so, among them RedBoard_Edge's two `STANDOFF_GROUNDING`, the TERES
+  boards' `MountingHole`s and ESP32-ADF's `MH`s on GND, eduArdu's touch pads `CC1` to
+  `CC7` (4.3 mm mounting holes, six on signal nets and `CC4` on GND; eduArdu's
+  outline does not close, before or after), the Qwiic Power Meter's 6.5 mm current
+  lugs `J8` and `J9`, and two case platforms that draw the board's outline,
+  STMP157-OLinuXino-LIME2's `LIME2_PLATFORM1` and AM3352-OLinuXino's `U$1`, which are
+  now fixed where they draw it. Of the corpus, the pcb-usb-ft245r adapter's `MH1` and
+  `MH2` are: its inputs change. The hole rule alone, with a pad on a net, takes 762
+  parts on 167 of the 250 boards (712 on 159 of those 235, and 50 on 8 of the
+  corpus's 15): pin headers, resistors, and the bench supply's banana posts, which its
+  board file places in a row.
+- A hole's ring drawn as a pad on each face is its ring: a round pad on a surface,
+  numbered as a drilled pad is and centred on its hole, no longer stops
+  `pkidl.importer.mechanical()` taking the footprint for holes. The pcb-usb-ft245r
+  adapter's `hole:HOLE-M3-COND`, a 3.2 mm hole with a 5.5 mm pad on the front and the
+  back, was read as an ordinary part.
+- What is fixed on the board keeps parts off what it takes from the board, not off the
+  box around it all: the copper of each of its pads, each drawing of its body that is
+  closed on its own, and the box around the lines and arcs of its body. A case's
+  platform, holes at its corners, kept every part off the middle of the board: on
+  STMP1-OLinuXino, a part put at the middle was `over LIME2_PLATFORM`. A heatsink
+  drawn in lines still keeps parts off the box around its body: the four corpus boards
+  with a board file are placed as before. An area of a part kept clear of copper is
+  held against what a held part takes, the same way, not against the box around it.
+- `pkidl.importer.footprints()` leaves out of a footprint what is on KiCad's UNDEFINED
+  layer, and `pkidl.importer.renamed(board)` says how many items, by footprint name.
+  KiCad's EAGLE import puts EAGLE's tTest layer and others there, and KiCad 10.0.8 will
+  not load a board with such an item (`pcb drc` exits 3: `One or more items were found
+  on undefined layers (UNDEFINED)`). Four of Olimex's seven EAGLE boards had 15 such
+  footprints, 128 items in all, `C0603_DWS` and `R0603_5MIL_DWS` among them; a board
+  written from their inputs now loads. On iMX233-OLinuXino-MAXI, `C82` and `C83`
+  carried a version of `C0603_DWS` that differed only in those items, and no longer
+  differ.
+- `pkidl.importer.renamed(board)` tells a cut-out drawn in a part's footprint from the
+  board's outline. It said "the board's outline" of any Edge.Cuts a part draws, so
+  SparkFun's Qwiic Power Meter's U1, an SO-16 Wide Power package that cuts a 1.27 mm
+  slot under itself, was said to draw the outline. Items all on the outside of the
+  board's edge are "the board's outline", items all on cut-outs "a cut-out of the
+  board", and where they are some of each, or the outline is not one board, "part of
+  the board's edge". Lines that close nothing, which the outline leaves out, go
+  unsaid. A part that is a hole on a net is said to be fixed where the board has it.
 - `pkidl.measure.regions`, and the scorecard's `poured_nets` and `split_pours` with it,
   takes a teardrop for no pour. KiCad saves each teardrop as a zone, and each was
   counted as a piece of its net's pour: on GateMateA1-EVB, whose 1,330 zones are 1,312

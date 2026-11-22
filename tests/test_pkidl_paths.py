@@ -1324,7 +1324,8 @@ def test_the_corpus_build_says_each_path_as_it_was_measured(board, tmp_path, mon
     made = SimpleNamespace(routed=routed, solution=SimpleNamespace(poses={}, chosen=()))
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "board.py").write_text(
-        "from types import SimpleNamespace\nboard = SimpleNamespace(build=lambda d, name: MADE)\n"
+        "from types import SimpleNamespace\n"
+        "board = SimpleNamespace(build=lambda d, name: MADE, held={})\n"
     )
     monkeypatch.setattr(script, "BOARDS", {"b": ("t0", "a board")})
     monkeypatch.setattr(script, "board_dir", lambda board_id: tmp_path / "src")

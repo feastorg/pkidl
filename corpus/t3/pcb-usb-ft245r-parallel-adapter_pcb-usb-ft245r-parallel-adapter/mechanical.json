@@ -1,6 +1,43 @@
 {
  "fixed": {},
- "holes": [],
+ "holes": [
+  {
+   "at": [
+    178.0,
+    95.0
+   ],
+   "back": false,
+   "drills": [
+    [
+     178.0,
+     95.0,
+     3.2
+    ]
+   ],
+   "footprint": "hole:HOLE-M3-COND",
+   "part": true,
+   "ref": "MH1",
+   "rot": 0.0
+  },
+  {
+   "at": [
+    178.0,
+    132.0
+   ],
+   "back": false,
+   "drills": [
+    [
+     178.0,
+     132.0,
+     3.2
+    ]
+   ],
+   "footprint": "hole:HOLE-M3-COND",
+   "part": true,
+   "ref": "MH2",
+   "rot": 0.0
+  }
+ ],
  "outline": [
   {
    "end": [

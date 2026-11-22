@@ -165,7 +165,8 @@ def build(out: Path) -> int:
         d.mkdir(parents=True, exist_ok=True)
         (d / f"{BUILT}.json").unlink(missing_ok=True)  # an earlier build's is not this one's
         try:
-            built = runpy.run_path(str(board_py))["board"].build(d, BUILT)
+            board = runpy.run_path(str(board_py))["board"]
+            built = board.build(d, BUILT)
         except BuildError as e:
             failed += 1
             _dump(d / f"{BUILT}.json", {"built": False, "problems": list(e.problems)})
@@ -175,6 +176,8 @@ def build(out: Path) -> int:
         _dump(d / f"{BUILT}.json", {
             "built": True,
             "placed": list(built.solution.poses),
+            # Of those, the parts that are holes, held where the board has them.
+            "held": list(board.held),
             "chosen": list(built.solution.chosen),
             "routed": [{"stage": stage, "unrouted": run.unrouted} for stage, run in runs],
             "pours_checked_by": built.routed.judge if built.routed is not None else "",
@@ -185,7 +188,9 @@ def build(out: Path) -> int:
             "kept_out": list(built.routed.kept_out) if built.routed is not None else [],
             "paths": [str(m) for m in built.routed.paths] if built.routed is not None else [],
         })  # fmt: skip
+        held = f" ({len(board.held)} held where the board has them)" if board.held else ""
         print(f"{BOARDS[board_id][0]} {board_id}: built, {len(built.solution.poses)} parts placed"
+              + held
               + "".join(f", {stage or 'rest'}: {run.unrouted} unrouted" for stage, run in runs)
               + (f"; pours checked by {built.routed.judge}"
                  if built.routed is not None and built.routed.judge else ""))  # fmt: skip

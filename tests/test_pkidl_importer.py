@@ -169,7 +169,7 @@ def test_an_outline_drawn_in_a_footprint_is_read_where_kicad_has_it_on_the_board
 def test_a_part_whose_footprint_draws_the_outline_is_said_to_float():
     # OLIMEXINO-2560's PLATFORM1, whose pads are the Arduino header pins. A hole, or a
     # logo, drawing the outline goes unsaid: a hole is fixed, a logo is not placed.
-    edge = '(fp_line (start 0 0) (end 10 0) (layer "Edge.Cuts"))'
+    edge = '(fp_rect (start 0 0) (end 10 10) (layer "Edge.Cuts"))'
     pin = '(pad "1" thru_hole circle (at 0 0) (size 1.7 1.7) (drill 1) (net "GND"))'
     hole = '(pad "" np_thru_hole circle (at 0 0) (size 3 3) (drill 3))'
 
@@ -279,11 +279,131 @@ def test_parts_that_share_a_reference_are_told_apart_by_where_they_are():
     board = _board(hole("50 5"), hole("10 40"), hole("10 5"), hole("0 0", "MountingHole_2"))
     assert [p["ref"] for p in circuit(board)["parts"]] == [
         "MountingHole", "MountingHole_2", "MountingHole_3", "MountingHole_4"]  # fmt: skip
+    # And each is a mounting hole on a net.
+    refs = ("MountingHole", "MountingHole_2", "MountingHole_3", "MountingHole_4")
+    said = [f"{ref}: a mounting hole on GND, H:MH: fixed where the board has it, and a part "
+            "of the circuit with its net" for ref in refs]  # fmt: skip
+    assert [h["ref"] for h in mechanical(board)["holes"]] == list(refs)
     assert renamed(board) == [
         "MountingHole is on 3 parts: the one at (10.0, 40.0) is MountingHole_3",
         "MountingHole is on 3 parts: the one at (50.0, 5.0) is MountingHole_4",
+        *said,
     ]
 
 
 def test_the_same_package_saved_in_another_order_does_not_differ():
     assert footprints(_board(_part("R1", "0 0"), _part("R2", "5 0", pad_first=False)))[1] == {}
+
+
+def test_a_part_that_is_a_hole_on_a_net_is_a_hole_and_a_part():
+    # SparkFun's Qwiic Fingerprint FPC2534's standoffs on EGND, and RedBoard_Edge's,
+    # a hole with vias round it; and parts with round pads on round drills that are not.
+    def fp(name: str, ref: str, *children: str) -> str:
+        head = f'(footprint "{name}" (at 5 5) (layer "F.Cu") (property "Reference" "{ref}")'
+        return " ".join([head, *children]) + ")"
+
+    def pad(net: str, drill: float, at: str = "0 0", number: str = "1") -> str:
+        size = drill + 1.4
+        return (f'(pad "{number}" thru_hole circle (at {at}) (size {size} {size}) '
+                f'(drill {drill}) (layers "*.Cu") (net "{net}"))')  # fmt: skip
+
+    vias = [pad("JP1", 0.5, at) for at in ("2.4 0", "0 2.4", "-2.4 0", "0 -2.4")]
+    body = '(fp_circle (center 0 0) (end 5 0) (layer "F.SilkS"))'
+    yard = '(fp_circle (center 0 0) (end 3 0) (layer "F.CrtYd"))'  # no body, a courtyard
+    board = _board(
+        fp("H:Standoff", "ST1", pad("EGND", 3.1), yard),
+        fp("H:Grounding", "U3", pad("JP1", 3.302), *vias),
+        fp("C:1x01", "TP1", pad("EGND", 1.016)),  # a test point: a lead's hole
+        fp("C:Banana", "P1", pad("OUT", 6.096), body),  # a post, which draws its body
+        fp("D:Speaker", "SPK1", pad("A", 18), pad("B", 3.5, "10 0", "2")),  # two nets
+        # A square pad: a lead's, whatever its drill.
+        fp("C:Lug", "J1", pad("OUT", 3.2).replace("circle", "rect")),
+    )  # fmt: skip
+    holes = mechanical(board)["holes"]
+    assert [(h["ref"], h["footprint"], h.get("part")) for h in holes] == [
+        ("ST1", "H:Standoff", True), ("U3", "H:Grounding", True)]  # fmt: skip
+    assert holes[0]["drills"] == [[5.0, 5.0, 3.1]]
+    # Each stays in the circuit with its net, so it is routed to.
+    assert [(p["ref"], p["pads"]) for p in circuit(board)["parts"]] == [
+        ("J1", {"1": "OUT"}), ("P1", {"1": "OUT"}), ("SPK1", {"1": "A", "2": "B"}),
+        ("ST1", {"1": "EGND"}), ("TP1", {"1": "EGND"}), ("U3", {"1": "JP1"})]  # fmt: skip
+    assert renamed(board) == [
+        "ST1: a mounting hole on EGND, H:Standoff: fixed where the board has it, and a part "
+        "of the circuit with its net",
+        "U3: a mounting hole on JP1, H:Grounding: fixed where the board has it, and a part of "
+        "the circuit with its net",
+    ]
+
+
+def test_items_on_kicads_undefined_layer_are_left_out_of_a_footprint_and_counted():
+    # KiCad's EAGLE import puts EAGLE's tTest layer there, as on Olimex's C0603_DWS.
+    undefined = ['(fp_line (start 0 0) (end 1 0) (layer "UNDEFINED"))',
+                 '(fp_arc (start 0 0) (mid 1 1) (end 2 0) (layer "UNDEFINED"))']  # fmt: skip
+    pad = '(pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net "VCC"))'
+    silk = '(fp_line (start 0 0) (end 0 1) (layer "F.SilkS"))'
+    board = _board(f'(footprint "E:C0603_DWS" (at 5 5) (layer "F.Cu") (property "Reference" "C1") '
+                   f"{pad} {silk} {' '.join(undefined)})")  # fmt: skip
+    (lib,) = footprints(board)[0].values()
+    drawn = [find(c, "layer") for c in lib if isinstance(c, list) and str(c[0]).startswith("fp_")]
+    assert drawn == [["layer", "F.SilkS"]]
+    assert renamed(board) == [
+        "E:C0603_DWS: 2 items on KiCad's UNDEFINED layer left out of the footprint"]  # fmt: skip
+
+
+def test_a_cut_out_drawn_in_a_part_is_said_to_be_one():
+    # SparkFun's Qwiic Power Meter: U1's SO-16 Wide package cuts a slot under it.
+    slot = '(fp_rect (start -7 -0.635) (end 7 0.635) (layer "Edge.Cuts"))'
+    pad = '(pad "1" smd rect (at 0 -5) (size 1 1) (layers "F.Cu") (net "IP+"))'
+    part = (
+        f'(footprint "P:SO16W" (at 20 15) (layer "F.Cu") (property "Reference" "U1") {pad} {slot})'
+    )
+    outline = '(gr_rect (start 0 0) (end 40 30) (layer "Edge.Cuts"))'
+    assert renamed(_board(outline, part)) == [
+        "U1: a cut-out of the board is drawn in its footprint, P:SO16W; the cut-out is read, "
+        "and U1 is placed as any part, not fixed where it draws the cut-out"]  # fmt: skip
+    # Where it is all there is, it is the outline; and where what is drawn does not
+    # close, what it is cannot be told.
+    assert renamed(_board(part))[0].startswith("U1: the board's outline is drawn")
+    assert renamed(_board(part.replace("fp_rect", "fp_line")))[0].startswith(
+        "U1: part of the board's edge is drawn")  # fmt: skip
+    two = part.replace(slot, slot + slot.replace("-0.635", "3.365").replace("0.635", "4.635"))
+    assert renamed(_board(outline, two))[0].startswith("U1: 2 cut-outs of the board are drawn")
+    # A line that closes nothing is no edge of the board, and goes unsaid.
+    stray = part.replace("fp_rect", "fp_line")
+    assert renamed(_board(outline, stray)) == []
+
+
+def test_a_holes_ring_drawn_as_a_pad_on_each_face_is_its_ring():
+    # The corpus's pcb-usb-ft245r adapter's MH1: an M3 hole on a net, its ring a round
+    # pad on each face, numbered as the hole is and centred on it.
+    pads = ['(pad "1" thru_hole circle (at 0 0) (size 3.6 3.6) (drill 3.2) (layers "*.Cu") '
+            '(net "Net-(MH1-Pad1)"))'] + [
+        f'(pad "1" smd circle (at 0 0) (size 5.5 5.5) (layers "{f}.Cu" "{f}.Mask") '
+        '(net "Net-(MH1-Pad1)"))' for f in "FB"]  # fmt: skip
+    yard = '(fp_circle (center 0 0) (end 3 0) (layer "F.CrtYd"))'
+    head = '(footprint "hole:HOLE-M3-COND" (at 7 9) (layer "F.Cu") (property "Reference" "MH1")'
+    hole = f"{head} {' '.join(pads)} {yard})"
+    (found,) = mechanical(_board(hole))["holes"]
+    assert (found["ref"], found["drills"], found.get("part")) == ("MH1", [[7.0, 9.0, 3.2]], True)
+    # Off its hole, numbered otherwise, or square, a pad on a face is no ring.
+    for moved in (
+        hole.replace("smd circle (at 0 0)", "smd circle (at 1 0)"),
+        hole.replace('(pad "1" smd', '(pad "2" smd'),
+        hole.replace("smd circle", "smd rect"),
+    ):
+        assert mechanical(_board(moved))["holes"] == []
+    # On no net, it is a hole as any is.
+    assert len(mechanical(_board(hole.replace(' (net "Net-(MH1-Pad1)")', "")))["holes"]) == 1
+
+
+def test_a_pad_number_on_two_nets_is_said_and_its_part_not_held():
+    # A standoff's hole on EGND and the vias round it, numbered as the hole is, on GND:
+    # the circuit has a pad number on one net, so the part is not held as one on a net.
+    pad = '(pad "1" thru_hole circle (at {}) (size {}) (drill {}) (layers "*.Cu") (net "{}"))'
+    pads = [pad.format("0 0", "4.5 4.5", 3.1, "EGND")] + [
+        pad.format(at, "1 1", 0.5, "GND") for at in ("2.6 0", "-2.6 0")]  # fmt: skip
+    head = '(footprint "H:Standoff" (at 5 5) (layer "F.Cu") (property "Reference" "ST1")'
+    board = _board(f"{head} {' '.join(pads)})")
+    assert mechanical(board)["holes"] == []
+    assert [p["pads"] for p in circuit(board)["parts"]] == [{"1": "GND"}]
+    assert renamed(board) == ["ST1: pad 1 is on EGND, GND; the circuit has it on GND only"]

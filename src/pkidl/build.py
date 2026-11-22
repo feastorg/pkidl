@@ -166,6 +166,7 @@ def build(board: Board, outdir: Path, name: str, router: Router | None = None) -
 
     built = replace(board, items=list(board.items), _uuids=set(board._uuids),
                     _unsized=dict(board._unsized))  # fmt: skip
+    # Each part where the solution puts it, a part held where the board has it there.
     for ref, pose in solution.poses.items():
         part = board[ref]
         nets = {pin.number: pin.net.name for pin in part.pins() if pin.net is not None}
