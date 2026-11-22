@@ -315,6 +315,12 @@ def test_a_footprint_of_holes_takes_its_holes_and_its_body_from_the_board(tmp_pa
     assert solution.problems == ()
     r1 = solution.poses["R1"]
     assert r1.x.mm < 10 and r1.y.mm < 10  # by the hole in the corner, over the platform
+    # An area kept clear of a part over the platform's middle is clear of the platform.
+    quiet = Board.from_inputs(_inputs(tmp_path, held))
+    (area,) = quiet.annotate(quiet["R1"], quiet=((-1 * mm, -1 * mm), (1 * mm, 1 * mm)))
+    quiet.keepout(area, copper=True)
+    quiet.place(quiet["R1"], at=(30 * mm, 20 * mm))
+    assert _problems(quiet) == []
 
 
 def test_a_part_whose_footprint_is_missing_is_named(inputs):

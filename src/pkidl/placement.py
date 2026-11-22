@@ -1504,7 +1504,8 @@ class _Solver:
         ends += [
             (o[0] - far, o[1] - far, o[2] + far, o[3] + far)
             for f, (far, _) in self.aparts.get(ref, {}).items()
-            for o in [self.things[f]]
+            for g, o, _ in self.fixed
+            if g is f
         ]
         ends += [box for _, box, _ in self._kept(done)]
         tries = {(o[2] if level else o[3]) - b0 if forward else (o[0] if level else o[1]) - b1
@@ -1532,6 +1533,13 @@ class _Solver:
                 side = ("left", "top", "right", "bottom")[past.index(max(past))]
                 out.append((area, said, max(past), side))
         return out
+
+    def _taken(self, ref: str) -> list[Box]:
+        """What a placed part takes from the board: the box around its outline, or for a
+        part held where the board has it, the pieces of the thing it is (``_pieces``)."""
+        if (thing := self.held.get(ref)) is not None:
+            return [box for f, box, _ in self.fixed if f is thing]
+        return [self._box(ref)]
 
     def _centre(self, ref: str) -> tuple[int, int]:
         x0, y0, x1, y1 = self._box(ref)
@@ -2042,7 +2050,7 @@ class _Solver:
             owner, name = _area_of(s).part.ref, _area_of(s).name
             for ref in placed:
                 on = self.shapes[ref].through or self.poses[ref].back in faces
-                if ref != owner and on and _overlap(self._box(ref), kept):
+                if ref != owner and on and any(_overlap(t, kept) for t in self._taken(ref)):
                     self._problem((ref, owner), f"{ref} is in {owner}'s {name} area, "
                                   "which is kept clear of copper", s, *self.said[ref])  # fmt: skip
         # A pad on a net whose middle is inside the box of a thing that copper is kept
