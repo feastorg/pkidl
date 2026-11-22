@@ -127,7 +127,13 @@ def test_a_board_from_the_inputs_has_the_references_outline_and_holes(d):
     board = Board.from_inputs(d)
     assert board.circuit.data == json.loads((d / "circuit.json").read_text())
     written = parse(dumps(board.sexpr()))
-    assert mechanical(written) == json.loads((d / "mechanical.json").read_text())
+    mech = json.loads((d / "mechanical.json").read_text())
+    # A hole that is a part is held where it is, and put there when the board is built.
+    parts = [h for h in mech["holes"] if h.get("part")]
+    mech["holes"] = [h for h in mech["holes"] if not h.get("part")]
+    assert mechanical(written) == mech
+    assert {ref: [f.x.mm, f.y.mm, f.rot, f.back] for ref, f in board.held.items()} == {
+        h["ref"]: [*h["at"], h["rot"], h["back"]] for h in parts}  # fmt: skip
     assert circuit(written) == {"parts": [], "nets": []}  # no part is placed yet
     uuids = _uuids(written)
     assert len(set(uuids)) == len(uuids)

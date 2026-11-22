@@ -283,6 +283,7 @@ def test_parts_that_share_a_reference_are_told_apart_by_where_they_are():
     refs = ("MountingHole", "MountingHole_2", "MountingHole_3", "MountingHole_4")
     said = [f"{ref}: a mounting hole on GND, H:MH: fixed where the board has it, and a part "
             "of the circuit with its net" for ref in refs]  # fmt: skip
+    assert [h["ref"] for h in mechanical(board)["holes"]] == list(refs)
     assert renamed(board) == [
         "MountingHole is on 3 parts: the one at (10.0, 40.0) is MountingHole_3",
         "MountingHole is on 3 parts: the one at (50.0, 5.0) is MountingHole_4",
@@ -315,6 +316,8 @@ def test_a_part_that_is_a_hole_on_a_net_is_a_hole_and_a_part():
         fp("C:1x01", "TP1", pad("EGND", 1.016)),  # a test point: a lead's hole
         fp("C:Banana", "P1", pad("OUT", 6.096), body),  # a post, which draws its body
         fp("D:Speaker", "SPK1", pad("A", 18), pad("B", 3.5, "10 0", "2")),  # two nets
+        # A square pad: a lead's, whatever its drill.
+        fp("C:Lug", "J1", pad("OUT", 3.2).replace("circle", "rect")),
     )  # fmt: skip
     holes = mechanical(board)["holes"]
     assert [(h["ref"], h["footprint"], h.get("part")) for h in holes] == [
@@ -322,8 +325,8 @@ def test_a_part_that_is_a_hole_on_a_net_is_a_hole_and_a_part():
     assert holes[0]["drills"] == [[5.0, 5.0, 3.1]]
     # Each stays in the circuit with its net, so it is routed to.
     assert [(p["ref"], p["pads"]) for p in circuit(board)["parts"]] == [
-        ("P1", {"1": "OUT"}), ("SPK1", {"1": "A", "2": "B"}), ("ST1", {"1": "EGND"}),
-        ("TP1", {"1": "EGND"}), ("U3", {"1": "JP1"})]  # fmt: skip
+        ("J1", {"1": "OUT"}), ("P1", {"1": "OUT"}), ("SPK1", {"1": "A", "2": "B"}),
+        ("ST1", {"1": "EGND"}), ("TP1", {"1": "EGND"}), ("U3", {"1": "JP1"})]  # fmt: skip
     assert renamed(board) == [
         "ST1: a mounting hole on EGND, H:Standoff: fixed where the board has it, and a part "
         "of the circuit with its net",

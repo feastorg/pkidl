@@ -2,15 +2,18 @@
 footprints, with the outline drawn and the holes placed."""
 
 import json
+import math
 from pathlib import Path
 
 import pytest
 
-from pkidl import Board, mm
+from pkidl import Board, Edge, mm
 from pkidl.build import BuildError
 from pkidl.footprint import footprint_path
 from pkidl.importer import circuit, footprints, mechanical
+from pkidl.placement import Pose
 from pkidl.sexpr import Node, dumps, find, find_all, parse
+from pkidl.units import Length
 
 # A board to take inputs from: a part with one pad on no net, a two-hole bracket turned and
 # on the back, and two holes that share the reference KiCad gives a footprint with no symbol.
@@ -136,36 +139,128 @@ def test_an_outline_drawn_in_a_footprint_is_drawn_once(tmp_path):
         {"type": "gr_rect", "start": [10.0, 10.0], "end": [50.0, 40.0]}]  # fmt: skip
 
 
-def test_a_hole_on_a_net_is_built_where_the_board_has_it_with_its_net(tmp_path):
-    # A grounded standoff, turned, as SparkFun's Qwiic Fingerprint FPC2534 has four.
-    source = parse("""(kicad_pcb
-      (gr_rect (start 0 0) (end 40 30) (layer "Edge.Cuts"))
-      (footprint "Hw:Standoff" (layer "F.Cu") (at 5 6 30)
-        (property "Reference" "ST1") (property "Value" "Standoff")
-        (pad "1" thru_hole circle (at 0 0) (size 4.5 4.5) (drill 3.1) (layers "*.Cu")
-          (net "EGND")))
-      (footprint "Device:R" (layer "F.Cu") (at 20 15)
-        (property "Reference" "R1") (property "Value" "0")
-        (pad "1" smd rect (at -1 0) (size 1 1) (layers "F.Cu") (net "EGND"))
-        (pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net "GND"))))""")
-    board = Board.from_inputs(_inputs(tmp_path, source))
+# A grounded standoff, turned, as SparkFun's Qwiic Fingerprint FPC2534 has four, and two
+# parts on its net.
+STANDOFF = """(kicad_pcb
+  (gr_rect (start 0 0) (end 40 30) (layer "Edge.Cuts"))
+  (footprint "Hw:Standoff" (layer "{side}.Cu") (at 5 6 30)
+    (property "Reference" "ST1") (property "Value" "Standoff")
+    (pad "1" thru_hole circle (at 0 0) (size 4.5 4.5) (drill 3.1) (layers "*.Cu")
+      (net "EGND")))
+  (footprint "Device:R" (layer "F.Cu") (at 20 15)
+    (property "Reference" "R1") (property "Value" "0")
+    (pad "1" smd rect (at -1 0) (size 1 1) (layers "F.Cu") (net "EGND"))
+    (pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net "GND")))
+  (footprint "Device:R" (layer "F.Cu") (at 25 15)
+    (property "Reference" "C1") (property "Value" "1u")
+    (pad "1" smd rect (at -1 0) (size 1 1) (layers "F.Cu") (net "EGND"))
+    (pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net "GND"))))"""
+
+
+def _standoff(d: Path, side: str = "F") -> Board:
+    return Board.from_inputs(_inputs(d, parse(STANDOFF.format(side=side))))
+
+
+def _footprint(written: Node, ref: str) -> Node:
+    named = ["property", "Reference", ref]
+    (fp,) = [fp for fp in find_all(written, "footprint")
+             if named in [p[:3] for p in find_all(fp, "property")]]  # fmt: skip
+    return fp
+
+
+@pytest.mark.parametrize("side", ["F", "B"])
+def test_a_hole_on_a_net_is_built_where_the_board_has_it_with_its_net(tmp_path, side):
+    board = _standoff(tmp_path, side)
     standoff = board.fixed("Standoff")
     assert board.held == {"ST1": standoff} and board["ST1"].pin(1).net == board.net("EGND")
     board.place(board["R1"], at=(20 * mm, 15 * mm))
+    board.place(board["C1"], at=(25 * mm, 15 * mm))
+    board.rules(track=0.25 * mm, clearance=0.2 * mm)  # which keep copper off the edge
     built = board.build(tmp_path / "out", "t")
-    assert built.solution.free == () and "ST1" not in built.solution.poses
-    written = parse(built.board.read_text())
-    named = ["property", "Reference", "ST1"]
-    (st1,) = [fp for fp in find_all(written, "footprint")
-              if named in [p[:3] for p in find_all(fp, "property")]]  # fmt: skip
+    # Placed by the board, where it has it, turned as it has it, on its side.
+    assert built.solution.free == ()
+    assert built.solution.poses["ST1"] == Pose(Length(5_000_000), Length(6_000_000), 30.0,
+                                               side == "B")  # fmt: skip
+    st1 = _footprint(parse(built.board.read_text()), "ST1")
     assert find(st1, "at") == ["at", "5", "6", "30"]
+    assert find(st1, "layer") == ["layer", f"{side}.Cu"]
     assert find(find_all(st1, "pad")[0], "net") == ["net", "EGND"]
-    assert len(find_all(written, "footprint")) == 2  # the hole is not put there twice
-    # It is where the board has it, and nothing else places it.
+    assert len(find_all(parse(built.board.read_text()), "footprint")) == 3  # not put twice
+    # Nothing else places it.
     board.place(board["ST1"], at=(30 * mm, 20 * mm))
     with pytest.raises(BuildError, match=r"ST1 is fixed on the board, as Standoff at \(5, 6\): "
                                          "nothing places it"):  # fmt: skip
         board.build(tmp_path / "out", "t")
+
+
+def _problems(board: Board) -> list[str]:
+    return [p.text for p in board.solve().problems]
+
+
+def test_what_is_said_of_a_held_part_is_checked_where_the_board_has_it(tmp_path):
+    def board() -> Board:
+        b = _standoff(tmp_path)
+        b.place(b["R1"], at=(20.13 * mm, 15 * mm))
+        b.place(b["C1"], at=(25 * mm, 15 * mm))
+        return b
+
+    assert _problems(board()) == []
+    inside = board()
+    inside.inside(inside.area(box=(("30 mm", "20 mm"), ("39 mm", "29 mm"))), [inside["ST1"]])
+    assert _problems(inside) == [
+        "ST1 is held where the board has it, as Standoff at (5, 6), and is not inside "
+        "area(box=((30 mm, 20 mm), (39 mm, 29 mm))): it reaches 29.198557 mm past its left "
+        "side"]  # fmt: skip
+    apart = board()
+    other = apart.hole("Hw:Standoff", (13, 6))
+    apart.apart(apart["ST1"], other, 10 * mm)
+    assert _problems(apart) == [
+        "ST1 is held where the board has it, as Standoff at (5, 6), 0.727886 mm from "
+        "Standoff at (13, 6), and apart(ST1, Standoff at (13, 6), 10 mm) keeps it 10 mm "
+        "from it"]  # fmt: skip
+    align = board()
+    align.align(align["ST1"], align["R1"], grid="1 mm")
+    assert _problems(align) == [
+        "align(R1, ST1, grid=1 mm) does not hold: R1 and ST1 are 14.13 mm apart across the "
+        "board, 14.1 steps"]  # fmt: skip
+    # Copper kept from it on both faces cuts its pad off, as any part's.
+    kept = board()
+    kept.keepout(kept.fixed("Standoff"), copper=True, both_sides=True)
+    assert _problems(kept) == [
+        "ST1.1 is inside the outline of Standoff at (5, 6), which is kept clear of copper on "
+        "both sides: no track can reach it"]  # fmt: skip
+    # A part is kept off it as off any hole.
+    over = _standoff(tmp_path)
+    over.place(over["R1"], at=(6 * mm, 6 * mm))
+    over.place(over["C1"], at=(25 * mm, 15 * mm))
+    assert _problems(over) == ["R1 is over Standoff at (5, 6)"]
+
+
+def test_a_part_is_placed_by_a_held_part_as_by_any(tmp_path):
+    near = _standoff(tmp_path)
+    near.place(near["R1"], near=near["ST1"].pin(1), within=6 * mm)
+    near.place(near["C1"], at=(25 * mm, 15 * mm))
+    solution = near.solve()
+    assert solution.problems == () and solution.free == ()
+    r1 = solution.poses["R1"]
+    assert math.dist((r1.x.mm, r1.y.mm), (5, 6)) <= 6 + 1  # its pad within 6 mm of the pin
+    between = _standoff(tmp_path)
+    between.place(between["R1"], at=(25 * mm, 16 * mm))
+    between.place(between["C1"], between=(between["ST1"], between["R1"]))
+    solution = between.solve()
+    assert solution.problems == ()
+    assert (solution.poses["C1"].x.mm, solution.poses["C1"].y.mm) == (15, 11)
+    beside = _standoff(tmp_path)
+    beside.row(beside.parts("R1", "C1"), beside=beside["ST1"], toward=Edge.RIGHT)
+    solution = beside.solve()
+    assert solution.problems == () and {"R1", "C1"} <= set(solution.poses)
+    assert all(solution.poses[r].x.mm > 5 for r in ("R1", "C1"))
+
+
+def test_a_hole_is_its_part_s_footprint(tmp_path):
+    board = _standoff(tmp_path)
+    with pytest.raises(ValueError, match="hole\\('Device:R'\\): ST1's footprint is 'Hw:Standoff'"):
+        board.hole("Device:R", (30, 20), part=board["ST1"])
 
 
 def test_a_part_whose_footprint_is_missing_is_named(inputs):

@@ -2760,7 +2760,7 @@ def _span(board: Board, solution: Solution, ref: str, edge: Edge) -> tuple[float
     x0, y0, x1, y1 = (v / 1_000_000 for v in _shape(board.library[board[ref].footprint]).box)
     # Turned counter-clockwise as the front shows it, y down the board.
     x0, y0, x1, y1 = {0: (x0, y0, x1, y1), 90: (y0, -x1, y1, -x0), 180: (-x1, -y1, -x0, -y0),
-                      270: (-y1, x0, -y0, x1)}[pose.rot]  # fmt: skip
+                      270: (-y1, x0, -y0, x1)}[int(pose.rot)]  # fmt: skip
     if edge in (Edge.LEFT, Edge.RIGHT):
         return pose.y.mm + y0 - 50, pose.y.mm + y1 - 50
     return pose.x.mm + x0 - 100, pose.x.mm + x1 - 100

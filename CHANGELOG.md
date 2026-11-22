@@ -550,22 +550,26 @@ Unreleased. History before this file was reconstructed from the git log.
   it draws no body on silkscreen or fab. Such a part was read as any other: SparkFun's
   Qwiic Fingerprint FPC2534 had no holes, and its four `Standoff_Connected` on EGND
   were free to be placed anywhere. `Board.from_inputs` puts each with the new
-  `Board.hole(footprint, at, part=)`: it is fixed, so other parts are kept clear of it
-  and `board.fixed(...)` finds it; a build writes it where it is, with its reference
-  and nets, so routing joins it (`Board.held`); and a statement that places it is a
-  problem of the solve (`solve(held=)`). A part placed `near=` its pin is not placed
-  by it: that is said as `placed by ST1, which nothing places`.
-  `pkidl.importer.renamed(board)` says each, with its net. Of Olimex's 120 current
-  KiCad boards, SparkFun's 108 and Olimex's 7 EAGLE boards, 53 parts on 19 boards are
-  read so: besides the standoffs, RedBoard_Edge's two `STANDOFF_GROUNDING`, the TERES
+  `Board.hole(footprint, at, part=)` (`Board.held`): it is fixed, so other parts are
+  kept off it and `board.fixed(...)` finds it, and the solve takes it for placed
+  where the board has it, turned and on the side the board has it, and never moves it
+  (`solve(held=)`). So a build writes it there with its reference and nets, and
+  routing joins it; `near=` its pin, `between=` it and a part, and a `row` beside it
+  place parts by it; what is said of it is checked there (`inside`, `apart`, `align`,
+  a `keepout` of copper that leaves its pad no track); and a statement that places it
+  is a problem. `pkidl.importer.renamed(board)` says each, with its net, and
+  `scripts/corpus.py build` says how many of the parts placed are held. Of Olimex's
+  120 current KiCad boards, SparkFun's 108 and Olimex's 7 EAGLE boards, 53 parts on 19
+  boards are read so, among them RedBoard_Edge's two `STANDOFF_GROUNDING`, the TERES
   boards' `MountingHole`s and ESP32-ADF's `MH`s on GND, eduArdu's touch pads `CC1` to
-  `CC7` (4.3 mm mounting holes on signal nets), the Qwiic Power Meter's 6.5 mm current
+  `CC7` (4.3 mm mounting holes, six on signal nets and `CC4` on GND; eduArdu's
+  outline does not close, before or after), the Qwiic Power Meter's 6.5 mm current
   lugs `J8` and `J9`, and two case platforms that draw the board's outline,
   STMP157-OLinuXino-LIME2's `LIME2_PLATFORM1` and AM3352-OLinuXino's `U$1`, which are
   now fixed where they draw it. The hole rule alone, with a pad on a net, takes 758
-  parts on 165 of those boards, and 48 of the corpus's: pin headers, resistors, and the
-  bench supply's banana posts, which its board file places in a row. No corpus board's
-  inputs change.
+  parts on 165 of the 250 boards (710 on 157 of those 235, and 48 on 8 of the
+  corpus's 15): pin headers, resistors, and the bench supply's banana posts, which its
+  board file places in a row. No corpus board's inputs change.
 - `pkidl.importer.footprints()` leaves out of a footprint what is on KiCad's UNDEFINED
   layer, and `pkidl.importer.renamed(board)` says how many items, by footprint name.
   KiCad's EAGLE import puts EAGLE's tTest layer and others there, and KiCad 10.0.8 will

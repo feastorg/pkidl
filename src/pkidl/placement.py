@@ -115,8 +115,11 @@ fixed narrows a row, never another part, so a row still does not depend on where
 anything is placed. An edge is a side of the box around the outline.
 
 A part that is itself something fixed on the board, a mounting hole on a net (``held``),
-is where that is: it is not placed, other parts are kept clear of it as of any fixed
-thing, and a statement that places it is a problem.
+is placed already, where that is, turned and on the side it is there, and never moves.
+Other parts are kept clear of it as of any fixed thing, and placed by it as by any part
+(``near=`` it, ``between=`` it, a row beside it); what is said of it is checked where it
+is (``inside``, ``apart``, ``align``, a pad left under a ``keepout``); and a statement
+that places it is a problem.
 
 Everything is in whole nanometres, and parts are placed in an order made from what
 depends on what, then those that look for a place after those given one, then from
@@ -172,11 +175,12 @@ _ROTATIONS = (0, 90, 180, 270)
 @dataclass(frozen=True)
 class Pose:
     """Where a part is: its footprint's origin, its rotation in degrees as KiCad counts
-    them, and whether it is on the back."""
+    them, and whether it is on the back. A placed part is turned a right angle at a
+    time; a part held where the board has it is turned as the board has it."""
 
     x: Length
     y: Length
-    rot: int = 0
+    rot: float = 0
     back: bool = False
 
 
@@ -304,7 +308,13 @@ def _turn(x: int, y: int, rot: int, back: bool) -> tuple[int, int]:
 
 
 @cache
-def _turned(shape: _Shape, rot: int, back: bool) -> _Shape:
+def _turned(shape: _Shape, rot: float, back: bool) -> _Shape:
+    if rot % 90:  # any other angle: each box is the box around it once it is turned
+        pads = [(number, *_swung(x, y, rot, back)) for number, x, y in shape.pads]
+        return _Shape(tuple(pads), _spun(shape.box, rot, back), shape.through,
+                      tuple((n, _spun(c, rot, back)) for n, c in shape.copper),
+                      shape.holed)  # fmt: skip
+    rot = int(rot) % 360
     pads = [(number, *_turn(x, y, rot, back)) for number, x, y in shape.pads]
     x0, y0, x1, y1 = shape.box
     corners = [_turn(x, y, rot, back) for x in (x0, x1) for y in (y0, y1)]
@@ -607,8 +617,9 @@ class _Solver:
         self.origin: dict[int, Statement] = {}
         self.pad: dict[int, set[str]] = {}
         self._decouple(circuit, [s for s in statements if isinstance(s, Decouple)])
-        # A part that is a thing fixed on the board is where that is: it is not placed,
-        # and what is said to place it does not hold.
+        # A part that is a thing fixed on the board is placed already, where that is,
+        # and never moves: what is said of it is checked there, and what is said to
+        # place it does not hold.
         self.held = dict(held or {})
         for ref in sorted(self.held.keys() & self.asks.keys(), key=natural):
             self.barred.add(ref)
@@ -618,6 +629,10 @@ class _Solver:
         self.free = tuple(p.ref for p in circuit.parts()
                           if p.ref not in self.asks and p.ref not in self.held)  # fmt: skip
         self.poses: dict[str, Pose] = {}
+        for ref, f in self.held.items():
+            rot = f.rot % 360
+            self.poses[ref] = Pose(f.x, f.y, int(rot) if rot % 90 == 0 else rot, f.back)
+            self.said.setdefault(ref, [])
         self.problems: dict[Problem, None] = {}
         self.chosen: dict[str, None] = {}
         self.turns: dict[Row, int] = {}  # the way round each row's parts are, this pass
@@ -691,7 +706,7 @@ class _Solver:
         passes: list[tuple[dict, dict, dict, dict]] = []
         before: dict[str, Pose] = {}
         for _ in range(_PASSES):
-            before, done = dict(self.poses), set()
+            before, done = dict(self.poses), set(self.held)
             self.problems, self.chosen, self.turns, self.banks = {}, {}, {}, {}
             for ref in order:
                 if (pose := self._place(ref, done)) is not None:
@@ -730,7 +745,7 @@ class _Solver:
                           f"moved on pass {_PASSES}, each placed by where the others are",
                           *(s for ref in moved for s in self.said[ref]))  # fmt: skip
         # A part against an edge with no inset that is in from it is there for its copper.
-        for ref in sorted(self.poses if self.margin else (), key=natural):
+        for ref in sorted(set(self.poses) - set(self.held) if self.margin else (), key=natural):
             box = self._box(ref)
             for edge, s in self._edges(ref).items():
                 held = {Edge.LEFT: box[0] - self.board[0], Edge.RIGHT: self.board[2] - box[2],
@@ -774,11 +789,11 @@ class _Solver:
         """The parts that are placed, each after the parts it is placed by, and one
         that looks for a place near something after those whose place is given: it
         looks with them, and what they keep clear, already there."""
-        needs = {ref: {p.ref for s in asks for p in s.mentions()} - {ref}
-                 for ref, asks in self.asks.items()}  # fmt: skip
+        needs = {ref: {p.ref for s in asks for p in s.mentions()} - {ref} - self.held.keys()
+                 for ref, asks in self.asks.items() if ref not in self.held}  # fmt: skip
         looks = {ref: any(s.near is not None or s.after is not None or s.before is not None
                           for s in asks)
-                 for ref, asks in self.asks.items()}  # fmt: skip
+                 for ref, asks in self.asks.items() if ref not in self.held}  # fmt: skip
         # A row beside a part looks for its place as one thing, after that part, where
         # the lowest of its references comes among the parts that look for a place: its
         # parts follow one another, and what is placed by one of them waits for all.
@@ -788,7 +803,8 @@ class _Solver:
                  if row.beside is not None]  # fmt: skip
         for by, members in banks:
             for ref in members & set(needs):
-                needs[ref].add(by)
+                if by not in self.held:  # a held part is placed before anything
+                    needs[ref].add(by)
                 looks[ref] = True
                 first.setdefault(ref, min(members, key=natural))
         # Once every row has said what it is beside, so that the order the rows were
@@ -1110,6 +1126,7 @@ class _Solver:
                           is not None]  # fmt: skip
             named[ref] += [(other, self._box(other), self.bodies_apart) for other in done
                            if other in self.poses and other not in refs
+                           and other not in self.held
                            and (holed or self.shapes[other].through
                                 or self.poses[other].back == back)]  # fmt: skip
             named[ref] += [(f"{_area_of(s).part.ref}'s {_area_of(s).name} area", kept, 0)
@@ -1440,7 +1457,8 @@ class _Solver:
         # hard against the far side of each thing in the way, which a step may not land on.
         forward = any(word == "after" for word, _ in beside)
         ends = [box for f, box, _ in self.fixed]
-        ends += [self._box(r) for r in done if r != ref and r in self.poses]
+        ends += [self._box(r) for r in done
+                 if r != ref and r in self.poses and r not in self.held]  # fmt: skip
         # And as far off each of those as the rules keep parts apart.
         room = self.bodies_apart
         ends += [(o[0] - room, o[1] - room, o[2] + room, o[3] + room) for o in ends if room]
@@ -1520,7 +1538,7 @@ class _Solver:
             ref = _area_of(s).part.ref
             if ref in of:
                 pose = self.poses[ref]
-                (ax, ay), (bx, by) = (_turn(x, y, pose.rot, pose.back)
+                (ax, ay), (bx, by) = (_swung(x, y, pose.rot, pose.back)
                                       for x, y in ((x0, y0), (x1, y1)))  # fmt: skip
                 box = (min(ax, bx), min(ay, by), max(ax, bx), max(ay, by))
                 faces = {False, True} if s.both_sides else {pose.back}
@@ -1567,7 +1585,7 @@ class _Solver:
     def _over(self, box: Box, back: bool, through: bool, ref: str = "") -> Fixed | None:
         """What is fixed on the board that *box*, on that face, overlaps: the first,
         leaving out what *ref* is said to be on."""
-        on = {s.on for s in self.asks.get(ref, [])}
+        on = {s.on for s in self.asks.get(ref, [])} | {self.held.get(ref)}
         for f, taken, holed in self.fixed:
             if (through or holed or f.back == back) and _overlap(box, taken) and f not in on:
                 return f
@@ -1584,29 +1602,33 @@ class _Solver:
             return max(self.bodies_apart, far)
         return far or None
 
-    def _close(self, box: Box, back: bool, through: bool,
-               ref: str = "") -> list[tuple[Fixed, int, int, tuple[Apart, ...]]]:  # fmt: skip
+    def _close(self, box: Box, back: bool, through: bool, ref: str = "",
+               rules: bool = True) -> list[tuple[Fixed, int, int, tuple[Apart, ...]]]:  # fmt: skip
         """What is fixed on the board that *box*, on that face, is not over and is
         nearer than it is kept: by the rules, which keep parts apart that share a face,
         or by an ``apart`` that speaks of *ref* and the thing, whichever face either
         is on. Each with how near, how far it is kept, the larger of the two, and the
-        ``apart`` statements that keep it so, none where it is the rules. What *ref*
-        is said to be on is left out."""
+        ``apart`` statements that keep it so, none where it is the rules. What *ref* is
+        said to be on is left out, and without *rules* only what an ``apart`` says
+        counts."""
         aparts = self.aparts.get(ref, {})
-        if not self.bodies_apart and not aparts:
+        apart = self.bodies_apart if rules else 0
+        if not apart and not aparts:
             return []
-        on = {s.on for s in self.asks.get(ref, [])}
-        found = []
+        on = {s.on for s in self.asks.get(ref, [])} | {self.held.get(ref)}
+        over = {f for f, taken, holed in self.fixed
+                if (through or holed or f.back == back) and _overlap(box, taken)}  # fmt: skip
+        found: dict[Fixed, tuple[Fixed, int, int, tuple[Apart, ...]]] = {}
         for f, taken, holed in self.fixed:
             shares = through or holed or f.back == back
             far, said = aparts.get(f, (0, ()))
-            if f in on or not (shares or far) or (shares and _overlap(box, taken)):
+            if f in on or f in over or not (shares or far):
                 continue  # on a face of its own, or over it, which is told as that
-            if shares and self.bodies_apart >= far:
-                far, said = self.bodies_apart, ()
-            if far and (d := _off(box, taken)) < far:
-                found.append((f, d, far, said))
-        return found
+            if shares and apart >= far:
+                far, said = apart, ()
+            if far and (d := _off(box, taken)) < far and (f not in found or d < found[f][1]):
+                found[f] = (f, d, far, said)
+        return list(found.values())
 
     def _pitched(self, a: str, b: str) -> bool:
         """Whether the two parts are in one row whose pitch is said: how far apart
@@ -1670,9 +1692,10 @@ class _Solver:
             if other == ref or other not in self.poses:
                 continue
             shares = through or self.shapes[other].through or self.poses[other].back == back
-            if shares and _overlap(box, self._box(other)):
+            if shares and other not in self.held and _overlap(box, self._box(other)):
                 return False
-            if (shares and self.bodies_apart and _off(box, self._box(other)) < self.bodies_apart
+            if (shares and other not in self.held and self.bodies_apart
+                    and _off(box, self._box(other)) < self.bodies_apart
                     and not self._pitched(ref, other)):  # fmt: skip
                 return False
             if shares and at is not None and self._tight(ref, *at, other) is not None:
@@ -1722,7 +1745,7 @@ class _Solver:
                  if (room := self._room(ref, f, through or holed or f.back == back))
                  is not None]  # fmt: skip
         named += [(other, self._box(other), self.bodies_apart) for other in done
-                  if other != ref and other in self.poses
+                  if other != ref and other in self.poses and other not in self.held
                   and (through or self.shapes[other].through
                        or self.poses[other].back == back)]  # fmt: skip
         b0, b1, b2, b3 = self.board
@@ -1881,11 +1904,30 @@ class _Solver:
             self.problems.setdefault(problem)
         placed = sorted(self.poses, key=natural)
         for ref in placed:
+            box = self._box(ref)
+            if ref in self.held:
+                # Where the board has it: only what is said of it is checked, the areas
+                # it is said to be inside and what it is kept apart from.
+                for area, said, past, side in self._outside(ref, box):
+                    self._problem((ref,), f"{ref} is held where the board has it, as "
+                                  f"{self.held[ref]}, and is not inside {area}: it reaches "
+                                  f"{Length(past)} past its {side} side", *said)  # fmt: skip
+                for f, d, far, said in self._close(
+                    box, self.poses[ref].back, self.shapes[ref].through, ref, rules=False
+                ):
+                    self._problem((ref,), f"{ref} is held where the board has it, as "
+                                  f"{self.held[ref]}, {Length(d)} from {f.label}, and "
+                                  f"{said[0]} keeps it {Length(far)} from it", *said)  # fmt: skip
+                if (kept := self.aparts.get(ref, {}).get(self.held[ref])) is not None:
+                    self._problem((ref,), f"{ref} is held where the board has it, as "
+                                  f"{self.held[ref]}, and {kept[1][0]} keeps it "
+                                  f"{Length(kept[0])} from itself", *kept[1])  # fmt: skip
+                continue
             if self.circuit.part(ref).way_up_matters and not self._turned(ref):
                 self._problem((ref,), f"{ref}'s way round matters and nothing says it: give "
                               "facing= an edge, or outward= a side of it",
                               *self.said[ref])  # fmt: skip
-            box, names = self._box(ref), ("left", "top", "right", "bottom")
+            names = ("left", "top", "right", "bottom")
             for area, said, past, side in self._outside(ref, box):
                 self._problem((ref,), f"{ref} is not inside {area}: it reaches "
                               f"{Length(past)} past its {side} side",
@@ -1935,7 +1977,12 @@ class _Solver:
             for b in placed[i + 1 :]:
                 shares = (self.shapes[a].through or self.shapes[b].through
                           or self.poses[a].back == self.poses[b].back)  # fmt: skip
-                if shares and _overlap(self._box(a), self._box(b)):
+                # A held part takes the board as the thing it is (``_over``), but for its
+                # pads; two held parts are where the board has them both.
+                held = a in self.held or b in self.held
+                if held and (a in self.held and b in self.held or not shares):
+                    continue
+                if not held and shares and _overlap(self._box(a), self._box(b)):
                     self._problem((a, b), f"{a} and {b} overlap", *self.said[a], *self.said[b])
                 elif shares:
                     pose = self.poses[a]
@@ -1948,7 +1995,7 @@ class _Solver:
                         self._problem((a, b), f"{one} is {Length(d)} from {two}, and the "
                                       f"rules keep {what} {Length(gap)} apart",
                                       *self.said[a], *self.said[b], *self.rules)  # fmt: skip
-                    elif ((d := _off(self._box(a), self._box(b))) < self.bodies_apart
+                    elif (not held and (d := _off(self._box(a), self._box(b))) < self.bodies_apart
                           and not self._pitched(a, b)):  # fmt: skip
                         self._problem((a, b), f"{a} is {Length(d)} from {b}, and the rules "
                                       f"keep parts {Length(self.bodies_apart)} apart",
