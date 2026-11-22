@@ -553,11 +553,15 @@ Unreleased. History before this file was reconstructed from the git log.
   `Board.hole(footprint, at, part=)` (`Board.held`): it is fixed, so other parts are
   kept off it and `board.fixed(...)` finds it, and the solve takes it for placed
   where the board has it, turned and on the side the board has it, and never moves it
-  (`solve(held=)`). So a build writes it there with its reference and nets, and
-  routing joins it; `near=` its pin, `between=` it and a part, and a `row` beside it
-  place parts by it; what is said of it is checked there (`inside`, `apart`, `align`,
-  a `keepout` of copper that leaves its pad no track); and a statement that places it
-  is a problem. `pkidl.importer.renamed(board)` says each, with its net, and
+  (`solve(held=)`). `Solution.poses` has it, and `Pose.rot` is a float, as the board
+  may turn it by any angle, not a right angle only. So a build writes it there with
+  its reference and nets, and routing joins it; `near=` its pin, `between=` it and a
+  part, and a `row` beside it place parts by it; what is said of it is checked there
+  (`inside`, `apart`, even from a hole it is over, `align`, a `keepout` of copper that
+  leaves its pad no track), and its pads are held from other parts' as any pads are;
+  two held parts whose copper on different nets overlaps, or is nearer than the rules'
+  clearance, are said to, and neither moves; and a statement that places it is a
+  problem. `pkidl.importer.renamed(board)` says each, with its net, and
   `scripts/corpus.py build` says how many of the parts placed are held. Of Olimex's
   120 current KiCad boards, SparkFun's 108 and Olimex's 7 EAGLE boards, 53 parts on 19
   boards are read so, among them RedBoard_Edge's two `STANDOFF_GROUNDING`, the TERES
@@ -582,7 +586,8 @@ Unreleased. History before this file was reconstructed from the git log.
   platform, holes at its corners, kept every part off the middle of the board: on
   STMP1-OLinuXino, a part put at the middle was `over LIME2_PLATFORM`. A heatsink
   drawn in lines still keeps parts off the box around its body: the four corpus boards
-  with a board file are placed as before.
+  with a board file are placed as before. An area of a part kept clear of copper is
+  held against what a held part takes, the same way, not against the box around it.
 - `pkidl.importer.footprints()` leaves out of a footprint what is on KiCad's UNDEFINED
   layer, and `pkidl.importer.renamed(board)` says how many items, by footprint name.
   KiCad's EAGLE import puts EAGLE's tTest layer and others there, and KiCad 10.0.8 will
