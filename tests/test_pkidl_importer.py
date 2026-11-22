@@ -366,3 +366,25 @@ def test_a_cut_out_drawn_in_a_part_is_said_to_be_one():
     assert renamed(_board(part))[0].startswith("U1: the board's outline is drawn")
     assert renamed(_board(part.replace("fp_rect", "fp_line")))[0].startswith(
         "U1: part of the board's edge is drawn")  # fmt: skip
+
+
+def test_a_holes_ring_drawn_as_a_pad_on_each_face_is_its_ring():
+    # The corpus's pcb-usb-ft245r adapter's MH1: an M3 hole on a net, its ring a round
+    # pad on each face, numbered as the hole is and centred on it.
+    pads = ['(pad "1" thru_hole circle (at 0 0) (size 3.6 3.6) (drill 3.2) (layers "*.Cu") '
+            '(net "Net-(MH1-Pad1)"))'] + [
+        f'(pad "1" smd circle (at 0 0) (size 5.5 5.5) (layers "{f}.Cu" "{f}.Mask") '
+        '(net "Net-(MH1-Pad1)"))' for f in "FB"]  # fmt: skip
+    yard = '(fp_circle (center 0 0) (end 3 0) (layer "F.CrtYd"))'
+    head = '(footprint "hole:HOLE-M3-COND" (at 7 9) (layer "F.Cu") (property "Reference" "MH1")'
+    hole = f"{head} {' '.join(pads)} {yard})"
+    (found,) = mechanical(_board(hole))["holes"]
+    assert (found["ref"], found["drills"], found.get("part")) == ("MH1", [[7.0, 9.0, 3.2]], True)
+    # Off its hole, or numbered otherwise, a pad on a face is no ring.
+    for moved in (
+        hole.replace("smd circle (at 0 0)", "smd circle (at 1 0)"),
+        hole.replace('(pad "1" smd', '(pad "2" smd'),
+    ):
+        assert mechanical(_board(moved))["holes"] == []
+    # On no net, it is a hole as any is.
+    assert len(mechanical(_board(hole.replace(' (net "Net-(MH1-Pad1)")', "")))["holes"]) == 1

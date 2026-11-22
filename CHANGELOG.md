@@ -566,10 +566,16 @@ Unreleased. History before this file was reconstructed from the git log.
   outline does not close, before or after), the Qwiic Power Meter's 6.5 mm current
   lugs `J8` and `J9`, and two case platforms that draw the board's outline,
   STMP157-OLinuXino-LIME2's `LIME2_PLATFORM1` and AM3352-OLinuXino's `U$1`, which are
-  now fixed where they draw it. The hole rule alone, with a pad on a net, takes 758
-  parts on 165 of the 250 boards (710 on 157 of those 235, and 48 on 8 of the
+  now fixed where they draw it. Of the corpus, the pcb-usb-ft245r adapter's `MH1` and
+  `MH2` are: its inputs change. The hole rule alone, with a pad on a net, takes 762
+  parts on 167 of the 250 boards (712 on 159 of those 235, and 50 on 8 of the
   corpus's 15): pin headers, resistors, and the bench supply's banana posts, which its
-  board file places in a row. No corpus board's inputs change.
+  board file places in a row.
+- A hole's ring drawn as a pad on each face is its ring: a round pad on a surface,
+  numbered as a drilled pad is and centred on its hole, no longer stops
+  `pkidl.importer.mechanical()` taking the footprint for holes. The pcb-usb-ft245r
+  adapter's `hole:HOLE-M3-COND`, a 3.2 mm hole with a 5.5 mm pad on the front and the
+  back, was read as an ordinary part.
 - What is fixed on the board keeps parts off what it takes from the board, not off the
   box around it all: the copper of each of its pads, each drawing of its body that is
   closed on its own, and the box around the lines and arcs of its body. A case's

@@ -331,7 +331,7 @@
     "footprints/Resistors_SMD.pretty/R_0805_HandSoldering.kicad_mod": "0a5303d75c607ce51d973f295ff4a243399d11d11a2655fe25faf7a38769f251",
     "footprints/db25.pretty/DB25FC.kicad_mod": "5ab4f570be81d73fda7d9b71de08b82c13df08b8e7cba69052c492f7cb13cbfa",
     "footprints/hole.pretty/HOLE-M3-COND.kicad_mod": "17308b0988dd64fcb13589ec92b9bec8a67f0bdd18ed7054cb32cba20810dba6",
-    "mechanical.json": "0e890a34abe9a445f76149632ca0f1e8de8e0b5f406dd13db3da00e246a6b8e4",
+    "mechanical.json": "ee6c56f1a5836928e61e41c6ad298aca6a2cc9d87b5a69c446ef0c0641f2ba73",
     "reference.kicad_pcb": "963c6e5967e11496d5ca88262a884ee36f438acbe08cfd1681626211a710e75e"
    },
    "source": "https://github.com/yeokm1/pcb-usb-ft245r-parallel-adapter",

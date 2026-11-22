@@ -169,16 +169,35 @@ def _pads(fp: Node) -> dict[str, str]:
     return dict(sorted(pads.items()))
 
 
-def _drilled_on_no_net(fp: Node) -> bool:
-    """Whether a footprint has pads, all drilled and all on no net."""
+def _drilled(fp: Node) -> list[Node]:
+    """A footprint's drilled pads, where every other pad it has is the ring of one of
+    them: a round pad on a surface, numbered as that pad is and centred on its hole, as
+    a hole drawn with its ring as a pad on each face has it. Otherwise none."""
     pads = find_all(fp, "pad")
-    if not pads or any(find(p, "drill") is None for p in pads):
+    holes = [p for p in pads if find(p, "drill") is not None]
+
+    def where(pad: Node) -> tuple[str, list]:
+        at = find(pad, "at")
+        assert at is not None
+        return str(pad[1]), [float(at[1]), float(at[2])]
+
+    centres = [where(p) for p in holes]
+    for pad in pads:
+        if find(pad, "drill") is None and not (str(pad[3]) == "circle" and where(pad) in centres):
+            return []
+    return holes
+
+
+def _drilled_on_no_net(fp: Node) -> bool:
+    """Whether a footprint has pads, all drilled, or rings of those that are, and all on
+    no net."""
+    if not _drilled(fp):
         return False
-    return not any((n := find(p, "net")) is not None and str(n[-1]) for p in pads)
+    return not any((n := find(p, "net")) is not None and str(n[-1]) for p in find_all(fp, "pad"))
 
 
 def _is_hole(fp: Node) -> bool:
-    return _drilled_on_no_net(fp) and all(_ringed(p) for p in find_all(fp, "pad"))
+    return _drilled_on_no_net(fp) and all(_ringed(p) for p in _drilled(fp))
 
 
 _BODY = ("F.SilkS", "B.SilkS", "F.Fab", "B.Fab")  # where a footprint draws a part's body
@@ -194,13 +213,13 @@ def _across(pad: Node) -> float:
 
 def _is_held(fp: Node, pads: dict[str, str]) -> bool:
     """Whether a part of the circuit, with *pads* on nets, is a mounting hole on a net,
-    such as a grounded standoff: its pads all drilled and each a hole with at most a
-    ring, as a hole's are; those on a net all on the one net; its largest hole at least
-    ``_SCREW`` across; and no body drawn on silkscreen or fab. A pin header or a
-    resistor has holes too small; a banana post or a speaker draws its body, and a
-    speaker's two pads are on two nets."""
-    found = find_all(fp, "pad")
-    if not found or any(find(p, "drill") is None or not _ringed(p) for p in found):
+    such as a grounded standoff: its pads all drilled, or rings of those that are, and
+    each a hole with at most a ring, as a hole's are; those on a net all on the one
+    net; its largest hole at least ``_SCREW`` across; and no body drawn on silkscreen or
+    fab. A pin header or a resistor has holes too small; a banana post or a speaker
+    draws its body, and a speaker's two pads are on two nets."""
+    found = _drilled(fp)
+    if not found or not all(_ringed(p) for p in found):
         return False
     if len(set(pads.values())) != 1 or max(_across(p) for p in found) < _SCREW:
         return False
@@ -358,8 +377,9 @@ def mechanical(board: Node) -> dict:
 
     A footprint is mounting holes when its pads are all on no net, all drilled, and
     each a hole with at most a ring of copper round it: unplated, or a round pad on a
-    round drill or an oval one on an oval drill, centred on it. A hole with a ring of
-    vias round it is one, and so is a heatsink's pair of pins; a prototyping board's
+    round drill or an oval one on an oval drill, centred on it. A round pad on a face,
+    numbered as a hole is and centred on it, is that hole's ring. A hole with a ring
+    of vias round it is one, and so is a heatsink's pair of pins; a prototyping board's
     square pads are not.
 
     A part of the circuit is mounting holes too, with ``"part": true``, its reference as
@@ -377,7 +397,7 @@ def mechanical(board: Node) -> dict:
                 "footprint": read.name[id(fp)], "at": [float(at[1]), float(at[2])],
                 "rot": float(at[3]) if len(at) > 3 else 0.0,
                 "back": str(layer[1]).startswith("B."),
-                "drills": [_drill(fp, p) for p in find_all(fp, "pad")]}  # fmt: skip
+                "drills": [_drill(fp, p) for p in _drilled(fp)]}  # fmt: skip
         if id(fp) in read.held:
             hole["part"] = True
         holes.append(hole)
