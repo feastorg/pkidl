@@ -354,6 +354,29 @@ a pour, a via sized for the current of its net or counted in a reading, where th
 fit stops holding for a large current, the rules file a build leaves when a board
 stops having a wider net, a rule of one's own beside a build's, and inner layers.
 
+**2026-11-22: real products to measure against.** The fifteen corpus boards are mostly
+one person's projects, with no sign that most were made, and only three state a rating
+(`corpus/PROVENANCE.md`). So the boards that Olimex, SparkFun and Adafruit make and sell
+are now listed beside them, pinned by commit and blob (`corpus/vendors/`, fetched by
+`scripts/corpus.py fetch`). The importer reads the current ones as a board's inputs:
+
+| Set | Read | What stops the rest |
+|---|---|---|
+| Olimex, KiCad | 117 of 120 | two outlines open in the file; one board of three areas (#110) |
+| SparkFun, KiCad | 106 of 108 | two outlines open in the file |
+| Olimex, EAGLE XML (by KiCad 10.0.8) | 5 of 7 | an outline open in the file; an unfinished layout |
+| Olimex, EAGLE binary | 43, not read | KiCad 10.0.8 refused the two tried; the nightly with a reader for the format (10.99.0-6401) crashed on them |
+| Adafruit, KiCad | 16, not read yet | |
+| SparkFun and Adafruit, EAGLE | not read yet | |
+
+None has a board file yet, and none has been laid out or scored. What they are for is
+this milestone's evidence: a product's power board, with the ratings its maker
+states, is a bar for copper sized for current, where a hobby board with no rating is
+not. The neck of a pour (#105, parked) waits for that: its comparison of a short neck
+against a width for a long trace is wrong, and it needs a vetted board to be shown on.
+Next: choose a few vendor power boards with stated ratings, write their board files
+from circuit and mechanics, and measure their copper and pkidl's.
+
 ## Later
 
 T3 (stackup, impedance, differential pairs), T4 (planes, fanout, mechanical standards as
