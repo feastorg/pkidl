@@ -138,7 +138,9 @@ from itertools import combinations
 
 import numpy as np
 from shapely import intersects_xy, prepare
-from shapely.geometry import Polygon
+from shapely.affinity import rotate, scale, translate
+from shapely.geometry import LineString, Polygon
+from shapely.geometry import Point as _Point
 from shapely.geometry import box as _area
 from shapely.prepared import prep
 
@@ -332,6 +334,46 @@ def _pieces(footprint: Node) -> tuple[Box, ...]:
         pieces.append((min(b[0] for b in lines), min(b[1] for b in lines),
                        max(b[2] for b in lines), max(b[3] for b in lines)))  # fmt: skip
     return tuple(dict.fromkeys(pieces)) or (shape.box,)
+
+
+_TOUCH = 2  # nm: copper this near is touching, for the circles drawn as polygons
+_ROUND = 1024  # segments a quarter of a pad's circle is drawn with
+
+
+def _pad_copper(
+    footprint: Node, x: int, y: int, rot: float, back: bool
+) -> list[tuple[str, Polygon]]:
+    """Each pad's copper as its shape, in nanometres, of *footprint* placed at *x*, *y*,
+    turned *rot* and on the back or not: a circle as a circle, an oval as two half
+    circles and the strip between, and any other shape as the rectangle of its size,
+    each turned as its pad is."""
+    out = []
+    for pad in find_all(footprint, "pad"):
+        at, size = find(pad, "at"), find(pad, "size")
+        assert at is not None and size is not None
+        w, h = _nm(size[1]), _nm(size[2])
+        kind = str(pad[3])
+        if kind == "circle":
+            copper = _Point(0, 0).buffer(w / 2, quad_segs=_ROUND)
+        elif kind == "oval" and w != h:
+            r, run = min(w, h) / 2, (max(w, h) - min(w, h)) / 2
+            ends = [(-run, 0), (run, 0)] if w > h else [(0, -run), (0, run)]
+            copper = LineString(ends).buffer(r, quad_segs=_ROUND)
+        elif kind == "oval":
+            copper = _Point(0, 0).buffer(w / 2, quad_segs=_ROUND)
+        else:
+            copper = _area(-w / 2, -h / 2, w / 2, h / 2)
+        drill = find(pad, "drill")
+        if drill is not None and (off := find(drill, "offset")) is not None:
+            copper = translate(copper, _nm(off[1]), _nm(off[2]))
+        # Turned counter-clockwise as the front shows it, y down: by minus the angle.
+        copper = rotate(copper, -(float(at[3]) if len(at) > 3 else 0.0), origin=(0, 0))
+        copper = translate(copper, _nm(at[1]), _nm(at[2]))
+        if back:
+            copper = scale(copper, 1, -1, origin=(0, 0))
+        copper = translate(rotate(copper, -rot, origin=(0, 0)), x, y)
+        out.append((str(pad[1]), copper))
+    return out
 
 
 def _turn(x: int, y: int, rot: int, back: bool) -> tuple[int, int]:
@@ -667,6 +709,8 @@ class _Solver:
         self.free = tuple(p.ref for p in circuit.parts()
                           if p.ref not in self.asks and p.ref not in self.held)  # fmt: skip
         self.poses: dict[str, Pose] = {}
+        self.library = library
+        self._shaped: dict[str, list[tuple[str, Polygon]]] = {}
         for ref, f in self.held.items():
             rot = f.rot % 360
             self.poses[ref] = Pose(f.x, f.y, int(rot) if rot % 90 == 0 else rot, f.back)
@@ -1537,27 +1581,41 @@ class _Solver:
 
     def _short(self, a: str, b: str) -> None:
         """Two parts held where the board has them are not moved, but copper of theirs
-        on different nets that overlaps, or is nearer than the rules keep copper on
-        different nets, is a problem: the nearest such pair."""
+        on different nets that overlaps or touches, or is nearer than the rules keep
+        copper on different nets, is a problem: the nearest such pair, by the shapes of
+        their pads (``_pad_copper``)."""
         worst: tuple[int, str, str] | None = None
-        pa, pb = self.poses[a], self.poses[b]
-        for n, ca in _turned(self.shapes[a], pa.rot, pa.back).copper:
-            for m, cb in _turned(self.shapes[b], pb.rot, pb.back).copper:
+        mine, theirs = self._held_copper(a), self._held_copper(b)
+        reach = max(self.gap, _TOUCH)
+        for n, ca in mine:
+            ax0, ay0, ax1, ay1 = ca.bounds
+            for m, cb in theirs:
                 one, two = self.nets[a].get(n), self.nets[b].get(m)
                 if one is None or two is None or one == two:
                     continue
-                ca2, cb2 = _moved(ca, pa.x.nm, pa.y.nm), _moved(cb, pb.x.nm, pb.y.nm)
-                d = -1 if _overlap(ca2, cb2) else _off(ca2, cb2)
-                if (d < 0 or d < self.gap) and (worst is None or (d, n, m) < worst):
+                bx0, by0, bx1, by1 = cb.bounds
+                if bx0 > ax1 + reach or ax0 > bx1 + reach or by0 > ay1 + reach or ay0 > by1 + reach:
+                    continue  # too far apart by their boxes to be near
+                d = round(ca.distance(cb))
+                if d <= _TOUCH:
+                    d = -1 if ca.intersection(cb).area > _TOUCH * _TOUCH else 0
+                if (d <= 0 or d < self.gap) and (worst is None or (d, n, m) < worst):
                     worst = (d, n, m)
         if worst is not None:
             d, n, m = worst
-            how = ("overlaps" if d < 0 else
-                   f"is {Length(d)} from")  # fmt: skip
-            rule = "" if d < 0 else f", and the rules keep copper {Length(self.gap)} apart"
+            how = "overlaps" if d < 0 else "touches" if d == 0 else f"is {Length(d)} from"
+            rule = "" if d <= 0 else f", and the rules keep copper {Length(self.gap)} apart"
             self._problem((a, b), f"{a}.{n} on {self.nets[a][n]} {how} {b}.{m} on "
                           f"{self.nets[b][m]}, both held where the board has them{rule}",
                           *self.rules)  # fmt: skip
+
+    def _held_copper(self, ref: str) -> list[tuple[str, Polygon]]:
+        """Each pad of a held part, its copper as its shape, where the board has it."""
+        if ref not in self._shaped:
+            f, part = self.held[ref], self.circuit.part(ref)
+            self._shaped[ref] = _pad_copper(self.library[part.footprint], f.x.nm, f.y.nm,
+                                            f.rot, f.back)  # fmt: skip
+        return self._shaped[ref]
 
     def _copper_at(self, ref: str) -> list[tuple[str, Box]]:
         """Each pad of a placed part, with the box around its copper, where it is."""

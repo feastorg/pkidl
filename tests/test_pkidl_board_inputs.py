@@ -277,27 +277,47 @@ def test_a_held_part_is_kept_from_what_is_said_and_its_pads_from_other_copper(tm
 
 
 def test_held_parts_whose_copper_on_two_nets_meets_are_said_to(tmp_path):
-    def held(x: float, net: str, ref: str) -> str:
-        return (f'(footprint "Hw:Standoff" (layer "F.Cu") (at {x} 6) (property "Reference" '
-                f'"{ref}") (pad "1" thru_hole circle (at 0 0) (size 4.5 4.5) (drill 3.1) '
-                f'(layers "*.Cu") (net "{net}")))')  # fmt: skip
+    def held(x: float, y: float, net: str, ref: str, rot: float = 0, via: str = "") -> str:
+        return (f'(footprint "Hw:Standoff" (layer "F.Cu") (at {x} {y} {rot}) (property '
+                f'"Reference" "{ref}") (pad "1" thru_hole circle (at 0 0) (size 4.5 4.5) '
+                f'(drill 3.1) (layers "*.Cu") (net "{net}")) {via})')  # fmt: skip
 
-    def problems(x: float, net: str, rules: bool) -> list[str]:
+    def problems(*parts: str, clearance: float = 0) -> list[str]:
         source = parse('(kicad_pcb (gr_rect (start 0 0) (end 40 30) (layer "Edge.Cuts")) '
-                       f'{held(5, "EGND", "ST1")} {held(x, net, "ST2")})')  # fmt: skip
+                       f'{held(5, 6, "EGND", "ST1")} {" ".join(parts)})')  # fmt: skip
         board = Board.from_inputs(_inputs(tmp_path, source))
-        if rules:
-            board.rules(track=0.25 * mm, clearance=0.2 * mm)
+        if clearance:
+            board.rules(track=0.25 * mm, clearance=clearance * mm)
         return _problems(board)
 
-    # Neither is moved: what is wrong is said.
-    assert problems(8, "GND", False) == [
+    # Neither is moved: what is wrong is said, by the copper's own shape.
+    assert problems(held(8, 6, "GND", "ST2")) == [
         "ST1.1 on EGND overlaps ST2.1 on GND, both held where the board has them"]  # fmt: skip
-    assert problems(9.6, "GND", True) == [
+    assert problems(held(9.5, 6, "GND", "ST2")) == [
+        "ST1.1 on EGND touches ST2.1 on GND, both held where the board has them"]  # fmt: skip
+    assert problems(held(9.6, 6, "GND", "ST2"), clearance=0.2) == [
         "ST1.1 on EGND is 0.1 mm from ST2.1 on GND, both held where the board has them, and "
         "the rules keep copper 0.2 mm apart"]  # fmt: skip
-    assert problems(9.6, "GND", False) == []  # no rule says how far
-    assert problems(8, "EGND", True) == []  # one net
+    assert problems(held(9.6, 6, "GND", "ST2")) == []  # no rule says how far
+    assert problems(held(8, 6, "EGND", "ST2"), clearance=0.2) == []  # one net
+    # Round pads 0.45 mm apart across a diagonal, and turned 45 degrees 0.5 mm apart,
+    # whose boxes overlap: the copper does not meet.
+    assert problems(held(8.5, 9.5, "GND", "ST2"), clearance=0.2) == []
+    assert problems(held(10, 6, "GND", "ST2", rot=45), clearance=0.2) == []
+    # An oval pad is two half circles and the strip between: its end is 0.155 mm off.
+    oval = held(9, 9, "GND", "ST2").replace(
+        "circle (at 0 0) (size 4.5 4.5) (drill 3.1)",
+        "oval (at 0 0) (size 6 3) (drill oval 4.5 2.2)",
+    )
+    assert problems(oval) == []
+    (said,) = problems(oval, clearance=0.2)
+    assert said.startswith("ST1.1 on EGND is 0.155") and said.endswith("0.2 mm apart")
+    # Of two pairs too near, the nearer is said: a via of ST2's, 2.25 mm off, before its
+    # hole, 3.5 mm off.
+    via = '(pad "2" thru_hole circle (at -3 0) (size 1 1) (drill 0.5) (layers "*.Cu") (net "GND"))'
+    assert problems(held(13, 6, "GND", "ST2", via=via), clearance=4) == [
+        "ST1.1 on EGND is 2.25 mm from ST2.2 on GND, both held where the board has them, and "
+        "the rules keep copper 4 mm apart"]  # fmt: skip
 
 
 def test_a_part_is_placed_by_a_held_part_as_by_any(tmp_path):
