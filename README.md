@@ -8,8 +8,8 @@ It is the counterpart to [SKiDL](https://github.com/devbisme/skidl), which says 
 connects to what. [`docs/charter.md`](docs/charter.md) says what pkidl is for, and
 [`docs/roadmap.md`](docs/roadmap.md) where it stands.
 
-**Status:** early, and changing. Nothing is released, the API moves between commits,
-and four of the fifteen corpus boards have a board file that builds and routes so far.
+> **Status:** early, and changing. Nothing is released, the API moves between commits,
+> and four of the fifteen corpus boards have a board file that builds and routes so far.
 
 ## A board file
 
